@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkkamiwaza_docs=self.webpackChunkkamiwaza_docs||[]).push([[1903],{1912:a=>{a.exports=JSON.parse('{"blogBasePath":"/kamiwaza-docs/blog","blogTitle":"Blog","authorsListPath":"/kamiwaza-docs/blog/authors"}')}}]);

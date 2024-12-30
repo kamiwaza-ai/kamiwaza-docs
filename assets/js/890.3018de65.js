@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkkamiwaza_docs=self.webpackChunkkamiwaza_docs||[]).push([[890],{890:(a,e,s)=>{s.d(e,{createInfoServices:()=>c.v});var c=s(7021);s(9369)}}]);
