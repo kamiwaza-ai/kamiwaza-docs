@@ -16,6 +16,13 @@ const config: Config = {
   // For GitHub Pages deployment, it is often '/<projectName>/'
   baseUrl: '/kamiwaza-docs/',
 
+  markdown: {
+    mermaid: true,
+  },
+
+  themes: ['@docusaurus/theme-mermaid'],
+
+
   // GitHub Pages deployment config.
   organizationName: 'kamiwaza-ai', // Your organization name
   projectName: 'kamiwaza-docs', // Your repository name
@@ -37,8 +44,6 @@ const config: Config = {
           editUrl: 'https://github.com/kamiwaza-ai/kamiwaza-docs/tree/main/',
           routeBasePath: '/',
           path: './docs',
-          // Enable Mermaid support in Markdown
-          remarkPlugins: [remarkMermaid],
         },
         blog: {
           showReadingTime: true,
