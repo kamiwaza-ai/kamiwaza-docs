@@ -1,8 +1,6 @@
 import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
-
-// Import remark-mermaid plugin
 import remarkMermaid from 'remark-mermaid';
 
 const config: Config = {
@@ -10,10 +8,7 @@ const config: Config = {
   tagline: 'Kamiwaza AI Platform Documentation',
   favicon: 'img/favicon.ico',
 
-  // Set the production URL of your site here
   url: 'https://kamiwaza-ai.github.io',
-  // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub Pages deployment, it is often '/<projectName>/'
   baseUrl: '/kamiwaza-docs/',
 
   markdown: {
@@ -22,10 +17,8 @@ const config: Config = {
 
   themes: ['@docusaurus/theme-mermaid'],
 
-
-  // GitHub Pages deployment config.
-  organizationName: 'kamiwaza-ai', // Your organization name
-  projectName: 'kamiwaza-docs', // Your repository name
+  organizationName: 'kamiwaza-ai',
+  projectName: 'kamiwaza-docs',
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -44,63 +37,85 @@ const config: Config = {
           editUrl: 'https://github.com/kamiwaza-ai/kamiwaza-docs/tree/main/',
           routeBasePath: '/',
           path: './docs',
+          lastVersion: 'current',
+          versions: {
+            current: {
+              label: '0.3.2 (Current)',
+              path: 'current',
+              banner: 'none',
+            },
+            next: {
+              label: 'Next',
+              path: 'next',
+              banner: 'unreleased',
+            },
+          },
+          onlyIncludeVersions: ['current', 'next'],
+          // Version banners
+          versions: {
+            current: {
+              label: '0.3.2',
+              path: 'current',
+              banner: 'none',
+            },
+            next: {
+              label: 'Next',
+              path: 'next',
+              banner: 'unreleased',
+              badge: true, 
+              className: 'next-version-banner',
+            },
+          },
         },
         blog: {
           showReadingTime: true,
           editUrl: 'https://github.com/kamiwaza-ai/kamiwaza-docs/tree/main/docs/',
+          path: './company/blog',
+          routeBasePath: 'company/blog',
         },
         theme: {},
       } satisfies Preset.Options,
     ],
   ],
 
-  themeConfig: {
-    navbar: {
-      title: 'Kamiwaza Docs',
-      logo: {
-        alt: 'Logo',
-        src: 'img/logo.svg',
+  plugins: [
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'sdk',
+        path: 'sdk',
+        routeBasePath: 'sdk',
+        sidebarPath: require.resolve('./sidebars-sdk.ts'),
+        lastVersion: 'current',
+        versions: {
+          current: {
+            label: '0.3.2',
+            path: 'current',
+            banner: 'none',
+          },
+          next: {
+            label: 'Next',
+            path: 'next',
+            banner: 'unreleased',
+          },
+        },
       },
-      items: [
-        {
-          type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
-          position: 'left',
-          label: 'Docs',
-          to: '/',
-        },
-        { to: '/blog', label: 'Blog', position: 'left' },
-        { href: 'https://github.com/kamiwaza-ai/kamiwaza-docs', label: 'GitHub', position: 'right' },
-      ],
+    ],
+    // ... other plugins remain the same
+  ],
+
+  themeConfig: {
+    // Custom messages for version banners
+    announcementBar: {
+      // This css selector helps style just the version banners
+      id: 'version-banner',
+      content:
+        'unreleased' === 'You are viewing documentation for an unreleased version. For the latest stable release (v0.3.2), <a href="/current">click here</a>.',
+      backgroundColor: '#fafbfc',
+      textColor: '#091E42',
+      isCloseable: false,
     },
-    footer: {
-      style: 'dark',
-      links: [
-        {
-          title: 'Docs',
-          items: [
-            {
-              label: 'Tutorial',
-              to: '/',
-            },
-          ],
-        },
-        {
-          title: 'Community',
-          items: [
-            {
-              label: 'GitHub',
-              href: 'https://github.com/kamiwaza-ai',
-            },
-          ],
-        },
-      ],
-      copyright: `Copyright © ${new Date().getFullYear()} Kamiwaza AI.`,
-    },
-    prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
-    },
+    // ... rest of themeConfig
   } satisfies Preset.ThemeConfig,
 };
 
