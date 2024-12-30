@@ -33,7 +33,7 @@ const config: Config = {
           sidebarPath: require.resolve('./sidebars.ts'),
           editUrl: 'https://github.com/kamiwaza-ai/kamiwaza-docs/tree/main/',
           routeBasePath: '/',
-          path: './docs'
+          path: 'docs'
         },
         blog: {
           showReadingTime: true,
