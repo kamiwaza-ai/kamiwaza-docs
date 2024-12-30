@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Kamiwaza Docs',
-  tagline: 'Your project tagline',
+  tagline: 'Kamiwaza AI Platform Documentation',
   favicon: 'img/favicon.ico',
 
   // Set the production URL of your site here
@@ -30,6 +30,7 @@ const config: Config = {
       'classic',
       {
         docs: {
+          routeBasePath: '/', // Set docs as root
           sidebarPath: require.resolve('./sidebars.ts'),
           editUrl: 'https://github.com/kamiwaza-ai/kamiwaza-docs/tree/main/docs/',
         },
@@ -65,7 +66,7 @@ const config: Config = {
           items: [
             {
               label: 'Tutorial',
-              to: '/docs/intro',
+              to: '/intro',
             },
           ],
         },
