@@ -15,6 +15,7 @@ Our documentation is organized into several key sections:
 ### Installation & Setup
 - [System Requirements](installation/system_requirements_updates.md) - Hardware and software prerequisites
 - [Installation Guide](installation/installation_process.md) - Step-by-step installation instructions
+- [Community Edition](https://github.com/kamiwaza-ai/kamiwaza-community-edition) - Download and install the open source version
 
 ### Architecture
 - [Platform Architecture](architecture/architecture.mmd) - Technical overview of Kamiwaza's components
@@ -35,13 +36,14 @@ The fastest way to get started with Kamiwaza is to:
 
 ![00_notebook_index.png](/img/00_notebook_index.png)
 
-
 ## Need Help?
 
 If you need help or have questions:
 
+- Join our [Discord community](https://discord.gg/cVGBS5rD2U)
 - Check our comprehensive documentation sections above
-- Join our community forums
+- Visit our [website](https://www.kamiwaza.ai/community)
+- Try our [client SDK](https://github.com/kamiwaza-ai/kamiwaza-sdk)
 - Contact our support team
 
 We're committed to making your experience with Kamiwaza as smooth as possible.
