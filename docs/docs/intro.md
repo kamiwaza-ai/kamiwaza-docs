@@ -2,46 +2,46 @@
 sidebar_position: 1
 ---
 
-# Tutorial Intro
+# Welcome to Kamiwaza Documentation
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Welcome to the official documentation for the Kamiwaza AI Platform. Here you'll find comprehensive guides and documentation to help you get started with Kamiwaza quickly and easily.
+
+## Documentation Overview
+
+Our documentation is organized into several key sections:
+
+### Installation & Setup
+- [System Requirements](installation/system_requirements_updates.md) - Hardware and software prerequisites
+- [Installation Guide](installation/installation_process.md) - Step-by-step installation instructions
+- [OSX-Specific Setup](installation/osx_system_requirements_updates.md) - Additional steps for Mac users
+
+### Architecture
+- [Platform Architecture](architecture/architecture.mmd) - Technical overview of Kamiwaza's components
+- [Design Considerations](architecture/considerations.md) - Key architectural decisions and rationale
+
+### Tutorials
+- [Basic Tutorials](tutorial-basics/create-a-document.md) - Get started with core features
+- [Advanced Topics](tutorial-extras/manage-docs-versions.md) - Dive deeper into advanced capabilities
+
+### Company & Community
+- [About Kamiwaza](company/kamiwaza.md) - Learn about our mission and values
+- [Career Opportunities](company/jobs.md) - Join our growing team
+- [Technical Staff Positions](company/mts.md) - Engineering roles
 
 ## Getting Started
 
-Get started by **creating a new site**.
+The fastest way to get started with Kamiwaza is to:
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+1. Review the [system requirements](installation/system_requirements_updates.md)
+2. Follow our [installation guide](installation/installation_process.md)
+3. Work through the [basic tutorials](tutorial-basics/create-a-document.md)
 
-### What you'll need
+## Need Help?
 
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+If you need help or have questions:
 
-## Generate a new site
+- Check our comprehensive documentation sections above
+- Join our community forums
+- Contact our support team
 
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
-```
-
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+We're committed to making your experience with Kamiwaza as smooth as possible.
