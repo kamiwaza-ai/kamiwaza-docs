@@ -51,11 +51,16 @@ const config: Config = {
         path: 'docs',
         routeBasePath: '/',
         sidebarPath: require.resolve('./sidebars.ts'),
+        // Doc versioning
+        lastVersion: 'current',
         versions: {
           current: {
             label: '0.3.2',
           },
         },
+        // Important: This ensures the sidebar shows
+        sidebarCollapsible: true,
+        sidebarCollapsed: false,
       },
     ],
     // SDK docs plugin
@@ -83,7 +88,7 @@ const config: Config = {
         src: 'img/logo.svg',
       },
       items: [
-        // Main Docs
+        // Docs
         {
           to: '/',
           position: 'left',
@@ -103,7 +108,7 @@ const config: Config = {
           label: 'Blog',
           position: 'left',
         },
-        // Version Dropdown
+        // Version Display
         {
           type: 'html',
           position: 'right',
@@ -117,6 +122,12 @@ const config: Config = {
           position: 'right',
         },
       ],
+    },
+    docs: {
+      sidebar: {
+        hideable: false,
+        autoCollapseCategories: false,
+      },
     },
     footer: {
       style: 'dark',
