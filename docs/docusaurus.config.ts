@@ -2,6 +2,9 @@ import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+// Import remark-mermaid plugin
+import remarkMermaid from 'remark-mermaid';
+
 const config: Config = {
   title: 'Kamiwaza Docs',
   tagline: 'Kamiwaza AI Platform Documentation',
@@ -33,14 +36,15 @@ const config: Config = {
           sidebarPath: require.resolve('./sidebars.ts'),
           editUrl: 'https://github.com/kamiwaza-ai/kamiwaza-docs/tree/main/',
           routeBasePath: '/',
-          path: './docs'
+          path: './docs',
+          // Enable Mermaid support in Markdown
+          remarkPlugins: [remarkMermaid],
         },
         blog: {
           showReadingTime: true,
           editUrl: 'https://github.com/kamiwaza-ai/kamiwaza-docs/tree/main/docs/',
         },
-        theme: {
-        },
+        theme: {},
       } satisfies Preset.Options,
     ],
   ],
