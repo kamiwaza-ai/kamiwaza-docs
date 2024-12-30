@@ -13,7 +13,6 @@ Our documentation is organized into several key sections:
 ### Installation & Setup
 - [System Requirements](installation/system_requirements_updates.md) - Hardware and software prerequisites
 - [Installation Guide](installation/installation_process.md) - Step-by-step installation instructions
-- [OSX-Specific Setup](installation/osx_system_requirements_updates.md) - Additional steps for Mac users
 
 ### Architecture
 - [Platform Architecture](architecture/architecture.mmd) - Technical overview of Kamiwaza's components
