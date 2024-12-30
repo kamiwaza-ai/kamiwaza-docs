@@ -1,88 +1,161 @@
-# System Requirements & Dependencies
+Based on the provided scripts and installation requirements, I'll help create an updated and comprehensive system requirements guide that incorporates all the key points while organizing them more effectively. Here's my suggested version:
 
-## Preamble
-
-Please pay attention to the notes regarding kernel modules and network configuration, as they can be material to systems outside of Kamiwaza's functions.
-
-This captures for Linux. See [osx_system_requirements_updates.md](./os_system_requirements_updates.md) for OSX.
+# Kamiwaza System Requirements & Installation Guide
 
 ## Base System Requirements
-- Ubuntu 22.04 LTS
-- Python 3.10 (Python 3.10.14 is tested)
-- Docker Engine
 
-## System Packages & Dependencies
-The following system-level components are installed by Kamiwaza. We have different installation paths:
+### Supported Operating Systems
+- Linux: Ubuntu 22.04 LTS (primary)
+- macOS: 12.0 or later (community edition only)
 
-- Enterprise images in clouds, pre-built
-- Installable Enterprise Edition software, which includes scripts which install these dependencies
-- Community Edition software, which likewise includes scripts which install these dependencies
+### Core Requirements
+- Python 3.10 (Python 3.10.14 tested)
+- Docker Engine with Compose v2
+- Node.js 22 (installed via NVM during setup)
+- Minimum 10GB free disk space
+- For GPU support: NVIDIA GPU with compute capability 7.0+
 
-### Core Dependencies
+## Dependencies & Components
+
+### Required System Packages (Linux)
 ```bash
+# Core Python
 python3.10
 python3.10-dev
 libpython3.10-dev
 python3.10-venv
+
+# System Tools
 golang-cfssl
 python-is-python3
-etcd-client
+etcd-client (v3.5+)
 net-tools
-```
 
-(Other packages are installed by those packages, e.g. `python3.10-dev` installs `python3.10-venv` and `libpython3.10-dev`)
-
-### Graphics & System Libraries
-```bash
+# Graphics & Development Libraries
 libcairo2-dev
 libgirepository1.0-dev
 ```
 
-### NVIDIA Components
-- NVIDIA Driver (550-server)
+### NVIDIA Components (Linux GPU Support)
+- NVIDIA Driver (550-server recommended)
 - NVIDIA Container Toolkit
 - nvidia-docker2
 
-### Docker Configuration
-- Docker Engine
-- Docker Compose v2
-- System user added to docker group
+### Docker Configuration Requirements
+- Docker Engine with Compose v2
+- User must be in docker group
+- Swarm mode (Enterprise Edition)
+- Docker data root configuration (configurable)
 
+### Required Directory Structure
 
-### Kernel Modules ⚠️⚠️
+#### Enterprise Edition
 
-These are required for Swarm backend networking.
+Note this is created by the installer and present in cloud marketplace images.
 
-- Kernel modules enabled:
-  - overlay
-  - br_netfilter
+```
+/etc/kamiwaza/
+├── config/
+├── ssl/      # Cluster certificates
+└── swarm/    # Swarm tokens
 
+/opt/kamiwaza/
+├── containers/  # Docker root (configurable)
+├── logs/
+├── nvm/        # Node Version Manager
+└── runtime/    # Runtime files
+```
 
-### Network Configuration ⚠️⚠️⚠️⚠️⚠️
+#### Community Edition
 
+We recommend `${HOME}/kamiwaza` or something similar for `KAMIWAZA_ROOT`.
 
+```
+$KAMIWAZA_ROOT/
+├── env.sh
+├── runtime/
+└── logs/
+```
 
-The following sysctl settings are configured:
+## Network Configuration
+
+### Required Kernel Modules (Enterprise Edition Linux Only)
+Required modules for Swarm container networking:
+- overlay
+- br_netfilter
+
+### System Network Parameters (Enterprise Edition Linux Only)
+
+These will be set by the installer.
+
 ```bash
+# Required sysctl settings for Swarm networking
 net.bridge.bridge-nf-call-iptables  = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward                 = 1
 ```
 
-### Required Directories
-```bash
-/etc/kamiwaza/
-├── config/
-├── ssl/
-└── swarm/
-
-/opt/kamiwaza/
-├── containers/
-├── logs/
-└── volumes/
-```
-
-## Note
-These components are installed and configured by the installation scripts (1.sh, 2.sh, install.sh) and are required for Kamiwaza to function properly.  Generally speaking, if you install with `--communtity` you will find these componetns skipped (eg, `/etc/kamiwaza/ssl/`) or present in the kamiwaza install folder (`env.sh`). 
+### Community Edition Networking
+- Uses standard Docker bridge networks
+- No special kernel modules or sysctl settings required
+- Simplified single-node networking configuration
 
 
+## Storage Configuration
+
+### Enterprise Edition Requirements
+
+- Primary mountpoint for persistent storage (/opt/kamiwaza)
+- Scratch/temporary storage (auto-configured)
+- For Azure: Additional managed disk for persistence
+
+### Community Edition
+
+- Local filesystem storage
+- Configurable paths via environment variables
+
+## Installation Methods
+
+1. **Cloud Marketplace Images**
+   - Pre-configured enterprise images
+   - Automated disk & network setup
+   - GPU support included
+
+2. **Enterprise Edition Installation**
+   - Automated installation scripts
+   - Configurable for head/worker nodes
+   - Full cluster support
+
+3. **Community Edition Installation**
+   - Local installation
+   - Simplified configuration
+   - Single-node focused
+
+## Important Notes
+
+- **System Impact**: Network and kernel configurations can affect other services
+- **Security**: Certificate generation and management for cluster communications
+- **GPU Support**: Available only on Linux with NVIDIA GPUs
+- **Storage**: Enterprise Edition requires specific storage configuration
+- **Network**: Enterprise Edition requires specific network ports for cluster communication
+- **Docker**: Custom Docker root configuration may affect other containers
+
+## Additional Considerations
+
+### Memory Requirements
+- Minimum: 16GB RAM
+- Recommended: 32GB RAM
+- GPU Workloads: 32GB RAM + GPU vRAM
+
+### Network Ports
+Enterprise Edition requires:
+- 443/tcp: HTTPS primary access
+- 51100-51199/tcp: Deployment ports for model instances (will also be used for 'App Garden' in the future)
+
+### Version Compatibility
+- Docker Engine: 20.10 or later
+- NVIDIA Driver: 450.80.02 or later
+- ETCD: 3.5 or later
+- Node.js: 22.x (installed automatically)
+
+This represents a comprehensive organization of the system requirements and dependencies based on the provided scripts and configuration files. The distinction between Enterprise and Community editions is maintained throughout, and important system configurations are clearly documented.

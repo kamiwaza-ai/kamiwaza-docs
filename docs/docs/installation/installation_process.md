@@ -66,7 +66,7 @@ flowchart LR
 
 Key Points:
 - Requires manual cluster setup via cluster-manual-prep.sh
-- Must specify correct role (--head or --worker --head-ip=<IP>)
+- Must specify correct role (`--head` or `--worker --head-ip=<IP>`)
 - Service starts automatically via systemd
 
 ## Important Notes
