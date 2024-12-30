@@ -30,9 +30,9 @@ const config: Config = {
       'classic',
       {
         docs: {
-          routeBasePath: '/', // Set docs as root
           sidebarPath: require.resolve('./sidebars.ts'),
           editUrl: 'https://github.com/kamiwaza-ai/kamiwaza-docs/tree/main/docs/',
+          routeBasePath: '/',
         },
         blog: {
           showReadingTime: true,
