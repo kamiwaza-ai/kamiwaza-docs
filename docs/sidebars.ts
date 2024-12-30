@@ -1,7 +1,7 @@
 import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
 const sidebars: SidebarsConfig = {
-  docs: [
+  mainSidebar: [
     {
       type: 'doc',
       id: 'intro',
@@ -19,15 +19,16 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Architecture',
       items: [
-        'architecture/architecture',
         'architecture/considerations',
       ],
     },
     {
       type: 'category',
-      label: 'Troubleshooting',
+      label: 'Company',
       items: [
-        'troubleshooting/docker-gpu-error-could-not-select-device-driver-nvidia-container-runtime',
+        'company/kamiwaza',
+        'company/jobs',
+        'company/mts',
       ],
     },
   ],
