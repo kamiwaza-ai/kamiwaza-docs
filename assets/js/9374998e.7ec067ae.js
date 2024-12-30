@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmy_website=self.webpackChunkmy_website||[]).push([[5841],{1159:a=>{a.exports=JSON.parse('{"authors":[{"name":"Matt Wallace","title":"CTO, Kamiwaza.AI","url":"https://kamiwaza.ai","key":"mattw","page":null,"count":0}]}')}}]);
