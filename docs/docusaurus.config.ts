@@ -40,7 +40,6 @@ const config: Config = {
           editUrl: 'https://github.com/kamiwaza-ai/kamiwaza-docs/tree/main/docs/',
         },
         theme: {
-          customCss: require.resolve('./src/css/custom.css'),
         },
       } satisfies Preset.Options,
     ],
@@ -54,7 +53,13 @@ const config: Config = {
         src: 'img/logo.svg',
       },
       items: [
-        { type: 'docSidebar', sidebarId: 'tutorialSidebar', label: 'Docs', position: 'left' },
+        {
+          type: 'docSidebar',
+          sidebarId: 'tutorialSidebar',
+          position: 'left',
+          label: 'Docs',
+          to: '/',
+        },
         { to: '/blog', label: 'Blog', position: 'left' },
         { href: 'https://github.com/kamiwaza-ai/kamiwaza-docs', label: 'GitHub', position: 'right' },
       ],
@@ -67,7 +72,7 @@ const config: Config = {
           items: [
             {
               label: 'Tutorial',
-              to: '/intro',
+              to: '/',
             },
           ],
         },
