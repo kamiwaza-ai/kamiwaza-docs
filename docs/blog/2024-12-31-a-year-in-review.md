@@ -34,6 +34,8 @@ On the other hand, I'd be remiss if I didn't mention that OpenAI and Anthropic h
 
 Google may have finally awakened the sleeping giant. Gemini 2.0 flash is a beast especially if it remains at "flash" pricing. I'd say that:
 
+<!-- truncate -->
+
 * OpenAI's o1 clearly has a reasoning edge especially on high compute, with the unreleased o3 appearing from the teasing to be absurdly strong (and almost unusably expensive)
 * Claude 3.5 Sonnet is still the best code model, with o1 pro/full possibly edging it out barely, but in most cases this being an academic victory due to Sonnet being much faster/cheaper
 * Gemini models have serious potential - but Flash is oddly strong in some areas, oddly weak in others (coding, for example, where Gemini 2.0 flash underperforms both Qwen 2.5 and DeepSeek v3 along with Sonnet and o1)

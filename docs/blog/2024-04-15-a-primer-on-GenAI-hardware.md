@@ -31,6 +31,8 @@ For developers already embedded in the Apple ecosystem, OSX with Metal provides 
 
 - **Limited GPU Support:** Apple hardware typically does not support external GPUs as flexibly as PC setups, limiting performance scalability.
 
+<!-- truncate -->
+
 ### Windows Environments
 
 #### Versatile but with Nuanced Support
