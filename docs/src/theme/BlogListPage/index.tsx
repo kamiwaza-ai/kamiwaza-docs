@@ -6,6 +6,30 @@ import useBaseUrl from '@docusaurus/useBaseUrl';
 export default function BlogListPage(props): JSX.Element {
   const items = props?.items ?? [];
 
+  const gridStyles = React.useMemo(() => {
+    if (typeof window !== 'undefined') {
+      const mq = window.matchMedia('(max-width: 1200px)');
+      const mq2 = window.matchMedia('(max-width: 768px)');
+      
+      return {
+        display: 'grid',
+        gridTemplateColumns: mq2.matches 
+          ? '1fr' 
+          : mq.matches 
+            ? 'repeat(2, minmax(0, 1fr))' 
+            : 'repeat(3, minmax(0, 1fr))',
+        gap: '24px',
+      };
+    }
+    
+    // Default for SSR
+    return {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gap: '24px',
+    };
+  }, []);
+
   return (
     <Layout title="Blog" description="Kamiwaza Engineering Blog">
       <div style={{ 
@@ -14,17 +38,7 @@ export default function BlogListPage(props): JSX.Element {
         padding: '0 24px'
       }}>
         <div style={{ padding: '32px 0' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-            gap: '24px',
-            '@media (max-width: 1200px)': {
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))'
-            },
-            '@media (max-width: 768px)': {
-              gridTemplateColumns: 'repeat(1, minmax(0, 1fr))'
-            }
-          }}>
+          <div style={gridStyles}>
             {items.map((item: any, idx: number) => {
               const { content: BlogPostContent } = item;
               const { metadata: postMetadata, frontMatter } = BlogPostContent;
@@ -45,10 +59,6 @@ export default function BlogListPage(props): JSX.Element {
                     overflow: 'hidden',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                     transition: 'all 0.2s ease-out',
-                    ':hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                    }
                   }}>
                     {headerImage ? (
                       <div style={{
