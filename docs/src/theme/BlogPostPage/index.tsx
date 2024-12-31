@@ -14,6 +14,38 @@ function BlogPostPageContent({content}: {content: Props['content']}): JSX.Elemen
     ? `${Math.ceil(metadata.readingTime)} min read`
     : null;
 
+  // Add global styles for blog post images
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .markdown img {
+        width: 100%;
+        height: auto;
+        border-radius: 0.5rem;
+      }
+      
+      .markdown p img {
+        margin: 2rem 0;
+      }
+      
+      .markdown p {
+        position: relative;
+      }
+      
+      .markdown p:has(> img) {
+        padding: 2rem;
+        margin: 2rem 0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border-radius: 0.5rem;
+        background: white;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   return (
     <Layout
       title={metadata.title}
