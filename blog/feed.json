@@ -1,0 +1,26 @@
+{
+    "version": "https://jsonfeed.org/version/1",
+    "title": "Kamiwaza Docs Blog",
+    "home_page_url": "https://kamiwaza-ai.github.io/kamiwaza-docs/blog",
+    "description": "Kamiwaza Docs Blog",
+    "items": [
+        {
+            "id": "https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/12/31/a-year-in-review",
+            "content_html": null,
+            "url": "https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/12/31/a-year-in-review",
+            "title": "2024: A Year in Review for GenAI",
+            "summary": "A look back at the year in GenAI",
+            "date_modified": "2024-12-31T00:00:00.000Z",
+            "tags": []
+        },
+        {
+            "id": "https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/04/15/a-primer-on-GenAI-hardware",
+            "content_html": null,
+            "url": "https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/04/15/a-primer-on-GenAI-hardware",
+            "title": "Harnessing the Power of Large Language Models",
+            "summary": "A primer on the hardware requirements for deploying and leveraging Large Language Models (LLMs).",
+            "date_modified": "2024-04-15T00:00:00.000Z",
+            "tags": []
+        }
+    ]
+}
