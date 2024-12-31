@@ -1,5 +1,5 @@
 ---
-title: "Harnessing the Power of Large Language Models: A Hardware Primer"
+title: "Harnessing the Power of Large Language Models"
 description: "A primer on the hardware requirements for deploying and leveraging Large Language Models (LLMs)."
 date: 2024-04-15
 image: /img/blog/images/2024-04-15-llm-library.png
