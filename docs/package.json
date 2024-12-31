@@ -5,7 +5,9 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "dev": "docusaurus start",
+    "start": "docusaurus start",
     "build": "node scripts/build.js",
+    "swizzle": "docusaurus swizzle",
     "serve": "docusaurus serve",
     "deploy": "npm run build && docusaurus deploy",
     "clear": "docusaurus clear",
@@ -16,20 +18,27 @@
   },
   "dependencies": {
     "@docusaurus/core": "^3.1.0",
+    "@docusaurus/plugin-content-blog": "^3.6.3",
     "@docusaurus/preset-classic": "^3.1.0",
     "@docusaurus/theme-classic": "^3.1.0",
+    "@docusaurus/theme-common": "^3.6.3",
     "@docusaurus/theme-mermaid": "^3.1.0",
     "@mdx-js/react": "^3.0.0",
-    "clsx": "^2.0.0",
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "clsx": "^2.1.1",
     "prism-react-renderer": "^2.3.0",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.1.0",
     "@docusaurus/tsconfig": "^3.1.0",
     "@docusaurus/types": "^3.1.0",
+    "autoprefixer": "^10.4.20",
     "gh-pages": "^6.2.0",
+    "postcss": "^8.4.49",
+    "swc-loader": "^0.2.6",
     "typescript": "^5.2.0"
   },
   "browserslist": {

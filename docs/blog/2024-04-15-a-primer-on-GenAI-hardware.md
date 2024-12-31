@@ -1,4 +1,9 @@
-# Harnessing the Power of Large Language Models: A Hardware Primer
+---
+title: "Harnessing the Power of Large Language Models: A Hardware Primer"
+description: "A primer on the hardware requirements for deploying and leveraging Large Language Models (LLMs)."
+date: 2024-04-15
+image: /img/blog/images/2024-04-15-llm-library.png
+---
 
 Welcome to an illuminating journey through the world of hardware essentials for deploying and leveraging Large Language Models (LLMs). In this era of generative AI, the right hardware is not just an operational need; it’s a strategic asset that can drastically elevate the performance, scalability, and efficiency of your AI applications. Whether you are integrating AI into your enterprise solutions or enhancing existing applications, understanding the interplay between hardware and AI capabilities is fundamental. Let's dive into the crucial hardware considerations that can help you kickstart and scale your AI initiatives effectively.
 

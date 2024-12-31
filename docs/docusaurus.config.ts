@@ -8,7 +8,7 @@ const config: Config = {
   favicon: 'img/favicon.ico',
 
   url: 'https://kamiwaza-ai.github.io',
-  baseUrl: '/kamiwaza-docs',
+  baseUrl: '/kamiwaza-docs/',
   trailingSlash: false,
 
   markdown: {
@@ -32,15 +32,35 @@ const config: Config = {
     [
       'classic',
       {
-        docs: false, // We'll use the plugin for main docs
+        docs: false,
         blog: {
-          showReadingTime: true,
+          path: 'blog',
           routeBasePath: 'blog',
+          // Use our custom pages
+          blogListComponent: '@theme/BlogListPage',
+          blogPostComponent: '@theme/BlogPostPage',
+          // Sidebar settings
+          blogSidebarCount: 0,
+          blogSidebarTitle: 'All Posts',
+          // Additional settings
+          showReadingTime: true,
+          // For better debugging
+          feedOptions: {
+            type: 'all',
+            copyright: `Copyright © ${new Date().getFullYear()} Kamiwaza AI.`,
+          },
         },
-        theme: {},
+        theme: {
+          customCss: [
+            require.resolve('./src/css/custom.css'),
+            require.resolve('./src/css/blog.css'),
+          ],
+        },
       } satisfies Preset.Options,
     ],
   ],
+
+  // ... rest of config remains the same (plugins, themeConfig, etc.)
 
   plugins: [
     // Main docs plugin
@@ -51,14 +71,12 @@ const config: Config = {
         path: 'docs',
         routeBasePath: '/',
         sidebarPath: require.resolve('./sidebars.ts'),
-        // Doc versioning
         lastVersion: 'current',
         versions: {
           current: {
             label: '0.3.2',
           },
         },
-        // Important: This ensures the sidebar shows
         sidebarCollapsible: true,
         sidebarCollapsed: false,
       },
@@ -88,34 +106,29 @@ const config: Config = {
         src: 'img/logo.svg',
       },
       items: [
-        // Docs
         {
           to: '/',
           position: 'left',
           label: 'Docs',
           activeBaseRegex: '^/$|^/(?!sdk|blog)',
         },
-        // SDK
         {
           to: '/sdk/intro',
           position: 'left',
           label: 'SDK',
           activeBaseRegex: '^/sdk',
         },
-        // Blog
         {
           to: '/blog',
           label: 'Blog',
           position: 'left',
         },
-        // Version Display
         {
           type: 'html',
           position: 'right',
           className: 'navbar__version',
           value: 'Version: 0.3.2',
         },
-        // GitHub
         {
           href: 'https://github.com/kamiwaza-ai/kamiwaza-docs',
           label: 'GitHub',

@@ -1,0 +1,24 @@
+/* Blog styling */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Text truncation */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Card transitions */
+.blog-card {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Blog post page specific styles */
+.blog-post-page article {
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
