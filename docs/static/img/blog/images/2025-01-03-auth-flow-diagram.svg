@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <!-- Definitions -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="400" fill="#f8f9fa" rx="10" />
+  
+  <!-- Client App Box -->
+  <rect x="50" y="50" width="200" height="100" rx="10" fill="#fff" stroke="#333" stroke-width="2"/>
+  <text x="150" y="100" text-anchor="middle" font-family="Arial" font-size="16">Client Application</text>
+  <text x="150" y="120" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">(Your App)</text>
+
+  <!-- Kamiwaza Auth Box -->
+  <rect x="300" y="150" width="200" height="100" rx="10" fill="#4CAF50" stroke="#333" stroke-width="2"/>
+  <text x="400" y="190" text-anchor="middle" font-family="Arial" font-size="16" fill="white">Kamiwaza Auth</text>
+  <text x="400" y="210" text-anchor="middle" font-family="Arial" font-size="12" fill="#fff">/api/auth/*</text>
+
+  <!-- Protected Resources Box -->
+  <rect x="550" y="250" width="200" height="100" rx="10" fill="#fff" stroke="#333" stroke-width="2"/>
+  <text x="650" y="290" text-anchor="middle" font-family="Arial" font-size="16">Protected Resources</text>
+  <text x="650" y="310" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">(Your App's Features)</text>
+
+  <!-- Arrows -->
+  <!-- Login Request -->
+  <path d="M 150,150 L 150,200 L 290,200" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)" fill="none"/>
+  <text x="220" y="180" font-family="Arial" font-size="12" fill="#666">1. Login Request</text>
+
+  <!-- Auth Token -->
+  <path d="M 510,200 L 600,200 L 600,240" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)" fill="none"/>
+  <text x="570" y="180" font-family="Arial" font-size="12" fill="#666">2. Auth Token</text>
+
+  <!-- Resource Request -->
+  <path d="M 150,150 C 150,280 300,300 540,300" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)" fill="none"/>
+  <text x="300" y="320" font-family="Arial" font-size="12" fill="#666">3. Access Resources with Token</text>
+
+  <!-- Legend -->
+  <rect x="50" y="350" width="15" height="15" fill="#4CAF50"/>
+  <text x="75" y="362" font-family="Arial" font-size="12">Kamiwaza Services</text>
+  
+  <rect x="200" y="350" width="15" height="15" fill="#fff" stroke="#333"/>
+  <text x="225" y="362" font-family="Arial" font-size="12">Your Application</text>
+</svg>
