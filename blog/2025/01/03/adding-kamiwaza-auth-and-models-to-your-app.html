@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="blog-wrapper blog-post-page plugin-blog plugin-id-default" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.6.3">
+<title data-rh="true">Using Kamiwaza Authentication and Model Inferencing with Any AI Application | Kamiwaza Docs</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="Using Kamiwaza Authentication and Model Inferencing with Any AI Application | Kamiwaza Docs"><meta data-rh="true" name="description" content="How to integrate Kamiwaza&#x27;s authentication and model inferencing into any AI application."><meta data-rh="true" property="og:description" content="How to integrate Kamiwaza&#x27;s authentication and model inferencing into any AI application."><link data-rh="true" rel="icon" href="/kamiwaza-docs/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app"><link data-rh="true" rel="alternate" href="https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app" hreflang="en"><link data-rh="true" rel="alternate" href="https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app" hreflang="x-default"><link rel="alternate" type="application/rss+xml" href="/kamiwaza-docs/blog/rss.xml" title="Kamiwaza Docs RSS Feed">
+<link rel="alternate" type="application/atom+xml" href="/kamiwaza-docs/blog/atom.xml" title="Kamiwaza Docs Atom Feed">
+<link rel="alternate" type="application/json" href="/kamiwaza-docs/blog/feed.json" title="Kamiwaza Docs JSON Feed"><link rel="stylesheet" href="/kamiwaza-docs/assets/css/styles.47a7f771.css">
+<script src="/kamiwaza-docs/assets/js/runtime~main.b43db3c9.js" defer="defer"></script>
+<script src="/kamiwaza-docs/assets/js/main.5d5aa39f.js" defer="defer"></script>
+</head>
+<body class="navigation-with-keyboard">
+<script>!function(){function t(t){document.documentElement.setAttribute("data-theme",t)}var e=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();t(null!==e?e:"light")}(),function(){try{const n=new URLSearchParams(window.location.search).entries();for(var[t,e]of n)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="navbar navbar--fixed-top"><div class="navbar__inner"><div class="navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/kamiwaza-docs/"><div class="navbar__logo"><img src="/kamiwaza-docs/img/logo.svg" alt="Kamiwaza Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/kamiwaza-docs/img/logo.svg" alt="Kamiwaza Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">Kamiwaza Docs</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/kamiwaza-docs/">Docs</a><a class="navbar__item navbar__link" href="/kamiwaza-docs/sdk/intro">SDK</a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/kamiwaza-docs/blog">Blog</a></div><div class="navbar__items navbar__items--right"><div class="navbar__item navbar__version">Version: 0.3.2</div><a href="https://github.com/kamiwaza-ai/kamiwaza-docs" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-hidden="true" viewBox="0 0 24 24" class="iconExternalLink_nPIU"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"></path></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="Switch between dark and light mode (currently light mode)" aria-label="Switch between dark and light mode (currently light mode)" aria-live="polite" aria-pressed="false"><svg viewBox="0 0 24 24" width="24" height="24" class="lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" class="darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="main-wrapper mainWrapper_z2l0"><div class="container"><div class="row"><div class="col col--7"><header><h1 class="text-[2.5rem] leading-[1.2] font-bold mb-4">Using Kamiwaza Authentication and Model Inferencing with Any AI Application</h1><div class="text-sm text-gray-600 mb-8">1/2/2025<span> · <!-- -->5 min read</span></div><div class="text-lg text-gray-700 mb-8">How to integrate Kamiwaza&#x27;s authentication and model inferencing into any AI application.</div><div class="mb-12 rounded-lg overflow-hidden"><img src="/kamiwaza-docs/img/blog/images/2025-01-03-kamiwaza-private-gpt.png" alt="Using Kamiwaza Authentication and Model Inferencing with Any AI Application" style="width:100%;height:100%;object-fit:cover"></div></header><main class="markdown"><p>The Kamiwaza Enterprise AI Platform provides a comprehensive suite of tools for building and deploying AI applications in enterprise environments. This guide focuses on two specific features of the platform: enterprise authentication and model inferencing. We&#x27;ll demonstrate how to integrate these features into your application using our port of the Vercel AI Chatbot as an example. All of the code in this guide is available in the <a href="https://github.com/kamiwaza-ai/ai-chatbot">Kamiwaza Vercel AI Chatbot repository</a>.</p>
+<h2 id="enterprise-authentication-integration">Enterprise Authentication Integration</h2>
+<p>Kamiwaza&#x27;s authentication system provides centralized auth management that can be integrated into any application. Rather than building your own auth system, you can leverage Kamiwaza&#x27;s secure token-based authentication and user management. The platform also supports advanced authentication features including role-based access control, group management, and organization-level permissioning - enabling enterprise-grade user management beyond basic authentication. While this guide focuses on core authentication, these additional features can be leveraged through the same centralized auth service.</p>
+<h3 id="how-it-works">How It Works</h3>
+<p><img alt="Authentication Flow Diagram" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MDAgNDAwIj4KICA8IS0tIERlZmluaXRpb25zIC0tPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyb3doZWFkIiBtYXJrZXJXaWR0aD0iMTAiIG1hcmtlckhlaWdodD0iNyIgcmVmWD0iOSIgcmVmWT0iMy41IiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAgMCwgMTAgMy41LCAwIDciIGZpbGw9IiM2NjYiIC8+CiAgICA8L21hcmtlcj4KICA8L2RlZnM+CgogIDwhLS0gQmFja2dyb3VuZCAtLT4KICA8cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0iI2Y4ZjlmYSIgcng9IjEwIiAvPgogIAogIDwhLS0gQ2xpZW50IEFwcCBCb3ggLS0+CiAgPHJlY3QgeD0iNTAiIHk9IjUwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgcng9IjEwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjE1MCIgeT0iMTAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiPkNsaWVudCBBcHBsaWNhdGlvbjwvdGV4dD4KICA8dGV4dCB4PSIxNTAiIHk9IjEyMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2Ij4oWW91ciBBcHApPC90ZXh0PgoKICA8IS0tIEthbWl3YXphIEF1dGggQm94IC0tPgogIDxyZWN0IHg9IjMwMCIgeT0iMTUwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgcng9IjEwIiBmaWxsPSIjNENBRjUwIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjQwMCIgeT0iMTkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IndoaXRlIj5LYW1pd2F6YSBBdXRoPC90ZXh0PgogIDx0ZXh0IHg9IjQwMCIgeT0iMjEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiNmZmYiPi9hcGkvYXV0aC8qPC90ZXh0PgoKICA8IS0tIFByb3RlY3RlZCBSZXNvdXJjZXMgQm94IC0tPgogIDxyZWN0IHg9IjU1MCIgeT0iMjUwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjEwMCIgcng9IjEwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjY1MCIgeT0iMjkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiPlByb3RlY3RlZCBSZXNvdXJjZXM8L3RleHQ+CiAgPHRleHQgeD0iNjUwIiB5PSIzMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzY2NiI+KFlvdXIgQXBwJ3MgRmVhdHVyZXMpPC90ZXh0PgoKICA8IS0tIEFycm93cyAtLT4KICA8IS0tIExvZ2luIFJlcXVlc3QgLS0+CiAgPHBhdGggZD0iTSAxNTAsMTUwIEwgMTUwLDIwMCBMIDI5MCwyMDAiIHN0cm9rZT0iIzY2NiIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiIGZpbGw9Im5vbmUiLz4KICA8dGV4dCB4PSIyMjAiIHk9IjE4MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2Ij4xLiBMb2dpbiBSZXF1ZXN0PC90ZXh0PgoKICA8IS0tIEF1dGggVG9rZW4gLS0+CiAgPHBhdGggZD0iTSA1MTAsMjAwIEwgNjAwLDIwMCBMIDYwMCwyNDAiIHN0cm9rZT0iIzY2NiIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiIGZpbGw9Im5vbmUiLz4KICA8dGV4dCB4PSI1NzAiIHk9IjE4MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2Ij4yLiBBdXRoIFRva2VuPC90ZXh0PgoKICA8IS0tIFJlc291cmNlIFJlcXVlc3QgLS0+CiAgPHBhdGggZD0iTSAxNTAsMTUwIEMgMTUwLDI4MCAzMDAsMzAwIDU0MCwzMDAiIHN0cm9rZT0iIzY2NiIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiIGZpbGw9Im5vbmUiLz4KICA8dGV4dCB4PSIzMDAiIHk9IjMyMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2Ij4zLiBBY2Nlc3MgUmVzb3VyY2VzIHdpdGggVG9rZW48L3RleHQ+CgogIDwhLS0gTGVnZW5kIC0tPgogIDxyZWN0IHg9IjUwIiB5PSIzNTAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxNSIgZmlsbD0iIzRDQUY1MCIvPgogIDx0ZXh0IHg9Ijc1IiB5PSIzNjIiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiI+S2FtaXdhemEgU2VydmljZXM8L3RleHQ+CiAgCiAgPHJlY3QgeD0iMjAwIiB5PSIzNTAiIHdpZHRoPSIxNSIgaGVpZ2h0PSIxNSIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMzMzIi8+CiAgPHRleHQgeD0iMjI1IiB5PSIzNjIiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiI+WW91ciBBcHBsaWNhdGlvbjwvdGV4dD4KPC9zdmc+Cg==" width="800" height="400"></p>
+<p>When integrating with Kamiwaza auth:</p>
+<ol>
+<li>Your application sends login requests to Kamiwaza&#x27;s auth service</li>
+<li>Kamiwaza validates credentials and returns a JWT token in a secure HTTP-only cookie</li>
+<li>Your application verifies the token&#x27;s validity with Kamiwaza for protected routes</li>
+</ol>
+<p>Now, your application can use the token to access protected routes and resources.</p>
+<h3 id="setting-up-the-auth-api-interface">Setting Up the Auth API Interface</h3>
+<pre><code class="language-typescript">// lib/kamiwazaApi.ts
+const KAMIWAZA_API_URI = process.env.KAMIWAZA_API_URI;
+
+export async function login(username: string, password: string): Promise&lt;LoginResponse&gt; {
+  const response = await fetch(`${KAMIWAZA_API_URI}/api/auth/token`, {
+    method: &#x27;POST&#x27;,
+    headers: {
+      &#x27;Content-Type&#x27;: &#x27;application/x-www-form-urlencoded&#x27;,
+    },
+    body: new URLSearchParams({
+      username,
+      password,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(&#x27;Login failed&#x27;);
+  }
+
+  return response.json();
+}
+
+export async function verifyToken(token?: string): Promise&lt;UserData | null&gt; {
+  const response = await fetch(`${KAMIWAZA_API_URI}/api/auth/verify-token`, {
+    headers: { &#x27;Cookie&#x27;: `access_token=${token}` }
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return response.json();
+}
+</code></pre>
+<h3 id="managing-authentication-state">Managing Authentication State</h3>
+<pre><code class="language-typescript">// lib/auth-context.tsx
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState&lt;UserData | null&gt;(null);
+  
+  useEffect(() =&gt; {
+    const checkAuth = async () =&gt; {
+      try {
+        const userData = await verifyToken();
+        if (userData) {
+          setUser(userData);
+        }
+      } catch (error) {
+        setUser(null);
+      }
+    }
+    checkAuth();
+  }, []);
+
+  return (
+    &lt;AuthContext.Provider value={{ user }}&gt;
+      {children}
+    &lt;/AuthContext.Provider&gt;
+  );
+}
+</code></pre>
+<p>This integration provides your application with:</p>
+<ul>
+<li>Secure token-based authentication</li>
+<li>Centralized user management</li>
+<li>Session handling via HTTP-only cookies</li>
+<li>Built-in token verification and refresh</li>
+</ul>
+<p>The AuthProvider component wraps your application and manages the authentication state, while the Kamiwaza service handles all the security-critical operations like token generation and validation.</p>
+<h2 id="model-integration">Model Integration</h2>
+<p>Models deployed through the Kamiwaza Platform can be easily integrated into any AI application. While models are deployed and managed through Kamiwaza&#x27;s dashboard, accessing them in your application is straightforward - you just need to point your application to the deployed model&#x27;s endpoint. This enables you to use Kamiwaza-hosted models alongside other LLM providers like OpenAI or Anthropic, giving you flexibility in model selection while maintaining a consistent integration pattern.</p>
+<p><img alt="Model Inference Diagram" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MDAgNTAwIj4KICA8IS0tIERlZmluaXRpb25zIC0tPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyb3doZWFkIiBtYXJrZXJXaWR0aD0iMTAiIG1hcmtlckhlaWdodD0iNyIgcmVmWD0iOSIgcmVmWT0iMy41IiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAgMCwgMTAgMy41LCAwIDciIGZpbGw9IiM2NjYiIC8+CiAgICA8L21hcmtlcj4KICA8L2RlZnM+CgogIDwhLS0gQmFja2dyb3VuZCAtLT4KICA8cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjUwMCIgZmlsbD0iI2Y4ZjlmYSIgcng9IjEwIiAvPgogIAogIDwhLS0gWW91ciBBcHBsaWNhdGlvbiBCb3ggLS0+CiAgPHJlY3QgeD0iNTAiIHk9IjIwMCIgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIxMCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIxNTAiIHk9IjI0MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2Ij5Zb3VyIEFwcGxpY2F0aW9uPC90ZXh0PgogIDx0ZXh0IHg9IjE1MCIgeT0iMjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPkFJLXBvd2VyZWQgRmVhdHVyZXM8L3RleHQ+CgogIDwhLS0gS2FtaXdhemEgU2VjdGlvbiAtLT4KICA8cmVjdCB4PSI0MDAiIHk9IjUwIiB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE1MCIgcng9IjEwIiBmaWxsPSIjNENBRjUwIiBmaWxsLW9wYWNpdHk9IjAuMSIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI1NTAiIHk9IjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM0Q0FGNTAiPkthbWl3YXphIFBsYXRmb3JtPC90ZXh0PgogIAogIDwhLS0gS2FtaXdhemEgTW9kZWxzIC0tPgogIDxyZWN0IHg9IjQ1MCIgeT0iMTAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjgwIiByeD0iOCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjNENBRjUwIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI1NTAiIHk9IjEzNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0Ij5TZWxmLWhvc3RlZCBNb2RlbHM8L3RleHQ+CiAgPHRleHQgeD0iNTUwIiB5PSIxNTUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzY2NiI+TGxhbWEtMy4yLCBRd2VuLCBldGMuPC90ZXh0PgoKICA8IS0tIE9wZW5BSSBTZWN0aW9uIC0tPgogIDxyZWN0IHg9IjQwMCIgeT0iMjUwIiB3aWR0aD0iMzAwIiBoZWlnaHQ9IjEwMCIgcng9IjEwIiBmaWxsPSIjMDBBNjdFIiBmaWxsLW9wYWNpdHk9IjAuMSIgc3Ryb2tlPSIjMDBBNjdFIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSI1NTAiIHk9IjI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSIjMDBBNjdFIj5PcGVuQUk8L3RleHQ+CiAgPHRleHQgeD0iNTUwIiB5PSIzMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzY2NiI+R1BULTRvLCBvMTwvdGV4dD4KCiAgPCEtLSBBbnRocm9waWMgU2VjdGlvbiAtLT4KICA8cmVjdCB4PSI0MDAiIHk9IjM4MCIgd2lkdGg9IjMwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIxMCIgZmlsbD0iIzZCNDhGRiIgZmlsbC1vcGFjaXR5PSIwLjEiIHN0cm9rZT0iIzZCNDhGRiIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPHRleHQgeD0iNTUwIiB5PSI0MTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzZCNDhGRiI+QW50aHJvcGljPC90ZXh0PgogIDx0ZXh0IHg9IjU1MCIgeT0iNDUwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiPkNsYXVkZSAzLjUgU29ubmV0PC90ZXh0PgoKICA8IS0tIEFycm93cyAtLT4KICA8IS0tIFRvIEthbWl3YXphIC0tPgogIDxwYXRoIGQ9Ik0gMjUwLDIzMCBMIDM1MCwxNDAgTCA0NDAsMTQwIiBzdHJva2U9IiM0Q0FGNTAiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhcnJvd2hlYWQpIiBmaWxsPSJub25lIi8+CiAgCiAgPCEtLSBUbyBPcGVuQUkgLS0+CiAgPHBhdGggZD0iTSAyNTAsMjUwIEwgMzUwLDMwMCBMIDQ0MCwzMDAiIHN0cm9rZT0iIzAwQTY3RSIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiIGZpbGw9Im5vbmUiLz4KICAKICA8IS0tIFRvIEFudGhyb3BpYyAtLT4KICA8cGF0aCBkPSJNIDI1MCwyNzAgTCAzNTAsNDMwIEwgNDQwLDQzMCIgc3Ryb2tlPSIjNkI0OEZGIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkKSIgZmlsbD0ibm9uZSIvPgoKICA8IS0tIENvZGUgU25pcHBldCBCb3ggLS0+CiAgPHJlY3QgeD0iNTAiIHk9IjMwIiB3aWR0aD0iMjgwIiBoZWlnaHQ9IjEyMCIgcng9IjUiIGZpbGw9IiMxRTFFMUUiLz4KICA8dGV4dCB4PSI2NSIgeT0iNTAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiNmZmYiPi8vIENob29zZSB5b3VyIHByb3ZpZGVyPC90ZXh0PgogIDx0ZXh0IHg9IjY1IiB5PSI3MCIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzRDQUY1MCI+Y29uc3Qga2FtaXdhemFDbGllbnQgPSBjcmVhdGVBSSh7PC90ZXh0PgogIDx0ZXh0IHg9Ijc1IiB5PSI4NSIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzRDQUY1MCI+ICBiYXNlVVJMOiBrYW1pd2F6YUVuZHBvaW50PC90ZXh0PgogIDx0ZXh0IHg9IjY1IiB5PSIxMDAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM0Q0FGNTAiPn0pOzwvdGV4dD4KICA8dGV4dCB4PSI2NSIgeT0iMTIwIiBmb250LWZhbWlseT0ibW9ub3NwYWNlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjMDBBNjdFIj5jb25zdCBvcGVuYWkgPSBuZXcgT3BlbkFJKCk7PC90ZXh0PgogIDx0ZXh0IHg9IjY1IiB5PSIxNDAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2QjQ4RkYiPmNvbnN0IGFudGhyb3BpYyA9IG5ldyBBbnRocm9waWMoKTs8L3RleHQ+Cjwvc3ZnPg==" width="800" height="500"></p>
+<h3 id="how-it-works-1">How It Works</h3>
+<ul>
+<li>Models are deployed and managed through the Kamiwaza dashboard</li>
+<li>Each deployed model is accessible via a specific endpoint and port</li>
+<li>Your application can fetch available models using Kamiwaza&#x27;s deployment API</li>
+<li>Once selected, models can be used through a familiar OpenAI-compatible interface</li>
+</ul>
+<p>This approach allows you to switch between different models without changing application code, use multiple models in the same application, and maintain a consistent API interface regardless of the model provider.</p>
+<h3 id="integrating-models-in-practice">Integrating Models in Practice</h3>
+<pre><code class="language-typescript">// app/kamiwaza/actions.ts
+export async function getKamiwazaDeployments() {
+  const response = await fetch(`${KAMIWAZA_API_URI}/api/serving/deployments`);
+  if (!response.ok) {
+    throw new Error(&#x27;Failed to fetch deployments&#x27;);
+  }
+  
+  const data = await response.json();
+  return data.filter((d: Deployment) =&gt; d.status === &#x27;DEPLOYED&#x27;)
+    .map((d: Deployment) =&gt; ({
+      ...d,
+      instances: d.instances.map(instance =&gt; ({
+        ...instance,
+        host_name: instance.host_name || &#x27;localhost&#x27;
+      }))
+    }));
+}
+
+// components/model-selector.tsx
+export function ModelSelector({ onModelSelect }: ModelSelectorProps) {
+  const [deployments, setDeployments] = useState&lt;Deployment[]&gt;([]);
+
+  useEffect(() =&gt; {
+    const fetchDeployments = async () =&gt; {
+      const fetchedDeployments = await getKamiwazaDeployments();
+      if (fetchedDeployments.length &gt; 0) {
+        const deployment = fetchedDeployments[0];
+        const modelInfo = {
+          baseUrl: `http://${deployment.instances[0].host_name}:${deployment.lb_port}/v1`,
+          modelName: deployment.m_name
+        };
+        onModelSelect(modelInfo);
+      }
+    };
+
+    fetchDeployments();
+  }, []);
+}
+</code></pre>
+<h3 id="using-models-for-inference">Using Models for Inference</h3>
+<pre><code class="language-typescript">// lib/chat/actions.tsx
+const modelClient = createOpenAI({
+  baseURL: getDockerizedUrl(selectedModel.baseUrl),
+  apiKey: &#x27;kamiwaza_model&#x27;
+});
+
+const result = await streamUI({
+  model: modelClient(selectedModel.modelName),
+  messages: messages,
+  text: ({ content, done }) =&gt; {
+    // Handle streaming response
+  }
+});
+</code></pre>
+<h2 id="example-implementation-vercel-ai-chatbot">Example Implementation: Vercel AI Chatbot</h2>
+<p>We&#x27;ve provided a complete example implementation that demonstrates these concepts in action. You can deploy your own instance of our Kamiwaza-enabled chatbot using Docker:</p>
+<ol>
+<li>Clone the repository:</li>
+</ol>
+<pre><code class="language-bash">git clone https://github.com/kamiwaza-ai/ai-chatbot
+cd ai-chatbot
+</code></pre>
+<ol start="2">
+<li>Configure environment variables:</li>
+</ol>
+<pre><code class="language-bash">cp .env.example .env
+</code></pre>
+<p>Update the <code>.env</code> file with your configuration:</p>
+<pre><code class="language-bash"># Kamiwaza Configuration
+KAMIWAZA_API_URI=http://localhost:7777
+NEXT_PUBLIC_KAMIWAZA_API_URI=http://localhost:7777
+
+# Model Configuration (optional - for fixed model setup)
+FIXED_MODEL_URI=http://localhost:8000/v1
+FIXED_MODEL_NAME=&#x27;Dracarys2-72B-Instruct-4bit&#x27;
+ALLOW_ANONYMOUS=false
+
+# Authentication (generate using: openssl rand -base64 32)
+AUTH_SECRET=your-generated-secret
+NEXTAUTH_SECRET=your-generated-secret
+NEXTAUTH_URL=http://localhost:3003
+
+# Redis Configuration
+KV_URL=redis://localhost:6379
+KV_REST_API_URL=None
+KV_REST_API_TOKEN=dummy_token
+KV_REST_API_READ_ONLY_TOKEN=dummy_readonly_token
+
+# Required but can be set to noop for Kamiwaza
+OPENAI_API_KEY=noop
+</code></pre>
+<ol start="3">
+<li>Build and start the application using Docker:</li>
+</ol>
+<pre><code class="language-bash">docker-compose build
+docker-compose up -d
+</code></pre>
+<p>The application will be available at <code>http://localhost:3003</code>. You can now log in using your Kamiwaza credentials and start chatting with your deployed models. The Docker Compose configuration will automatically set up both the chatbot application and its required Redis database for storing chat history.</p>
+<p>The complete example code demonstrates authentication integration, model selection, and chat functionality in a production-ready application context. If you&#x27;re interested in learning more about how Kamiwaza can help you build your own AI applications, please <a href="https://kamiwaza.ai/contact">contact us</a> for a demo.</p>
+<p> </p></main></div><div class="col col--3 col--offset-1"><div class="sticky top-4"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#enterprise-authentication-integration" class="table-of-contents__link toc-highlight">Enterprise Authentication Integration</a><ul><li><a href="#how-it-works" class="table-of-contents__link toc-highlight">How It Works</a></li><li><a href="#setting-up-the-auth-api-interface" class="table-of-contents__link toc-highlight">Setting Up the Auth API Interface</a></li><li><a href="#managing-authentication-state" class="table-of-contents__link toc-highlight">Managing Authentication State</a></li></ul></li><li><a href="#model-integration" class="table-of-contents__link toc-highlight">Model Integration</a><ul><li><a href="#how-it-works-1" class="table-of-contents__link toc-highlight">How It Works</a></li><li><a href="#integrating-models-in-practice" class="table-of-contents__link toc-highlight">Integrating Models in Practice</a></li><li><a href="#using-models-for-inference" class="table-of-contents__link toc-highlight">Using Models for Inference</a></li></ul></li><li><a href="#example-implementation-vercel-ai-chatbot" class="table-of-contents__link toc-highlight">Example Implementation: Vercel AI Chatbot</a></li></ul></div></div></div></div></div></div><footer class="footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/kamiwaza-docs/">Platform</a></li><li class="footer__item"><a class="footer__link-item" href="/kamiwaza-docs/sdk/intro">SDK</a></li></ul></div><div class="col footer__col"><div class="footer__title">Community</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://github.com/kamiwaza-ai" target="_blank" rel="noopener noreferrer" class="footer__link-item">GitHub<svg width="13.5" height="13.5" aria-hidden="true" viewBox="0 0 24 24" class="iconExternalLink_nPIU"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"></path></svg></a></li><li class="footer__item"><a href="https://discord.gg/cVGBS5rD2U" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-hidden="true" viewBox="0 0 24 24" class="iconExternalLink_nPIU"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"></path></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2025 Kamiwaza AI.</div></div></div></footer></div>
+</body>
+</html>

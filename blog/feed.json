@@ -5,6 +5,15 @@
     "description": "Kamiwaza Docs Blog",
     "items": [
         {
+            "id": "https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app",
+            "content_html": null,
+            "url": "https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app",
+            "title": "Using Kamiwaza Authentication and Model Inferencing with Any AI Application",
+            "summary": "How to integrate Kamiwaza's authentication and model inferencing into any AI application.",
+            "date_modified": "2025-01-03T00:00:00.000Z",
+            "tags": []
+        },
+        {
             "id": "https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/12/31/a-year-in-review",
             "content_html": null,
             "url": "https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/12/31/a-year-in-review",
