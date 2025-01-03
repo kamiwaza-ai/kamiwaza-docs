@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <!-- Definitions -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="500" fill="#f8f9fa" rx="10" />
+  
+  <!-- Your Application Box -->
+  <rect x="50" y="200" width="200" height="100" rx="10" fill="#fff" stroke="#333" stroke-width="2"/>
+  <text x="150" y="240" text-anchor="middle" font-family="Arial" font-size="16">Your Application</text>
+  <text x="150" y="260" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">AI-powered Features</text>
+
+  <!-- Kamiwaza Section -->
+  <rect x="400" y="50" width="300" height="150" rx="10" fill="#4CAF50" fill-opacity="0.1" stroke="#4CAF50" stroke-width="2"/>
+  <text x="550" y="80" text-anchor="middle" font-family="Arial" font-size="16" fill="#4CAF50">Kamiwaza Platform</text>
+  
+  <!-- Kamiwaza Models -->
+  <rect x="450" y="100" width="200" height="80" rx="8" fill="#fff" stroke="#4CAF50" stroke-width="2"/>
+  <text x="550" y="135" text-anchor="middle" font-family="Arial" font-size="14">Self-hosted Models</text>
+  <text x="550" y="155" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">Llama-3.2, Qwen, etc.</text>
+
+  <!-- OpenAI Section -->
+  <rect x="400" y="250" width="300" height="100" rx="10" fill="#00A67E" fill-opacity="0.1" stroke="#00A67E" stroke-width="2"/>
+  <text x="550" y="280" text-anchor="middle" font-family="Arial" font-size="16" fill="#00A67E">OpenAI</text>
+  <text x="550" y="320" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">GPT-4o, o1</text>
+
+  <!-- Anthropic Section -->
+  <rect x="400" y="380" width="300" height="100" rx="10" fill="#6B48FF" fill-opacity="0.1" stroke="#6B48FF" stroke-width="2"/>
+  <text x="550" y="410" text-anchor="middle" font-family="Arial" font-size="16" fill="#6B48FF">Anthropic</text>
+  <text x="550" y="450" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">Claude 3.5 Sonnet</text>
+
+  <!-- Arrows -->
+  <!-- To Kamiwaza -->
+  <path d="M 250,230 L 350,140 L 440,140" stroke="#4CAF50" stroke-width="2" marker-end="url(#arrowhead)" fill="none"/>
+  
+  <!-- To OpenAI -->
+  <path d="M 250,250 L 350,300 L 440,300" stroke="#00A67E" stroke-width="2" marker-end="url(#arrowhead)" fill="none"/>
+  
+  <!-- To Anthropic -->
+  <path d="M 250,270 L 350,430 L 440,430" stroke="#6B48FF" stroke-width="2" marker-end="url(#arrowhead)" fill="none"/>
+
+  <!-- Code Snippet Box -->
+  <rect x="50" y="30" width="280" height="120" rx="5" fill="#1E1E1E"/>
+  <text x="65" y="50" font-family="monospace" font-size="12" fill="#fff">// Choose your provider</text>
+  <text x="65" y="70" font-family="monospace" font-size="12" fill="#4CAF50">const kamiwazaClient = createAI({</text>
+  <text x="75" y="85" font-family="monospace" font-size="12" fill="#4CAF50">  baseURL: kamiwazaEndpoint</text>
+  <text x="65" y="100" font-family="monospace" font-size="12" fill="#4CAF50">});</text>
+  <text x="65" y="120" font-family="monospace" font-size="12" fill="#00A67E">const openai = new OpenAI();</text>
+  <text x="65" y="140" font-family="monospace" font-size="12" fill="#6B48FF">const anthropic = new Anthropic();</text>
+</svg>
