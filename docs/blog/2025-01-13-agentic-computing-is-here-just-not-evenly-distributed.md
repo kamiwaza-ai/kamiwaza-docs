@@ -8,9 +8,9 @@ image: /img/blog/images/2025-01-13-swarm-of-agents.png
 
 The future of computing is more personal and much more powerful. We are at an interesting stage presently where the capabilities of LLMs and the end-user experience are dramatically disconnected; a huge amount of engineering is yet to be done.
 
-This last week we were presenting on Agentic AI at the Rocky Mountain AI Interest Group.
+This last week we were [presenting on Agentic AI at the Rocky Mountain AI Interest Group](https://www.linkedin.com/posts/dan-murray_we-had-a-blast-at-last-nights-meeting-of-activity-7283208890031226880-4-dn).
 
-We had a blast showing off Kamiwaza, and a bunch of cool agentic tools. One of those was STORM, from Stanford. It was fairly trivial to integrate with Kamiwaza. This meant I was able to use a reasonably high-quality model both on a hosted server or locally on my MBP (which is admittedly beefy, but we will see a lot more mega-powerful AI personal computing options soon, and there were audible gasps when I showed what it was doing under the hood, which involved the tool combing through literally hundreds of links to satisfy my request. Behind the scenes, I could confirm it - the tool that was doing search lookups retrieved over 900 search pages, navigating and slurping up that data.
+We had a blast showing off [Kamiwaza](https://kamiwaza.ai), and a bunch of cool agentic tools. One of those was [STORM](https://storm.genie.stanford.edu/), from Stanford. It was fairly trivial to integrate with Kamiwaza. This meant I was able to use a reasonably high-quality model both on a hosted server or locally on my MBP (which is admittedly beefy, but we will see [a lot more mega-powerful AI personal computing options soon](https://www.nvidia.com/en-us/project-digits/), and there were **audible gasps** when I showed what it was doing under the hood, which involved the tool combing through literally **hundreds** of links to satisfy my request. Behind the scenes, I could confirm it - the tool that was doing search lookups retrieved over 900 search pages, navigating and slurping up that data.
 
 ![A browser pointed at localhost showing part of hundreds of links browser agentically](/img/blog/images/2025-01-13-storm-browser-links.png)
 
@@ -33,13 +33,13 @@ The AI agentically creates an interview/response style setup with each of these 
 
 As a tech demo, this is super fun. I took a random topic from the audience and we watched it research and output as we talked and reviewed other demos. This is something extremely different from the "typical experience" of AI right now. This is no casual tool - using a model on a server capable of generating 1000+ tokens/sec, with the ability to comb through 900+ results on 90+ pages of searches, read and process hundreds of pages, and then generate hundreds of thousands of tokens of AI-powered discussion, you get a completely different outcome.
 
-Even as a daily user of Perplexity, this is a "We Are Not the Same". I want to joke, "You want to see a real Pro Search? Let me show you what that really looks like."  Because as good as Perplexity is, it does not come anywhere near what I was able to run myself. By looking through >100x as many links, reading far more material, having a for more powerful (6 agent personas and an agentic interviewer!) process, I can a massively better outcome.
+Even as a daily user of [Perplexity](https://perplexity.ai), this is a "We Are Not the Same". I want to joke, "You want to see a real **Pro Search**? Let me show you what that really looks like."  Because as good as Perplexity is, it does not come anywhere near what I was able to run myself. By looking through >100x as many links, reading far more material, having a for more powerful (6 agent personas and an agentic interviewer!) process, I can a massively better outcome.
 
 ## What does this mean for the future of computing?
 
-ChatGPT is an awesome tool. I remember being moved to wish it a happy birthday, and I don't think I've ever wanted to celebrate the birthday of a tool/service before in my life -- but ChatGPT gave people a bad impression about what AI could do. Because zero-shot queries to a model do not represent anything like the best; but they set the tone for what AI could, would, and should do. We are slowly moving away from that. But the world hasn't really grokked how powerful this can be - the personal acquisition, dissemination, and contextualization of knowledge in pursuit of our mental goals.
+ChatGPT is an awesome tool. I remember being moved to [wish it a happy birthday](https://www.linkedin.com/posts/matthewwallaceco_chatgpt-reinvent2023-activity-7136034846186893312-2to-?utm_source=share&utm_medium=member_desktop), and I don't think I've ever wanted to celebrate the birthday of a tool/service before in my life -- but ChatGPT gave people a **bad impression about what AI could do**. Because zero-shot queries to a model do not represent anything like the best; but they set the tone for what AI could, would, and should do. We are slowly moving away from that. But the world hasn't really grokked how powerful this can be - the personal acquisition, dissemination, and contextualization of knowledge in pursuit of our mental goals.
 
-We got used to the idea long ago that the Internet was far too vast for us. We "surfed" our way through various links, following a web of interconnection. The underlying technology is still there, but one of the biggest trends of this for 30 years has been that of the aggregator. The first great aggregator in my mind was Yahoo. Their collections of links was of enormous value to users - and the ability to get into the Yahoo links equally powerful. There was a brief time when people when "AAA Widgets and Things" or "!! Double Bang Widgets and Things" was the sort of naming convention of choice to be on the top of those pages.
+We got used to the idea long ago that the Internet was far too vast for us. We "surfed" our way through various links, following a web of interconnection. The underlying technology is still there, but one of the biggest trends of this for 30 years has been that of the **aggregator**. The first great aggregator in my mind was Yahoo. Their collections of links was of enormous value to users - and the ability to get into the Yahoo links equally powerful. There was a brief time when people when "AAA Widgets and Things" or "!! Double Bang Widgets and Things" was the sort of naming convention of choice to be on the top of those pages.
 
 We had a host that followed - Google and Google News, Facebook, Twitter, Instagram, Pinterest. Of course beyond just links and images, there was aggregation of discussion too - Slashdot, Reddit, Quora and so on. Different takes on a theme - but the theme was to collect the content of the Internet and the contributions of users, repackage it for eyeballs, and sell the eyeballs to advertisers.
 
@@ -47,15 +47,15 @@ Fundamentally, this era is over. We won't see the decline for a while. But these
 
 What does it mean when you can proactively publish, sort, and retrieve information? 
 
-Further, what does it mean when even the quality of sources is agentically rated? So you can algorithmically tailor things based on whatever your preferences are? It could be your version of trusted sources; or trusted sources of those you trust; it could be tone, topic. It could be based on assessments of academic rigor. And the feedback mechanisms could be as sticky as you wanted. Think source &lt;X&gt; is really frustrating? Block it, and your agent not only keeps it out of your feed, it keeps all the derivative material citing it out too.
+Further, what does it mean when **even the quality of sources is agentically rated**? So you can algorithmically tailor things based on whatever your preferences are? It could be your version of trusted sources; or trusted sources of those you trust; it could be tone, topic. It could be based on assessments of academic rigor. And the feedback mechanisms could be as sticky as you wanted. Think source &lt;X&gt; is really frustrating? Block it, and your agent not only keeps it out of your feed, it keeps all the derivative material citing it out too.
 
 Meanwhile, your agents can network with other agents, building a web of trust to promote and expose higher-quality content.
 
 The old promotion of content was aggregation as a means of reaching users. Agentic AI potentially gives us the chance to, as a whole, promote content not because it belongs to the ideal "syndicate" but because it is - well, the best content.
 
-In some ways, I blame the status quo on Google. They killed Google Reader, and Reader was a dominant RSS tool at the time. Bloglines was another, and it was having major issues and was overtaken by Reader. 
+In some ways, I blame the status quo on Google. They killed [Google Reader](https://www.theverge.com/23778253/google-reader-death-2013-rss-social), and Reader was a dominant RSS tool at the time. Bloglines was another, and it was having major issues and was overtaken by Reader. 
 
-In a sense it's easy to potentially see why: Reader and similar tools lacked the social context. They were also noisy - because you were often "reading" RSS feeds which were sometimes hundreds of articles; perhaps some form of aggregation behind. A great example for me personally was the presence of BoingBoing on my feed. I felt like BoingBoing had a lot of great content, but the volume was pretty high and the content was pretty eclectic, so I was prone to "mark all read" without really processing it.
+In a sense it's easy to potentially see why: Reader and similar tools lacked the social context. They were also noisy - because you were often "reading" RSS feeds which were sometimes hundreds of articles; perhaps some form of aggregation behind. A great example for me personally was the presence of [BoingBoing](https://boingboing.net/) on my feed. I felt like BoingBoing had a lot of great content, but the volume was pretty high and the content was pretty eclectic, so I was prone to "mark all read" without really processing it.
 
 So we ultimately end up, even today, dealing with really crappy experiences just in terms of consuming content. We can:
 
@@ -64,24 +64,24 @@ So we ultimately end up, even today, dealing with really crappy experiences just
 
 AI is going to put an end to this, by merging the social and the topical.
 
-How? It's going to take niche sources (say, my interest in the excellent Semianalysis) and curate them. It won't just be a feed - it will be a feed that is further cut down by my interests. AI can pre-read, and it can:
+How? It's going to take niche sources (say, my interest in the excellent [Semianalysis](https://semianalysis.com/2024/12/03/amazons-ai-self-sufficiency-trainium2-architecture-networking/)) and curate them. It won't just be a feed - it will be a feed that is further cut down by my interests. AI can pre-read, and it can:
 
-- Curate: removing things that are from an interesting source but not an interesting (to me) topic
-- Enrich: for things off the beaten path, it can anticipate my further interest and collect more data from dozens more sources
-- Summarize: for things that are interesting but perhaps only in the macro, summarize for me
-- Contextualize: it can remind me of other things. The longer I dwelled on something, or the more I like to share it/discuss it, the more it will want to contextualize around those topic clusters.
+- **Curate**: removing things that are from an interesting source but not an interesting (to me) topic
+- **Enrich**: for things off the beaten path, it can anticipate my further interest and collect more data from dozens more sources
+- **Summarize**: for things that are interesting but perhaps only in the macro, summarize for me
+- **Contextualize**: it can remind me of other things. The longer I dwelled on something, or the more I like to share it/discuss it, the more it will want to contextualize around those topic clusters.
 
-And more! But critically the future of AI and the Internet is much more proactive. If it follows that for many time is our most precious resource, the idea that AI will front-run our activities by a large margin is "obvious". We will swim through a sea of meeting notes, project plans, idea boards. The mission of AI in this will be to massively amplify our agency. Pull more in, filter it more tightly, leverage it more powerfully.
+And more! But critically the **future of AI and the Internet is much more proactive**. If it follows that for many time is our most precious resource, the idea that **AI will front-run our activities by a large margin** is "obvious". We will swim through a sea of meeting notes, project plans, idea boards. The mission of AI in this will be to massively amplify our agency. Pull more in, filter it more tightly, leverage it more powerfully.
 
 ## Where is this vision?
 
 Emerging rapidly. I mentioned STORM already with my own integration, but, there are similar tools.
 
-NotebookLM is one of those tools sitting at the intersection of fun+useful. Take it a step further and imagine Notebook LM as selectively social, selectively search-oriented.
+[NotebookLM](https://notebooklm.google/) is one of those tools sitting at the intersection of fun+useful. Take it a step further and imagine Notebook LM as selectively social, selectively search-oriented.
 
 You see hints of this in Perplexity Spaces.
 
-You see hardware vendors creating more tools that allow AI to be personal, unmetered, private - whether it's Apple and their Apple Intelligence (or simply the ability on a MBP to run fairly large models and the community that produces quantizations, whether for mlx or llamacpp), the nVidia DIGITS hardware, etc. The "arrows are pointed in the right direction" - models are getting smarter and cheaper, hardware is getting cheaper. The overall cost of "intelligence" has declined massively. 
+You see hardware vendors creating more tools that allow AI to be personal, unmetered, private - whether it's Apple and their Apple Intelligence (or simply the ability on a MBP to run fairly large models and the [community that produces quantizations](https://huggingface.co/mlx-community), whether for mlx or [llamacpp](https://github.com/ggerganov/llama.cpp)), the [nVidia DIGITS hardware](https://www.nvidia.com/en-us/project-digits/), etc. The "arrows are pointed in the right direction" - models are getting smarter and cheaper, hardware is getting cheaper. The overall cost of "intelligence" has [declined massively](https://www.linkedin.com/posts/appenz_the-cost-of-an-llm-with-the-quality-of-the-activity-7270873006233530368-qfDA). 
 
 There's still enormous amounts of engineering to be done here, and none of the hardware, software and models is where they probably ought to be for anything like a final form factor. That said, the ability to easily get a massive level-up on the experience of research combining open source + AI at the cost of pennies shows that we are still heading toward massive disruption of the status quo.
 
@@ -93,7 +93,7 @@ There are a lot of strange side-effects that could emerge from this. If your age
 
 It's interesting to consider how we might end up spending more on infrastructure (because search+agents will cost an order of magnitude more than just search) but have that spend be more virtuous (because it would not be products competing for your attention, they would be competing for your approval/endorsement - if a network of virally connected ai agents able to personalize everything can curry good news to you).
 
-In terms of education, awareness, community - these things could all see a similar revolution. On the Kamiwaza.AI slack, we get notifications about interesting GitHub repositories that are trending that fit our interests:
+In terms of education, awareness, community - these things could all see a similar revolution. On the [Kamiwaza.AI](http://Kamiwaza.AI) slack, we get notifications about interesting GitHub repositories that are trending that fit our interests:
 
 ![Slack notification showing trending GitHub repositories](/img/blog/images/2025-01-13-slack-trending.png)
 
@@ -101,7 +101,7 @@ When we continuously enrich, personalize, and contextualize everything we spend 
 
 ## The Shameless Plug
 
-Some of these concepts tie into why we are building Kamiwaza.AI - as a platform, we offer a way to normalize a lot of the developer experience of integrating software into a model inference ecosystem. Moreso, we are doing so in a data-conscious way, with a stack with the ability to understand what data lives where, who should be allowed to access it, with the ability to localize that access. When we recently wrote about integrating Kamiwaza.AI authentication and models into other tools with only a handful of lines of code, it was to show how easy it was to bring new tools "into the fold". While we are oriented around Enterprise use, we offer a community edition that is great for single systems or consumer devices (e.g., I run it constantly on my Macbook Pro - albeit the specs are a bit 'hungry' right now but we are slimming it down) - and it then allows the software to become more personal and portable. Model selection works across models, hardware platforms, inference engines - the exact same code would work in the same way. The authentication integration to Kamiwaza works across local, OAuth, or SAML.
+Some of these concepts tie into why we are building [Kamiwaza.AI](http://Kamiwaza.AI) - as a platform, we offer a way to normalize a lot of the developer experience of integrating software into a model inference ecosystem. Moreso, we are doing so in a data-conscious way, with a stack with the ability to understand what data lives where, who should be allowed to access it, with the ability to localize that access. When we recently wrote about [integrating Kamiwaza.AI authentication and models](https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app) into other tools with only a handful of lines of code, it was to show how easy it was to bring new tools "into the fold". While we are oriented around Enterprise use, we offer a [community edition](https://github.com/kamiwaza-ai/kamiwaza-community-edition/) that is great for single systems or consumer devices (e.g., I run it constantly on my Macbook Pro - albeit the specs are a bit 'hungry' right now but we are slimming it down) - and it then allows the software to become more personal and portable. Model selection works across models, hardware platforms, inference engines - the exact same code would work in the same way. The authentication integration to Kamiwaza works across local, OAuth, or SAML.
 
 In the future, we will show the same applied to data, so you can more easily see how to integrate private or semi-private enterprise data sources, but in a portable fashion.
 
