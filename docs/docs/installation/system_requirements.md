@@ -1,11 +1,9 @@
-Based on the provided scripts and installation requirements, I'll help create an updated and comprehensive system requirements guide that incorporates all the key points while organizing them more effectively. Here's my suggested version:
-
 # Kamiwaza System Requirements & Installation Guide
 
 ## Base System Requirements
 
 ### Supported Operating Systems
-- Linux: Ubuntu 22.04 LTS (primary)
+- Linux: Ubuntu 22.04 LTS (primary) - **Now supports .deb package installation**
 - macOS: 12.0 or later (community edition only)
 
 ### Core Requirements
@@ -116,17 +114,23 @@ net.ipv4.ip_forward                 = 1
 
 ## Installation Methods
 
-1. **Cloud Marketplace Images**
+1. **Ubuntu .deb Package (Recommended for Ubuntu 22.04)**
+   - Download and install the official Kamiwaza .deb package
+   - Automated dependency resolution and system configuration
+   - Simplest installation method for Ubuntu users
+   - See [Installation Guide](installation_process.md) for detailed steps
+
+2. **Cloud Marketplace Images**
    - Pre-configured enterprise images
    - Automated disk & network setup
    - GPU support included
 
-2. **Enterprise Edition Installation**
+3. **Enterprise Edition Installation**
    - Automated installation scripts
    - Configurable for head/worker nodes
    - Full cluster support
 
-3. **Community Edition Installation**
+4. **Community Edition Installation**
    - Local installation
    - Simplified configuration
    - Single-node focused
