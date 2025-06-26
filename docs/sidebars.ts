@@ -19,7 +19,12 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Architecture',
       items: [
-        'architecture/considerations',
+        {
+          type: 'doc',
+          id: 'architecture/overview',
+          label: 'Platform Overview',
+        },
+        'architecture/components',
       ],
     },
     {
