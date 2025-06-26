@@ -38,10 +38,54 @@ Quickly find what you need by jumping into one of our main sections.
   </div>
   <div className="card">
     <div className="card__header">
-      <h3>📦 SDK Quickstart</h3>
+      <h3>⚡ Quickstart</h3>
     </div>
     <div className="card__body">
-      <p>Begin interacting with the Kamiwaza platform programmatically using our Python SDK.</p>
+      <p>Get up and running with a real application from the App Garden.</p>
+    </div>
+    <div className="card__footer">
+      <a href="quickstart" className="button button--primary button--block">Launch an App →</a>
+    </div>
+  </div>
+  <div className="card">
+    <div className="card__header">
+      <h3>🤖 Models</h3>
+    </div>
+    <div className="card__body">
+      <p>Learn how to deploy, manage, and serve AI models on the platform.</p>
+    </div>
+    <div className="card__footer">
+      <a href="models" className="button button--primary button--block">Manage Models →</a>
+    </div>
+  </div>
+  <div className="card">
+    <div className="card__header">
+      <h3>🪴 App Garden</h3>
+    </div>
+    <div className="card__body">
+      <p>Explore a curated marketplace of pre-built AI applications and services.</p>
+    </div>
+    <div className="card__footer">
+      <a href="app-garden" className="button button--primary button--block">Explore Apps →</a>
+    </div>
+  </div>
+  <div className="card">
+    <div className="card__header">
+      <h3>💾 Distributed Data Engine</h3>
+    </div>
+    <div className="card__body">
+      <p>Understand the data layer, from relational data in CockroachDB to vectors in Milvus.</p>
+    </div>
+    <div className="card__footer">
+      <a href="data-engine" className="button button--primary button--block">Learn About Data →</a>
+    </div>
+  </div>
+  <div className="card">
+    <div className="card__header">
+      <h3>📦 SDK</h3>
+    </div>
+    <div className="card__body">
+      <p>Interact with the Kamiwaza platform programmatically using our Python SDK.</p>
     </div>
     <div className="card__footer">
       <a href="sdk/intro" className="button button--primary button--block">Explore the SDK →</a>
@@ -52,7 +96,7 @@ Quickly find what you need by jumping into one of our main sections.
       <h3>🏛️ Platform Architecture</h3>
     </div>
     <div className="card__body">
-      <p>Get a high-level overview of the system's components, design philosophy, and security practices.</p>
+      <p>Get a high-level overview of the system's components and design philosophy.</p>
     </div>
     <div className="card__footer">
       <a href="architecture/overview" className="button button--primary button--block">View the Architecture →</a>
@@ -60,13 +104,13 @@ Quickly find what you need by jumping into one of our main sections.
   </div>
   <div className="card">
     <div className="card__header">
-      <h3>💡 Use Cases & Examples</h3>
+      <h3>📚 Other Topics</h3>
     </div>
     <div className="card__body">
-      <p>Discover practical examples of how to solve real-world problems with Kamiwaza, from RAG pipelines to agentic workflows.</p>
+      <p>Dive into cluster management, activity logging, administration, and more.</p>
     </div>
     <div className="card__footer">
-      <a href="use-cases/index" className="button button--primary button--block">See the Examples →</a>
+      <a href="other-topics" className="button button--primary button--block">See Other Topics →</a>
     </div>
   </div>
 </div>
@@ -76,7 +120,7 @@ Quickly find what you need by jumping into one of our main sections.
 If you have questions or run into issues, we're here to help:
 
 - Join our [Discord community](https://discord.gg/cVGBS5rD2U)
-- Visit our [community website](https://www.kamiwaza.ai/community)
+- Visit our [website](https://www.kamiwaza.ai/community)
 - Try our [client SDK](https://github.com/kamiwaza-ai/kamiwaza-sdk)
 - Contact our [support team](https://portal.kamiwaza.ai/_hcms/mem/login?redirect_url=https%3A%2F%2Fportal.kamiwaza.ai%2Ftickets-view)
 

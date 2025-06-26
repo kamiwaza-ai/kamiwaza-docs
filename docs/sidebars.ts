@@ -9,11 +9,36 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Installation & Setup',
+      label: 'Installation',
       items: [
         'installation/system_requirements_updates',
         'installation/installation_process',
       ],
+    },
+    {
+      type: 'doc',
+      id: 'quickstart',
+      label: 'Quickstart',
+    },
+    {
+      type: 'doc',
+      id: 'models',
+      label: 'Models',
+    },
+    {
+      type: 'doc',
+      id: 'app-garden',
+      label: 'App Garden',
+    },
+    {
+      type: 'doc',
+      id: 'data-engine',
+      label: 'Distributed Data Engine',
+    },
+    {
+      type: 'doc',
+      id: 'sdk/intro',
+      label: 'SDK',
     },
     {
       type: 'category',
@@ -28,13 +53,9 @@ const sidebars: SidebarsConfig = {
       ],
     },
     {
-      type: 'category',
-      label: 'Company',
-      items: [
-        'company/kamiwaza',
-        'company/jobs',
-        'company/mts',
-      ],
+      type: 'doc',
+      id: 'other-topics',
+      label: 'Other Topics',
     },
   ],
 };
