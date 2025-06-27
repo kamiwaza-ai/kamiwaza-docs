@@ -1,3 +1,8 @@
+# Architecture Diagram
+
+This diagram shows the high-level architecture of the Kamiwaza platform:
+
+```mermaid
 graph TD
     subgraph EL["Enterprise Layer"]
     EA[Enterprise Application Tier]
@@ -64,8 +69,6 @@ graph TD
     style H stroke-width:0px,stroke:#000
     style HH stroke-width:0px,stroke:#000
 
-
-    
     %% Layout hints
     EL ~~~ CO
     SD ~~~ CO

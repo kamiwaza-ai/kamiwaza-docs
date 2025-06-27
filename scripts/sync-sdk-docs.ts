@@ -2,8 +2,8 @@ import fs from 'fs-extra';
 import path from 'path';
 import yaml from 'js-yaml';
 
-const SDK_DOCS_PATH = path.resolve(__dirname, '../../kamiwaza-sdk/docs');
-const TARGET_SDK_DOCS = path.resolve(__dirname, '../docs/sdk/current');
+const SDK_DOCS_PATH = path.resolve(__dirname, '../../kamiwaza/kamiwaza-sdk/docs');
+const TARGET_SDK_DOCS = path.resolve(__dirname, '../kamiwaza/docs/sdk/current');
 
 async function generateServiceDoc(servicePath: string, serviceName: string) {
     const serviceDir = path.join(SDK_DOCS_PATH, 'services', servicePath);
