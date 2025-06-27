@@ -16,6 +16,31 @@ $ yarn start
 
 This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
 
+### Preview the Documentation
+
+To preview the documentation site:
+
+1. **Navigate to the docs directory**:
+   ```
+   $ cd docs
+   ```
+
+2. **Install dependencies** (if not already done):
+   ```
+   $ yarn
+   ```
+
+3. **Start the development server**:
+   ```
+   $ yarn start
+   ```
+
+4. **Open your browser** to `http://localhost:3000`
+
+The development server will automatically reload when you make changes to the documentation files.
+
+**Note**: Make sure you're in the `docs` directory when running these commands, as that's where the `docusaurus.config.ts` file is located.
+
 ### Build
 
 ```

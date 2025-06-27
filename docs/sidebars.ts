@@ -11,8 +11,8 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Installation',
       items: [
-        'installation/system_requirements_updates',
         'installation/installation_process',
+        'installation/system_requirements',
       ],
     },
     {
@@ -35,11 +35,11 @@ const sidebars: SidebarsConfig = {
       id: 'data-engine',
       label: 'Distributed Data Engine',
     },
-    {
-      type: 'doc',
-      id: 'sdk/intro',
-      label: 'SDK',
-    },
+    // {
+    //   type: 'doc',
+    //   id: 'sdk/intro',
+    //   label: 'SDK',
+    // },
     {
       type: 'category',
       label: 'Architecture',

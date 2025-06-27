@@ -1,4 +1,4 @@
-# Kamiwaza System Requirements & Installation Guide
+# System Requirements
 
 ## Base System Requirements
 
