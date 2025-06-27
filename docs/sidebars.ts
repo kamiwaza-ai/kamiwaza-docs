@@ -22,11 +22,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
-      id: 'examples',
-      label: 'Examples',
-    },
-    {
-      type: 'doc',
       id: 'models',
       label: 'Models',
     },
@@ -39,6 +34,14 @@ const sidebars: SidebarsConfig = {
       type: 'doc',
       id: 'data-engine',
       label: 'Distributed Data Engine',
+    },
+    {
+      type: 'category',
+      label: 'Use Cases',
+      items: [
+        'use-cases/index',
+        'use-cases/building-a-rag-pipeline',
+      ],
     },
     // {
     //   type: 'doc',
@@ -55,6 +58,7 @@ const sidebars: SidebarsConfig = {
           label: 'Platform Overview',
         },
         'architecture/components',
+        'architecture/core-services',
       ],
     },
     {

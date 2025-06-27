@@ -22,7 +22,7 @@ Ready to dive in? The fastest way to get started is to follow our **[Installatio
 
 ## Looking for Inspiration?
 
-Check out our **[Examples](examples)** section to get inspired by what's possible with Kamiwaza.
+Check out our **[Use Cases](use-cases/index.md)** section to see practical implementations and get inspired by what's possible with Kamiwaza.
 
 ---
 
@@ -108,13 +108,13 @@ Check out our **[Examples](examples)** section to get inspired by what's possibl
   </div>
   <div className="doc-card">
     <div className="card__header">
-      <h3>💡 Examples</h3>
+      <h3>💡 Use Cases</h3>
     </div>
     <div className="card__body">
-      <p>Explore practical examples and get inspired to build what is right for you.</p>
+      <p>Learn how to build real-world AI applications with step-by-step guides and practical examples.</p>
     </div>
     <div className="card__footer">
-      <a href="examples" className="button button--primary button--block">View Examples →</a>
+      <a href="use-cases" className="button button--primary button--block">Explore Use Cases →</a>
     </div>
   </div>
   <div className="doc-card">
