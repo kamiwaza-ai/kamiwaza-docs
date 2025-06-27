@@ -20,6 +20,12 @@ Ready to dive in? The fastest way to get started is to follow our **[Installatio
 
 ---
 
+## Looking for Inspiration?
+
+Check out our **[Examples](examples)** section to get inspired by what's possible with Kamiwaza.
+
+---
+
 ## Explore the Documentation
 
 <div className="doc-card-grid">
@@ -98,6 +104,17 @@ Ready to dive in? The fastest way to get started is to follow our **[Installatio
     </div>
     <div className="card__footer">
       <a href="architecture/overview" className="button button--primary button--block">View the Architecture →</a>
+    </div>
+  </div>
+  <div className="doc-card">
+    <div className="card__header">
+      <h3>💡 Examples</h3>
+    </div>
+    <div className="card__body">
+      <p>Explore practical examples and get inspired to build what is right for you.</p>
+    </div>
+    <div className="card__footer">
+      <a href="examples" className="button button--primary button--block">View Examples →</a>
     </div>
   </div>
   <div className="doc-card">

@@ -103,7 +103,7 @@ const config: Config = {
       title: 'Kamiwaza Docs',
       logo: {
         alt: 'Kamiwaza Logo',
-        src: 'img/logo.svg',
+        src: 'img/KW_logo.png',
       },
       items: [
         {

@@ -22,6 +22,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'examples',
+      label: 'Examples',
+    },
+    {
+      type: 'doc',
       id: 'models',
       label: 'Models',
     },
