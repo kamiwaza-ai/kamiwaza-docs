@@ -170,7 +170,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Kamiwaza AI.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Kamiwaza AI. Built with ❤️ for the AI community.`,
     },
     prism: {
       theme: prismThemes.github,

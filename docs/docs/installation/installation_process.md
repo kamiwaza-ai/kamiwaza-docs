@@ -40,8 +40,6 @@ flowchart LR
 - Simplified updates and removal
 - No manual configuration required
 
-For detailed instructions, see the [Installing Kamiwaza PDF guide](../Installing%20Kamiwaza.pdf).
-
 ### 2. Community Edition on OSX
 
 Simple, single-command installation:

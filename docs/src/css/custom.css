@@ -3,7 +3,62 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Your existing custom CSS */
+/* Kamiwaza Brand Colors */
+:root {
+  --kamiwaza-primary: #2563eb;
+  --kamiwaza-primary-dark: #1d4ed8;
+  --kamiwaza-secondary: #14c87a;
+  --kamiwaza-accent: #06b6d4;
+  --kamiwaza-surface: #f8fafc;
+  --kamiwaza-surface-dark: #1e293b;
+  --kamiwaza-text: #2e3641;
+  --kamiwaza-text-dark: #e2e8f0;
+}
+
+/* Enhanced color scheme for better branding */
+[data-theme='light'] {
+  --ifm-color-primary: var(--kamiwaza-primary);
+  --ifm-color-primary-dark: var(--kamiwaza-primary-dark);
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+  --ifm-background-surface-color: var(--kamiwaza-surface);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: var(--kamiwaza-primary);
+  --ifm-color-primary-darkest: var(--kamiwaza-primary-dark);
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+  --ifm-background-surface-color: var(--kamiwaza-surface-dark);
+}
+
+/* Enhanced typography */
+.navbar__brand {
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: var(--kamiwaza-text);
+}
+
+[data-theme='dark'] h1, 
+[data-theme='dark'] h2, 
+[data-theme='dark'] h3, 
+[data-theme='dark'] h4, 
+[data-theme='dark'] h5, 
+[data-theme='dark'] h6 {
+  color: var(--kamiwaza-text-dark);
+}
+
+/* Enhanced doc cards with better styling */
 .doc-card-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -23,9 +78,103 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   padding: 2rem 1.5rem;
   border: 1px solid var(--ifm-toc-border-color, #ececec);
-  transition: box-shadow 0.2s, background 0.2s, border 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.doc-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--kamiwaza-primary), var(--kamiwaza-secondary));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
 }
 
 .doc-card:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+  transform: translateY(-2px);
+}
+
+.doc-card:hover::before {
+  transform: scaleX(1);
+}
+
+.doc-card h3 {
+  color: var(--kamiwaza-primary);
+  margin-bottom: 1rem;
+}
+
+.doc-card .button {
+  background: linear-gradient(135deg, var(--kamiwaza-primary), var(--kamiwaza-secondary));
+  border: none;
+  color: white;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.doc-card .button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* Enhanced code blocks */
+.prism-code {
+  border-radius: 12px;
+  border: 1px solid var(--ifm-toc-border-color);
+}
+
+/* Better spacing and visual hierarchy */
+.markdown > h2 {
+  margin-top: 3rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--ifm-toc-border-color);
+}
+
+.markdown > h3 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: var(--kamiwaza-secondary);
+}
+
+/* Enhanced navigation */
+.navbar {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.navbar__item {
+  font-weight: 500;
+}
+
+/* Better table styling */
+table {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--ifm-toc-border-color);
+}
+
+table th {
+  background: var(--kamiwaza-surface);
+  color: var(--kamiwaza-text);
+  font-weight: 600;
+}
+
+[data-theme='dark'] table th {
+  background: var(--kamiwaza-surface-dark);
+  color: var(--kamiwaza-text-dark);
+}
+
+/* Enhanced mermaid diagrams */
+.mermaid {
+  padding: 1.5rem;
+  background: var(--ifm-background-surface-color);
+  border-radius: 12px;
+  border: 1px solid var(--ifm-toc-border-color);
+  margin: 1.5rem 0;
 }
