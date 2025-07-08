@@ -112,29 +112,6 @@ net.ipv4.ip_forward                 = 1
 - Local filesystem storage
 - Configurable paths via environment variables
 
-## Installation Methods
-
-1. **Ubuntu .deb Package (Recommended for Ubuntu 22.04)**
-   - Download and install the official Kamiwaza .deb package
-   - Automated dependency resolution and system configuration
-   - Simplest installation method for Ubuntu users
-   - See [Installation Guide](installation_process.md) for detailed steps
-
-2. **Cloud Marketplace Images**
-   - Pre-configured enterprise images
-   - Automated disk & network setup
-   - GPU support included
-
-3. **Enterprise Edition Installation**
-   - Automated installation scripts
-   - Configurable for head/worker nodes
-   - Full cluster support
-
-4. **Community Edition Installation**
-   - Local installation
-   - Simplified configuration
-   - Single-node focused
-
 ## Important Notes
 
 - **System Impact**: Network and kernel configurations can affect other services
