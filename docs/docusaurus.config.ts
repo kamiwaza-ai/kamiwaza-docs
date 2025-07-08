@@ -144,19 +144,6 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
-          items: [
-            {
-              label: 'Platform',
-              to: '/',
-            },
-            {
-              label: 'SDK',
-              to: '/sdk/intro',
-            },
-          ],
-        },
-        {
           title: 'Community',
           items: [
             {
@@ -166,6 +153,15 @@ const config: Config = {
             {
               label: 'Discord',
               href: 'https://discord.gg/cVGBS5rD2U',
+            },
+          ],
+        },
+        {
+          title: 'Company',
+          items: [
+            {
+              label: 'Kamiwaza.ai',
+              href: 'https://kamiwaza.ai',
             },
           ],
         },
