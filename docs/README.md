@@ -78,84 +78,28 @@ The documentation uses Docusaurus versioning to maintain multiple versions of th
 
 **⚠️ Important**: Versioning commands are run from the root `kamiwaza-docs/` directory, while most other commands are run from the `docs/` subdirectory.
 
-### Current Version
-
-The current documentation version is **0.4.0**. This is defined in multiple places:
-- `package.json` (`version` field) - both root and docs directories
-- `docusaurus.config.ts` (plugin configurations and navbar)
-- `versions.json` (versioned releases)
-
 ### Creating a New Version
 
-#### Automated Version Update (Recommended)
+To create a new version of the documentation, run the following command from the root `kamiwaza-docs` directory:
 
-The documentation version is automatically synced with the main Kamiwaza platform version:
+```bash
+npm run version-up -- <new-version>
+```
 
-1. **Navigate to the root `kamiwaza-docs` directory**:
-   ```bash
-   # If you're in the docs/ subdirectory:
-   cd ..
-   
-   # Verify you're in the right place (should show kamiwaza-docs):
-   pwd
-   ls  # Should see: docs/ scripts/ package.json etc.
-   ```
+Replace `<new-version>` with the semantic version number (e.g., `0.4.0`).
 
-2. **Check the source version** in the main repository:
-   ```bash
-   cat ../kamiwaza/kamiwaza.version.json
-   ```
+**Example:**
+```bash
+npm run version-up -- 0.4.1
+```
 
-3. **Update documentation versions**:
-   ```bash
-   npm run version-up
-   ```
+This command automates the entire versioning process:
+- Creates a new versioned snapshot of the current docs in `versioned_docs/`.
+- Updates the `versions.json` file.
+- Updates the version number in both `package.json` files.
+- Updates the version labels in `docusaurus.config.ts`.
 
-   This command:
-   - Reads the version from `../kamiwaza/kamiwaza.version.json`
-   - Creates a new versioned snapshot of the current docs
-   - Updates `versions.json` automatically
-
-4. **Update version references** in configuration files:
-   After running `version-up`, manually update these files to reflect the new version:
-   - `docs/docusaurus.config.ts`: Update version labels and navbar display
-   - `package.json` files: Update version fields
-   - Restart the development server to see changes
-
-#### Manual Version Update
-
-If you need to manually create a version:
-
-1. **From the docs directory**, create a new version:
-   ```bash
-   npm run docusaurus-version 0.4.0
-   ```
-
-2. **Update the configuration** in `docusaurus.config.ts`:
-   ```typescript
-   versions: {
-     current: {
-       label: '0.4.0',  // Update this
-     },
-   },
-   ```
-
-3. **Update the navbar version** in `docusaurus.config.ts`:
-   ```typescript
-   {
-     type: 'html',
-     position: 'right',
-     className: 'navbar__version',
-     value: 'Version: 0.4.0',  // Update this
-   }
-   ```
-
-4. **Update package.json**:
-   ```json
-   {
-     "version": "0.4.0"
-   }
-   ```
+After running the command, restart the development server (`npm run start` from the `docs/` directory) to see the new version reflected in the UI.
 
 ### Version Behavior
 
@@ -173,7 +117,7 @@ cat versions.json
 ```
 
 Remove a version (if needed):
-1. Delete the corresponding directory in `versioned_docs/`
+1. Delete the corresponding directories in `versioned_docs/` and `versioned_sidebars/`
 2. Remove the version from `versions.json`
 
 ## Content Development

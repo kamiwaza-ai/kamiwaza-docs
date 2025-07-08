@@ -10,10 +10,6 @@
     "strict": false,
     "resolveJsonModule": true
   },
-  "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node"
-  },
   "include": [
     "scripts/**/*"
   ]

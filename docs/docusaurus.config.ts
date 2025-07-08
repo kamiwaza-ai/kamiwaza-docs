@@ -74,7 +74,7 @@ const config: Config = {
         lastVersion: 'current',
         versions: {
           current: {
-            label: '0.4.0',
+            label: '0.4.1',
           },
         },
         sidebarCollapsible: true,
@@ -91,7 +91,7 @@ const config: Config = {
         sidebarPath: require.resolve('./sidebars-sdk.ts'),
         versions: {
           current: {
-            label: '0.4.0',
+            label: '0.4.1',
           },
         },
       },
@@ -127,7 +127,7 @@ const config: Config = {
           type: 'html',
           position: 'right',
           className: 'navbar__version',
-          value: 'Version: 0.4.0',
+          value: 'Version: 0.4.1',
         },
         {
           href: 'https://github.com/kamiwaza-ai/kamiwaza-docs',

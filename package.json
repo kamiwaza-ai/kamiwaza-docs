@@ -1,6 +1,6 @@
 {
   "name": "kamiwaza-docs",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
@@ -15,7 +15,7 @@
     "typecheck": "tsc",
     "sync-sdk": "node -r ts-node/register scripts/sync-sdk-docs.ts",
     "version-docs": "node -r ts-node/register scripts/version.ts",
-    "version-up": "VERSION=$(node -p \"const v=require('../kamiwaza/kamiwaza.version.json');console.log(v.KAMIWAZA_VERSION_MAJOR+'.'+v.KAMIWAZA_VERSION_MINOR+'.'+v.KAMIWAZA_VERSION_PATCH)\") && cd docs && docusaurus docs:version $VERSION"
+    "version-up": "node -r ts-node/register scripts/version-up.ts"
   },
   "dependencies": {
     "@docusaurus/core": "^3.1.0",
