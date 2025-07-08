@@ -35,7 +35,7 @@ sections.forEach(section => {
   if (fs.existsSync(versionsFile)) {
     versions = JSON.parse(fs.readFileSync(versionsFile, 'utf8'));
   }
-
+  
   // Add new version if it doesn't exist
   if (!versions.includes(version)) {
     versions.unshift(version);

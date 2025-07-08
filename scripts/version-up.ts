@@ -23,16 +23,10 @@ function updateDocusaurusConfig(newVersion: string) {
   console.log(`Updating ${DOCUSAURUS_CONFIG_PATH}...`);
   let configContent = fs.readFileSync(DOCUSAURUS_CONFIG_PATH, 'utf8');
 
-  // Update the `label` for the `current` version in both doc plugins
+  // Update the `label` for the `current` version to the new version with a "(Latest)" suffix
   configContent = configContent.replace(
     /(versions:\s*{\s*current:\s*{\s*label: ')([^']+)(')/g,
-    `$1${newVersion}$3`
-  );
-
-  // This regex updates the hardcoded version in the navbar
-  configContent = configContent.replace(
-    /(value: 'Version: )([^']+)(')/g,
-    `$1${newVersion}$3`
+    `$1${newVersion} (Latest)$3`
   );
 
   fs.writeFileSync(DOCUSAURUS_CONFIG_PATH, configContent);
