@@ -107,16 +107,16 @@ const config: Config = {
       },
       items: [
         {
-          to: '/',
+          type: 'doc',
+          docId: 'intro',
           position: 'left',
           label: 'Docs',
-          activeBaseRegex: '^/$|^/(?!sdk|blog)',
         },
         {
           to: '/sdk/intro',
           position: 'left',
           label: 'SDK',
-          activeBaseRegex: '^/sdk',
+          activeBasePath: '/sdk',
         },
         {
           to: '/blog',
