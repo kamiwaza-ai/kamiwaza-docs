@@ -1,4 +1,6 @@
-# Join the AI Revolution from Anywhere | Member of Technical Staff (GenAI Platform Engineer)
+# MTS - GenAI Platform Engineer
+
+## Join the AI Revolution from Anywhere | Member of Technical Staff (GenAI Platform Engineer)
 
 We're Kamiwaza ("divine skill" or "godlike technique" - for what we want our customers to experience), and we're building the backbone of the AI revolution. We have a great small team that needs to scale, delighted customers and enthusiastic investors.
 
@@ -19,7 +21,7 @@ Phase 1 is working. Phase 2 and 3 will blow your mind. (Our investors literally 
 
 ## About This Role
 
-You'll be architecting and building core platform components that make AI deployment feel like magic to enterprises. Think distributed systems, model management, and data orchestration - but with the twist of making it all work seamlessly with GenAI.
+As a member of the technical staff (MTS), you'll be architecting and building core platform components that make AI deployment feel like magic to enterprises. Think distributed systems, model management, and data orchestration - but with the twist of making it all work seamlessly with GenAI.
 
 ## Your Home Office is Our Office
 

@@ -43,11 +43,6 @@ const sidebars: SidebarsConfig = {
         'use-cases/building-a-rag-pipeline',
       ],
     },
-    // {
-    //   type: 'doc',
-    //   id: 'sdk/intro',
-    //   label: 'SDK',
-    // },
     {
       type: 'category',
       label: 'Architecture',
@@ -65,6 +60,19 @@ const sidebars: SidebarsConfig = {
       type: 'doc',
       id: 'other-topics',
       label: 'Other Topics',
+    },
+    {
+      type: 'category',
+      label: 'Our Team',
+      items: [
+        {
+          type: 'doc',
+          id: 'team/kamiwaza',
+          label: 'About Kamiwaza',
+        },
+        'team/jobs', 
+        'team/mts',
+      ],
     },
   ],
 };
