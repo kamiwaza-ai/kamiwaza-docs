@@ -58,6 +58,26 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--kamiwaza-text-dark);
 }
 
+/* Main documentation panel margins */
+.theme-doc-markdown.markdown {
+  padding-left: 5rem;
+  padding-right: 5rem;
+}
+
+@media (max-width: 768px) {
+  .theme-doc-markdown.markdown {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .theme-doc-markdown.markdown {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
 /* Enhanced doc cards with better styling */
 .doc-card-grid {
   display: grid;
