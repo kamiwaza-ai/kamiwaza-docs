@@ -186,13 +186,13 @@ const CopyButton = () => {
         right: buttonPosition.right,
         zIndex: 100,
         backgroundColor: 'transparent',
-        border: '1px solid #e1e4e8',
+        border: '1px solid var(--ifm-color-emphasis-200, #e1e4e8)',
         borderRadius: '6px',
         padding: isVeryNarrow ? '4px 8px' : '6px 12px',
         cursor: 'pointer',
         fontSize: isVeryNarrow ? '12px' : '13px',
         fontWeight: '500',
-        color: '#656d76',
+        color: 'var(--ifm-color-content-secondary, #656d76)',
         transition: 'all 0.2s ease',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
         display: 'flex',
@@ -200,12 +200,12 @@ const CopyButton = () => {
         gap: isVeryNarrow ? '4px' : '6px',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = '#f6f8fa';
-        e.currentTarget.style.borderColor = '#d0d7de';
+        e.currentTarget.style.backgroundColor = 'var(--ifm-color-emphasis-100, #f6f8fa)';
+        e.currentTarget.style.borderColor = 'var(--ifm-color-emphasis-300, #d0d7de)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.backgroundColor = 'transparent';
-        e.currentTarget.style.borderColor = '#e1e4e8';
+        e.currentTarget.style.borderColor = 'var(--ifm-color-emphasis-200, #e1e4e8)';
       }}
     >
       <svg
