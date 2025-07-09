@@ -1,0 +1,1 @@
+(self.webpackChunkkamiwaza_docs=self.webpackChunkkamiwaza_docs||[]).push([[5741],{5741:()=>{}}]);
