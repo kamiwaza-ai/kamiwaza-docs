@@ -81,7 +81,3 @@ The model deployment process in Kamiwaza is designed to be simple and robust.
 5.  **Health Check**: Kamiwaza monitors the model until it is healthy and ready to serve traffic.
 
 Once deployed, your model is available via a standard API endpoint.
-
-## Resources and Further Reading
-
-*   **FlashAttention**: For users looking to maximize performance on NVIDIA GPUs, installing FlashAttention is highly recommended. It can significantly speed up attention-heavy models. Note that this requires a careful setup of your CUDA environment. 
