@@ -19,7 +19,7 @@ Each use case guide includes:
 
 ## Featured Use Cases
 
-### 📖 [Building a RAG Pipeline](building-a-rag-pipeline)
+### 📖 [Building a RAG Pipeline](building-a-rag-pipeline.md)
 Learn how to create a Retrieval-Augmented Generation (RAG) system that combines your documents with large language models to provide accurate, context-aware responses.
 
 **What you'll build:**
@@ -63,8 +63,8 @@ Common patterns for integrating Kamiwaza with existing systems, including webhoo
 
 If you're looking for a specific use case that isn't covered yet:
 - Join our [Discord community](https://discord.gg/cVGBS5rD2U) to ask questions
-- Explore the [SDK documentation](../sdk/intro) for programmatic approaches
-- Check out the [Models](../models) and [App Garden](../app-garden) sections for additional patterns
+- Explore the [SDK documentation](/sdk/intro) for programmatic approaches
+- Check out the [Models](../models.md) and [App Garden](../app-garden.md) sections for additional patterns
 
 ---
 

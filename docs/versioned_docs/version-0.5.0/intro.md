@@ -12,19 +12,15 @@ Welcome to the official documentation for the Kamiwaza AI Platform, the enterpri
 
 Kamiwaza is a comprehensive AI orchestration platform that provides developers and IT teams with the tools to manage the entire lifecycle of their AI models and applications. From data ingestion and vectorization to model serving and monitoring, Kamiwaza simplifies the complexity of the modern AI stack, allowing you to focus on building innovative features, not wrestling with infrastructure.
 
----
-
 ## Getting Started
 
 Ready to dive in? The fastest way to get started is to follow our **[Installation Guide](installation/installation_process)** to set up your environment.
 
----
 
 ## Looking for Inspiration?
 
 Check out our **[Use Cases](use-cases/index.md)** section to see practical implementations and get inspired by what's possible with Kamiwaza.
 
----
 
 ## Explore the Documentation
 
