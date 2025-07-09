@@ -145,7 +145,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Enhanced navigation */
 .navbar {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: none !important;
+  border-bottom: 1px solid var(--ifm-toc-border-color) !important;
 }
 
 .navbar__item {
@@ -177,4 +178,42 @@ table th {
   border-radius: 12px;
   border: 1px solid var(--ifm-toc-border-color);
   margin: 1.5rem 0;
+}
+
+/* Sidebar text size */
+.menu__link, .menu__list-item {
+  font-size: 0.8rem;
+}
+
+/* Main documentation text size */
+.markdown, .theme-doc-markdown {
+  font-size: 0.93rem;
+}
+
+/* Make headings scale down slightly as well */
+.markdown h1, .theme-doc-markdown h1 {
+  font-size: 2rem;
+}
+.markdown h2, .theme-doc-markdown h2 {
+  font-size: 1.2rem;
+}
+.markdown h3, .theme-doc-markdown h3 {
+  font-size: 1.0rem;
+}
+
+/* Sidebar styling for light and dark modes */
+[data-theme='light'] .theme-doc-sidebar-container {
+  background-color: #f8fafc;
+  border-right: 1px solid var(--ifm-toc-border-color) !important;
+}
+
+[data-theme='dark'] .theme-doc-sidebar-container {
+  background-color: #262626;
+  border-right: 1px solid var(--ifm-toc-border-color) !important;
+}
+
+/* Add margin below version label badge */
+.badge, .theme-doc-version-badge {
+  margin-bottom: 1.5rem !important;
+  display: inline-block;
 }
