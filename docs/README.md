@@ -27,7 +27,7 @@ npm run start
 npm run dev
 ```
 
-This opens `http://localhost:3000` in your browser. Most changes are reflected live without restarting the server.
+This opens `http://localhost:3000` in your browser. Most changes are reflected live without restarting the server. Note that search functionality is disabled in development mode; see the build instructions to test it.
 
 **Note**: Always run development commands from the `docs` directory where `docusaurus.config.ts` is located.
 
@@ -42,19 +42,19 @@ This opens `http://localhost:3000` in your browser. Most changes are reflected l
 
 ## Build and Deployment
 
-### Local Build
+### Building with Search
 
-Generate static content for production:
+To create a production build with a working search index, run:
 
 ```bash
-npm run build
+npx docusaurus build
 ```
 
-This creates a `build` directory with static files.
+This generates all static files into the `build` directory.
 
-### Preview Production Build
+### Previewing the Production Build
 
-Serve the production build locally:
+To preview the full site, including search functionality, serve the contents of the `build` directory:
 
 ```bash
 npm run serve

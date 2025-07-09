@@ -96,6 +96,30 @@ const config: Config = {
         },
       },
     ],
+    // Local search plugin
+    [
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        hashed: true,
+        language: ['en'],
+        highlightSearchTermsOnTargetPage: true,
+        explicitSearchResultPath: true,
+        searchBarPosition: 'auto',
+        docsRouteBasePath: '/',
+        blogRouteBasePath: 'blog',
+        docsPluginIdForPreferredVersion: 'default',
+        indexBlog: true,
+        indexDocs: true,
+        indexPages: false,
+        searchContextByPaths: ['docs', 'sdk'],
+        searchBarShortcut: true,
+        searchBarShortcutHint: false,
+        ignoreFiles: /(?:^|\/)_/,
+        removeDefaultStopWordFilter: false,
+        searchResultLimits: 8,
+        searchResultContextMaxLength: 50,
+      },
+    ],
   ],
 
   themeConfig: {
@@ -124,12 +148,11 @@ const config: Config = {
           position: 'left',
         },
         {
-          type: 'docsVersionDropdown',
+          type: 'search',
           position: 'right',
         },
         {
-          href: 'https://github.com/kamiwaza-ai/kamiwaza-docs',
-          label: 'GitHub',
+          type: 'docsVersionDropdown',
           position: 'right',
         },
       ],

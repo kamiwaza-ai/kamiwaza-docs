@@ -23,6 +23,7 @@
     "@docusaurus/theme-classic": "^3.6.3",
     "@docusaurus/theme-common": "^3.6.3",
     "@docusaurus/theme-mermaid": "^3.6.3",
+    "@easyops-cn/docusaurus-search-local": "^0.51.1",
     "@mdx-js/react": "^3.0.0",
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "clsx": "^2.1.1",
