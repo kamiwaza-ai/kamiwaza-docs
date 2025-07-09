@@ -4,9 +4,9 @@ const fs = require('fs');
 const path = require('path');
 
 // Config
-const SDK_DOCS_PATH = path.resolve(__dirname, '../../kamiwaza/kamiwaza-sdk/docs');
-const DOCS_ROOT = path.resolve(__dirname, '../kamiwaza/docs');
-const VERSION = '0.3.2';
+const SDK_DOCS_PATH = path.resolve(__dirname, '../kamiwaza-sdk/docs');
+const DOCS_ROOT = path.resolve(__dirname, '..');
+const VERSION = '0.4.1';
 
 function execCommand(command, options = {}) {
     try {
