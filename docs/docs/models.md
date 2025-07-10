@@ -134,7 +134,7 @@ Kamiwaza creates a default config for us when we download a model, to simplify t
 
 Click **"Deploy"** to launch an instance. When the spinner finishes, click **Back to Model List** to go back to the main Models screen.
 
-## Step 6: Testing the deploymed model endpoint
+## Step 6: Testing the deployed model endpoint
 
 In the main Models screen, under Model Deployments, you will see a new entry for our recently deployed Llama 3.1 8B model:
 
