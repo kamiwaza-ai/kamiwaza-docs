@@ -6,28 +6,6 @@ sidebar_position: 4
 
 Kamiwaza provides a comprehensive system for managing the entire lifecycle of your AI models, from discovery and download to deployment and serving. This guide walks you through the key concepts and processes for working with models on the Kamiwaza platform.
 
-
-##Contents
-- [Model Search and Discovery](#model-search-and-discovery)
-    - [Downloading Models](#downloading-models)
-- [Choosing the Right Model](#choosing-the-right-model)
-    - [Model Formats and Engine Compatibility](#model-formats-and-engine-compatibility)
-- [Model Serving Engines](#model-serving-engines)
-    - [vLLM Engine](#vllm-engine)
-    - [llama.cpp Engine](#llamacpp-engine)
-    - [MLX Engine](#mlx-engine)
-    - [Ampere llama.cpp Engine](#ampere-llamacpp-engine)
-- [Model Deployment](#model-deployment)
-- [GUI Walkthrough](#gui-walkthrough)
-    - [Step 1: Find and click the Models menu in the sidebar](#step-1-find-and-click-the-models-menu-in-the-sidebar)
-    - [Step 2: Under Model Hub Search, type keywords for your desired model](#step-2-under-model-hub-search-type-keywords-for-your-desired-model)
-    - [Step 3: Download models files from chosen model](#step-3-download-models-files-from-chosen-model)
-    - [Step 4: Check the model files after the download](#step-4-check-the-model-files-after-the-download)
-    - [Step 5: Deploy a model for serving](#step-5-deploy-a-model-for-serving)
-    - [Step 6: Testing the deploymed model endpoint](#step-6-testing-the-deploymed-model-endpoint)
-
-
-
 ## Model Search and Discovery
 
 Kamiwaza is integrated directly with the Hugging Face Hub, allowing you to access a vast collection of open-source models. Models are identified by their Hugging Face repository ID, such as `meta-llama/Llama-3.3-70B-Instruct`.
