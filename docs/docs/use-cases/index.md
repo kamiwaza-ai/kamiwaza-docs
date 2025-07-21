@@ -68,4 +68,4 @@ If you're looking for a specific use case that isn't covered yet:
 
 ---
 
-*Have a use case you'd like to see documented? Let us know on our [Discord community](https://discord.gg/cVGBS5rD2U) or contribute a guide!* 
+*Have a use case you'd like to see documented? Let us know on our [Discord community](https://discord.gg/cVGBS5rD2U) or [contact us](https://kamiwaza.ai/contact)!* 
