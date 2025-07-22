@@ -22,7 +22,7 @@ By the end of this guide, you'll have:
 Before starting, ensure you have:
 - Kamiwaza installed and running ([Installation Guide](../installation/installation_process))
 - At least 16GB of available RAM
-- Sample documents (PDFs, text files, etc.) to process
+- Sample documents (markdown format) to process
 - Basic familiarity with Python (for SDK examples)
 
 ## Architecture Overview
