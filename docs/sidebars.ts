@@ -32,6 +32,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'tool-shed',
+      label: 'Tool Shed',
+    },
+    {
+      type: 'doc',
       id: 'data-engine',
       label: 'Distributed Data Engine',
     },
