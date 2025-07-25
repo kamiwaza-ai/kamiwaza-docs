@@ -39,7 +39,7 @@ Kamiwaza intelligently routes model deployment requests to the most appropriate 
 ### vLLM Engine
 
 *   **Purpose**: Designed for high-throughput, low-latency LLM serving on powerful GPUs.
-*   **Best For**: Production environments with dedicated accelerators, such as NVIDIA or AMD GPUs.
+*   **Best For**: Production environments with dedicated accelerators, such as NVIDIA, Intel Gaudi HPUs, or AMD GPUs.
 *   **Key Features**:
     *   **PagedAttention**: An advanced attention algorithm that dramatically reduces memory waste.
     *   **Continuous Batching**: Batches incoming requests on the fly for better GPU utilization.
