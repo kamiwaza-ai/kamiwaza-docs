@@ -221,7 +221,7 @@ pipeline = RAGPipeline()
 # Example: Process documents
 DOCUMENT_PATHS = [
     "./docs/intro.md",  
-    "./docs/models.md",
+    "./docs/models/overview.md",
     "./docs/architecture/overview.md",
     "./docs/architecture/architecture.md",
     "./docs/architecture/components.md"
