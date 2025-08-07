@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkkamiwaza_docs=self.webpackChunkkamiwaza_docs||[]).push([[8188],{38188:(a,e,s)=>{s.d(e,{createPieServices:()=>c.f});var c=s(19786);s(58198)}}]);

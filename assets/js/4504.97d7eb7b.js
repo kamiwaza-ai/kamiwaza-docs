@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkkamiwaza_docs=self.webpackChunkkamiwaza_docs||[]).push([[4504],{34504:(a,e,s)=>{s.d(e,{createTreemapServices:()=>c.d});var c=s(43758);s(58198)}}]);
