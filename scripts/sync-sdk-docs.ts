@@ -2,8 +2,32 @@ import fs from 'fs-extra';
 import path from 'path';
 import yaml from 'js-yaml';
 
-const SDK_DOCS_PATH = path.resolve(__dirname, '../../kamiwaza/kamiwaza-sdk/docs');
-const TARGET_SDK_DOCS = path.resolve(__dirname, '../kamiwaza/docs/sdk/current');
+function resolveSdkDocsPath(): string {
+    const override = process.env.KW_SDK_DOCS || process.env.KAMIWAZA_SDK_DOCS;
+    const candidates = [
+        override,
+        // sibling repo (common setup): ../kamiwaza-sdk/docs
+        path.resolve(__dirname, '../kamiwaza-sdk/docs'),
+        // sibling repo (alternate): ../../kamiwaza-sdk/docs
+        path.resolve(__dirname, '../../kamiwaza-sdk/docs'),
+        // monorepo nested layout: ../../kamiwaza/kamiwaza-sdk/docs
+        path.resolve(__dirname, '../../kamiwaza/kamiwaza-sdk/docs'),
+    ].filter(Boolean) as string[];
+
+    for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
+    }
+
+    const tried = candidates.map(c => `- ${c}`).join('\n');
+    throw new Error(
+        `Unable to locate SDK docs. Set KW_SDK_DOCS to the SDK docs path, or place the repo in one of the expected locations. Tried:\n${tried}`
+    );
+}
+
+const SDK_DOCS_PATH = resolveSdkDocsPath();
+const TARGET_SDK_DOCS = path.resolve(__dirname, '../docs/sdk/current');
 
 async function generateServiceDoc(servicePath: string, serviceName: string) {
     const serviceDir = path.join(SDK_DOCS_PATH, 'services', servicePath);
@@ -22,7 +46,11 @@ async function generateServiceDoc(servicePath: string, serviceName: string) {
 }
 
 async function generateAPIReference() {
-    const todoContent = await fs.readFile(path.join(SDK_DOCS_PATH, 'todo.txt'), 'utf8');
+    const todoPath = path.join(SDK_DOCS_PATH, 'todo.txt');
+    if (!(await fs.pathExists(todoPath))) {
+        return '# API Reference\n\n';
+    }
+    const todoContent = await fs.readFile(todoPath, 'utf8');
     const sections = todoContent.split('\n## ');
     
     let mdContent = '# API Reference\n\n';
@@ -51,7 +79,8 @@ async function copyServiceDocs() {
     await fs.ensureDir(path.join(TARGET_SDK_DOCS, 'api'));
     
     // Copy and transform service docs
-    const services = await fs.readdir(path.join(SDK_DOCS_PATH, 'services'));
+    const servicesRoot = path.join(SDK_DOCS_PATH, 'services');
+    const services = (await fs.pathExists(servicesRoot)) ? await fs.readdir(servicesRoot) : [] as string[];
     
     for (const service of services) {
         const serviceName = service.charAt(0).toUpperCase() + service.slice(1);

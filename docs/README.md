@@ -10,9 +10,13 @@ This repository contains the Kamiwaza AI platform documentation built with [Docu
 
 ### Installation
 
-Navigate to the docs directory and install dependencies:
+Install dependencies at both the repo root and in the `docs/` directory:
 
 ```bash
+# From repo root
+npm install
+
+# Then install docs package deps
 cd docs
 npm install
 ```
@@ -22,6 +26,11 @@ npm install
 Start the development server:
 
 ```bash
+# From repo root (recommended)
+npm run start
+
+# Or from docs directory
+cd docs
 npm run start
 # or
 npm run dev
@@ -29,7 +38,7 @@ npm run dev
 
 This opens `http://localhost:3000` in your browser. Most changes are reflected live without restarting the server. Note that search functionality is disabled in development mode; see the build instructions to test it.
 
-**Note**: Always run development commands from the `docs` directory where `docusaurus.config.ts` is located.
+**Note**: You can run from the repository root using the provided npm scripts (recommended), or from the `docs` directory. Root scripts automatically run inside `docs/` under the hood.
 
 ## Documentation Structure
 
@@ -44,17 +53,24 @@ This opens `http://localhost:3000` in your browser. Most changes are reflected l
 
 ### Building with Search
 
-To create a production build with a working search index, run:
+To create a production build with a working search index, run from the repo root (recommended):
 
 ```bash
-npx docusaurus build
+npm run build
 ```
 
-This generates all static files into the `build` directory.
+This first syncs SDK docs, then builds the site. Static files are generated in `docs/build`.
+
+Alternatively, build from within the `docs/` directory (skips SDK docs sync):
+
+```bash
+cd docs
+npm run build
+```
 
 ### Previewing the Production Build
 
-To preview the full site, including search functionality, serve the contents of the `build` directory:
+To preview the full site, including search functionality, serve the contents of the build directory (from repo root):
 
 ```bash
 npm run serve
@@ -62,7 +78,7 @@ npm run serve
 
 ### Deployment
 
-Deploy to GitHub Pages:
+Deploy to GitHub Pages (from repo root):
 
 ```bash
 # Using SSH

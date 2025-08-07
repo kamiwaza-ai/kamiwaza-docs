@@ -13,6 +13,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'installation/installation_process',
         'installation/system_requirements',
+        'installation/windows_installation',
       ],
     },
     {

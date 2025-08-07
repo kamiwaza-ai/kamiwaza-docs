@@ -6,7 +6,6 @@ const path = require('path');
 // Config
 const SDK_DOCS_PATH = path.resolve(__dirname, '../kamiwaza-sdk/docs');
 const DOCS_ROOT = path.resolve(__dirname, '..');
-const VERSION = '0.4.1';
 
 function execCommand(command, options = {}) {
     try {
@@ -100,29 +99,6 @@ for deployment in deployments:
     }
 }
 
-function createVersion() {
-    console.log(`\n📌 Creating version ${VERSION}...`);
-    
-    const versionedDir = path.join(DOCS_ROOT, 'versioned_docs', 'version-' + VERSION);
-    const docsSrcDir = path.join(DOCS_ROOT, 'docs');
-    
-    ensureDirectoryExists(versionedDir);
-    
-    // Copy docs to versioned directory
-    fs.cpSync(docsSrcDir, versionedDir, { recursive: true });
-    
-    // Update versions.json
-    const versionsPath = path.join(DOCS_ROOT, 'versions.json');
-    let versions = [];
-    if (fs.existsSync(versionsPath)) {
-        versions = JSON.parse(fs.readFileSync(versionsPath, 'utf8'));
-    }
-    if (!versions.includes(VERSION)) {
-        versions.unshift(VERSION);
-        fs.writeFileSync(versionsPath, JSON.stringify(versions, null, 2));
-    }
-}
-
 function buildDocs() {
     console.log('\n🏗️  Building documentation...');
     execCommand('docusaurus build');
@@ -132,8 +108,8 @@ function buildDocs() {
 console.log('🚀 Starting documentation build process...');
 
 try {
+    // Optional: keep SDK docs sync when building from docs package
     syncSDKDocs();
-    createVersion();
     buildDocs();
     console.log('\n✅ Documentation build complete!');
 } catch (error) {
