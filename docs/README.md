@@ -120,6 +120,39 @@ Remove a version (if needed):
 1. Delete the corresponding directories in `versioned_docs/` and `versioned_sidebars/`
 2. Remove the version from `versions.json`
 
+### Updating an Existing Version (re-snapshot from current docs)
+
+If you need to refresh an existing version (e.g., `0.5.0`) so it reflects the current content in `docs/`, follow these steps from the `docs/` directory:
+
+1) Delete the existing snapshot and its sidebar entry
+
+```bash
+rm -rf versioned_docs/version-0.5.0 versioned_sidebars/version-0.5.0-sidebars.json
+```
+
+2) Remove the version entry from `versions.json`
+
+```bash
+node -e "const fs=require('fs');const p='versions.json';const v=JSON.parse(fs.readFileSync(p));fs.writeFileSync(p, JSON.stringify(v.filter(x=>x!=='0.5.0'), null, 2)+'\n');"
+```
+
+3) Recreate the snapshot from the current docs
+
+```bash
+npm run clear
+npm run docusaurus -- docs:version 0.5.0
+```
+
+4) Build to verify (and see broken link warnings, if any)
+
+```bash
+npm run build
+```
+
+Tips:
+- Commit your work before refreshing a version so you can easily revert if needed.
+- If you maintain SDK-generated pages, ensure they are up to date before step 3 (the build script also syncs SDK docs).
+
 ## Content Development
 
 ### Writing Documentation

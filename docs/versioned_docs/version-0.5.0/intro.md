@@ -55,7 +55,7 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
       <p>Learn how to deploy, manage, and serve AI models on the platform.</p>
     </div>
     <div className="card__footer">
-      <a href="models" className="button button--primary button--block">Manage Models →</a>
+      <a href="models/overview" className="button button--primary button--block">Manage Models →</a>
     </div>
   </div>
   <div className="doc-card">

@@ -21,8 +21,8 @@ By the end of this guide, you'll have:
 
 Before starting, ensure you have:
 - Kamiwaza installed and running ([Installation Guide](../installation/installation_process))
-- At least 8GB of available RAM
-- Sample documents (PDFs, text files, etc.) to process
+- At least 16GB of available RAM
+- Sample documents (markdown format) to process
 - Basic familiarity with Python (for SDK examples)
 
 ## Architecture Overview
@@ -45,91 +45,63 @@ First, we'll deploy an embedding model for vectorizing text and a language model
 
 ### Deploy an Embedding Model
 
-1. Navigate to the **Models** section in Kamiwaza
-2. Search for `sentence-transformers/all-MiniLM-L6-v2`
-3. Download and deploy the model
-
-Or use the API:
+The embedding model will be automatically loaded when you create an embedder - no manual deployment needed:
 
 ```python
-import requests
+from kamiwaza_client import KamiwazaClient
 
-# Deploy embedding model
-requests.post('http://localhost:7777/api/models/sentence-transformers/all-MiniLM-L6-v2/deploy', json={
-    'engine': 'transformers',
-    'config': {
-        'task': 'feature-extraction'
-    }
-})
+client = KamiwazaClient(base_url="http://localhost:7777/api/")
+
+# The embedding model will be automatically loaded when you create an embedder
+# This happens seamlessly in the background
+embedder = client.embedding.get_embedder(
+    model="BAAI/bge-base-en-v1.5",
+    provider_type="huggingface_embedding"
+)
+
+print("✅ Embedding model ready for use")
 ```
 
 ### Deploy a Language Model
 
-1. Search for and deploy `Qwen/Qwen2.5-0.5B-Instruct-GGUF`
-2. Select the `Qwen2.5-0.5B-Instruct-Q6_K.gguf` file for CPU inference
+Deploy a language model using Kamiwaza for response generation:
 
 ```python
-# Deploy chat model
-requests.post('http://localhost:7777/api/models/Qwen/Qwen2.5-0.5B-Instruct-GGUF/deploy', json={
-    'engine': 'llamacpp',
-    'config': {
-        'gpu_layers': 0,  # CPU inference
-        'context_size': 4096
-    }
-})
+from kamiwaza_client import KamiwazaClient
+
+client = KamiwazaClient(base_url="http://localhost:7777/api/")
+
+# Search for a suitable language model
+model_repo = "Qwen/Qwen3-0.6B-GGUF"  # Small efficient model
+models = client.models.search_models(model_repo, exact=True)
+print(f"Found model: {models[0]}")
+
+# Download the model (this may take a few minutes)
+print("Downloading model...")
+client.models.initiate_model_download(model_repo)
+client.models.wait_for_download(model_repo)
+print("✅ Model download complete")
+
+# Deploy the model
+print("Deploying model...")
+deployment_id = client.serving.deploy_model(repo_id=model_repo)
+print(f"✅ Model deployed with ID: {deployment_id}")
+
+# Get OpenAI-compatible client for the deployed model
+openai_client = client.openai.get_client(repo_id=model_repo)
+print("✅ OpenAI-compatible client ready")
 ```
 
-## Step 2: Set Up Vector Storage
-
-Create a vector collection to store document embeddings.
-
-### Using the API
-
+**Check Deployment Status**
 ```python
-import requests
-
-# Create vector collection
-collection_config = {
-    "name": "documents",
-    "dimension": 384,  # all-MiniLM-L6-v2 output dimension
-    "metric_type": "COSINE",
-    "index_type": "IVF_FLAT",
-    "metadata_schema": {
-        "title": "string",
-        "source": "string",
-        "chunk_id": "string",
-        "page": "integer"
-    }
-}
-
-response = requests.post(
-    'http://localhost:7777/api/vectordb/collections',
-    json=collection_config
-)
+# List active deployments to verify
+deployments = client.serving.list_active_deployments()
+for deployment in deployments:
+    print(f"✅ {deployment.m_name} is {deployment.status}")
+    print(f"   Endpoint: {deployment.endpoint}")
 ```
 
-### Using the Kamiwaza SDK
-
-```python
-from kamiwaza_sdk import KamiwazaClient
-
-client = KamiwazaClient(base_url="http://localhost:7777")
-
-# Create collection
-client.vectordb.create_collection(
-    name="documents",
-    dimension=384,
-    metric_type="COSINE",
-    metadata_schema={
-        "title": "str",
-        "source": "str", 
-        "chunk_id": "str",
-        "page": "int"
-    }
-)
-```
-
-## Step 3: Document Ingestion Pipeline
+## Step 2: Document Ingestion Pipeline
 
 Now we'll create a pipeline to process documents, chunk them, and generate embeddings.
 
@@ -137,323 +109,340 @@ Now we'll create a pipeline to process documents, chunk them, and generate embed
 
 ```python
 import os
-import requests
 from pathlib import Path
 from typing import List, Dict
-import PyPDF2
-import numpy as np
+from kamiwaza_client import KamiwazaClient
 
 class RAGPipeline:
-    def __init__(self, base_url="http://localhost:7777"):
-        self.base_url = base_url
-        self.embedding_model = "sentence-transformers/all-MiniLM-L6-v2"
-        self.chat_model = "Qwen/Qwen2.5-0.5B-Instruct-GGUF"
+    def __init__(self, base_url="http://localhost:7777/api/"):
+        self.client = KamiwazaClient(base_url=base_url)
+        self.embedding_model = "BAAI/bge-base-en-v1.5"  # Use a proven working model
+        self.collection_name = "documents"
         
-    def extract_text_from_pdf(self, pdf_path: str) -> List[Dict]:
-        """Extract text from PDF and return chunks with metadata."""
-        chunks = []
+        # Initialize global embedder to prevent cleanup between operations
+        self.embedder = self.client.embedding.get_embedder(
+            model=self.embedding_model,
+            provider_type="huggingface_embedding"
+        )
+        print(f"✅ RAG Pipeline initialized with model: {self.embedding_model}")
         
-        with open(pdf_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            
-            for page_num, page in enumerate(pdf_reader.pages):
-                text = page.extract_text()
-                # Simple chunking - split by paragraphs
-                paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+    def add_documents_to_catalog(self, filepaths: List[str]) -> List:
+        """Add documents to the Kamiwaza catalog."""
+        datasets = []
+        
+        for filepath in filepaths:
+            try:
+                # Create dataset for each file
+                dataset = self.client.catalog.create_dataset(
+                    dataset_name=filepath,
+                    platform="file",
+                    environment="PROD",
+                    description=f"RAG document: {Path(filepath).name}"
+                )
                 
-                for chunk_id, paragraph in enumerate(paragraphs):
-                    if len(paragraph) > 100:  # Filter out very short chunks
-                        chunks.append({
-                            'text': paragraph,
-                            'metadata': {
-                                'title': Path(pdf_path).stem,
-                                'source': pdf_path,
-                                'page': page_num + 1,
-                                'chunk_id': f"{page_num}_{chunk_id}"
-                            }
-                        })
+                if dataset.urn:
+                    datasets.append(dataset)
+                    print(f"✅ Added to catalog: {Path(filepath).name}")
+                    
+            except Exception as e:
+                print(f"❌ Error adding {filepath}: {str(e)}")
         
-        return chunks
+        return datasets
     
-    def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for a list of texts."""
-        response = requests.post(
-            f'{self.base_url}/api/models/{self.embedding_model}/embeddings',
-            json={'input': texts}
+    def process_document(self, file_path: str):
+        """Process a single document: read, chunk, embed, and store."""
+        doc_path = Path(file_path)
+        
+        if not doc_path.exists():
+            raise FileNotFoundError(f"File not found: {doc_path}")
+        
+        # Read document content
+        with open(doc_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        print(f"📄 Processing document: {doc_path.name}")
+        print(f"   - Size: {len(content)} characters")
+        
+        # Chunk the document using SDK
+        chunks = self.embedder.chunk_text(
+            text=content,
+            max_length=1024,  # Token-based chunking
+            overlap=102       # 10% overlap
+        )
+        print(f"   - Created {len(chunks)} chunks")
+        
+        # Generate embeddings for all chunks
+        embeddings = self.embedder.embed_chunks(chunks)
+        print(f"   - Generated {len(embeddings)} embeddings")
+        
+        # Prepare metadata for each chunk
+        metadata_list = []
+        for i, chunk in enumerate(chunks):
+            # Truncate chunk text if needed to fit storage limits
+            chunk_text = chunk[:900] + "..." if len(chunk) > 900 else chunk
+            
+            metadata = {
+                # Required autofields
+                "model_name": self.embedding_model,
+                "source": str(doc_path),
+                "offset": i,
+                "filename": doc_path.name,
+                
+                # Custom fields for better search
+                "chunk_text": chunk_text,  # Store the actual text
+                "chunk_index": i,
+                "chunk_size": len(chunk),
+                "document_title": doc_path.stem
+            }
+            metadata_list.append(metadata)
+        
+        # Define custom fields for the collection schema
+        field_list = [
+            ("chunk_text", "str"),
+            ("chunk_index", "int"), 
+            ("chunk_size", "int"),
+            ("document_title", "str")
+        ]
+        
+        # Insert vectors using SDK
+        self.client.vectordb.insert(
+            vectors=embeddings,
+            metadata=metadata_list,
+            collection_name=self.collection_name,
+            field_list=field_list
         )
         
-        if response.status_code == 200:
-            return response.json()['data']
-        else:
-            raise Exception(f"Embedding generation failed: {response.text}")
-    
-    def store_vectors(self, chunks: List[Dict], embeddings: List[List[float]]):
-        """Store text chunks and their embeddings in the vector database."""
-        vectors_data = {
-            "vectors": [
-                {
-                    "id": f"{chunk['metadata']['source']}_{chunk['metadata']['chunk_id']}",
-                    "vector": embedding,
-                    "metadata": {
-                        **chunk['metadata'],
-                        "text": chunk['text']
-                    }
-                }
-                for chunk, embedding in zip(chunks, embeddings)
-            ]
-        }
-        
-        response = requests.post(
-            f'{self.base_url}/api/vectordb/collections/documents/insert',
-            json=vectors_data
-        )
-        
-        if response.status_code != 200:
-            raise Exception(f"Vector storage failed: {response.text}")
-    
-    def process_document(self, document_path: str):
-        """Complete pipeline to process a single document."""
-        print(f"Processing: {document_path}")
-        
-        # Extract text chunks
-        chunks = self.extract_text_from_pdf(document_path)
-        print(f"Extracted {len(chunks)} chunks")
-        
-        # Generate embeddings
-        texts = [chunk['text'] for chunk in chunks]
-        embeddings = self.generate_embeddings(texts)
-        print(f"Generated {len(embeddings)} embeddings")
-        
-        # Store in vector database
-        self.store_vectors(chunks, embeddings)
-        print("Stored vectors successfully")
+        print(f"✅ Successfully stored {len(chunks)} chunks in collection '{self.collection_name}'")
+        return len(chunks)
 
 # Usage
 pipeline = RAGPipeline()
 
-# Process all PDFs in a directory
-docs_directory = "path/to/your/documents"
-for pdf_file in Path(docs_directory).glob("*.pdf"):
-    pipeline.process_document(str(pdf_file))
+# Example: Process documents
+DOCUMENT_PATHS = [
+    "./docs/intro.md",  
+    "./docs/models/overview.md",
+    "./docs/architecture/overview.md",
+    "./docs/architecture/architecture.md",
+    "./docs/architecture/components.md"
+    # Add more documents as needed
+]
+
+# Optional: Add to catalog first
+datasets = pipeline.add_documents_to_catalog(DOCUMENT_PATHS)
+
+# Process each document
+total_chunks = 0
+for doc_path in DOCUMENT_PATHS:
+    try:
+        chunks = pipeline.process_document(doc_path)
+        total_chunks += chunks
+    except Exception as e:
+        print(f"❌ Error processing {doc_path}: {str(e)}")
+
+print(f"\n🎉 Total chunks processed: {total_chunks}")
 ```
 
-## Step 4: Implement Retrieval and Generation
+## Step 3: Implement Retrieval and Generation
 
 Now we'll create the query interface that retrieves relevant documents and generates responses.
 
 ```python
+from typing import List, Dict
+from kamiwaza_client import KamiwazaClient
+
 class RAGQuery:
-    def __init__(self, base_url="http://localhost:7777"):
-        self.base_url = base_url
-        self.embedding_model = "sentence-transformers/all-MiniLM-L6-v2"
-        self.chat_model = "Qwen/Qwen2.5-0.5B-Instruct-GGUF"
-    
-    def embed_query(self, query: str) -> List[float]:
-        """Generate embedding for the user query."""
-        response = requests.post(
-            f'{self.base_url}/api/models/{self.embedding_model}/embeddings',
-            json={'input': [query]}
+    def __init__(self, base_url="http://localhost:7777/api/", chat_model_repo="Qwen/Qwen3-0.6B-GGUF"):
+        self.client = KamiwazaClient(base_url=base_url)
+        self.embedding_model = "BAAI/bge-base-en-v1.5"
+        self.chat_model_repo = chat_model_repo
+        self.collection_name = "documents"
+        
+        # Initialize embedder for query processing
+        self.embedder = self.client.embedding.get_embedder(
+            model=self.embedding_model,
+            provider_type="huggingface_embedding"
         )
         
-        if response.status_code == 200:
-            return response.json()['data'][0]
-        else:
-            raise Exception(f"Query embedding failed: {response.text}")
+        # Get OpenAI-compatible client for the deployed chat model
+        try:
+            self.openai_client = self.client.openai.get_client(repo_id=self.chat_model_repo)
+            print(f"✅ RAG Query system initialized with chat model: {self.chat_model_repo}")
+        except Exception as e:
+            print(f"⚠️ Warning: Could not initialize chat model client: {e}")
+            print(f"   Make sure the model {self.chat_model_repo} is deployed")
+            self.openai_client = None
     
-    def retrieve_context(self, query_embedding: List[float], top_k: int = 5) -> List[Dict]:
-        """Retrieve relevant document chunks."""
-        search_request = {
-            "vector": query_embedding,
-            "top_k": top_k,
-            "include_metadata": True
-        }
+    def semantic_search(self, query: str, limit: int = 5) -> List[Dict]:
+        """Perform semantic search on the document collection."""
+        print(f"🔍 Searching for: '{query}'")
+        print(f"   - Collection: {self.collection_name}")
+        print(f"   - Max results: {limit}")
         
-        response = requests.post(
-            f'{self.base_url}/api/vectordb/collections/documents/search',
-            json=search_request
+        # Generate embedding for the query
+        query_embedding = self.embedder.create_embedding(query).embedding
+        
+        # Perform vector search using SDK
+        results = self.client.vectordb.search(
+            query_vector=query_embedding,
+            collection_name=self.collection_name,
+            limit=limit,
+            output_fields=[
+                "source", "offset", "filename", "model_name", 
+                "chunk_text", "chunk_index", "chunk_size", "document_title"
+            ]
         )
         
-        if response.status_code == 200:
-            return response.json()['results']
-        else:
-            raise Exception(f"Vector search failed: {response.text}")
+        print(f"✅ Found {len(results)} relevant chunks")
+        return results
     
-    def generate_response(self, query: str, context_chunks: List[Dict]) -> str:
-        """Generate response using retrieved context."""
-        # Prepare context from retrieved chunks
-        context = "\n\n".join([
-            f"Document: {chunk['metadata']['title']} (Page {chunk['metadata']['page']})\n{chunk['metadata']['text']}"
-            for chunk in context_chunks
-        ])
+    def format_context(self, search_results: List[Dict]) -> str:
+        """Format search results into context for LLM."""
+        context_parts = []
         
-        # Create prompt with context
+        for result in search_results:
+            # Extract metadata
+            if hasattr(result, 'metadata'):
+                metadata = result.metadata
+            elif isinstance(result, dict) and 'metadata' in result:
+                metadata = result['metadata']
+            else:
+                metadata = {}
+            
+            # Get chunk text and source info
+            chunk_text = metadata.get('chunk_text', '')
+            filename = metadata.get('filename', 'Unknown')
+            document_title = metadata.get('document_title', filename)
+            
+            if chunk_text:
+                context_parts.append(f"Document: {document_title}\n{chunk_text}")
+        
+        return "\n\n".join(context_parts)
+    
+    def generate_response(self, query: str, context: str) -> str:
+        """Generate response using retrieved context and deployed Kamiwaza model."""
+        if not self.openai_client:
+            return f"[Error: Chat model not available. Please deploy {self.chat_model_repo} first]"
+        
         prompt = f"""Based on the following context, answer the user's question. If the context doesn't contain enough information to answer the question, say so.
 
-Context:
-{context}
+        Context:
+        {context}
 
-Question: {query}
+        Question: {query}
 
-Answer:"""
+        Answer:"""
         
-        # Generate response
-        response = requests.post(
-            f'{self.base_url}/api/models/{self.chat_model}/chat',
-            json={
-                'messages': [
-                    {'role': 'user', 'content': prompt}
+        try:
+            # Use the deployed Kamiwaza model via OpenAI-compatible interface
+            response = self.openai_client.chat.completions.create(
+                messages=[
+                    {"role": "user", "content": prompt}
                 ],
-                'max_tokens': 500,
-                'temperature': 0.7
-            }
-        )
+                model="model",  # Use "model" as the model name for Kamiwaza OpenAI interface
+                max_tokens=500,
+                temperature=0.7,
+                stream=False
+            )
+            
+            return response.choices[0].message.content
         
-        if response.status_code == 200:
-            return response.json()['choices'][0]['message']['content']
-        else:
-            raise Exception(f"Response generation failed: {response.text}")
+        except Exception as e:
+            return f"[Error generating response: {str(e)}]"
     
-    def query(self, user_question: str) -> Dict:
+    def query(self, user_question: str, limit: int = 5) -> Dict:
         """Complete RAG query pipeline."""
-        print(f"Processing query: {user_question}")
+        print(f"🤖 Processing RAG query: {user_question}")
         
-        # Generate query embedding
-        query_embedding = self.embed_query(user_question)
+        # Search for relevant documents
+        search_results = self.semantic_search(user_question, limit=limit)
         
-        # Retrieve relevant context
-        context_chunks = self.retrieve_context(query_embedding)
+        # Format context for LLM
+        context = self.format_context(search_results)
         
-        # Generate response
-        response = self.generate_response(user_question, context_chunks)
+        # Generate response (you'll need to implement LLM integration)
+        response = self.generate_response(user_question, context)
+        
+        # Prepare sources information
+        sources = []
+        for result in search_results:
+            metadata = result.metadata if hasattr(result, 'metadata') else result.get('metadata', {})
+            score = result.score if hasattr(result, 'score') else result.get('score', 0.0)
+            
+            sources.append({
+                'filename': metadata.get('filename', 'Unknown'),
+                'document_title': metadata.get('document_title', ''),
+                'chunk_index': metadata.get('chunk_index', 0),
+                'score': score
+            })
         
         return {
             'question': user_question,
             'answer': response,
-            'sources': [
-                {
-                    'title': chunk['metadata']['title'],
-                    'page': chunk['metadata']['page'],
-                    'score': chunk['score']
-                }
-                for chunk in context_chunks
-            ]
+            'context': context,
+            'sources': sources,
+            'num_results': len(search_results)
         }
-
-# Usage
-rag = RAGQuery()
-
-# Query your documents
-result = rag.query("What are the main benefits of artificial intelligence?")
-print(f"Answer: {result['answer']}")
-print(f"Sources: {result['sources']}")
 ```
 
-## Step 5: Create a Simple Web Interface
+## Step 4: Example Queries
 
-Let's create a basic web interface using Streamlit to interact with your RAG system.
+Let's test the RAG system with an example query to demonstrate its capabilities:
 
 ```python
-import streamlit as st
-import requests
-from rag_pipeline import RAGQuery  # Your RAG implementation
+# Example query to test your RAG system
+rag = RAGQuery()
 
-# Initialize RAG system
-@st.cache_resource
-def init_rag():
-    return RAGQuery()
+query_response = rag.query("What is one cool thing about Kamiwaza?")
 
-st.title("📚 Document Q&A with RAG")
-st.write("Ask questions about your uploaded documents!")
-
-# Initialize RAG
-rag = init_rag()
-
-# Query interface
-user_question = st.text_input("Ask a question about your documents:")
-
-if user_question:
-    with st.spinner("Searching documents and generating answer..."):
-        try:
-            result = rag.query(user_question)
-            
-            # Display answer
-            st.success("Answer:")
-            st.write(result['answer'])
-            
-            # Display sources
-            st.subheader("📖 Sources:")
-            for source in result['sources']:
-                st.write(f"- **{source['title']}** (Page {source['page']}) - Relevance: {source['score']:.3f}")
-                
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-# Sidebar for system status
-st.sidebar.header("System Status")
-try:
-    # Check if models are deployed
-    models_response = requests.get('http://localhost:7777/api/models')
-    if models_response.status_code == 200:
-        st.sidebar.success("✅ Models service online")
-    else:
-        st.sidebar.error("❌ Models service offline")
-        
-    # Check vector database
-    vectordb_response = requests.get('http://localhost:7777/api/vectordb/status')
-    if vectordb_response.status_code == 200:
-        st.sidebar.success("✅ Vector database online")
-    else:
-        st.sidebar.error("❌ Vector database offline")
-        
-except Exception as e:
-    st.sidebar.error(f"❌ System check failed: {e}")
+print(query_response['answer'])
 ```
 
-Run the interface with:
-```bash
-streamlit run rag_interface.py
+## Step 5: Production Considerations
+
+When moving your RAG system to production, consider these key aspects:
+
+### Resource Management
+```python
+# Monitor system resources and manage deployments
+def monitor_system_health():
+    """Monitor system health and resource usage."""
+    client = KamiwazaClient(base_url="http://localhost:7777/api/")
+    
+    # Check active deployments
+    deployments = client.serving.list_active_deployments()
+    print(f"📊 Active Deployments: {len(deployments)}")
+    
+    for deployment in deployments:
+        print(f"   - {deployment.m_name}: {deployment.status}")
+        print(f"     Endpoint: {deployment.endpoint}")
+    
+    # Check vector collections
+    collections = client.vectordb.list_collections()
+    print(f"📚 Vector Collections: {collections}")
+
+# Run health check
+monitor_system_health()
 ```
 
-## Step 6: Deploy as an App Garden Application
+## Clean up
+When done, stop the model deployment to free resources
 
-For production use, you can package your RAG system as an App Garden application.
+```python
+def cleanup_rag_system(chat_model_repo="Qwen/Qwen3-0.6B-GGUF"):
+    """Stop model deployments to free up resources."""
+    client = KamiwazaClient(base_url="http://localhost:7777/api/")
+    
+    try:
+        success = client.serving.stop_deployment(repo_id=chat_model_repo)
+        if success:
+            print(f"✅ Stopped deployment for {chat_model_repo}")
+        else:
+            print(f"❌ Failed to stop deployment for {chat_model_repo}")
+    except Exception as e:
+        print(f"❌ Error stopping deployment: {e}")
 
-### Create docker-compose.yml
-
-```yaml
-version: '3.8'
-
-services:
-  rag-app:
-    build: .
-    ports:
-      - "8501:8501"
-    environment:
-      - KAMIWAZA_BASE_URL=http://host.docker.internal:7777
-    volumes:
-      - ./documents:/app/documents
-    depends_on:
-      - kamiwaza
-
-  kamiwaza:
-    external: true
-```
-
-### Create Dockerfile
-
-```dockerfile
-FROM python:3.10-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-
-EXPOSE 8501
-
-CMD ["streamlit", "run", "rag_interface.py", "--server.address", "0.0.0.0"]
+cleanup_rag_system()
 ```
 
 ## Best Practices
@@ -475,35 +464,6 @@ CMD ["streamlit", "run", "rag_interface.py", "--server.address", "0.0.0.0"]
 - **Prompt Engineering**: Design clear, specific system prompts
 - **Temperature**: Use lower values (0.1-0.3) for factual responses
 - **Citations**: Always include source attribution in responses
-
-## Monitoring and Maintenance
-
-### Performance Monitoring
-```python
-# Add timing and logging to your pipeline
-import time
-import logging
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-def query_with_monitoring(self, query: str):
-    start_time = time.time()
-    
-    # Your query logic here
-    result = self.query(query)
-    
-    elapsed_time = time.time() - start_time
-    logger.info(f"Query processed in {elapsed_time:.2f}s")
-    
-    return result
-```
-
-### Regular Updates
-- **Refresh Embeddings**: Reprocess documents when updating embedding models
-- **Index Optimization**: Rebuild vector indices periodically
-- **Model Updates**: Test and deploy newer, better models
-- **Content Updates**: Set up automated document ingestion for new content
 
 ## Troubleshooting
 
@@ -529,11 +489,21 @@ def query_with_monitoring(self, query: str):
 
 ## Next Steps
 
-Now that you have a working RAG pipeline:
+Now that you have a working RAG pipeline with Kamiwaza-deployed models:
 
-- Learn about advanced search techniques in the [Distributed Data Engine](../data-engine)
-- Explore prompt optimization patterns for better responses
-- Set up monitoring and analytics for your system performance
-- Scale your system using Kamiwaza's [distributed architecture](../architecture/overview)
+- **Try Different Models**: Experiment with larger models like `Qwen/Qwen3-32B-GGUF` for better response quality
+- **Optimize Retrieval**: Experiment with different embedding models, chunk sizes, and similarity thresholds  
+- **Add Streaming**: Use `stream=True` in the chat completions for real-time response streaming
+- **Implement Reranking**: Add semantic reranking for better result quality
+- **Scale Your System**: Deploy multiple model instances using Kamiwaza's [distributed architecture](../architecture/overview)
+- **Monitor Performance**: Add logging and metrics to track query performance and model usage
 
-Your RAG pipeline is now ready to answer questions using your own documents! Experiment with different models, chunk sizes, and retrieval strategies to optimize for your specific use case. 
+## Key Benefits of This SDK-Based Approach
+
+- **Simplified Integration**: No need for manual HTTP requests - the SDK handles all API communication
+- **Automatic Schema Management**: Collections and schemas are created automatically based on your data
+- **Built-in Best Practices**: The SDK incorporates proven patterns for chunking, embedding, and vector storage
+- **Catalog Integration**: Documents are managed through Kamiwaza's catalog system for better organization
+- **Production Ready**: SDK handles error cases, retries, and connection management
+
+Your RAG pipeline is now ready to answer questions using your own documents! The combination of Kamiwaza's SDK with proper document processing creates a robust foundation for production RAG applications. 

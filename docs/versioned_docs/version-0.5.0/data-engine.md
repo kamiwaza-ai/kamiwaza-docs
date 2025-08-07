@@ -1,3 +1,3 @@
 # Distributed Data Engine
 
-Content to be added. 
+*Sharpening our katana... stay tuned!* ⚔️
