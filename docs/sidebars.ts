@@ -21,9 +21,16 @@ const sidebars: SidebarsConfig = {
       label: 'Quickstart',
     },
     {
-      type: 'doc',
-      id: 'models',
+      type: 'category',
       label: 'Models',
+      items: [
+        'models/overview',
+        'models/novice-mode',
+        'models/gui-walkthrough',
+        'models/downloading-models',
+        'models/deployment',
+        'models/troubleshooting'
+      ],
     },
     {
       type: 'doc',
