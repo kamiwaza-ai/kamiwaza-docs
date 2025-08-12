@@ -31,8 +31,7 @@ Instance-level statuses (for replicas):
 
 - REQUESTED: An instance record was created and is queued to start.
 - COPYING_FILES: Required files are being synced to the node.
-- STARTING: The container/process is launching and has not passed health checks yet.
-- DEPLOYED (instance): The process is up and responding.
+- DEPLOYED (instance): The process is launching or up and responding.
 
 ## Error codes and what to do
 
