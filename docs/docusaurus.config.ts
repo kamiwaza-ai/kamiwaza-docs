@@ -74,7 +74,7 @@ const config: Config = {
         lastVersion: 'current',
         versions: {
           current: {
-            label: '0.3.2',
+            label: '0.5.0 (Latest)',
           },
         },
         sidebarCollapsible: true,
@@ -91,9 +91,33 @@ const config: Config = {
         sidebarPath: require.resolve('./sidebars-sdk.ts'),
         versions: {
           current: {
-            label: '0.3.2',
+            label: '0.5.0 (Latest)',
           },
         },
+      },
+    ],
+    // Local search plugin
+    [
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        hashed: true,
+        language: ['en'],
+        highlightSearchTermsOnTargetPage: true,
+        explicitSearchResultPath: true,
+        searchBarPosition: 'auto',
+        docsRouteBasePath: '/',
+        blogRouteBasePath: 'blog',
+        docsPluginIdForPreferredVersion: 'default',
+        indexBlog: true,
+        indexDocs: true,
+        indexPages: false,
+        searchContextByPaths: ['docs', 'sdk'],
+        searchBarShortcut: true,
+        searchBarShortcutHint: false,
+        ignoreFiles: /(?:^|\/)_/,
+        removeDefaultStopWordFilter: false,
+        searchResultLimits: 8,
+        searchResultContextMaxLength: 50,
       },
     ],
   ],
@@ -103,20 +127,20 @@ const config: Config = {
       title: 'Kamiwaza Docs',
       logo: {
         alt: 'Kamiwaza Logo',
-        src: 'img/logo.svg',
+        src: 'img/KW_logo.png',
       },
       items: [
         {
-          to: '/',
+          type: 'doc',
+          docId: 'intro',
           position: 'left',
           label: 'Docs',
-          activeBaseRegex: '^/$|^/(?!sdk|blog)',
         },
         {
           to: '/sdk/intro',
           position: 'left',
           label: 'SDK',
-          activeBaseRegex: '^/sdk',
+          activeBasePath: '/sdk',
         },
         {
           to: '/blog',
@@ -124,14 +148,11 @@ const config: Config = {
           position: 'left',
         },
         {
-          type: 'html',
+          type: 'search',
           position: 'right',
-          className: 'navbar__version',
-          value: 'Version: 0.3.2',
         },
         {
-          href: 'https://github.com/kamiwaza-ai/kamiwaza-docs',
-          label: 'GitHub',
+          type: 'docsVersionDropdown',
           position: 'right',
         },
       ],
@@ -146,19 +167,6 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
-          items: [
-            {
-              label: 'Platform',
-              to: '/',
-            },
-            {
-              label: 'SDK',
-              to: '/sdk/intro',
-            },
-          ],
-        },
-        {
           title: 'Community',
           items: [
             {
@@ -171,8 +179,17 @@ const config: Config = {
             },
           ],
         },
+        {
+          title: 'Company',
+          items: [
+            {
+              label: 'Kamiwaza.ai',
+              href: 'https://kamiwaza.ai',
+            },
+          ],
+        },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Kamiwaza AI.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Kamiwaza AI. Built with ❤️ for the AI community.`,
     },
     prism: {
       theme: prismThemes.github,
