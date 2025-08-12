@@ -36,8 +36,8 @@ bash startup/kamiwazad.sh start
 ### Verify Kamiwaza is Running
 
 Open your web browser and navigate to:
-- **Frontend**: [http://localhost:3000](http://localhost:3000)
-- **API Documentation**: [http://localhost:7777/docs](http://localhost:7777/docs)
+- **Frontend**: [https://localhost](https://localhost)
+- **API Documentation**: [http://localhost/api/docs](http://localhost/api/docs)
 
 You should see the Kamiwaza interface load successfully. Use the following credentials in the Sign In screen:
 * **Username:** `admin`

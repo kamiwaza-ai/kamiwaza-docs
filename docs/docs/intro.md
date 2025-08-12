@@ -131,7 +131,8 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
 If you have questions or run into issues, we're here to help:
 
 - Join our [Discord community](https://discord.gg/cVGBS5rD2U)
-- Visit our [website](https://www.kamiwaza.ai/community)
+- Visit our [website](https://www.kamiwaza.ai/)
+- Visit our [repo](https://github.com/kamiwaza-ai)
 - Try our [client SDK](https://github.com/kamiwaza-ai/kamiwaza-sdk)
 - Contact our [support team](https://portal.kamiwaza.ai/_hcms/mem/login?redirect_url=https%3A%2F%2Fportal.kamiwaza.ai%2Ftickets-view)
 
