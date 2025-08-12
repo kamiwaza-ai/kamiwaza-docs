@@ -10,7 +10,8 @@
       "label": "Installation",
       "items": [
         "installation/installation_process",
-        "installation/system_requirements"
+        "installation/system_requirements",
+        "installation/windows_installation"
       ]
     },
     {
