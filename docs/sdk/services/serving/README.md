@@ -12,7 +12,6 @@ The Serving Service (`ServingService`) provides comprehensive model deployment a
 - Model Deployment
 - Model Instance Management
 - Model Loading/Unloading
-- Text Generation
 - Health Monitoring
 - VRAM Estimation
 
@@ -36,6 +35,7 @@ ray_status = client.serving.get_status()
 - `estimate_model_vram(model_id: UUID) -> int`: Estimate model VRAM requirements
 - `deploy_model(deployment: CreateModelDeployment) -> ModelDeployment`: Deploy a model
 - `list_deployments() -> List[ModelDeployment]`: List all deployments
+- `list_active_deployments() -> List[UIModelDeployment]`: List only active deployments with running instances
 - `get_deployment(deployment_id: UUID) -> ModelDeployment`: Get deployment details
 - `stop_deployment(deployment_id: UUID)`: Stop a deployment
 - `get_deployment_status(deployment_id: UUID) -> DeploymentStatus`: Get deployment status
@@ -52,8 +52,19 @@ deployment = client.serving.deploy_model(CreateModelDeployment(
     max_concurrent_requests=4
 ))
 
-# List deployments
+# List all deployments
 deployments = client.serving.list_deployments()
+
+# List only active deployments (deployed status with running instances)
+active_deployments = client.serving.list_active_deployments()
+# Each active deployment will have:
+# - id: The deployment ID
+# - m_id: The model ID
+# - m_name: The model name
+# - status: The deployment status
+# - instances: List of running instances
+# - lb_port: The load balancer port
+# - endpoint: The HTTP endpoint for the deployment (e.g. http://hostname:port/v1)
 
 # Get deployment status
 status = client.serving.get_deployment_status(deployment_id)
@@ -84,31 +95,6 @@ health = client.serving.get_health(deployment_id)
 # Load/Unload model
 client.serving.unload_model(deployment_id)
 client.serving.load_model(deployment_id)
-```
-
-## Text Generation
-
-### Available Methods
-- `simple_generate(deployment_id: UUID, prompt: str) -> str`: Simple text generation
-- `generate(deployment_id: UUID, request: GenerationRequest) -> GenerationResponse`: Advanced text generation
-
-```python
-# Simple text generation
-response = client.serving.simple_generate(
-    deployment_id=deployment_id,
-    prompt="Once upon a time"
-)
-
-# Advanced text generation
-response = client.serving.generate(
-    deployment_id=deployment_id,
-    request=GenerationRequest(
-        prompt="Once upon a time",
-        max_tokens=100,
-        temperature=0.7,
-        top_p=0.9
-    )
-)
 ```
 
 ## Error Handling
