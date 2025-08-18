@@ -43,7 +43,7 @@ Kamiwaza can be installed in several configurations:
 - Automatic port reservation (61100-61299)
 - Configurable WSL memory allocation
 
-For detailed steps and troubleshooting, see the [Windows Installation Guide](windows_installation.md) and [Windows Implementation Guide](windows_implementation_guide.md).
+For detailed steps and troubleshooting, see the [Windows Installation Guide](windows_installation_guide.md).
 
 ## Installation Workflows
 
@@ -96,7 +96,7 @@ flowchart LR
 3. Configure email, license, and memory allocation
 4. Access via browser at `https://localhost` or Start Menu shortcuts
 
-📋 **For detailed step-by-step instructions, troubleshooting, and advanced configuration, see the [Windows Installation Guide](windows_installation.md).**
+📋 **For detailed step-by-step instructions, troubleshooting, and advanced configuration, see the [Windows Installation Guide](windows_installation_guide.md).**
 
 ### 3. Community Edition on Mac OSX
 
@@ -185,7 +185,7 @@ Key Points:
    - Supports GPU acceleration with NVIDIA RTX and Intel Arc
    - Integrated with Windows Start Menu and accessible via browser
    - Memory allocation configurable during installation (recommended 50-75% of system RAM)
-   - See [Windows Installation Guide](windows_installation.md) for comprehensive instructions
+   - See [Windows Installation Guide](windows_installation_guide.md) for comprehensive instructions
 
 4. Enterprise Edition:
    - Terraform method provides fully automated deployment
@@ -204,8 +204,7 @@ Key Points:
 
 ## Related Documentation
 - [System Requirements](system_requirements.md)
-- [Windows Installation Guide](windows_installation.md)
-- [Windows Implementation Guide](windows_implementation_guide.md)
+- [Windows Installation Guide](windows_installation_guide.md)
 - [GPU Setup Guide](gpu_setup_guide.md)
 
 ## Updating Kamiwaza

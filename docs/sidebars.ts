@@ -13,9 +13,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'installation/installation_process',
         'installation/system_requirements',
-        'installation/windows_installation',
         'installation/windows_installation_guide',
-        'installation/windows_implementation_guide',
         'installation/gpu_setup_guide',
       ],
     },

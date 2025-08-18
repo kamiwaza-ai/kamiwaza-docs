@@ -108,16 +108,44 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64
 3. Restart your computer
 4. Verify installation in Device Manager
 
-#### 2. Install Intel OpenCL Runtime
+#### 2. Install Intel OpenCL Runtime and oneAPI (Recommended)
+For optimal Intel GPU performance, install Intel's oneAPI toolkit:
+
 ```bash
 # In WSL (Ubuntu 24.04)
-wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.13090/intel-opencl-icd_23.17.26241.33_amd64.deb
-sudo dpkg -i intel-opencl-icd_23.17.26241.33_amd64.deb
-sudo apt-get update
-sudo apt-get install -y intel-opencl-icd
+# Add Intel's GPG key
+wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | \
+  gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-keyring.gpg > /dev/null
+
+# Add the oneAPI repository
+echo "deb [signed-by=/usr/share/keyrings/oneapi-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | \
+  sudo tee /etc/apt/sources.list.d/oneAPI.list
+
+# Update and install Intel OpenCL runtime and oneAPI
+sudo apt update
+sudo apt install -y intel-opencl-icd intel-basekit
+
+# Configure permissions
+sudo usermod -a -G render $USER
+newgrp render
 ```
 
-#### 3. Verify GPU Access in WSL
+#### 3. Alternative: Install OpenCL Runtime Only
+If you prefer not to install the full oneAPI toolkit:
+
+```bash
+# Install OpenCL loader and tools
+sudo apt-get update
+sudo apt-get install -y ocl-icd-libopencl1 ocl-icd-opencl-dev opencl-headers clinfo
+
+# Add Intel Graphics PPA for latest drivers
+sudo apt-get install -y software-properties-common
+sudo add-apt-repository -y ppa:kobuk-team/intel-graphics
+sudo apt-get update
+sudo apt-get install -y libze-intel-gpu1 libze1 intel-opencl-icd
+```
+
+#### 4. Verify GPU Access in WSL
 ```bash
 # Check OpenCL availability
 clinfo | grep "Platform Name"
@@ -144,6 +172,9 @@ processors=8
 ```bash
 # Add to ~/.bashrc
 export INTEL_OPENCL_CONFIG=/etc/OpenCL/vendors/intel.icd
+
+# For oneAPI users, source the environment
+echo 'source /opt/intel/oneapi/setvars.sh' >> ~/.bashrc
 ```
 
 ## Intel Integrated GPU Setup
@@ -241,11 +272,22 @@ echo "NVIDIA GPU setup complete!"
 
 echo "Setting up Intel Arc GPU acceleration..."
 
-# Install OpenCL runtime
-sudo apt-get update
-sudo apt-get install -y intel-opencl-icd
+# Install oneAPI for optimal performance
+wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | \
+  gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-keyring.gpg > /dev/null
+
+echo "deb [signed-by=/usr/share/keyrings/oneapi-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | \
+  sudo tee /etc/apt/sources.list.d/oneAPI.list
+
+sudo apt update
+sudo apt install -y intel-opencl-icd intel-basekit
+
+# Configure permissions
+sudo usermod -a -G render $USER
+newgrp render
 
 # Configure environment
+echo 'source /opt/intel/oneapi/setvars.sh' >> ~/.bashrc
 echo 'export INTEL_OPENCL_CONFIG=/etc/OpenCL/vendors/intel.icd' >> ~/.bashrc
 
 # Test GPU access
@@ -274,6 +316,48 @@ clinfo | grep "Device Name"
 echo "Intel Integrated GPU setup complete!"
 ```
 
+## Advanced Intel GPU Setup for AI Workloads
+
+### Building llama.cpp with Intel GPU Support
+
+For optimal Intel GPU performance with AI models, build llama.cpp with SYCL support:
+
+```bash
+# Install build dependencies
+sudo apt-get install -y build-essential cmake libcurl4-openssl-dev
+
+# Clone llama.cpp
+git clone https://github.com/ggerganov/llama.cpp.git
+cd llama.cpp
+
+# Source oneAPI environment (required for SYCL build)
+source /opt/intel/oneapi/setvars.sh
+
+# Build with SYCL support
+rm -rf build
+mkdir -p build && cd build
+cmake .. -DGGML_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx
+make -j$(nproc)
+```
+
+### Testing Intel GPU Acceleration
+
+```bash
+# Download a sample model
+mkdir -p ../models
+cd ../models
+wget https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q8_0.gguf
+
+# Test inference with GPU offloading
+cd ../build
+source /opt/intel/oneapi/setvars.sh
+./bin/llama-cli \
+    -m ../models/qwen2.5-0.5b-instruct-q8_0.gguf \
+    -p "Hello, how are you?" \
+    -n 128 \
+    -ngl 999  # Offload all layers to GPU
+```
+
 ## Troubleshooting
 
 ### Common GPU Issues
@@ -295,6 +379,20 @@ wsl --status
 2. **Update WSL**: `wsl --update`
 3. **Reinstall drivers**: Remove and reinstall GPU drivers
 4. **Check compatibility**: Verify GPU supports WSL2 virtualization
+
+#### Intel GPU Specific Issues
+```bash
+# Check OpenCL installation
+clinfo
+
+# Verify oneAPI environment (if installed)
+source /opt/intel/oneapi/setvars.sh
+sycl-ls
+
+# Check permissions
+groups $USER
+# Should show 'render' in the list
+```
 
 #### Performance Issues
 1. **Memory allocation**: Increase WSL memory in .wslconfig
@@ -349,6 +447,9 @@ localhostForwarding=true
 export CUDA_CACHE_DISABLE=0
 export CUDA_CACHE_MAXSIZE=1073741824
 export INTEL_OPENCL_CONFIG=/etc/OpenCL/vendors/intel.icd
+
+# For oneAPI users
+echo 'source /opt/intel/oneapi/setvars.sh' >> ~/.bashrc
 ```
 
 ### GPU Memory Management
@@ -361,6 +462,7 @@ export INTEL_OPENCL_CONFIG=/etc/OpenCL/vendors/intel.icd
 ### Official Documentation
 - [NVIDIA CUDA Documentation](https://docs.nvidia.com/cuda/)
 - [Intel OpenCL Documentation](https://www.intel.com/content/www/us/en/developer/tools/opencl/overview.html)
+- [Intel oneAPI Documentation](https://www.intel.com/content/www/us/en/developer/tools/oneapi/overview.html)
 - [Microsoft WSL GPU Support](https://docs.microsoft.com/en-us/windows/wsl/tutorials/gpu-compute)
 
 ### Community Resources

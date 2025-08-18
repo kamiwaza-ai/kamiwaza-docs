@@ -38,7 +38,7 @@
 - Recommended: 50GB+ free space on SSD for optimal performance
 - WSL will automatically manage Ubuntu 24.04 installation space
 
-📋 **For detailed Windows storage and configuration requirements, see the [Windows Installation Guide](windows_installation.md).**
+📋 **For detailed Windows storage and configuration requirements, see the [Windows Installation Guide](windows_installation_guide.md).**
 
 ### Windows-Specific Prerequisites
 - Windows Subsystem for Linux (WSL) installed and enabled
