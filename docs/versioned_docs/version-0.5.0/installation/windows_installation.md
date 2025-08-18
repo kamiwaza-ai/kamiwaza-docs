@@ -181,9 +181,9 @@ wsl -d kamiwaza -- kamiwaza restart
 
 ### Support Contact
 
-- **Technical Support**: [Contact your Kamiwaza representative]
-- **Documentation**: [Kamiwaza Documentation Portal]
-- **License Issues**: [License Support Contact]
+- **Technical Support**: [Contact our support team](https://portal.kamiwaza.ai/_hcms/mem/login?redirect_url=https%3A%2F%2Fportal.kamiwaza.ai%2Ftickets-view)
+- **Documentation**: [Kamiwaza Documentation](intro.md#need-help)
+- **License Issues**: [Contact our support team](https://portal.kamiwaza.ai/_hcms/mem/login?redirect_url=https%3A%2F%2Fportal.kamiwaza.ai%2Ftickets-view)
 
 ## Uninstallation
 
@@ -245,4 +245,4 @@ If you encounter network issues, verify these configurations are intact.
 
 **Compatible with**: Windows 11 (x64)  
 **WSL Version**: WSL 2 with Ubuntu 24.04 LTS  
-**Support**: Contact your Kamiwaza representative for technical assistance
+**Support**: [Contact our support team](intro.md#need-help) for technical assistance

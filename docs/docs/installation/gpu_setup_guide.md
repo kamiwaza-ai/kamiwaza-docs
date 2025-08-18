@@ -1,4 +1,4 @@
-# GPU Setup Guide for Kamiwaza on Windows
+# Windows GPU Setup Guide
 
 ## Overview
 
@@ -480,4 +480,4 @@ echo 'source /opt/intel/oneapi/setvars.sh' >> ~/.bashrc
 
 **Last Updated**: August 7th, 2025  
 **Version**: Compatible with Kamiwaza v0.5.0  
-**Support**: [INSERT_SUPPORT_CONTACT] 
+**Support**: [Contact our support team](intro.md#need-help) 

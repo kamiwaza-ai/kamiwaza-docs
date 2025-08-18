@@ -1,4 +1,4 @@
-# Kamiwaza Windows Installation Guide
+# Windows Installation Guide
 
 ## System Requirements
 
@@ -214,9 +214,9 @@ wsl -d kamiwaza -- /usr/local/bin/kamiwaza_gpu_status.sh
 ```
 
 ### Support Contact
-- **Technical Support**: [Insert support email/portal]
-- **Documentation**: [Insert documentation link]
-- **License Issues**: [Insert license support contact]
+- **Technical Support**: [Contact our support team](intro.md#need-help)
+- **Documentation**: [Kamiwaza Documentation](intro.md#need-help)
+- **License Issues**: [Contact our support team](intro.md#need-help)
 
 ## Uninstallation
 
@@ -237,4 +237,4 @@ wsl --unregister kamiwaza
 
 **Version**: Compatible with Kamiwaza Installer v0.5.0  
 **Last Updated**: August 7th, 2025  
-**Support**: [INSERT_SUPPORT_CONTACT] 
+**Support**: [Contact our support team](intro.md#need-help) 

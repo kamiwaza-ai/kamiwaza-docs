@@ -101,7 +101,7 @@ Key Points:
    - System service integration
 
 2. Community Edition:
-   - **Windows**: Use the MSI installer (see Windows Installation Guide)
+   - **Windows**: Use the MSI installer (see [Windows Installation Guide](windows_installation_guide.md))
    - **macOS**: Run `install.sh --community`
    - **Linux**: Use the `.deb` on Ubuntu or `install.sh --community` on other distros
 
@@ -114,18 +114,18 @@ Key Points:
    - Both methods result in automatically running services
 
 5. Service Management:
-   - **Windows**: Managed via Start Menu shortcuts and WSL commands (see Windows Installation Guide)
+   - **Windows**: Managed via Start Menu shortcuts and WSL commands (see [Windows Installation Guide](windows_installation_guide.md))
    - **Linux/macOS**: `first-boot.sh` configures and starts the service via systemd
    - No need to manually run startup scripts
 
 6. GPU Acceleration:
    - Availability and setup vary by platform and hardware
-   - See the [GPU Setup Guide](gpu_setup_guide.md) for supported GPUs and configuration
+   - See the [Windows GPU Setup Guide](gpu_setup_guide.md) for supported GPUs and configuration
 
 ## Related Documentation
 - [System Requirements](system_requirements.md)
 - [Windows Installation Guide](windows_installation_guide.md)
-- [GPU Setup Guide](gpu_setup_guide.md)
+- [Windows GPU Setup Guide](gpu_setup_guide.md)
 
 ## Updating Kamiwaza
 
