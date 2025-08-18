@@ -11,9 +11,8 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Installation',
       items: [
-        'installation/README',
-        'installation/system_requirements',
         'installation/installation_process',
+        'installation/system_requirements',
         'installation/windows_installation',
         'installation/windows_installation_guide',
         'installation/windows_implementation_guide',

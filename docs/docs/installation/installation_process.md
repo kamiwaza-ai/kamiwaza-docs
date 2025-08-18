@@ -18,11 +18,36 @@ Kamiwaza can be installed in several configurations:
 - Network and storage configuration
 - GPU support requirements
 
+## Quick Start
+
+### Windows
+1. Read: [Windows Installation Guide](windows_installation_guide.md)
+2. Download: `KamiwazaInstaller-[version]-[arch].msi`
+3. Install: Run the MSI (as Administrator)
+4. Setup: Use "Install Kamiwaza" Start Menu shortcut
+5. Launch: Use "Start Platform" shortcut → `https://localhost`
+
+### Linux
+1. Decide method: .deb package (Ubuntu) or automated setup scripts
+2. Run: `install.sh --community` (for Community Edition)
+3. Verify: Service should start automatically
+
+### macOS
+1. Run: `install.sh --community`
+2. Verify: Service should start automatically
+
+## Windows Highlights
+- WSL2 Ubuntu 24.04 dedicated instance
+- GPU detection and acceleration (NVIDIA RTX, Intel Arc, Intel Integrated)
+- Start Menu integration for install/start/cleanup
+- Automatic port reservation (61100-61299)
+- Configurable WSL memory allocation
+
+For detailed steps and troubleshooting, see the [Windows Installation Guide](windows_installation.md) and [Windows Implementation Guide](windows_implementation_guide.md).
+
 ## Installation Workflows
 
 ### 1. Ubuntu .deb Package Installation (Recommended)
-
-For Ubuntu 22.04 or 24.04 users, the simplest installation method is using the official .deb package:
 
 ```mermaid
 flowchart LR
@@ -177,3 +202,29 @@ Key Points:
    - **Windows**: Automatic detection and configuration for NVIDIA RTX, Intel Arc, and Intel Integrated GPUs
    - **Linux**: NVIDIA container runtime support
    - **OSX**: Metal framework support (if applicable)
+
+## Related Documentation
+- [System Requirements](system_requirements.md)
+- [Windows Installation Guide](windows_installation.md)
+- [Windows Implementation Guide](windows_implementation_guide.md)
+- [GPU Setup Guide](gpu_setup_guide.md)
+
+## Updating Kamiwaza
+
+### Windows
+- Download new MSI installer and run to update existing installation
+- Restart if prompted for GPU changes
+
+### Linux/macOS
+- Download new package
+- Run installation script again
+- Service will restart automatically
+
+## Uninstallation
+
+### Windows
+- Use "Cleanup WSL" shortcut, or uninstall via Windows Settings → Apps
+
+### Linux/macOS
+- Remove package via package manager
+- Clean up any remaining configuration files
