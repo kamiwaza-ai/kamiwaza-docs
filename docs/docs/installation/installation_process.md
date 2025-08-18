@@ -29,7 +29,7 @@ Kamiwaza can be installed in several configurations:
 
 ### Linux
 1. Decide method: .deb package (Ubuntu) or automated setup scripts
-2. Run: `install.sh --community` (for Community Edition)
+2. Run: `install.sh --community` if not using a .deb installation (for Community Edition)
 3. Verify: Service should start automatically
 
 ### macOS
@@ -56,9 +56,8 @@ flowchart LR
 
 **Steps:**
 1. Download the Kamiwaza .deb package from the official repository
-2. Install using: `sudo dpkg -i kamiwaza-*.deb`
-3. Resolve any dependencies: `sudo apt-get install -f`
-4. The service will start automatically
+2. Install using: `sudo apt install -f -y kamiwaza-*.deb`
+3. The service will start automatically
 
 **Benefits:**
 - Automated dependency resolution
