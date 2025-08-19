@@ -7,8 +7,8 @@ const config: Config = {
   tagline: 'Kamiwaza AI Platform Documentation',
   favicon: 'img/favicon.ico',
 
-  url: 'https://kamiwaza-ai.github.io',
-  baseUrl: '/kamiwaza-docs/',
+  url: 'https://docs.kamiwaza.ai',
+  baseUrl: '/',
   trailingSlash: false,
 
   markdown: {
