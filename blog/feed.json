@@ -1,40 +1,40 @@
 {
     "version": "https://jsonfeed.org/version/1",
     "title": "Kamiwaza Docs Blog",
-    "home_page_url": "https://kamiwaza-ai.github.io/blog",
+    "home_page_url": "https://docs.kamiwaza.ai/blog",
     "description": "Kamiwaza Docs Blog",
     "items": [
         {
-            "id": "https://kamiwaza-ai.github.io/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed",
+            "id": "https://docs.kamiwaza.ai/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed",
             "content_html": null,
-            "url": "https://kamiwaza-ai.github.io/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed",
+            "url": "https://docs.kamiwaza.ai/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed",
             "title": "Agentic Computing is Here, Just Not Evenly Distributed",
             "summary": "The future of computing is more personal and much more powerful. We are at an interesting stage presently where the capabilities of LLMs and the end-user experience are dramatically disconnected; a huge amount of engineering is yet to be done.",
             "date_modified": "2025-01-13T00:00:00.000Z",
             "tags": []
         },
         {
-            "id": "https://kamiwaza-ai.github.io/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app",
+            "id": "https://docs.kamiwaza.ai/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app",
             "content_html": null,
-            "url": "https://kamiwaza-ai.github.io/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app",
+            "url": "https://docs.kamiwaza.ai/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app",
             "title": "Using Kamiwaza Authentication and Model Inferencing with Any AI Application",
             "summary": "How to integrate Kamiwaza's authentication and model inferencing into any AI application.",
             "date_modified": "2025-01-03T00:00:00.000Z",
             "tags": []
         },
         {
-            "id": "https://kamiwaza-ai.github.io/blog/2024/12/31/a-year-in-review",
+            "id": "https://docs.kamiwaza.ai/blog/2024/12/31/a-year-in-review",
             "content_html": null,
-            "url": "https://kamiwaza-ai.github.io/blog/2024/12/31/a-year-in-review",
+            "url": "https://docs.kamiwaza.ai/blog/2024/12/31/a-year-in-review",
             "title": "2024: A Year in Review for GenAI",
             "summary": "A look back at the year in GenAI",
             "date_modified": "2024-12-31T00:00:00.000Z",
             "tags": []
         },
         {
-            "id": "https://kamiwaza-ai.github.io/blog/2024/04/15/a-primer-on-GenAI-hardware",
+            "id": "https://docs.kamiwaza.ai/blog/2024/04/15/a-primer-on-GenAI-hardware",
             "content_html": null,
-            "url": "https://kamiwaza-ai.github.io/blog/2024/04/15/a-primer-on-GenAI-hardware",
+            "url": "https://docs.kamiwaza.ai/blog/2024/04/15/a-primer-on-GenAI-hardware",
             "title": "Harnessing the Power of Large Language Models",
             "summary": "A primer on the hardware requirements for deploying and leveraging Large Language Models (LLMs).",
             "date_modified": "2024-04-15T00:00:00.000Z",
