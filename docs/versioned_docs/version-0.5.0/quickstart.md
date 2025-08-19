@@ -118,7 +118,7 @@ Congratulations! You've successfully:
 
 Now that you have the basics down, here are some next steps to explore:
 
-- **[Try Different Models](models)**: Deploy larger, more capable models
+- **[Try Different Models](models/overview.md)**: Deploy larger, more capable models
 - **[Explore More Apps](app-garden)**: Check out other applications in the App Garden
 - **[Learn the Architecture](architecture/overview)**: Understand how Kamiwaza works under the hood
 - **[Use the SDK](/sdk/intro)**: Build custom applications using the Kamiwaza Python SDK
