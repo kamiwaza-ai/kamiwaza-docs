@@ -8,7 +8,7 @@ const config: Config = {
   favicon: 'img/favicon.ico',
 
   url: 'https://kamiwaza-ai.github.io',
-  baseUrl: '/kamiwaza-docs/',
+  baseUrl: '/',
   trailingSlash: false,
 
   markdown: {
@@ -132,7 +132,7 @@ const config: Config = {
       items: [
         {
           type: 'doc',
-          docId: 'intro',
+          docId: 'other-topics',
           position: 'left',
           label: 'Docs',
         },
