@@ -2,7 +2,7 @@
 <rss version="2.0">
     <channel>
         <title>Kamiwaza Docs Blog</title>
-        <link>https://kamiwaza-ai.github.io/kamiwaza-docs/blog</link>
+        <link>https://kamiwaza-ai.github.io/blog</link>
         <description>Kamiwaza Docs Blog</description>
         <lastBuildDate>Mon, 13 Jan 2025 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
@@ -11,29 +11,29 @@
         <copyright>Copyright © 2025 Kamiwaza AI.</copyright>
         <item>
             <title><![CDATA[Agentic Computing is Here, Just Not Evenly Distributed]]></title>
-            <link>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed</link>
-            <guid>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed</guid>
+            <link>https://kamiwaza-ai.github.io/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed</link>
+            <guid>https://kamiwaza-ai.github.io/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed</guid>
             <pubDate>Mon, 13 Jan 2025 00:00:00 GMT</pubDate>
             <description><![CDATA[The future of computing is more personal and much more powerful. We are at an interesting stage presently where the capabilities of LLMs and the end-user experience are dramatically disconnected; a huge amount of engineering is yet to be done.]]></description>
         </item>
         <item>
             <title><![CDATA[Using Kamiwaza Authentication and Model Inferencing with Any AI Application]]></title>
-            <link>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app</link>
-            <guid>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app</guid>
+            <link>https://kamiwaza-ai.github.io/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app</link>
+            <guid>https://kamiwaza-ai.github.io/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app</guid>
             <pubDate>Fri, 03 Jan 2025 00:00:00 GMT</pubDate>
             <description><![CDATA[How to integrate Kamiwaza's authentication and model inferencing into any AI application.]]></description>
         </item>
         <item>
             <title><![CDATA[2024: A Year in Review for GenAI]]></title>
-            <link>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/12/31/a-year-in-review</link>
-            <guid>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/12/31/a-year-in-review</guid>
+            <link>https://kamiwaza-ai.github.io/blog/2024/12/31/a-year-in-review</link>
+            <guid>https://kamiwaza-ai.github.io/blog/2024/12/31/a-year-in-review</guid>
             <pubDate>Tue, 31 Dec 2024 00:00:00 GMT</pubDate>
             <description><![CDATA[A look back at the year in GenAI]]></description>
         </item>
         <item>
             <title><![CDATA[Harnessing the Power of Large Language Models]]></title>
-            <link>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/04/15/a-primer-on-GenAI-hardware</link>
-            <guid>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/04/15/a-primer-on-GenAI-hardware</guid>
+            <link>https://kamiwaza-ai.github.io/blog/2024/04/15/a-primer-on-GenAI-hardware</link>
+            <guid>https://kamiwaza-ai.github.io/blog/2024/04/15/a-primer-on-GenAI-hardware</guid>
             <pubDate>Mon, 15 Apr 2024 00:00:00 GMT</pubDate>
             <description><![CDATA[A primer on the hardware requirements for deploying and leveraging Large Language Models (LLMs).]]></description>
         </item>

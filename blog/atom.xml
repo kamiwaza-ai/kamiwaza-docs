@@ -1,38 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-    <id>https://kamiwaza-ai.github.io/kamiwaza-docs/blog</id>
+    <id>https://kamiwaza-ai.github.io/blog</id>
     <title>Kamiwaza Docs Blog</title>
     <updated>2025-01-13T00:00:00.000Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
-    <link rel="alternate" href="https://kamiwaza-ai.github.io/kamiwaza-docs/blog"/>
+    <link rel="alternate" href="https://kamiwaza-ai.github.io/blog"/>
     <subtitle>Kamiwaza Docs Blog</subtitle>
-    <icon>https://kamiwaza-ai.github.io/kamiwaza-docs/img/favicon.ico</icon>
+    <icon>https://kamiwaza-ai.github.io/img/favicon.ico</icon>
     <rights>Copyright © 2025 Kamiwaza AI.</rights>
     <entry>
         <title type="html"><![CDATA[Agentic Computing is Here, Just Not Evenly Distributed]]></title>
-        <id>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed</id>
-        <link href="https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed"/>
+        <id>https://kamiwaza-ai.github.io/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed</id>
+        <link href="https://kamiwaza-ai.github.io/blog/2025/01/13/agentic-computing-is-here-just-not-evenly-distributed"/>
         <updated>2025-01-13T00:00:00.000Z</updated>
         <summary type="html"><![CDATA[The future of computing is more personal and much more powerful. We are at an interesting stage presently where the capabilities of LLMs and the end-user experience are dramatically disconnected; a huge amount of engineering is yet to be done.]]></summary>
     </entry>
     <entry>
         <title type="html"><![CDATA[Using Kamiwaza Authentication and Model Inferencing with Any AI Application]]></title>
-        <id>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app</id>
-        <link href="https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app"/>
+        <id>https://kamiwaza-ai.github.io/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app</id>
+        <link href="https://kamiwaza-ai.github.io/blog/2025/01/03/adding-kamiwaza-auth-and-models-to-your-app"/>
         <updated>2025-01-03T00:00:00.000Z</updated>
         <summary type="html"><![CDATA[How to integrate Kamiwaza's authentication and model inferencing into any AI application.]]></summary>
     </entry>
     <entry>
         <title type="html"><![CDATA[2024: A Year in Review for GenAI]]></title>
-        <id>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/12/31/a-year-in-review</id>
-        <link href="https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/12/31/a-year-in-review"/>
+        <id>https://kamiwaza-ai.github.io/blog/2024/12/31/a-year-in-review</id>
+        <link href="https://kamiwaza-ai.github.io/blog/2024/12/31/a-year-in-review"/>
         <updated>2024-12-31T00:00:00.000Z</updated>
         <summary type="html"><![CDATA[A look back at the year in GenAI]]></summary>
     </entry>
     <entry>
         <title type="html"><![CDATA[Harnessing the Power of Large Language Models]]></title>
-        <id>https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/04/15/a-primer-on-GenAI-hardware</id>
-        <link href="https://kamiwaza-ai.github.io/kamiwaza-docs/blog/2024/04/15/a-primer-on-GenAI-hardware"/>
+        <id>https://kamiwaza-ai.github.io/blog/2024/04/15/a-primer-on-GenAI-hardware</id>
+        <link href="https://kamiwaza-ai.github.io/blog/2024/04/15/a-primer-on-GenAI-hardware"/>
         <updated>2024-04-15T00:00:00.000Z</updated>
         <summary type="html"><![CDATA[A primer on the hardware requirements for deploying and leveraging Large Language Models (LLMs).]]></summary>
     </entry>
