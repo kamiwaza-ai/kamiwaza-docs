@@ -1,5 +1,3 @@
-Based on the provided scripts and installation requirements, I'll help create an updated and comprehensive system requirements guide that incorporates all the key points while organizing them more effectively. Here's my suggested version:
-
 # Kamiwaza System Requirements & Installation Guide
 
 ## Base System Requirements
