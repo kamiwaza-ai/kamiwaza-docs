@@ -13,6 +13,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'installation/installation_process',
         'installation/system_requirements',
+        'installation/linux_macos_tarball',
         'installation/windows_installation_guide',
         'installation/gpu_setup_guide',
       ],
