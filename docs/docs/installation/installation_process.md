@@ -43,9 +43,10 @@ flowchart LR
 ```
 
 
-1. Ensure Docker Engine (with Compose v2), Python 3.10, and Node.js 22 are available (installer may configure as needed)
-2. Run `install.sh --community`
-3. Access via browser at `https://localhost`
+1. Follow the consolidated guide: [Linux/macOS tarball installation](linux_macos_tarball.md)
+2. Ensure Docker Engine (with Compose v2), Python 3.10, and Node.js 22 are available (installer may configure as needed)
+3. Run `install.sh --community`
+4. Access via browser at `https://localhost`
 
 
 ### Community Edition on macOS
@@ -57,9 +58,7 @@ flowchart LR
     install[install.sh --community] --> running[Service Running]
 ```
 
-1. Download a macOS build from [here](https://github.com/kamiwaza-ai/kamiwaza-community-edition/tree/main)
-2. Run: `install.sh --community`
-3. Verify service starts (see [Quickstart](quickstart.md))
+Follow the consolidated guide: [Linux/macOS tarball installation](linux_macos_tarball.md)
 
 
 ### Enterprise Edition Deployment
