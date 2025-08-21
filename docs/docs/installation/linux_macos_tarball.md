@@ -91,7 +91,15 @@ sudo usermod -aG docker $USER
 # Log out and back in (or reboot) so the docker group membership takes effect
 ```
 
-### 4) (Optional) NVIDIA GPU support
+### 4) Install CockroachDB and additional dependencies
+
+```bash
+wget -qO- https://binaries.cockroachdb.com/cockroach-v23.2.12.linux-amd64.tgz | tar xvz
+sudo cp cockroach-v23.2.12.linux-amd64/cockroach /usr/local/bin
+sudo apt install -y libcairo2-dev libgirepository1.0-dev
+```
+
+### 5) (Optional) NVIDIA GPU support
 
 Use this section if all of the following are true:
 
@@ -147,7 +155,7 @@ Notes:
 - On some servers, you may prefer `nvidia-driver-550-server`. If you need a specific version: `sudo apt install -y nvidia-driver-550-server`.
 - The `nvidia-docker2` meta-package is no longer required; use `nvidia-container-toolkit` with `nvidia-ctk` instead.
 
-### 5) Download and install Kamiwaza (tarball)
+### 6) Download and install Kamiwaza (tarball)
 
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
