@@ -11,37 +11,26 @@
 
 ## Installation Workflows
 
-### Community Edition on Windows
-
-Use the MSI installer for a streamlined WSL2-based setup. See the [Windows Installation Guide](windows_installation_guide.md) for prerequisites, GPU support, and step-by-step instructions.
-
-Steps:
-1. Download: `KamiwazaInstaller-[version]-[arch].msi`
-2. Install: Run the MSI (as Administrator)
-3. Launch: Start Menu → "Start Platform" or open `https://localhost`
-
 ### Linux
 
-#### Ubuntu .deb Package Installation
+#### Ubuntu .deb Package Installation (for Ubuntu 24.04 Noble)
 
-```mermaid
-flowchart LR
-    download[Download .deb package] --> install[Install with dpkg/apt] --> running[Service Running]
-```
-
-1. Download the Kamiwaza .deb package from the official repository
-2. Install using: `sudo apt install -y ./kamiwaza-<version>.deb`
+1. Add Kamiwaza repository to APT sources
+   ```
+   echo "deb [signed-by=/usr/share/keyrings/kamiwaza-archive-keyring.gpg] https://packages.kamiwaza.ai/ noble main" | sudo tee /etc/apt/sources.list.d/kamiwaza.list
+   ```
+2. Import and install Kamiwaza GPG signing key
+   ```
+   curl -fsSL https://packages.kamiwaza.ai/gpg | sudo gpg --dearmor -o /usr/share/keyrings/kamiwaza-archive-keyring.gpg
+   ```
+2. Update package database and install Kamiwaza
+   ```
+   sudo apt update
+   sudo apt install kamiwaza
+   ```
 3. Verify service starts (see [Quickstart](quickstart.md))
 
-#### Other Distros: Pre-built bundles (Community Edition only)
-
-
-
-```mermaid
-flowchart LR
-    install[install.sh --community] --> running[Service Running]
-```
-
+#### Other Linux Distros via Tarball
 
 1. Follow the consolidated guide: [Linux/macOS tarball installation](linux_macos_tarball.md)
 2. Ensure Docker Engine (with Compose v2), Python 3.10, and Node.js 22 are available (installer may configure as needed)
@@ -53,12 +42,19 @@ flowchart LR
 
 _Only Community Edition is supported on macOS._
 
-```mermaid
-flowchart LR
-    install[install.sh --community] --> running[Service Running]
-```
+1. Follow the consolidated guide: [Linux/macOS tarball installation](linux_macos_tarball.md)
+2. Ensure Docker Engine (with Compose v2), Python 3.10, and Node.js 22 are available (installer may configure as needed)
+3. Run `install.sh --community`
+4. Access via browser at `https://localhost`
 
-Follow the consolidated guide: [Linux/macOS tarball installation](linux_macos_tarball.md)
+### Community Edition on Windows
+
+Use the MSI installer for a streamlined WSL2-based setup. See the [Windows Installation Guide](windows_installation_guide.md) for prerequisites, GPU support, and step-by-step instructions.
+
+Steps:
+1. Download: `KamiwazaInstaller-[version]-[arch].msi`
+2. Install: Run the MSI (as Administrator)
+3. Launch: Start Menu → "Start Platform" or open `https://localhost`
 
 
 ### Enterprise Edition Deployment
@@ -91,40 +87,6 @@ Key Points:
 - Must specify correct role (`--head` or `--worker --head-ip=<IP>`)
 - Service starts automatically via systemd
 
-
-## Important Notes
-
-1. Ubuntu .deb Package:
-   - Simplest installation method for Ubuntu 22.04/24.04
-   - Automated dependency management
-   - System service integration
-
-2. Community Edition:
-   - **Windows**: Use the MSI installer (see [Windows Installation Guide](windows_installation_guide.md))
-   - **macOS**: Run `install.sh --community`
-   - **Linux**: Use the `.deb` on Ubuntu or `install.sh --community` on other distros
-
-3. Windows Edition:
-   - See the [Windows Installation Guide](windows_installation_guide.md) for complete setup, GPU support, and troubleshooting
-
-4. Enterprise Edition:
-   - Terraform method provides fully automated deployment
-   - Manual method requires explicit cluster role specification
-   - Both methods result in automatically running services
-
-5. Service Management:
-   - **Windows**: Managed via Start Menu shortcuts and WSL commands (see [Windows Installation Guide](windows_installation_guide.md))
-   - **Linux/macOS**: `first-boot.sh` configures and starts the service via systemd
-   - No need to manually run startup scripts
-
-6. GPU Acceleration:
-   - Availability and setup vary by platform and hardware
-   - See the [Windows GPU Setup Guide](gpu_setup_guide.md) for supported GPUs and configuration
-
-## Related Documentation
-- [System Requirements](system_requirements.md)
-- [Windows Installation Guide](windows_installation_guide.md)
-- [Windows GPU Setup Guide](gpu_setup_guide.md)
 
 ## Updating Kamiwaza
 
