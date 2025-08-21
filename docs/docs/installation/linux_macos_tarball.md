@@ -99,17 +99,20 @@ Use this section if all of the following are true:
 - The host has an NVIDIA GPU and you want GPU acceleration
 - You are not on macOS (macOS does not support NVIDIA GPUs)
 
-Quick checks:
-
-- List GPUs: `lspci | grep -i nvidia`
-- After driver install, verify: `nvidia-smi`
+If you are installing on an Ubuntu 22.04 instance with an NVIDIA GPU where `nvidia-smi` doesn't work, you likely need to do this. However, many cloud-provided images come with NVIDIA drivers pre-installed.
 
 Install the recommended NVIDIA driver, then the NVIDIA Container Toolkit, and configure Docker:
 
 ```bash
 # 1) Install the recommended NVIDIA driver
+## If 'ubuntu-drivers' is missing, install it first:
+##   sudo apt update && sudo apt install -y ubuntu-drivers-common
 sudo apt update
 sudo ubuntu-drivers autoinstall
+```
+
+Perform system reboot:
+```
 sudo reboot
 ```
 
@@ -131,6 +134,11 @@ sudo systemctl restart docker
 
 # 4) Test GPU access from Docker (should print nvidia-smi output and exit)
 docker run --rm --gpus all nvidia/cuda:12.4.1-runtime-ubuntu22.04 nvidia-smi
+```
+
+Verify the driver is installed with:
+```
+nvidia-smi
 ```
 
 Notes:
