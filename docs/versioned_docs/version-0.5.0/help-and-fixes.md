@@ -42,7 +42,6 @@ This information helps us provide faster and more accurate solutions to your pro
 - Ensure NVIDIA drivers are properly installed
 - Install NVIDIA Container Toolkit
 - Verify Docker can access GPU devices
-- See our detailed guide: [Docker GPU Setup Troubleshooting](../troubleshooting/docker-gpu-error-could-not-select-device-driver-nvidia-container-runtime.md)
 
 #### Port Already in Use
 **Problem**: Kamiwaza fails to start because required ports are occupied.
