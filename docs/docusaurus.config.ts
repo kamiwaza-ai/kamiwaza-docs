@@ -78,7 +78,7 @@ const config: Config = {
           },
         },
         sidebarCollapsible: true,
-        sidebarCollapsed: false,
+        sidebarCollapsed: true,
       },
     ],
     // SDK docs plugin
@@ -160,7 +160,7 @@ const config: Config = {
     docs: {
       sidebar: {
         hideable: false,
-        autoCollapseCategories: false,
+        autoCollapseCategories: true,
       },
     },
     footer: {
