@@ -58,16 +58,28 @@ tar -xvf kamiwaza-community-0.5.0-OSX.tar.gz
 bash install.sh --community
 ```
 
-## Linux (Ubuntu 22.04 LTS)
+## Linux (Ubuntu 22.04 and 24.04 LTS)
 
-### 1) System update and core packages
+### 1) **[For Ubuntu 24.04 only]** Install Python 3.10
+Kamiwaza CE requires Python 3.10. These commands will install Python 3.10 on Ubuntu 24.04.
+
+```bash
+sudo apt update
+sudo apt install software-properties-common -y
+```
+```bash
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update
+```
+
+### 2) System update and core packages
 
 ```bash
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y python3.10 python3.10-dev libpython3.10-dev python3.10-venv golang-cfssl python-is-python3 etcd-client net-tools curl jq libcairo2-dev libgirepository1.0-dev
 ```
 
-### 2) Node.js 22 with NVM
+### 3) Node.js 22 with NVM
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
@@ -76,7 +88,7 @@ export NVM_DIR="${XDG_CONFIG_HOME:-$HOME/.nvm}"
 nvm install 22
 ```
 
-### 3) Docker Engine + Compose v2
+### 4) Docker Engine + Compose v2
 
 ```bash
 sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
@@ -91,7 +103,7 @@ sudo usermod -aG docker $USER
 # Log out and back in (or reboot) so the docker group membership takes effect
 ```
 
-### 4) Install CockroachDB and additional dependencies
+### 5) Install CockroachDB and additional dependencies
 
 ```bash
 wget -qO- https://binaries.cockroachdb.com/cockroach-v23.2.12.linux-amd64.tgz | tar xvz
@@ -99,15 +111,15 @@ sudo cp cockroach-v23.2.12.linux-amd64/cockroach /usr/local/bin
 sudo apt install -y libcairo2-dev libgirepository1.0-dev
 ```
 
-### 5) (Optional) NVIDIA GPU support
+### 6) (Optional) NVIDIA GPU support
 
 Use this section if all of the following are true:
 
-- You are on Ubuntu 22.04 (bare metal or a VM with GPU passthrough)
+- You are on Ubuntu 22.04 or 24.04 (bare metal or a VM with GPU passthrough)
 - The host has an NVIDIA GPU and you want GPU acceleration
 - You are not on macOS (macOS does not support NVIDIA GPUs)
 
-If you are installing on an Ubuntu 22.04 instance with an NVIDIA GPU where `nvidia-smi` doesn't work, you likely need to do this. However, many cloud-provided images come with NVIDIA drivers pre-installed.
+If you are installing on an Ubuntu 22.04 or 24.04 instance with an NVIDIA GPU where `nvidia-smi` doesn't work, you likely need to do this. However, many cloud-provided images come with NVIDIA drivers pre-installed.
 
 Install the recommended NVIDIA driver, then the NVIDIA Container Toolkit, and configure Docker:
 
@@ -155,7 +167,7 @@ Notes:
 - On some servers, you may prefer `nvidia-driver-550-server`. If you need a specific version: `sudo apt install -y nvidia-driver-550-server`.
 - The `nvidia-docker2` meta-package is no longer required; use `nvidia-container-toolkit` with `nvidia-ctk` instead.
 
-### 6) Download and install Kamiwaza (tarball)
+### 7) Download and install Kamiwaza (tarball)
 
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
