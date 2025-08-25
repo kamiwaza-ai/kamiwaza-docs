@@ -1,13 +1,5 @@
 # Installing Kamiwaza
 
-## Overview
-
-Kamiwaza can be installed in several configurations:
-- **Ubuntu .deb Package** (Recommended for Ubuntu 22.04 and 24.04)
-- Community Edition on OSX (single-node)
-- Community Edition on Linux (single-node)
-- Enterprise Edition (cluster-capable)
-
 ## Before You Begin
 
 **Please review the [System Requirements](system_requirements.md) before proceeding with installation.** This document covers:
@@ -19,65 +11,58 @@ Kamiwaza can be installed in several configurations:
 
 ## Installation Workflows
 
-### 1. Ubuntu .deb Package Installation (Recommended)
+### Community Edition on Windows
 
-For Ubuntu 22.04 or 24.04 users, the simplest installation method is using the official .deb package:
+Use the MSI installer for a streamlined WSL2-based setup. See the [Windows Installation Guide](windows_installation_guide.md) for prerequisites, GPU support, and step-by-step instructions.
+
+Steps:
+1. Download: `KamiwazaInstaller-[version]-[arch].msi`
+2. Install: Run the MSI (as Administrator)
+3. Launch: Start Menu → "Start Platform" or open `https://localhost`
+
+### Linux
+
+#### Ubuntu .deb Package Installation
 
 ```mermaid
 flowchart LR
     download[Download .deb package] --> install[Install with dpkg/apt] --> running[Service Running]
 ```
 
-**Steps:**
 1. Download the Kamiwaza .deb package from the official repository
-2. Install using: `sudo dpkg -i kamiwaza-*.deb`
-3. Resolve any dependencies: `sudo apt-get install -f`
-4. The service will start automatically
+2. Install using: `sudo apt install -y ./kamiwaza-<version>.deb`
+3. Verify service starts (see [Quickstart](quickstart.md))
 
-**Benefits:**
-- Automated dependency resolution
-- System integration via package management
-- Simplified updates and removal
-- No manual configuration required
+#### Other Distros: Pre-built bundles (Community Edition only)
 
-### 2. Community Edition on Mac OSX
 
-Simple, single-command installation:
 
 ```mermaid
 flowchart LR
     install[install.sh --community] --> running[Service Running]
 ```
 
-### 3. Windows Edition
 
-Windows installation uses an MSI installer that sets up Kamiwaza in a dedicated WSL environment.
+1. Ensure Docker Engine (with Compose v2), Python 3.10, and Node.js 22 are available (installer may configure as needed)
+2. Run `install.sh --community`
+3. Access via browser at `https://localhost`
+
+
+### Community Edition on macOS
+
+_Only Community Edition is supported on macOS._
 
 ```mermaid
 flowchart LR
-    download[Download MSI Installer] --> wsl[WSL Setup/Check]
-    wsl --> install[Run MSI Installer]
-    install --> config[Configure Settings]
-    config --> gpu[GPU Detection & Setup]
-    gpu --> running[Service Running in WSL]
+    install[install.sh --community] --> running[Service Running]
 ```
 
-**Key Features:**
-- Fully automated WSL configuration with Ubuntu 24.04
-- GPU acceleration support (NVIDIA RTX, Intel Arc)
-- Integrated with Windows Start Menu
-- Configurable memory allocation (50-75% of system RAM)
-- Automatic network port reservation (61100-61299)
+1. Download a macOS build from [here](https://github.com/kamiwaza-ai/kamiwaza-community-edition/tree/main)
+2. Run: `install.sh --community`
+3. Verify service starts (see [Quickstart](quickstart.md))
 
-**Quick Start:**
-1. Ensure WSL is installed (`wsl --install`)
-2. Download and run the Kamiwaza MSI installer as administrator
-3. Configure email, license, and memory allocation
-4. Access via browser at `https://localhost` or Start Menu shortcuts
 
-📋 **For detailed step-by-step instructions, troubleshooting, and advanced configuration, see the [Windows Installation Guide](windows_installation.md).**
-
-### 4. Enterprise Edition
+### Enterprise Edition Deployment
 
 #### A. Terraform Deployment (Recommended)
 
@@ -107,34 +92,21 @@ Key Points:
 - Must specify correct role (`--head` or `--worker --head-ip=<IP>`)
 - Service starts automatically via systemd
 
-## Installation Method Selection
-
-| Method | Best For | Complexity | Features |
-|--------|----------|------------|----------|
-| **Ubuntu .deb Package** | Ubuntu 22.04 users | ⭐ | Community Edition, automated setup |
-| Community Edition (OSX) | macOS developers | ⭐⭐ | Single-node, local development |
-| Community Edition (Linux) | Linux users, custom setups | ⭐⭐ | Single-node, manual control |
-| **Windows Edition** | Windows 11 users | ⭐⭐ | WSL-based, GPU support, automated setup |
-| Enterprise Edition | Production clusters | ⭐⭐⭐⭐ | Multi-node, full features |
 
 ## Important Notes
 
-1. **Ubuntu .deb Package:**
-   - Simplest installation method for Ubuntu 22.04
+1. Ubuntu .deb Package:
+   - Simplest installation method for Ubuntu 22.04/24.04
    - Automated dependency management
    - System service integration
 
 2. Community Edition:
-   - OSX: Simple install.sh --community command
-   - Linux: Choose between direct install or automated setup sequence
-   - Automated setup (1.sh -> 2.sh -> 3.sh) handles prerequisites and NVIDIA container testing
+   - **Windows**: Use the MSI installer (see [Windows Installation Guide](windows_installation_guide.md))
+   - **macOS**: Run `install.sh --community`
+   - **Linux**: Use the `.deb` on Ubuntu or `install.sh --community` on other distros
 
 3. Windows Edition:
-   - MSI installer provides fully automated WSL setup
-   - Supports GPU acceleration with NVIDIA RTX and Intel Arc
-   - Integrated with Windows Start Menu and accessible via browser
-   - Memory allocation configurable during installation (recommended 50-75% of system RAM)
-   - See [Windows Installation Guide](windows_installation.md) for comprehensive instructions
+   - See the [Windows Installation Guide](windows_installation_guide.md) for complete setup, GPU support, and troubleshooting
 
 4. Enterprise Edition:
    - Terraform method provides fully automated deployment
@@ -142,5 +114,35 @@ Key Points:
    - Both methods result in automatically running services
 
 5. Service Management:
-   - first-boot.sh configures and starts the service via systemd
+   - **Windows**: Managed via Start Menu shortcuts and WSL commands (see [Windows Installation Guide](windows_installation_guide.md))
+   - **Linux/macOS**: `first-boot.sh` configures and starts the service via systemd
    - No need to manually run startup scripts
+
+6. GPU Acceleration:
+   - Availability and setup vary by platform and hardware
+   - See the [Windows GPU Setup Guide](gpu_setup_guide.md) for supported GPUs and configuration
+
+## Related Documentation
+- [System Requirements](system_requirements.md)
+- [Windows Installation Guide](windows_installation_guide.md)
+- [Windows GPU Setup Guide](gpu_setup_guide.md)
+
+## Updating Kamiwaza
+
+### Windows
+- Download new MSI installer and run to update existing installation
+- Restart if prompted for GPU changes
+
+### Linux/macOS
+- Download new package
+- Run installation script again
+- Service will restart automatically
+
+## Uninstallation
+
+### Windows
+- Use "Cleanup WSL" shortcut, or uninstall via Windows Settings → Apps
+
+### Linux/macOS
+- Remove package via package manager
+- Clean up any remaining configuration files
