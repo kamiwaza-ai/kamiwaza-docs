@@ -8,7 +8,7 @@
 - macOS: 12.0 or later (community edition only)
 
 ### Core Requirements
-- Python 3.10 (Python 3.10.14 tested)
+- Python 3.10 (tarball installation on MacOS and Linux) or Python 3.12 (deb installation on Linux or MSI installation on Windows WSL)
 - Docker Engine with Compose v2
 - Node.js 22 (installed via NVM during setup)
 - Minimum disk space requirements (see Storage Requirements section)
