@@ -53,8 +53,8 @@ Use the MSI installer for a streamlined WSL2-based setup. See the [Windows Insta
 
 Steps:
 1. Download: `KamiwazaInstaller-[version]-[arch].msi`
-2. Install: Run the MSI as Administrator (reboot when prompted)
-3. Launch: Start Menu → "Start Platform" or open `https://localhost`
+2. Install: Run the MSI (reboot when prompted)
+3. Launch: Start Menu → "Start Kamiwaza"
 
 
 ### Enterprise Edition Deployment
