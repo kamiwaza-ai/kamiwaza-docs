@@ -9,6 +9,6 @@ sidebar_position: 1
 The Kamiwaza SDK provides a Python interface to interact with the Kamiwaza AI Platform. This documentation covers:
 
 - [API Reference](api/reference.md) - Complete API documentation
-- [Services](services) - Detailed documentation for each service
+- [Services](services/models) - Detailed documentation for each service
 - Installation and usage guides
 - Examples and tutorials

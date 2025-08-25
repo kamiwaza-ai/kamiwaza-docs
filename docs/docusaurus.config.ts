@@ -7,8 +7,8 @@ const config: Config = {
   tagline: 'Kamiwaza AI Platform Documentation',
   favicon: 'img/favicon.ico',
 
-  url: 'https://kamiwaza-ai.github.io',
-  baseUrl: '/kamiwaza-docs/',
+  url: 'https://docs.kamiwaza.ai',
+  baseUrl: '/',
   trailingSlash: false,
 
   markdown: {
@@ -78,7 +78,7 @@ const config: Config = {
           },
         },
         sidebarCollapsible: true,
-        sidebarCollapsed: false,
+        sidebarCollapsed: true,
       },
     ],
     // SDK docs plugin
@@ -160,7 +160,7 @@ const config: Config = {
     docs: {
       sidebar: {
         hideable: false,
-        autoCollapseCategories: false,
+        autoCollapseCategories: true,
       },
     },
     footer: {

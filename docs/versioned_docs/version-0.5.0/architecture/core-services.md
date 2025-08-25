@@ -72,7 +72,7 @@ Services are designed to work together seamlessly:
 ## Next Steps
 
 To learn more about working with these services:
-- Explore the [Models](../models) and [Distributed Data Engine](../data-engine) documentation
+- Explore the [Models](../models/overview.md) and [Distributed Data Engine](../data-engine) documentation
 - Build a complete [RAG pipeline](../use-cases/building-a-rag-pipeline) using multiple services
 - Review the [Platform Overview](overview) for architectural context
-- Check out [Use Cases](../use-cases/index) for practical implementation examples 
+- Check out [Use Cases](../use-cases/index.md) for practical implementation examples 
