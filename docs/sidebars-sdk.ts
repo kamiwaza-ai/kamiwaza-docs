@@ -7,7 +7,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Services',
-      collapsed: false,
+      collapsed: true,
       items: [
         'services/activity/README',
         'services/auth/README',

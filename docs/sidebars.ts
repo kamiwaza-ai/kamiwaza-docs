@@ -72,6 +72,11 @@ const sidebars: SidebarsConfig = {
       label: 'Other Topics',
     },
     {
+      type: 'doc',
+      id: 'help-and-fixes',
+      label: 'Help & Fixes',
+    },
+    {
       type: 'category',
       label: 'Our Team',
       items: [
