@@ -53,7 +53,7 @@ nvm install 22
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
 # Example for 0.5.0 (replace with the latest available version if needed)
-curl -L -O https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/beta/kamiwaza-community-0.5.0-OSX.tar.gz
+curl -L -O https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.5.0-OSX.tar.gz
 tar -xvf kamiwaza-community-0.5.0-OSX.tar.gz
 bash install.sh --community
 ```
@@ -172,7 +172,7 @@ Notes:
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
 # Example for 0.5.0 (replace with the latest available version if needed)
-wget https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/beta/kamiwaza-community-0.5.0-UbuntuLinux.tar.gz
+wget https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.5.0-UbuntuLinux.tar.gz
 tar -xvf kamiwaza-community-0.5.0-UbuntuLinux.tar.gz
 bash install.sh --community
 ```
