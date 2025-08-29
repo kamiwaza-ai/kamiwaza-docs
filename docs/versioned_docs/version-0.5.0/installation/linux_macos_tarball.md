@@ -72,7 +72,7 @@ sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update && sudo apt upgrade -y
 ```
 ```bash
-apt install -y python3.10
+sudo apt install -y python3.10
 ```
 ```bash
 sudo ln -sf /usr/bin/python3.10 /usr/local/bin/python
