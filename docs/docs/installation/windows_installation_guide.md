@@ -8,7 +8,7 @@
 - **GPU**: NVIDIA 50 series and Intel Arc Supported (requires drivers)
 - **Storage**: 20GB free disk space
 - **Architecture**: x64 (64-bit) processor
-- **Administrator Access**: Required for initial setup
+- **Administrator Access**: The installer will request permission when needed
 
 ### Recommended for Optimal Performance
 - **Memory**: 32GB+ RAM for large workloads
@@ -33,44 +33,17 @@ If WSL is not already installed on your system:
    wsl --version
    ```
 
-### Step 2: Install Ubuntu 24.04 WSL Distribution
+### Step 2: Verify GPU Access (If Applicable)
 
-1. Create directory for WSL distribution
-   ```powershell
-   mkdir C:\WSL\Ubuntu24.04
-   ```
+**Note**: GPU verification will be performed automatically during installation. The installer will detect and configure GPU access for supported hardware.
 
-2. Download Ubuntu 24.04 WSL image
-   ```powershell
-   Invoke-WebRequest -Uri "https://cloud-images.ubuntu.com/wsl/releases/24.04/current/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz" -OutFile "C:\WSL\ubuntu-24.04.tar.gz"
-   ```
+**Supported GPUs:**
+- NVIDIA GeForce RTX series (30, 40 and 50 series)
+- Intel Arc GPUs 
 
-3. Import the distribution
-   ```powershell
-   wsl --import Ubuntu-24.04 C:\WSL\Ubuntu24.04 C:\WSL\ubuntu-24.04.tar.gz --version 2
-   ```
+**Note**: Kamiwaza currently supports only NVIDIA GPUs and Intel Arc GPUs for hardware acceleration. For Intel Arc GPU setup instructions, please refer to the separate Intel Arc WSL [GPU virtualization documentation](gpu_setup_guide.md#intel-arc-gpu-setup).
 
-   **Note**: If the Ubuntu-24.04 distribution already exists, skip to Step 3.
-
-### Step 3: Verify GPU Access (If Applicable)
-
-Ensure your Ubuntu 24.04 WSL distribution has GPU access:
-
-**For NVIDIA GPUs:**
-```bash
-wsl -d Ubuntu-24.04
-nvidia-smi
-```
-
-**For Intel Arc GPUs:**
-```bash
-wsl -d Ubuntu-24.04
-clinfo | grep GPU
-```
-
-**Note**: Kamiwaza currently supports only NVIDIA GPUs and Intel Arc GPUs for hardware acceleration. For Intel Arc GPU setup instructions, please refer to the separate Intel Arc WSL GPU virtualization documentation.
-
-### Step 4: Install Windows Terminal (Optional but Recommended)
+### Step 3: Install Windows Terminal (Optional but Recommended)
 
 Download from Microsoft Store or GitHub releases
 
@@ -79,13 +52,15 @@ Download from Microsoft Store or GitHub releases
 ### Step 1: Download Kamiwaza Installer
 
 Contact your Kamiwaza representative to obtain the installer download link or file:
-- **File**: `KamiwazaInstaller-[version]-[arch].msi`
-- **Size**: Approximately 150-300MB
+- **File**: https://packages.kamiwaza.ai/win/kamiwaza_installer_0.5.0_amd64.msi
+- **Size**: Approximately 30-40MB
 
 ### Step 2: Run the Installer
 
 1. Locate the downloaded MSI file in your Downloads folder
-2. Left click to run and follow the installation wizard
+2. Double-click to run the installer
+3. When prompted by Windows User Account Control, click "Yes" to allow the installer to make changes to your device
+4. Follow the installation wizard
 
 **Configuration Options:**
 - **Email Address**: Your registered email address
@@ -100,7 +75,7 @@ Contact your Kamiwaza representative to obtain the installer download link or fi
 ### Step 3: Installation Process
 
 The installer will automatically:
-- Detect your existing Ubuntu-24.04 WSL distribution
+- Download and install Ubuntu 24.04 WSL distribution (if not present)
 - Reserve network ports (61100-61299)
 - Detect GPU hardware (NVIDIA RTX, Intel Arc only)
 - Configure WSL environment with optimized settings
@@ -112,20 +87,24 @@ The installer will automatically:
 - **First-time WSL Setup**: Add 10-15 minutes
 - **Large Package Downloads**: May take longer on slower connections
 
-### Step 4: GPU Driver Restart (If Applicable)
+### Step 4: GPU Driver Restart
 
-If GPU acceleration was configured, you'll be prompted:
-```
-=== SYSTEM RESTART RECOMMENDED ===
-Would you like to restart your computer now? (y/N):
-```
-
-- **Recommended**: Type `y` and press Enter to restart
-- **Alternative**: Type `n` to restart manually later
+If GPU acceleration was configured, you'll be prompted to restart your device. It is recommended to restart immediately to ensure proper GPU driver initialization.
 
 ## Access Your Installation
 
-### Option 1: WSL Command Line Access (Primary Method)
+### Option 1: System Tray Access (Primary Method)
+
+After installation, Kamiwaza will automatically launch and appear in your system tray. Right-click the Kamiwaza system tray icon to access the following options:
+
+- **Show Kamiwaza Manager** - Open the main management interface
+- **Kamiwaza Status** - Check current platform status
+- **Start Kamiwaza** - Start the platform if stopped
+- **Stop Kamiwaza** - Stop the running platform
+- **Open Kamiwaza** - Launch the web interface
+- **Exit** - Close the system tray application
+
+### Option 2: WSL Command Line Access
 
 Access the Kamiwaza WSL environment and start the platform:
 ```bash
@@ -133,21 +112,25 @@ wsl -d kamiwaza
 kamiwaza start
 ```
 
-### Option 2: Start Menu Shortcuts
+### Option 3: Start Menu Shortcuts
 
 After installation, find these shortcuts in Start Menu → "Kamiwaza":
 - **Install Kamiwaza** - Initial setup and installation
 - **Start Platform** - Launch Kamiwaza platform
 - **Cleanup WSL** - Complete removal tool
 
-### Option 3: Direct Browser Access
+### Option 4: Direct Browser Access
 
 Once running, access Kamiwaza at:
 - **URL**: `https://localhost`
 
 ## Platform Management
 
-### Basic Commands
+### Primary Method: System Tray
+
+The easiest way to manage Kamiwaza is through the system tray icon. Right-click the Kamiwaza icon in your system tray to access all management options.
+
+### Alternative Method: Command Line
 
 From PowerShell or Command Prompt:
 ```bash
@@ -174,9 +157,9 @@ wsl -d kamiwaza -- kamiwaza status
 - Verify with: `wsl --version`
 
 #### Ubuntu-24.04 Distribution Not Found
-- Verify the distribution was imported correctly
-- Check existing distributions: `wsl --list --verbose`
-- Re-run the import command if necessary
+- The installer will automatically download and install Ubuntu 24.04 if needed
+- If installation fails, check existing distributions: `wsl --list --verbose`
+- Re-run the installer if necessary
 
 #### Memory Allocation Errors
 - Reduce memory allocation in installer
@@ -185,7 +168,6 @@ wsl -d kamiwaza -- kamiwaza status
 
 #### GPU Detection Issues
 - Ensure latest GPU drivers are installed
-- Verify WSL2 (not WSL1) is being used: `wsl --list --verbose`
 - Check Windows version supports GPU passthrough
 - Confirm GPU compatibility (NVIDIA or Intel Arc only)
 
@@ -215,7 +197,6 @@ wsl -d kamiwaza -- /usr/local/bin/kamiwaza_gpu_status.sh
 
 ### Support Contact
 - **Technical Support**: [Contact our support team](intro.md#need-help)
-- **Documentation**: [Kamiwaza Documentation](intro.md#need-help)
 - **License Issues**: [Contact our support team](intro.md#need-help)
 
 ## Uninstallation
@@ -235,6 +216,4 @@ wsl --unregister kamiwaza
 
 ---
 
-**Version**: Compatible with Kamiwaza Installer v0.5.0  
-**Last Updated**: August 7th, 2025  
-**Support**: [Contact our support team](intro.md#need-help) 
+**Last Updated**: September 3th, 2025 
