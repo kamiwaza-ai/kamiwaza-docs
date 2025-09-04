@@ -41,7 +41,7 @@ If WSL is not already installed on your system:
 - NVIDIA GeForce RTX series (30, 40 and 50 series)
 - Intel Arc GPUs 
 
-**Note**: Kamiwaza currently supports only NVIDIA GPUs and Intel Arc GPUs for hardware acceleration. For Intel Arc GPU setup instructions, please refer to the separate Intel Arc WSL GPU virtualization documentation.
+**Note**: Kamiwaza currently supports only NVIDIA GPUs and Intel Arc GPUs for hardware acceleration. For Intel Arc GPU setup instructions, please refer to the separate Intel Arc WSL [GPU virtualization documentation](gpu_setup_guide.md#intel-arc-gpu-setup).
 
 ### Step 3: Install Windows Terminal (Optional but Recommended)
 
@@ -197,7 +197,6 @@ wsl -d kamiwaza -- /usr/local/bin/kamiwaza_gpu_status.sh
 
 ### Support Contact
 - **Technical Support**: [Contact our support team](intro.md#need-help)
-- **Documentation**: [Kamiwaza Documentation](intro.md#need-help)
 - **License Issues**: [Contact our support team](intro.md#need-help)
 
 ## Uninstallation
@@ -217,6 +216,4 @@ wsl --unregister kamiwaza
 
 ---
 
-**Version**: Compatible with Kamiwaza Installer v0.5.0  
-**Last Updated**: August 7th, 2025  
-**Support**: [Contact our support team](intro.md#need-help) 
+**Last Updated**: September 3th, 2025 
