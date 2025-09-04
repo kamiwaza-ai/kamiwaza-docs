@@ -52,7 +52,7 @@ Download from Microsoft Store or GitHub releases
 ### Step 1: Download Kamiwaza Installer
 
 Contact your Kamiwaza representative to obtain the installer download link or file:
-- **File**: [MSI URL]
+- **File**: https://packages.kamiwaza.ai/win/kamiwaza_installer_0.5.0_amd64.msi
 - **Size**: Approximately 30-40MB
 
 ### Step 2: Run the Installer
