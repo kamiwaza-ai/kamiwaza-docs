@@ -17,7 +17,7 @@
 
 1. Add Kamiwaza repository to APT sources
    ```
-   echo "deb [signed-by=/usr/share/keyrings/kamiwaza-archive-keyring.gpg] https://packages.kamiwaza.ai/ noble main" | sudo tee /etc/apt/sources.list.d/kamiwaza.list
+   echo "deb [signed-by=/usr/share/keyrings/kamiwaza-archive-keyring.gpg] https://packages.kamiwaza.ai/ubuntu/ noble main" | sudo tee /etc/apt/sources.list.d/kamiwaza.list
    ```
 2. Import and install Kamiwaza GPG signing key
    ```
@@ -26,6 +26,7 @@
 2. Update package database and install Kamiwaza
    ```
    sudo apt update
+   sudo apt upgrade
    sudo apt install kamiwaza
    ```
 3. Verify service starts (see [Quickstart](quickstart.md))
