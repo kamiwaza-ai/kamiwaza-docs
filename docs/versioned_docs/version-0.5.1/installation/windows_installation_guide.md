@@ -5,7 +5,7 @@
 ### Minimum Requirements
 - **Operating System**: Windows 11
 - **Memory**: 8GB RAM minimum (16GB+ recommended)
-- **GPU**: NVIDIA 50 series and Intel Arc Supported (requires drivers)
+- **GPU**: NVIDIA modern GPUs and Intel Arc Supported (requires drivers)
 - **Storage**: 20GB free disk space
 - **Architecture**: x64 (64-bit) processor
 - **Administrator Access**: The installer will request permission when needed

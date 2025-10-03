@@ -106,6 +106,7 @@ sudo mkdir -p /usr/local/lib/docker/cli-plugins
 sudo curl -SL "https://github.com/docker/compose/releases/download/v2.39.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
 sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 sudo usermod -aG docker $USER
+sudo chown $USER:$USER /var/run/docker.sock
 # Log out and back in (or reboot) so the docker group membership takes effect
 ```
 
