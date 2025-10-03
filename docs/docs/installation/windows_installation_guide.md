@@ -5,7 +5,7 @@
 ### Minimum Requirements
 - **Operating System**: Windows 11
 - **Memory**: 8GB RAM minimum (16GB+ recommended)
-- **GPU**: NVIDIA 50 series and Intel Arc Supported (requires drivers)
+- **GPU**: NVIDIA modern GPUs and Intel Arc Supported (requires drivers)
 - **Storage**: 20GB free disk space
 - **Architecture**: x64 (64-bit) processor
 - **Administrator Access**: The installer will request permission when needed
@@ -52,7 +52,7 @@ Download from Microsoft Store or GitHub releases
 ### Step 1: Download Kamiwaza Installer
 
 Contact your Kamiwaza representative to obtain the installer download link or file:
-- **File**: https://packages.kamiwaza.ai/win/kamiwaza_installer_0.5.0_x86_64.msi
+- **File**: https://packages.kamiwaza.ai/win/kamiwaza_installer_0.5.1_x86_64.msi
 - **Size**: Approximately 30-40MB
 
 ### Step 2: Run the Installer

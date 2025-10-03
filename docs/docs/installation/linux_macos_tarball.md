@@ -52,9 +52,9 @@ nvm install 22
 
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
-# Example for 0.5.0 (replace with the latest available version if needed)
-curl -L -O https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.5.0-OSX.tar.gz
-tar -xvf kamiwaza-community-0.5.0-OSX.tar.gz
+# Example for 0.5.1 (replace with the latest available version if needed)
+curl -L -O https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.5.1-OSX.tar.gz
+tar -xvf kamiwaza-community-0.5.1-OSX.tar.gz
 bash install.sh --community
 ```
 
@@ -106,6 +106,7 @@ sudo mkdir -p /usr/local/lib/docker/cli-plugins
 sudo curl -SL "https://github.com/docker/compose/releases/download/v2.39.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
 sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 sudo usermod -aG docker $USER
+sudo chown $USER:$USER /var/run/docker.sock
 # Log out and back in (or reboot) so the docker group membership takes effect
 ```
 
@@ -177,9 +178,9 @@ Notes:
 
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
-# Example for 0.5.0 (replace with the latest available version if needed)
-wget https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.5.0-UbuntuLinux.tar.gz
-tar -xvf kamiwaza-community-0.5.0-UbuntuLinux.tar.gz
+# Example for 0.5.1 (replace with the latest available version if needed)
+wget https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.5.1-UbuntuLinux.tar.gz
+tar -xvf kamiwaza-community-0.5.1-UbuntuLinux.tar.gz
 bash install.sh --community
 ```
 
