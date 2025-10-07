@@ -1,250 +1,160 @@
-# Kamiwaza Documentation Development
+# Kamiwaza Documentation
 
-This repository contains the Kamiwaza AI platform documentation built with [Docusaurus](https://docusaurus.io/). This README is for developers working on the documentation codebase.
+Documentation for the Kamiwaza AI platform, built with [Docusaurus](https://docusaurus.io/).
 
-## Development Setup
+## Quick Start
 
 ### Prerequisites
 - Node.js 18.0 or higher
-- npm or yarn
+- npm
 
 ### Installation
-
-Install dependencies at both the repo root and in the `docs/` directory:
 
 ```bash
 # From repo root
 npm install
 
-# Then install docs package deps
+# Install docs dependencies
 cd docs
 npm install
 ```
 
 ### Local Development
 
-Start the development server:
-
 ```bash
 # From repo root (recommended)
 npm run start
 
-# Or from docs directory
-cd docs
-npm run start
-# or
-npm run dev
+# Opens http://localhost:3000
+# Changes reflect live without restart
 ```
 
-This opens `http://localhost:3000` in your browser. Most changes are reflected live without restarting the server. Note that search functionality is disabled in development mode; see the build instructions to test it.
+## Development Workflow
 
-**Note**: You can run from the repository root using the provided npm scripts (recommended), or from the `docs` directory. Root scripts automatically run inside `docs/` under the hood.
+### Standard Process
+
+1. **Create feature branch**
+   ```bash
+   git checkout -b feature/your-changes
+   ```
+
+2. **Edit documentation**
+   - Edit files in `docs/docs/` (platform docs) or `docs/sdk/` (SDK docs)
+     - Do not edit `versioned_docs` directly
+   - Test locally: `npm run start` (from repo root)
+
+3. **Version the documentation** (choose one):
+
+   **Option A - Create new version** (for releases):
+   ```bash
+   # From repo root
+   npm run version-up -- 0.6.0
+   ```
+
+   **Option B - Update existing version** (for fixes):
+   ```bash
+   # From docs/ directory
+   export DOCS_VERSION=0.5.1
+   rm -rf versioned_docs/version-$DOCS_VERSION versioned_sidebars/version-$DOCS_VERSION-sidebars.json
+   node -e "const fs=require('fs');const p='versions.json';const v=JSON.parse(fs.readFileSync(p));fs.writeFileSync(p, JSON.stringify(v.filter(x=>x!=='$DOCS_VERSION'), null, 2)+'\n');"
+   npm run clear
+   npm run docusaurus -- docs:version $DOCS_VERSION
+   npm run build
+   ```
+
+4. **Verify build after versioning**
+   ```bash
+   # From repo root
+   npm run build
+
+   # Check for broken links or build errors
+   # Optional: Preview locally
+   npm run serve
+   ```
+
+5. **Submit pull request to `main`**
+   - Ensure build passes
+   - Include description of changes
+
+6. **After merge → automatic deployment**
+   - GitHub Actions automatically deploys to https://docs.kamiwaza.ai
+   - No manual deployment needed
+
+### Important Notes
+
+- **Only edit files in `docs/docs/`** - Don't edit `versioned_docs/` directly
+- **Version before PR** - Create or update version snapshots before submitting
+- **Run from repo root** - Most commands should run from `kamiwaza-docs/` not `docs/`
+- **Search works in production only** - Use `npm run build && npm run serve` to test locally
 
 ## Documentation Structure
 
-- `docs/` - Main platform documentation
-- `sdk/` - SDK documentation 
-- `blog/` - Blog posts
-- `static/` - Static assets (images, etc.)
-- `src/` - Custom React components and CSS
-- `versioned_docs/` - Version-specific documentation archives
-
-## Build and Deployment
-
-### Building with Search
-
-To create a production build with a working search index, run from the repo root (recommended):
-
-```bash
-npm run build
+```
+docs/
+├── docs/           # Current platform documentation (edit here)
+├── sdk/            # SDK documentation (auto-synced)
+├── blog/           # Blog posts
+├── static/         # Images and static assets
+├── src/            # Custom components and CSS
+├── versioned_docs/ # Version snapshots (don't edit directly)
+└── versioned_sidebars/ # Version sidebars (auto-generated)
 ```
 
-This first syncs SDK docs, then builds the site. Static files are generated in `docs/build`.
+## Commands Reference
 
-Alternatively, build from within the `docs/` directory (skips SDK docs sync):
-
+### Development
 ```bash
-cd docs
-npm run build
+npm run start         # Start dev server (from repo root)
+npm run build         # Build with SDK sync (from repo root)
+npm run serve         # Preview production build
+npm run typecheck     # TypeScript validation
+npm run clear         # Clear Docusaurus cache (from docs/)
 ```
 
-### Previewing the Production Build
-
-To preview the full site, including search functionality, serve the contents of the build directory (from repo root):
-
+### Versioning
 ```bash
-npm run serve
+# From repo root only
+npm run version-up -- <version>   # Create new version (e.g., 0.6.0)
 ```
 
 ### Deployment
+Deployment is **automatic** via GitHub Actions when merging to `main`.
 
-Deploy to GitHub Pages (from repo root):
-
-```bash
-# Using SSH
-USE_SSH=true npm run deploy
-
-# Using HTTPS
-GIT_USER=<Your GitHub username> npm run deploy
-```
-
-## Version Management
-
-The documentation uses Docusaurus versioning to maintain multiple versions of the docs.
-
-**⚠️ Important**: Versioning commands are run from the root `kamiwaza-docs/` directory, while most other commands are run from the `docs/` subdirectory.
-
-### Creating a New Version
-
-To create a new version of the documentation, run the following command from the root `kamiwaza-docs` directory:
+<details>
+<summary>For manual deployment (Only for special circumstances):</summary>
 
 ```bash
-npm run version-up -- <new-version>
+# Linux/macOS
+GIT_USER=<username> npm run deploy
+
+# Windows
+set GIT_USER=<username> && npm run deploy
 ```
+</details>
 
-Replace `<new-version>` with the semantic version number (e.g., `0.4.0`).
+## Writing Documentation
 
-**Example:**
-```bash
-npm run version-up -- 0.4.1
-```
-
-This command automates the entire versioning process:
-- Creates a new versioned snapshot of the current docs in `versioned_docs/`.
-- Updates the `versions.json` file.
-- Updates the version number in both `package.json` files.
-- Updates the version labels in `docusaurus.config.ts`.
-
-After running the command, restart the development server (`npm run start` from the `docs/` directory) to see the new version reflected in the UI.
-
-### Version Behavior
-
-- **Current version**: Always refers to the latest development docs in `docs/`
-- **Versioned releases**: Archived in `versioned_docs/version-X.Y.Z/`
-- **Default display**: Current version is shown by default
-- **Version switching**: Users can switch between versions via the version dropdown
-
-### Managing Versions
-
-List all versions:
-```bash
-ls versioned_docs/
-cat versions.json
-```
-
-Remove a version (if needed):
-1. Delete the corresponding directories in `versioned_docs/` and `versioned_sidebars/`
-2. Remove the version from `versions.json`
-
-### Updating an Existing Version (re-snapshot from current docs)
-
-If you need to refresh an existing version (e.g., `0.5.0`) so it reflects the current content in `docs/`, follow these steps from the `docs/` directory:
-
-1) Delete the existing snapshot and its sidebar entry
-
-```bash
-rm -rf versioned_docs/version-0.5.0 versioned_sidebars/version-0.5.0-sidebars.json
-```
-
-2) Remove the version entry from `versions.json`
-
-```bash
-node -e "const fs=require('fs');const p='versions.json';const v=JSON.parse(fs.readFileSync(p));fs.writeFileSync(p, JSON.stringify(v.filter(x=>x!=='0.5.0'), null, 2)+'\n');"
-```
-
-3) Recreate the snapshot from the current docs
-
-```bash
-npm run clear
-npm run docusaurus -- docs:version 0.5.0
-```
-
-4) Build to verify (and see broken link warnings, if any)
-
-```bash
-npm run build
-```
-
-Tips:
-- Commit your work before refreshing a version so you can easily revert if needed.
-- If you maintain SDK-generated pages, ensure they are up to date before step 3 (the build script also syncs SDK docs).
-
-## Content Development
-
-### Writing Documentation
-
-- Use Markdown with MDX support for React components
-- Place images in `static/img/`
-- Update `sidebars.ts` when adding new pages
-- Use relative links for internal navigation
+### Add New Page
+1. Create `.md` or `.mdx` file in `docs/docs/`
+2. Add to `docs/sidebars.ts`
+3. Test locally, then version
 
 ### Code Examples
-
-Use proper syntax highlighting:
-
 ```python
-# Python example
 import kamiwaza as kz
 client = kz.Client()
 ```
 
-### Diagrams
-
-Mermaid diagrams are supported:
-
+### Diagrams (Mermaid)
 ```mermaid
 graph TD
-    A[User] --> B[API Gateway]
-    B --> C[Services]
+    A[User] --> B[API]
+    B --> C[Service]
 ```
 
-## Quality Assurance
+### Images
+- Place in `docs/static/img/`
+- Reference: `![alt text](/img/filename.png)`
 
-### Link Checking
 
-Before publishing, verify all internal links work:
-
-```bash
-npm run build
-```
-
-Check the build output for broken link warnings.
-
-### Type Checking
-
-Run TypeScript checks:
-
-```bash
-npm run typecheck
-```
-
-## Troubleshooting
-
-### Build Failures
-- Ensure you're in the `docs` directory
-- Clear the cache: `npm run clear`
-- Delete `node_modules` and reinstall if needed
-
-### Version Conflicts
-- Ensure version numbers are consistent across all configuration files
-- Check that version directories exist if referenced in configs
-
-### Development Server Issues
-- Check that port 3000 is available
-- Try `npm run clear` to clear Docusaurus cache
-
-### Versioning Issues
-- **"Missing script: version-up"**: You're in the wrong directory. Run versioning commands from the root `kamiwaza-docs/` directory, not `docs/`
-- **"No config file found"**: Docusaurus can't find its config. The `version-up` command automatically switches to the `docs/` directory where the config exists
-- **"Version already exists"**: If you see errors about existing versions, check `versions.json` and remove conflicting entries, or delete the corresponding `versioned_docs/version-X.Y.Z/` folder
-- **Version mismatch**: Ensure the `../kamiwaza/kamiwaza.version.json` file exists and is readable from the kamiwaza-docs directory
-- **Version not showing in browser**: After running `version-up`, update version numbers in `docusaurus.config.ts` and restart the development server
-
-## Contributing
-
-1. Create a feature branch for documentation changes
-2. Test locally with `npm run start`
-3. Build successfully with `npm run build`
-4. Submit a pull request with clear descriptions of changes
-
-For questions or issues, refer to the [Docusaurus documentation](https://docusaurus.io/docs) or create an issue in this repository.
+Questions? See [Docusaurus docs](https://docusaurus.io/docs) or open an issue.
