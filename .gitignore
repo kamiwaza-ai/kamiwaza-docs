@@ -22,3 +22,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+docs/package-lock.json
+package-lock.json
+package-lock.json
+.claude
+.claude/settings.local.json
+.claude/settings.json

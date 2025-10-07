@@ -478,6 +478,6 @@ echo 'source /opt/intel/oneapi/setvars.sh' >> ~/.bashrc
 
 ---
 
-**Last Updated**: October 3rd, 2025
-**Version**: Compatible with Kamiwaza v0.5.1
+**Last Updated**: October 3rd, 2025  
+**Version**: Compatible with Kamiwaza v0.5.1  
 **Support**: [Contact our support team](intro.md#need-help) 
