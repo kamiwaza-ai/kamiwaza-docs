@@ -726,7 +726,7 @@ sudo bash verify-installation.sh > verification-results.txt
 
 ### What You Need
 
-1. **kamiwaza-<version>-offline.rpm** (~2-3GB)
+1. **kamiwaza-[version]-offline.rpm** (~2-3GB)
 2. **RHEL 9.6+/10.x** system
 3. **Root access**
 4. **NO internet connection required**
