@@ -15,7 +15,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import puppeteer, { Browser, Page } from 'puppeteer';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import { spawn, ChildProcess } from 'child_process';
 
 interface PDFConfig {
@@ -118,8 +118,14 @@ class PDFGenerator {
         args: ['--no-sandbox', '--disable-setuid-sandbox']
       });
 
-      // Generate PDFs for each document
+      // Generate cover page with TOC if enabled
       const pdfBuffers: Buffer[] = [];
+
+      if (profile.options.includeTOC) {
+        console.log('\n📋 Generating Table of Contents...\n');
+        const tocBuffer = await this.generateTOC(profile, targetVersion);
+        pdfBuffers.push(tocBuffer);
+      }
 
       console.log(`\n📑 Generating ${profile.documents.length} document(s)...\n`);
 
@@ -130,7 +136,7 @@ class PDFGenerator {
 
       // Merge PDFs
       console.log('\n📦 Merging PDFs...');
-      const mergedPDF = await this.mergePDFs(pdfBuffers);
+      const mergedPDF = await this.mergePDFs(pdfBuffers, profile);
 
       // Save final PDF
       const filename = `${profile.filename}-v${targetVersion}.pdf`;
@@ -230,6 +236,137 @@ class PDFGenerator {
     });
   }
 
+  private async generateTOC(profile: ProfileConfig, version: string): Promise<Buffer> {
+    const page = await this.browser!.newPage();
+
+    try {
+      // Create HTML content for TOC
+      const tocHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            @page {
+              size: A4;
+              margin: 20mm 15mm;
+            }
+            body {
+              font-family: 'Helvetica Neue', Arial, sans-serif;
+              margin: 0;
+              padding: 40px;
+              color: #1a1a1a;
+            }
+            .cover {
+              text-align: center;
+              margin-bottom: 60px;
+            }
+            h1 {
+              font-size: 32pt;
+              font-weight: bold;
+              margin-bottom: 10px;
+              color: #1a1a1a;
+            }
+            .subtitle {
+              font-size: 18pt;
+              color: #666;
+              margin-bottom: 5px;
+            }
+            .version {
+              font-size: 14pt;
+              color: #888;
+              margin-top: 20px;
+            }
+            .toc-container {
+              margin-top: 60px;
+            }
+            h2 {
+              font-size: 20pt;
+              font-weight: bold;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #333;
+              padding-bottom: 10px;
+            }
+            .toc-list {
+              list-style: none;
+              padding: 0;
+              margin: 0;
+            }
+            .toc-item {
+              padding: 12px 0;
+              border-bottom: 1px solid #eee;
+              font-size: 12pt;
+              line-height: 1.5;
+            }
+            .toc-item:last-child {
+              border-bottom: none;
+            }
+            .toc-number {
+              display: inline-block;
+              width: 30px;
+              font-weight: bold;
+              color: #666;
+            }
+            .footer {
+              position: fixed;
+              bottom: 15mm;
+              left: 15mm;
+              right: 15mm;
+              text-align: center;
+              font-size: 9pt;
+              color: #888;
+              font-style: italic;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="cover">
+            <h1>${profile.cover.title}</h1>
+            <div class="subtitle">${profile.cover.subtitle}</div>
+            ${profile.cover.includeVersion ? `<div class="version">Version ${version}</div>` : ''}
+          </div>
+
+          <div class="toc-container">
+            <h2>Table of Contents</h2>
+            <ul class="toc-list">
+              ${profile.documents.map((doc, index) => `
+                <li class="toc-item">
+                  <span class="toc-number">${index + 1}.</span>
+                  ${doc.title}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+
+          <div class="footer">
+            Complete updated Kamiwaza documentation is available at https://docs.kamiwaza.ai
+          </div>
+        </body>
+        </html>
+      `;
+
+      await page.setContent(tocHTML, { waitUntil: 'networkidle0' });
+
+      // Generate PDF
+      const pdfBuffer = await page.pdf({
+        format: this.config.settings.pdf.format as any,
+        margin: this.config.settings.pdf.margin,
+        printBackground: this.config.settings.pdf.printBackground,
+        preferCSSPageSize: this.config.settings.pdf.preferCSSPageSize
+      });
+
+      console.log(`     ✅ Generated TOC (${(pdfBuffer.length / 1024).toFixed(0)} KB)`);
+
+      return Buffer.from(pdfBuffer);
+
+    } catch (error) {
+      console.error(`     ❌ Failed to generate TOC: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    } finally {
+      await page.close();
+    }
+  }
+
   private async generateDocumentPDF(
     doc: DocumentConfig,
     version: string,
@@ -263,24 +400,42 @@ class PDFGenerator {
         await page.addStyleTag({ content: cssContent });
       }
 
-      // Add document title as header and footer with documentation URL
-      await page.addStyleTag({
-        content: `
-          @page {
+      // Add document title as header and footer with documentation URL (if enabled)
+      if (profile.options.includeHeaders || profile.options.includeFooters) {
+        let headerCSS = '';
+        let footerCSS = '';
+
+        if (profile.options.includeHeaders) {
+          headerCSS = `
             @top-center {
               content: "${doc.title}";
               font-size: 10pt;
               color: #666;
             }
+          `;
+        }
+
+        if (profile.options.includeFooters) {
+          // Note: Page numbers will be added after merging for continuous numbering
+          footerCSS = `
             @bottom-center {
               content: "Complete updated Kamiwaza documentation is available at https://docs.kamiwaza.ai";
               font-size: 9pt;
               color: #888;
               font-style: italic;
             }
+          `;
+        }
+
+        const headerFooterCSS = `
+          @page {
+            ${headerCSS}
+            ${footerCSS}
           }
-        `
-      });
+        `;
+
+        await page.addStyleTag({ content: headerFooterCSS });
+      }
 
       // Generate PDF
       const pdfBuffer = await page.pdf({
@@ -302,15 +457,39 @@ class PDFGenerator {
     }
   }
 
-  private async mergePDFs(pdfBuffers: Buffer[]): Promise<Buffer> {
+  private async mergePDFs(pdfBuffers: Buffer[], profile: ProfileConfig): Promise<Buffer> {
     const mergedPdf = await PDFDocument.create();
 
+    // Merge all PDFs
     for (const pdfBuffer of pdfBuffers) {
       const pdf = await PDFDocument.load(pdfBuffer);
       const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
 
       for (const page of pages) {
         mergedPdf.addPage(page);
+      }
+    }
+
+    // Add continuous page numbers if enabled
+    if (profile.options.includePageNumbers) {
+      console.log('📄 Adding continuous page numbers...');
+      const pages = mergedPdf.getPages();
+      const totalPages = pages.length;
+
+      for (let i = 0; i < totalPages; i++) {
+        const page = pages[i];
+        const { width, height } = page.getSize();
+
+        // Add page number in bottom-left corner
+        const pageNumber = i + 1;
+        const pageText = `Page ${pageNumber} of ${totalPages}`;
+
+        page.drawText(pageText, {
+          x: 15 * 2.83465, // 15mm in points (1mm = 2.83465 points)
+          y: 15 * 2.83465, // 15mm from bottom
+          size: 9,
+          color: rgb(0.4, 0.4, 0.4), // #666
+        });
       }
     }
 

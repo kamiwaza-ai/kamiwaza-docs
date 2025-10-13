@@ -36,8 +36,8 @@ profiles:
   # Full Documentation Profile
   # Complete platform documentation
   full-docs:
-    name: "Kamiwaza AI Platform Documentation"
-    description: "Complete platform documentation"
+    name: "Kamiwaza AI Documentation"
+    description: "Complete documentation"
     filename: "kamiwaza-docs-complete"
     cover:
       title: "Kamiwaza AI Platform"
