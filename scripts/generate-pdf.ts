@@ -164,21 +164,40 @@ class PDFGenerator {
 
     const documents: DocumentConfig[] = [];
     const excludeSet = new Set(excludeDocs);
+    const seenIds = new Set<string>();
+
+    // Keywords to exclude (TypeScript/config keywords and category labels)
+    const keywords = new Set([
+      'doc', 'category', 'label', 'type', 'items', 'id', 'collapsed',
+      'Introduction', 'Installation', 'Models', 'Use Cases', 'Architecture',
+      'Our Team', 'Services', 'Platform Overview', 'About Kamiwaza',
+      'Quickstart', 'App Garden', 'Distributed Data Engine', 'Administrator Guide',
+      'Help & Fixes', 'Release Notes', 'Other Topics'
+    ]);
+
+    // Pattern for valid document IDs (must contain / or be lowercase with hyphens/underscores)
+    const validDocPattern = /^[a-z0-9][a-z0-9_/-]*$/i;
 
     // Read main sidebar
     const mainSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars.ts');
     const mainSidebarContent = await fs.readFile(mainSidebarPath, 'utf8');
 
-    // Extract document IDs from main sidebar using regex
+    // Extract document IDs from main sidebar
     const mainDocMatches = mainSidebarContent.matchAll(/'([^']+)'/g);
     for (const match of mainDocMatches) {
       const docId = match[1];
-      // Skip if it's not a doc path or if it's excluded
-      if (docId &&
-          !docId.includes('Introduction') &&
-          !docId.includes('label') &&
-          !excludeSet.has(docId)) {
-        // Generate a title from the docId
+
+      // Skip if already seen, is keyword, doesn't match pattern, or is excluded
+      if (seenIds.has(docId) ||
+          keywords.has(docId) ||
+          !validDocPattern.test(docId) ||
+          excludeSet.has(docId)) {
+        continue;
+      }
+
+      // Additional check: must contain a slash OR hyphen/underscore (to filter out single words)
+      if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
+        seenIds.add(docId);
         const title = this.generateTitleFromId(docId);
         documents.push({ id: docId, title });
       }
@@ -193,11 +212,18 @@ class PDFGenerator {
       for (const match of sdkDocMatches) {
         const docId = match[1];
         const fullId = `sdk/${docId}`;
-        // Skip if excluded
-        if (docId &&
-            !docId.includes('Services') &&
-            !docId.includes('label') &&
-            !excludeSet.has(fullId)) {
+
+        // Skip if already seen, is keyword, or is excluded
+        if (seenIds.has(fullId) ||
+            keywords.has(docId) ||
+            !validDocPattern.test(docId) ||
+            excludeSet.has(fullId)) {
+          continue;
+        }
+
+        // Additional check for SDK docs
+        if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
+          seenIds.add(fullId);
           const title = `SDK - ${this.generateTitleFromId(docId)}`;
           documents.push({ id: fullId, title });
         }
@@ -408,16 +434,6 @@ class PDFGenerator {
               font-weight: bold;
               color: #666;
             }
-            .footer {
-              position: fixed;
-              bottom: 15mm;
-              left: 15mm;
-              right: 15mm;
-              text-align: center;
-              font-size: 9pt;
-              color: #888;
-              font-style: italic;
-            }
           </style>
         </head>
         <body>
@@ -438,10 +454,6 @@ class PDFGenerator {
                 </li>
               `).join('')}
             </ul>
-          </div>
-
-          <div class="footer">
-            Complete updated Kamiwaza documentation is available at https://docs.kamiwaza.ai
           </div>
         </body>
         </html>
@@ -502,41 +514,20 @@ class PDFGenerator {
         await page.addStyleTag({ content: cssContent });
       }
 
-      // Add document title as header and footer with documentation URL (if enabled)
-      if (profile.options.includeHeaders || profile.options.includeFooters) {
-        let headerCSS = '';
-        let footerCSS = '';
-
-        if (profile.options.includeHeaders) {
-          headerCSS = `
+      // Add document title as header (if enabled)
+      // Note: Footer is added in mergePDFs for consistent positioning across all pages
+      if (profile.options.includeHeaders) {
+        const headerCSS = `
+          @page {
             @top-center {
               content: "${doc.title}";
               font-size: 10pt;
               color: #666;
             }
-          `;
-        }
-
-        if (profile.options.includeFooters) {
-          // Note: Page numbers will be added after merging for continuous numbering
-          footerCSS = `
-            @bottom-center {
-              content: "Complete updated Kamiwaza documentation is available at https://docs.kamiwaza.ai";
-              font-size: 9pt;
-              color: #888;
-              font-style: italic;
-            }
-          `;
-        }
-
-        const headerFooterCSS = `
-          @page {
-            ${headerCSS}
-            ${footerCSS}
           }
         `;
 
-        await page.addStyleTag({ content: headerFooterCSS });
+        await page.addStyleTag({ content: headerCSS });
       }
 
       // Generate PDF
@@ -572,9 +563,9 @@ class PDFGenerator {
       }
     }
 
-    // Add continuous page numbers if enabled
-    if (profile.options.includePageNumbers) {
-      console.log('📄 Adding continuous page numbers...');
+    // Add footer and page numbers if enabled
+    if (profile.options.includePageNumbers || profile.options.includeFooters) {
+      console.log('📄 Adding continuous page numbers and footers...');
       const pages = mergedPdf.getPages();
       const totalPages = pages.length;
 
@@ -582,16 +573,35 @@ class PDFGenerator {
         const page = pages[i];
         const { width, height } = page.getSize();
 
-        // Add page number in bottom-left corner
-        const pageNumber = i + 1;
-        const pageText = `Page ${pageNumber} of ${totalPages}`;
+        // Add documentation URL footer in bottom-center
+        if (profile.options.includeFooters) {
+          const footerText = 'Complete updated Kamiwaza documentation is available at https://docs.kamiwaza.ai';
+          const footerFontSize = 9;
 
-        page.drawText(pageText, {
-          x: 15 * 2.83465, // 15mm in points (1mm = 2.83465 points)
-          y: 15 * 2.83465, // 15mm from bottom
-          size: 9,
-          color: rgb(0.4, 0.4, 0.4), // #666
-        });
+          // Calculate center position for footer text
+          const footerWidth = footerText.length * footerFontSize * 0.5; // Approximate width
+          const footerX = (width - footerWidth) / 2;
+
+          page.drawText(footerText, {
+            x: footerX,
+            y: 10 * 2.83465, // 10mm from bottom
+            size: footerFontSize,
+            color: rgb(0.53, 0.53, 0.53), // #888
+          });
+        }
+
+        // Add page number in bottom-left corner
+        if (profile.options.includePageNumbers) {
+          const pageNumber = i + 1;
+          const pageText = `Page ${pageNumber} of ${totalPages}`;
+
+          page.drawText(pageText, {
+            x: 15 * 2.83465, // 15mm in points (1mm = 2.83465 points)
+            y: 15 * 2.83465, // 15mm from bottom
+            size: 9,
+            color: rgb(0.4, 0.4, 0.4), // #666
+          });
+        }
       }
     }
 
