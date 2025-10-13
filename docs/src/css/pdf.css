@@ -35,7 +35,13 @@
   .theme-doc-toc-mobile,
   .theme-back-to-top-button,
   button,
-  .announcementBar {
+  .announcementBar,
+  .theme-admonition-caution,
+  .admonition-caution,
+  div[class*="docusaurus-mt"],
+  div[class*="alert"],
+  .theme-doc-version-banner,
+  .theme-doc-version-badge {
     display: none !important;
   }
 

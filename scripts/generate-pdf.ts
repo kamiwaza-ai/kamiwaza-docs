@@ -108,7 +108,11 @@ class PDFGenerator {
       profile.documents = await this.discoverAllDocuments(profile.excludeDocs || []);
     }
 
-    const targetVersion = version || this.config.settings.defaultVersion;
+    // Get version - if not specified, get latest from versions.json
+    let targetVersion = version || this.config.settings.defaultVersion;
+    if (targetVersion === 'current') {
+      targetVersion = await this.getLatestVersion();
+    }
     console.log(`📌 Version: ${targetVersion}`);
 
     // Ensure output directory exists
@@ -157,6 +161,17 @@ class PDFGenerator {
     } finally {
       await this.cleanup();
     }
+  }
+
+  private async getLatestVersion(): Promise<string> {
+    const versionsPath = path.join(this.projectRoot, 'docs', 'versions.json');
+    if (await fs.pathExists(versionsPath)) {
+      const versions = JSON.parse(await fs.readFile(versionsPath, 'utf8')) as string[];
+      if (versions.length > 0) {
+        return versions[0]; // First entry is the latest version
+      }
+    }
+    return 'current'; // Fallback to 'current' if versions.json doesn't exist or is empty
   }
 
   private async discoverAllDocuments(excludeDocs: string[]): Promise<DocumentConfig[]> {
