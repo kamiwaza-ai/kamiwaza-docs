@@ -2,41 +2,62 @@
 
 ## Base System Requirements
 
-### Supported Operating Systems
-- Linux: Ubuntu 24.04 and 22.04 LTS via .deb package installation
-- Windows: 11 (x64 architecture) via WSL with MSI installer
-- macOS: 12.0 or later (community edition only)
+### Supported Operating Systems & Architecture
+- **Linux**: Ubuntu 24.04 and 22.04 LTS via .deb package installation (x64/amd64 architecture only)
+- **Windows**: 11 (x64 architecture) via WSL with MSI installer
+- **macOS**: 12.0 or later, Apple Silicon (ARM64) only (community edition only)
 
-### Core Requirements
-- Python 3.10 (tarball installation on MacOS and Linux) or Python 3.12 (deb installation on Linux or MSI installation on Windows WSL)
-- Docker Engine with Compose v2
-- Node.js 22 (installed via NVM during setup)
-- Minimum disk space requirements (see Storage Requirements section)
-- For GPU support: NVIDIA GPU with compute capability 7.0+ (Linux/macOS) or NVIDIA RTX/Intel Arc (Windows)
+### CPU Requirements
+- **Architecture**:
+  - Linux: x64/amd64 (64-bit)
+  - macOS: ARM64 (Apple Silicon) only
+  - Windows: x64 (64-bit)
+- **Minimum Cores**: 8+ cores
+- **Recommended Cores**: 16+ cores for CPU-based inference workloads
+
+### Core Software Requirements
+- **Python**: Python 3.10 for tarball installations; Python 3.12 for .deb/.msi installations
+- **Docker**: Docker Engine with Compose v2
+- **Node.js**: 22.x (installed via NVM during setup)
+- **Browser**: Chrome Version 141+ (tested and recommended)
+- **GPU Support**: NVIDIA GPU with compute capability 7.0+ (Linux only) or NVIDIA RTX/Intel Arc (Windows via WSL)
 
 ### Memory Requirements
 
-#### Linux/macOS
-- Minimum: 16GB RAM
-- Recommended: 32GB RAM
-- GPU Workloads: 32GB RAM + GPU vRAM
+#### System RAM
+- **Minimum**: 16GB RAM
+- **Recommended**: 32GB+ RAM for CPU-based inference workloads
+- **GPU Workloads**: 16GB+ system RAM (32GB+ recommended)
 
-#### Windows (WSL-based)
-- Minimum: 8GB RAM
-- Recommended: 16GB+ RAM
-- Optimal Performance: 32GB+ RAM for large workloads
-- Memory Allocation: 50-75% of system RAM dedicated to Kamiwaza during installation
+#### GPU Memory (vRAM)
+- **GPU Inference**: 16GB+ vRAM required
+- **Recommended**: 32GB+ vRAM for optimal GPU inference performance
+
+#### Windows (WSL-based) Specific
+- **Minimum**: 8GB RAM (limited functionality)
+- **Recommended**: 16GB+ RAM
+- **Optimal Performance**: 32GB+ RAM for inference workloads
+- **Memory Allocation**: 50-75% of system RAM dedicated to Kamiwaza during installation
 
 ### Storage Requirements
 
-#### Linux/macOS
-- Minimum: 10GB free disk space
-- Enterprise Edition: Additional space for /opt/kamiwaza persistence
+#### Storage Performance
+- **Required**: SSD (Solid State Drive)
+- **Preferred**: NVMe SSD for optimal performance
+- **Minimum**: SATA SSD
+- **Not Supported**: HDD (Hard Disk Drive) - insufficient performance
 
-#### Windows
-- Minimum: 20GB free disk space
-- Recommended: 50GB+ free space on SSD for optimal performance
-- WSL will automatically manage Ubuntu 24.04 installation space
+#### Storage Capacity
+
+**Linux/macOS**
+- **Minimum**: 100GB free disk space
+- **Recommended**: 200GB+ free disk space
+- **Enterprise Edition**: Additional space for /opt/kamiwaza persistence
+
+**Windows**
+- **Minimum**: 100GB free disk space
+- **Recommended**: 200GB+ free space on SSD
+- **WSL**: Automatically manages Ubuntu 24.04 installation space
 
 📋 **For detailed Windows storage and configuration requirements, see the [Windows Installation Guide](windows_installation_guide.md).**
 
@@ -115,6 +136,11 @@ $KAMIWAZA_ROOT/
 ```
 
 ## Network Configuration
+
+### Network Bandwidth Requirements
+- **Minimum**: 10 Gbps network interface
+- **Recommended**: 10 Gbps or higher for optimal performance
+- **Enterprise Multi-Node**: 10 Gbps minimum between cluster nodes
 
 ### Required Kernel Modules (Enterprise Edition Linux Only)
 Required modules for Swarm container networking:
