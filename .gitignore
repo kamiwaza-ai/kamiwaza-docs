@@ -28,3 +28,5 @@ package-lock.json
 .claude
 .claude/settings.local.json
 .claude/settings.json
+# PDF generation output - only save numbered versions
+dist/pdf/*vcurrent.pdf

@@ -68,6 +68,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'admin-guide',
+      label: 'Administrator Guide',
+    },
+    {
+      type: 'doc',
       id: 'other-topics',
       label: 'Other Topics',
     },
@@ -75,6 +80,11 @@ const sidebars: SidebarsConfig = {
       type: 'doc',
       id: 'help-and-fixes',
       label: 'Help & Fixes',
+    },
+    {
+      type: 'doc',
+      id: 'release-notes',
+      label: 'Release Notes',
     },
     {
       type: 'category',
