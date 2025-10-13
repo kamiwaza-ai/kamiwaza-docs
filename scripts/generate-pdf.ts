@@ -28,7 +28,9 @@ interface ProfileConfig {
   description: string;
   filename: string;
   cover: CoverConfig;
-  documents: DocumentConfig[];
+  documents?: DocumentConfig[];
+  includeAll?: boolean;
+  excludeDocs?: string[];
   options: PDFOptions;
 }
 
@@ -101,6 +103,11 @@ class PDFGenerator {
       throw new Error(`Profile "${profileName}" not found in pdf-config.yaml`);
     }
 
+    // If includeAll is enabled, discover all documents
+    if (profile.includeAll) {
+      profile.documents = await this.discoverAllDocuments(profile.excludeDocs || []);
+    }
+
     const targetVersion = version || this.config.settings.defaultVersion;
     console.log(`📌 Version: ${targetVersion}`);
 
@@ -150,6 +157,85 @@ class PDFGenerator {
     } finally {
       await this.cleanup();
     }
+  }
+
+  private async discoverAllDocuments(excludeDocs: string[]): Promise<DocumentConfig[]> {
+    console.log('🔍 Discovering all available documents...');
+
+    const documents: DocumentConfig[] = [];
+    const excludeSet = new Set(excludeDocs);
+
+    // Read main sidebar
+    const mainSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars.ts');
+    const mainSidebarContent = await fs.readFile(mainSidebarPath, 'utf8');
+
+    // Extract document IDs from main sidebar using regex
+    const mainDocMatches = mainSidebarContent.matchAll(/'([^']+)'/g);
+    for (const match of mainDocMatches) {
+      const docId = match[1];
+      // Skip if it's not a doc path or if it's excluded
+      if (docId &&
+          !docId.includes('Introduction') &&
+          !docId.includes('label') &&
+          !excludeSet.has(docId)) {
+        // Generate a title from the docId
+        const title = this.generateTitleFromId(docId);
+        documents.push({ id: docId, title });
+      }
+    }
+
+    // Read SDK sidebar
+    const sdkSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars-sdk.ts');
+    if (await fs.pathExists(sdkSidebarPath)) {
+      const sdkSidebarContent = await fs.readFile(sdkSidebarPath, 'utf8');
+      const sdkDocMatches = sdkSidebarContent.matchAll(/'([^']+)'/g);
+
+      for (const match of sdkDocMatches) {
+        const docId = match[1];
+        const fullId = `sdk/${docId}`;
+        // Skip if excluded
+        if (docId &&
+            !docId.includes('Services') &&
+            !docId.includes('label') &&
+            !excludeSet.has(fullId)) {
+          const title = `SDK - ${this.generateTitleFromId(docId)}`;
+          documents.push({ id: fullId, title });
+        }
+      }
+    }
+
+    // Add intro at the beginning (with empty id for root)
+    if (!excludeSet.has('intro') && !excludeSet.has('')) {
+      documents.unshift({ id: '', title: 'Introduction' });
+    }
+
+    console.log(`   Found ${documents.length} documents (excluded ${excludeDocs.length})`);
+
+    return documents;
+  }
+
+  private generateTitleFromId(docId: string): string {
+    // Convert doc ID to readable title
+    // e.g., "installation/system_requirements" -> "System Requirements"
+    // e.g., "services/auth/README" -> "Auth Service"
+
+    const parts = docId.split('/');
+    let lastPart = parts[parts.length - 1];
+
+    // Remove README
+    if (lastPart === 'README' && parts.length > 1) {
+      lastPart = parts[parts.length - 2];
+    }
+
+    // Remove file extensions
+    lastPart = lastPart.replace(/\.(md|mdx)$/, '');
+
+    // Convert snake_case or kebab-case to Title Case
+    return lastPart
+      .replace(/[_-]/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 
   private async findAvailablePort(startPort: number): Promise<number> {
@@ -240,6 +326,16 @@ class PDFGenerator {
     const page = await this.browser!.newPage();
 
     try {
+      // Read and encode logo if needed
+      let logoBase64 = '';
+      if (profile.cover.includeLogo) {
+        const logoPath = path.join(this.projectRoot, 'docs', 'static', 'img', 'KW_logo.png');
+        if (await fs.pathExists(logoPath)) {
+          const logoBuffer = await fs.readFile(logoPath);
+          logoBase64 = logoBuffer.toString('base64');
+        }
+      }
+
       // Create HTML content for TOC
       const tocHTML = `
         <!DOCTYPE html>
@@ -260,6 +356,11 @@ class PDFGenerator {
             .cover {
               text-align: center;
               margin-bottom: 60px;
+            }
+            .logo {
+              width: 150px;
+              height: auto;
+              margin-bottom: 30px;
             }
             h1 {
               font-size: 32pt;
@@ -321,6 +422,7 @@ class PDFGenerator {
         </head>
         <body>
           <div class="cover">
+            ${logoBase64 ? `<img src="data:image/png;base64,${logoBase64}" class="logo" alt="Kamiwaza Logo" />` : ''}
             <h1>${profile.cover.title}</h1>
             <div class="subtitle">${profile.cover.subtitle}</div>
             ${profile.cover.includeVersion ? `<div class="version">Version ${version}</div>` : ''}
