@@ -263,7 +263,7 @@ class PDFGenerator {
         await page.addStyleTag({ content: cssContent });
       }
 
-      // Add document title as header
+      // Add document title as header and footer with documentation URL
       await page.addStyleTag({
         content: `
           @page {
@@ -271,6 +271,12 @@ class PDFGenerator {
               content: "${doc.title}";
               font-size: 10pt;
               color: #666;
+            }
+            @bottom-center {
+              content: "Complete updated Kamiwaza documentation is available at https://docs.kamiwaza.ai";
+              font-size: 9pt;
+              color: #888;
+              font-style: italic;
             }
           }
         `
