@@ -31,6 +31,10 @@
    ```
 3. Verify service starts (see [Quickstart](quickstart.md))
 
+#### RHEL .rpm Package Installation (for RHEL 9)
+
+For offline/air-gapped RHEL installations, see the comprehensive [Red Hat Offline Installation Guide](redhat_offline_install.md).
+
 #### Other Linux Distros via Tarball
 
 1. Follow the consolidated guide: [Linux/macOS tarball installation](linux_macos_tarball.md)
