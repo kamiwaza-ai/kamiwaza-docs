@@ -15,7 +15,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import puppeteer, { Browser, Page } from 'puppeteer';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import { spawn, ChildProcess } from 'child_process';
 
 interface PDFConfig {
@@ -28,7 +28,9 @@ interface ProfileConfig {
   description: string;
   filename: string;
   cover: CoverConfig;
-  documents: DocumentConfig[];
+  documents?: DocumentConfig[];
+  includeAll?: boolean;
+  excludeDocs?: string[];
   options: PDFOptions;
 }
 
@@ -101,6 +103,11 @@ class PDFGenerator {
       throw new Error(`Profile "${profileName}" not found in pdf-config.yaml`);
     }
 
+    // If includeAll is enabled, discover all documents
+    if (profile.includeAll) {
+      profile.documents = await this.discoverAllDocuments(profile.excludeDocs || []);
+    }
+
     const targetVersion = version || this.config.settings.defaultVersion;
     console.log(`📌 Version: ${targetVersion}`);
 
@@ -118,8 +125,14 @@ class PDFGenerator {
         args: ['--no-sandbox', '--disable-setuid-sandbox']
       });
 
-      // Generate PDFs for each document
+      // Generate cover page with TOC if enabled
       const pdfBuffers: Buffer[] = [];
+
+      if (profile.options.includeTOC) {
+        console.log('\n📋 Generating Table of Contents...\n');
+        const tocBuffer = await this.generateTOC(profile, targetVersion);
+        pdfBuffers.push(tocBuffer);
+      }
 
       console.log(`\n📑 Generating ${profile.documents.length} document(s)...\n`);
 
@@ -130,7 +143,7 @@ class PDFGenerator {
 
       // Merge PDFs
       console.log('\n📦 Merging PDFs...');
-      const mergedPDF = await this.mergePDFs(pdfBuffers);
+      const mergedPDF = await this.mergePDFs(pdfBuffers, profile);
 
       // Save final PDF
       const filename = `${profile.filename}-v${targetVersion}.pdf`;
@@ -144,6 +157,111 @@ class PDFGenerator {
     } finally {
       await this.cleanup();
     }
+  }
+
+  private async discoverAllDocuments(excludeDocs: string[]): Promise<DocumentConfig[]> {
+    console.log('🔍 Discovering all available documents...');
+
+    const documents: DocumentConfig[] = [];
+    const excludeSet = new Set(excludeDocs);
+    const seenIds = new Set<string>();
+
+    // Keywords to exclude (TypeScript/config keywords and category labels)
+    const keywords = new Set([
+      'doc', 'category', 'label', 'type', 'items', 'id', 'collapsed',
+      'Introduction', 'Installation', 'Models', 'Use Cases', 'Architecture',
+      'Our Team', 'Services', 'Platform Overview', 'About Kamiwaza',
+      'Quickstart', 'App Garden', 'Distributed Data Engine', 'Administrator Guide',
+      'Help & Fixes', 'Release Notes', 'Other Topics'
+    ]);
+
+    // Pattern for valid document IDs (must contain / or be lowercase with hyphens/underscores)
+    const validDocPattern = /^[a-z0-9][a-z0-9_/-]*$/i;
+
+    // Read main sidebar
+    const mainSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars.ts');
+    const mainSidebarContent = await fs.readFile(mainSidebarPath, 'utf8');
+
+    // Extract document IDs from main sidebar
+    const mainDocMatches = mainSidebarContent.matchAll(/'([^']+)'/g);
+    for (const match of mainDocMatches) {
+      const docId = match[1];
+
+      // Skip if already seen, is keyword, doesn't match pattern, or is excluded
+      if (seenIds.has(docId) ||
+          keywords.has(docId) ||
+          !validDocPattern.test(docId) ||
+          excludeSet.has(docId)) {
+        continue;
+      }
+
+      // Additional check: must contain a slash OR hyphen/underscore (to filter out single words)
+      if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
+        seenIds.add(docId);
+        const title = this.generateTitleFromId(docId);
+        documents.push({ id: docId, title });
+      }
+    }
+
+    // Read SDK sidebar
+    const sdkSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars-sdk.ts');
+    if (await fs.pathExists(sdkSidebarPath)) {
+      const sdkSidebarContent = await fs.readFile(sdkSidebarPath, 'utf8');
+      const sdkDocMatches = sdkSidebarContent.matchAll(/'([^']+)'/g);
+
+      for (const match of sdkDocMatches) {
+        const docId = match[1];
+        const fullId = `sdk/${docId}`;
+
+        // Skip if already seen, is keyword, or is excluded
+        if (seenIds.has(fullId) ||
+            keywords.has(docId) ||
+            !validDocPattern.test(docId) ||
+            excludeSet.has(fullId)) {
+          continue;
+        }
+
+        // Additional check for SDK docs
+        if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
+          seenIds.add(fullId);
+          const title = `SDK - ${this.generateTitleFromId(docId)}`;
+          documents.push({ id: fullId, title });
+        }
+      }
+    }
+
+    // Add intro at the beginning (with empty id for root)
+    if (!excludeSet.has('intro') && !excludeSet.has('')) {
+      documents.unshift({ id: '', title: 'Introduction' });
+    }
+
+    console.log(`   Found ${documents.length} documents (excluded ${excludeDocs.length})`);
+
+    return documents;
+  }
+
+  private generateTitleFromId(docId: string): string {
+    // Convert doc ID to readable title
+    // e.g., "installation/system_requirements" -> "System Requirements"
+    // e.g., "services/auth/README" -> "Auth Service"
+
+    const parts = docId.split('/');
+    let lastPart = parts[parts.length - 1];
+
+    // Remove README
+    if (lastPart === 'README' && parts.length > 1) {
+      lastPart = parts[parts.length - 2];
+    }
+
+    // Remove file extensions
+    lastPart = lastPart.replace(/\.(md|mdx)$/, '');
+
+    // Convert snake_case or kebab-case to Title Case
+    return lastPart
+      .replace(/[_-]/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 
   private async findAvailablePort(startPort: number): Promise<number> {
@@ -230,6 +348,139 @@ class PDFGenerator {
     });
   }
 
+  private async generateTOC(profile: ProfileConfig, version: string): Promise<Buffer> {
+    const page = await this.browser!.newPage();
+
+    try {
+      // Read and encode logo if needed
+      let logoBase64 = '';
+      if (profile.cover.includeLogo) {
+        const logoPath = path.join(this.projectRoot, 'docs', 'static', 'img', 'KW_logo.png');
+        if (await fs.pathExists(logoPath)) {
+          const logoBuffer = await fs.readFile(logoPath);
+          logoBase64 = logoBuffer.toString('base64');
+        }
+      }
+
+      // Create HTML content for TOC
+      const tocHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            @page {
+              size: A4;
+              margin: 20mm 15mm;
+            }
+            body {
+              font-family: 'Helvetica Neue', Arial, sans-serif;
+              margin: 0;
+              padding: 40px;
+              color: #1a1a1a;
+            }
+            .cover {
+              text-align: center;
+              margin-bottom: 60px;
+            }
+            .logo {
+              width: 150px;
+              height: auto;
+              margin-bottom: 30px;
+            }
+            h1 {
+              font-size: 32pt;
+              font-weight: bold;
+              margin-bottom: 10px;
+              color: #1a1a1a;
+            }
+            .subtitle {
+              font-size: 18pt;
+              color: #666;
+              margin-bottom: 5px;
+            }
+            .version {
+              font-size: 14pt;
+              color: #888;
+              margin-top: 20px;
+            }
+            .toc-container {
+              margin-top: 60px;
+            }
+            h2 {
+              font-size: 20pt;
+              font-weight: bold;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #333;
+              padding-bottom: 10px;
+            }
+            .toc-list {
+              list-style: none;
+              padding: 0;
+              margin: 0;
+            }
+            .toc-item {
+              padding: 12px 0;
+              border-bottom: 1px solid #eee;
+              font-size: 12pt;
+              line-height: 1.5;
+            }
+            .toc-item:last-child {
+              border-bottom: none;
+            }
+            .toc-number {
+              display: inline-block;
+              width: 30px;
+              font-weight: bold;
+              color: #666;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="cover">
+            ${logoBase64 ? `<img src="data:image/png;base64,${logoBase64}" class="logo" alt="Kamiwaza Logo" />` : ''}
+            <h1>${profile.cover.title}</h1>
+            <div class="subtitle">${profile.cover.subtitle}</div>
+            ${profile.cover.includeVersion ? `<div class="version">Version ${version}</div>` : ''}
+          </div>
+
+          <div class="toc-container">
+            <h2>Table of Contents</h2>
+            <ul class="toc-list">
+              ${profile.documents.map((doc, index) => `
+                <li class="toc-item">
+                  <span class="toc-number">${index + 1}.</span>
+                  ${doc.title}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await page.setContent(tocHTML, { waitUntil: 'networkidle0' });
+
+      // Generate PDF
+      const pdfBuffer = await page.pdf({
+        format: this.config.settings.pdf.format as any,
+        margin: this.config.settings.pdf.margin,
+        printBackground: this.config.settings.pdf.printBackground,
+        preferCSSPageSize: this.config.settings.pdf.preferCSSPageSize
+      });
+
+      console.log(`     ✅ Generated TOC (${(pdfBuffer.length / 1024).toFixed(0)} KB)`);
+
+      return Buffer.from(pdfBuffer);
+
+    } catch (error) {
+      console.error(`     ❌ Failed to generate TOC: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    } finally {
+      await page.close();
+    }
+  }
+
   private async generateDocumentPDF(
     doc: DocumentConfig,
     version: string,
@@ -263,9 +514,10 @@ class PDFGenerator {
         await page.addStyleTag({ content: cssContent });
       }
 
-      // Add document title as header
-      await page.addStyleTag({
-        content: `
+      // Add document title as header (if enabled)
+      // Note: Footer is added in mergePDFs for consistent positioning across all pages
+      if (profile.options.includeHeaders) {
+        const headerCSS = `
           @page {
             @top-center {
               content: "${doc.title}";
@@ -273,8 +525,10 @@ class PDFGenerator {
               color: #666;
             }
           }
-        `
-      });
+        `;
+
+        await page.addStyleTag({ content: headerCSS });
+      }
 
       // Generate PDF
       const pdfBuffer = await page.pdf({
@@ -296,15 +550,58 @@ class PDFGenerator {
     }
   }
 
-  private async mergePDFs(pdfBuffers: Buffer[]): Promise<Buffer> {
+  private async mergePDFs(pdfBuffers: Buffer[], profile: ProfileConfig): Promise<Buffer> {
     const mergedPdf = await PDFDocument.create();
 
+    // Merge all PDFs
     for (const pdfBuffer of pdfBuffers) {
       const pdf = await PDFDocument.load(pdfBuffer);
       const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
 
       for (const page of pages) {
         mergedPdf.addPage(page);
+      }
+    }
+
+    // Add footer and page numbers if enabled
+    if (profile.options.includePageNumbers || profile.options.includeFooters) {
+      console.log('📄 Adding continuous page numbers and footers...');
+      const pages = mergedPdf.getPages();
+      const totalPages = pages.length;
+
+      for (let i = 0; i < totalPages; i++) {
+        const page = pages[i];
+        const { width, height } = page.getSize();
+
+        // Add documentation URL footer in bottom-center
+        if (profile.options.includeFooters) {
+          const footerText = 'Complete updated Kamiwaza documentation is available at https://docs.kamiwaza.ai';
+          const footerFontSize = 9;
+
+          // Calculate center position for footer text
+          const footerWidth = footerText.length * footerFontSize * 0.5; // Approximate width
+          const footerX = (width - footerWidth) / 2;
+
+          page.drawText(footerText, {
+            x: footerX,
+            y: 10 * 2.83465, // 10mm from bottom
+            size: footerFontSize,
+            color: rgb(0.53, 0.53, 0.53), // #888
+          });
+        }
+
+        // Add page number in bottom-left corner
+        if (profile.options.includePageNumbers) {
+          const pageNumber = i + 1;
+          const pageText = `Page ${pageNumber} of ${totalPages}`;
+
+          page.drawText(pageText, {
+            x: 15 * 2.83465, // 15mm in points (1mm = 2.83465 points)
+            y: 15 * 2.83465, // 15mm from bottom
+            size: 9,
+            color: rgb(0.4, 0.4, 0.4), // #666
+          });
+        }
       }
     }
 

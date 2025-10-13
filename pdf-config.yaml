@@ -36,63 +36,21 @@ profiles:
   # Full Documentation Profile
   # Complete platform documentation
   full-docs:
-    name: "Kamiwaza AI Platform Documentation"
-    description: "Complete platform documentation"
+    name: "Kamiwaza AI Documentation"
+    description: "Complete documentation"
     filename: "kamiwaza-docs-complete"
     cover:
       title: "Kamiwaza AI Platform"
       subtitle: "Complete Documentation"
       includeVersion: true
       includeLogo: true
-    documents:
-      - id: ""
-        title: "Introduction"
-      - id: "installation/system_requirements"
-        title: "System Requirements"
-      - id: "installation/installation_process"
-        title: "Installation Process"
-      - id: "installation/linux_macos_tarball"
-        title: "Linux/macOS Installation"
-      - id: "installation/windows_installation_guide"
-        title: "Windows Installation"
-      - id: "installation/gpu_setup_guide"
-        title: "GPU Setup Guide"
-      - id: "quickstart"
-        title: "Quickstart Guide"
-      - id: "models/overview"
-        title: "Models Overview"
-      - id: "models/novice-mode"
-        title: "Novice Mode"
-      - id: "models/gui-walkthrough"
-        title: "GUI Walkthrough"
-      - id: "models/downloading-models"
-        title: "Downloading Models"
-      - id: "models/deployment"
-        title: "Model Deployment"
-      - id: "models/troubleshooting"
-        title: "Model Troubleshooting"
-      - id: "app-garden"
-        title: "App Garden"
-      - id: "data-engine"
-        title: "Distributed Data Engine"
-      - id: "use-cases/index"
-        title: "Use Cases"
-      - id: "use-cases/building-a-rag-pipeline"
-        title: "Building a RAG Pipeline"
-      - id: "architecture/overview"
-        title: "Architecture Overview"
-      - id: "architecture/components"
-        title: "Platform Components"
-      - id: "architecture/core-services"
-        title: "Core Services"
-      - id: "admin-guide"
-        title: "Administrator Guide"
-      - id: "other-topics"
-        title: "Other Topics"
-      - id: "help-and-fixes"
-        title: "Help & Fixes"
-      - id: "release-notes"
-        title: "Release Notes"
+    # Use includeAll with excludeDocs for automatic document discovery
+    includeAll: true
+    excludeDocs:
+      # Exclude team/company pages from customer documentation
+      - "team/kamiwaza"
+      - "team/jobs"
+      - "team/mts"
     options:
       includeTOC: true
       includePageNumbers: true
