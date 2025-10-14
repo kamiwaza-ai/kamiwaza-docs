@@ -663,6 +663,42 @@ class PDFGenerator {
         console.warn(`     ⚠️  Warning: Article selector not found for ${doc.id}`);
       });
 
+      // Scroll through page to trigger lazy-loaded images
+      await page.evaluate(`(async () => {
+        await new Promise((resolve) => {
+          let totalHeight = 0;
+          const distance = 100;
+          const timer = setInterval(() => {
+            const scrollHeight = document.body.scrollHeight;
+            window.scrollBy(0, distance);
+            totalHeight += distance;
+
+            if(totalHeight >= scrollHeight){
+              clearInterval(timer);
+              resolve();
+            }
+          }, 100);
+        });
+      })()`);
+
+      // Wait for all images to finish loading
+      await page.evaluate(`(() => {
+        const images = Array.from(document.images);
+        return Promise.all(
+          images
+            .filter(img => !img.complete)
+            .map(img => new Promise(resolve => {
+              img.onload = img.onerror = resolve;
+            }))
+        );
+      })()`);
+
+      // Scroll back to top for proper PDF generation
+      await page.evaluate(`window.scrollTo(0, 0)`);
+
+      // Brief wait for scroll position to settle
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Inject custom PDF CSS if it exists
       const customCSS = path.join(this.projectRoot, this.config.settings.css.customStylesheet);
       if (await fs.pathExists(customCSS)) {
