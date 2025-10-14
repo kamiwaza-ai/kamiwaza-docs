@@ -562,7 +562,9 @@ class PDFGenerator {
       // Construct URL - handle SDK docs differently (version goes after /sdk/ prefix)
       let url: string;
       if (doc.id.startsWith('sdk/')) {
-        const sdkPath = doc.id.substring(4); // Remove 'sdk/' prefix
+        let sdkPath = doc.id.substring(4); // Remove 'sdk/' prefix
+        // Docusaurus strips /README from URLs, so remove it from the path
+        sdkPath = sdkPath.replace(/\/README$/, '');
         const versionPath = version === 'current' ? '' : `${version}/`;
         url = `${this.config.settings.server.baseUrl}/sdk/${versionPath}${sdkPath}`;
       } else {
