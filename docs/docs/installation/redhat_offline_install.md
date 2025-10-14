@@ -10,6 +10,8 @@ Kamiwaza supports offline installation for air-gapped RHEL environments where in
 - **Python wheels** (pip dependencies)
 - **System dependencies** (RPM packages)
 
+These instructions have been tested for Kamiwaza Enterprise.
+
 ---
 
 ## Dependencies
@@ -100,42 +102,30 @@ kamiwaza-requirements-export.zip        # Additional dependencies (optional)
 
 ### Step 2: Basic Installation
 
+**IMPORTANT:** You must accept the Kamiwaza License Agreement to install Kamiwaza. By including `KAMIWAZA_ACCEPT_LICENSE=yes` in the installation command, you are agreeing to the Kamiwaza License Agreement
+
+To review the full license terms, visit: https://www.kamiwaza.ai/license
+
 ```bash
 # Install the RPM package
-sudo rpm -i kamiwaza-[version]-offline.rpm
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install kamiwaza_[version]_rhel9_x86_64.rpm
 
 # The installer will automatically detect offline mode and use bundled resources
 ```
 
-### Step 3: Configure Environment
-
-After installation, configure the environment settings in `/etc/kamiwaza/env.sh`:
+### Step 4: Verification
 
 ```bash
-# Edit the environment configuration file
-sudo nano /etc/kamiwaza/env.sh
-
-# Add the following required settings:
-export OFFLINE_MODE=true
-export KAMIWAZA_LICENSE_KEY=""  # Add your license key here
+kamiwaza start
 ```
 
-**Important Notes:**
-- `OFFLINE_MODE=true` enables offline installation mode, preventing internet downloads
-- Replace `KAMIWAZA_LICENSE_KEY=""` with your actual license key provided by Kamiwaza
-- This file is sourced automatically by Kamiwaza services on startup
-
-### Step 4: Verification
+It will take a few minutes for Kamiwaza to start up. You can monitor its progress by running:
 
 ```bash
 kamiwaza status
 ```
-or to watch status: 
-```bash
-kamiwaza status -w
-```
 
-Once confirmed, Kamiwaza is installed! 
+Once are all services are confirmed to be running, Kamiwaza is started! 
 
 
 ### File Locations
