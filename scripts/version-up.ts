@@ -42,7 +42,7 @@ function updatePackageJsonVersion(filePath: string, newVersion: string) {
 }
 
 function runDocusaurusVersioning(newVersion: string) {
-  console.log(`Running Docusaurus versioning for ${newVersion}...`);
+  console.log(`Running Docusaurus versioning for main docs (${newVersion})...`);
   try {
     // We run `npm install` in docs first to ensure docusaurus is installed,
     // then run the versioning command.
@@ -50,9 +50,23 @@ function runDocusaurusVersioning(newVersion: string) {
       cwd: DOCS_DIR,
       stdio: 'inherit',
     });
-    console.log('Docusaurus versioning complete.');
+    console.log('Docusaurus main docs versioning complete.');
   } catch (error) {
     console.error('Failed to run docusaurus versioning command. Docusaurus output should be above.');
+    process.exit(1);
+  }
+}
+
+function runSdkDocusaurusVersioning(newVersion: string) {
+  console.log(`Running Docusaurus versioning for SDK docs (${newVersion})...`);
+  try {
+    execSync(`npm run docusaurus -- docs:version:sdk ${newVersion}`, {
+      cwd: DOCS_DIR,
+      stdio: 'inherit',
+    });
+    console.log('Docusaurus SDK docs versioning complete.');
+  } catch (error) {
+    console.error('Failed to run SDK docusaurus versioning command. Docusaurus output should be above.');
     process.exit(1);
   }
 }
@@ -85,15 +99,18 @@ function main() {
   // are changed first, they might get snapshotted into the *previous* version.
   runDocusaurusVersioning(newVersion);
 
-  // 3. Update package.json files
+  // 3. Run SDK Docusaurus versioning
+  runSdkDocusaurusVersioning(newVersion);
+
+  // 4. Update package.json files
   updatePackageJsonVersion(ROOT_PACKAGE_JSON_PATH, newVersion);
   updatePackageJsonVersion(DOCS_PACKAGE_JSON_PATH, newVersion);
 
-  // 4. Update docusaurus.config.ts
+  // 5. Update docusaurus.config.ts (updates both main and SDK version labels)
   updateDocusaurusConfig(newVersion);
 
-  console.log(`\n✅ Successfully created version ${newVersion} and updated configuration files.`);
-  console.log("Don't forget to review and commit the changes!");
+  console.log(`\n✅ Successfully created version ${newVersion} for both main and SDK docs.`);
+  console.log("Configuration files updated. Don't forget to review and commit the changes!");
 }
 
 main(); 
