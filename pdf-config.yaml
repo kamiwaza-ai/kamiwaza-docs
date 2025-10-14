@@ -34,14 +34,14 @@ profiles:
       pageNumberStart: 1
 
   # Full Documentation Profile
-  # Complete platform documentation
+  # Platform documentation
   full-docs:
     name: "Kamiwaza AI Documentation"
-    description: "Complete documentation"
-    filename: "kamiwaza-docs-complete"
+    description: "Platform documentation"
+    filename: "kamiwaza-docs"
     cover:
       title: "Kamiwaza AI Platform"
-      subtitle: "Complete Documentation"
+      subtitle: "Platform Documentation"
       includeVersion: true
       includeLogo: true
     # Use includeAll with excludeDocs for automatic document discovery
