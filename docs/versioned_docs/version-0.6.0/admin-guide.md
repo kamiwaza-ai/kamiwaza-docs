@@ -6,6 +6,173 @@ sidebar_label: Administrator Guide
 
 # Administrator Guide
 
+## 0. Installation & Deployment Planning
+
+### 0.1 Installation Time Estimates & Phase Breakdown
+
+- **Typical end-to-end:** **65–130 minutes** (≈90 minutes median; first model pulls dominate variance)
+- **Start-to-first-login (no optimizations):**
+  - **Development (single node):** 45–90 minutes – Docker Desktop/WSL provisioning and initial model download
+  - **Staging (multi-node):** 75–110 minutes – TLS, DNS, IdP hand-off, shared storage wiring
+  - **Production (HA):** 90–130 minutes – hardened secrets, load balancer, cloud infrastructure changes
+
+| Phase | Key Activities | Dev (min) | Staging (min) | Production (min) |
+|-------|----------------|-----------|---------------|------------------|
+| **0. Prep** | Validate prerequisites, fetch release, warm GPU drivers | 5 | 10 | 15 |
+| **1. Platform bootstrap** | Unpack release, seed `.env`, pull containers | 15 | 20 | 25 |
+| **2. Auth & RBAC** | Keycloak realm import, configure `env.sh`, sync policies | 10 | 15 | 20 |
+| **3. Networking** | TLS certs, DNS, Traefik routes, ForwardAuth wiring | 10 | 20 | 30 |
+| **4. Models & data** | Download demo models, validate storage, seed vectordb | 5 | 15 | 20 |
+| **5. Verification** | Smoke tests, SSO trial login, RBAC spot checks | 10 | 10 | 20 |
+
+**Installation speed-ups:**
+- Pre-pull container images on your registry (`docker pull ghcr.io/kamiwaza-ai/*`)
+- Pre-stage model weights on NVMe or shared cache to avoid first-run delays
+- Pin toolchains (`NODE_VERSION=22`, `PYTHON_VERSION=3.10`) to skip recompile steps
+- Use parallel shells: one for platform, one for Keycloak/IdP updates
+- Ensure GPU drivers & CUDA toolkit are current before starting the install
+
+### 0.2 Rollback Procedures
+
+**Emergency rollback (5–10 minutes)** — use when a deployment breaks core access:
+1. Stop platform services: `bash startup/kamiwazad.sh stop`
+2. Restore last known good `docker-compose.yml`, `env.sh`, and policy files
+3. Re-apply TLS certs and IdP JSON if they changed
+4. Start services: `bash startup/kamiwazad.sh start`
+5. Run the quick verification steps in [0.3](#03-post-install-verification-checklist)
+
+**Phase-based rollback** — revert only the last changed layer:
+
+| Last Changed Phase | Typical Symptoms | Rollback Action |
+|--------------------|------------------|-----------------|
+| TLS / Traefik | 404s, cert errors | Restore previous Traefik static/dynamic config bundle |
+| Identity Provider | 401/403 on all routes | Re-import previous Keycloak realm or client secret |
+| RBAC Policy | Role-specific failures | Restore prior `auth_gateway_policy.yaml` |
+| Application | API errors, 5xx | Roll back container tag or revert compose override |
+
+**Pre-upgrade backup checklist** — capture before major changes:
+
+- `env.sh`, `docker-compose.yml`, any `docker-compose.override*.yml`
+- `config/auth_gateway_policy.yaml` and additional policy fragments
+- TLS assets (`*.crt`, `*.key`), DNS zone exports, Traefik dynamic config
+- Keycloak realm export (`kcadm.sh get realms/kamiwaza -f realm-export.json`)
+- Database snapshots or storage snapshots for vector DB and metadata
+
+**Automated snapshot helper:**
+
+```bash
+backup_dir="${BACKUP_ROOT:-$KAMIWAZA_ROOT/backups}/$(date +%Y%m%d-%H%M)"
+mkdir -p "$backup_dir"
+tar czf "$backup_dir/kamiwaza-config.tgz" \
+  env.sh docker-compose*.yml config/auth_gateway_policy.yaml \
+  config/traefik/*.yaml startup/*.sh 2>/dev/null || true
+docker exec keycloak \
+  /opt/keycloak/bin/kc.sh export --file /tmp/realm-export.json --realm kamiwaza
+docker cp keycloak:/tmp/realm-export.json "$backup_dir/keycloak-realm.json"
+echo "Backup ready at $backup_dir"
+```
+
+**Rollback decision matrix:**
+
+| Checklist Item | All Clear? | Suggested Path |
+|----------------|------------|----------------|
+| Backup verified & stored off-host | ✅ | Proceed with upgrade |
+| Verification script in [0.3](#03-post-install-verification-checklist) passes | ✅ | Promote to next environment |
+| Critical service down and timeboxed? | ❌ | Trigger emergency rollback |
+| Scoped regression isolated to last phase | ❌ | Perform targeted phase rollback |
+
+### 0.3 Post-Install Verification Checklist
+
+**Essential checks (≈5 minutes):**
+1. Platform health endpoint returns `200 OK`
+2. Keycloak reports `READY` on health probe
+3. JWKS endpoint reachable and returns signing keys
+4. ForwardAuth validates a freshly minted access token
+
+```bash
+# 1) Platform health
+curl -sSf http://localhost:7777/health | jq .
+
+# 2) Keycloak readiness (adjust host/tunnel as needed)
+curl -sSf http://localhost:8080/health/ready
+
+# 3) JWKS reachable (set ISS/AUD for your realm)
+ISS="https://auth.example.com/realms/kamiwaza"
+AUD="kamiwaza-platform"
+curl -sSf "$ISS/protocol/openid-connect/certs" | jq .keys[0].kid >/dev/null
+
+# 4) Mint token + validate via ForwardAuth
+TOKEN=$(curl -s -X POST "$ISS/protocol/openid-connect/token" \
+  -d grant_type=password \
+  -d client_id="$AUD" \
+  -d username="$AUTH_TEST_USER" \
+  -d password="$AUTH_TEST_PASS" | jq -r .access_token)
+
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Forwarded-Uri: /api/models" \
+  -H "X-Forwarded-Method: GET" \
+  http://localhost:7777/auth/validate
+```
+
+**Comprehensive verification (≈15 minutes):**
+- Run model catalog CRUD smoke tests (admin + user tokens)
+- Validate RBAC for `viewer`, `user`, `admin` roles across key endpoints
+- Confirm Traefik dashboards show all backends healthy
+- Ensure background workers and vector DB report expected metrics
+- Check container logs for warnings (`docker compose logs --since 10m`)
+
+**Security validation (production focus):**
+- Confirm TLS certificate chain and cipher suite via `openssl s_client`
+- Verify Keycloak admin password rotated and stored in secret manager
+- Ensure `KAMIWAZA_USE_AUTH` is `true` and bypass endpoints disabled
+- Review audit logs for the installation window
+
+**Automated verification script (combine the above):**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+ISS="${ISS:-https://auth.example.com/realms/kamiwaza}"
+AUD="${AUD:-kamiwaza-platform}"
+AUTH_TEST_USER="${AUTH_TEST_USER:-testadmin}"
+AUTH_TEST_PASS="${AUTH_TEST_PASS:-testpass}"
+FORWARDAUTH_URL="${FORWARDAUTH_URL:-http://localhost:7777/auth/validate}"
+HEALTH_URL="${HEALTH_URL:-http://localhost:7777/health}"
+KEYCLOAK_HEALTH="${KEYCLOAK_HEALTH:-http://localhost:8080/health/ready}"
+
+echo "[1/6] Platform health"
+curl -sf "$HEALTH_URL" | jq .status
+
+echo "[2/6] Keycloak readiness"
+curl -sf "$KEYCLOAK_HEALTH" | jq .status
+
+echo "[3/6] JWKS availability"
+curl -sf "$ISS/protocol/openid-connect/certs" | jq '.keys[0].kid' >/dev/null
+
+echo "[4/6] Minting access token for $AUTH_TEST_USER"
+TOKEN=$(curl -sf -X POST "$ISS/protocol/openid-connect/token" \
+  -d grant_type=password \
+  -d client_id="$AUD" \
+  -d username="$AUTH_TEST_USER" \
+  -d password="$AUTH_TEST_PASS" | jq -r .access_token)
+
+echo "[5/6] ForwardAuth validation"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Forwarded-Uri: /api/models" \
+  -H "X-Forwarded-Method: GET" "$FORWARDAUTH_URL")
+test "$STATUS" -eq 200
+
+echo "[6/6] RBAC spot check"
+curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost:7777/api/models >/dev/null
+
+echo "✅ Verification complete"
+```
+
 ## 1. Authentication & Access Control
 
 Kamiwaza provides enterprise-grade authentication built on **Keycloak** with OpenID Connect (OIDC) and JWT token validation.
@@ -44,7 +211,37 @@ bash startup/kamiwazad.sh restart
 
 **⚠️ Warning:** Bypass mode (`KAMIWAZA_USE_AUTH=false`) disables all authentication. Use only in secure development environments.
 
-### 1.3 Token-Based Authentication
+### 1.3 Authentication Decision Matrix
+
+| Environment | Recommended `KAMIWAZA_USE_AUTH` | Why | Supporting Actions |
+|-------------|----------------------------------|-----|--------------------|
+| **Production** | `true` (mandatory) | Enforces JWT validation, RBAC, audit controls | Configure TLS, rotate secrets, enable SSO |
+| **Staging / QA** | `true` | Mirrors production, validates policy migrations | Use non-prod IdP realm, run verification script |
+| **Developer workstation** | `true` (default) | Exercises full auth stack locally | Use `docker compose` profiles and test tokens |
+| **Ephemeral sandbox / demo** | `true` | Avoids leaked endpoints during demos | Provision read-only demo users instead |
+| **Diagnostics in isolated network** | `false` (time-boxed) | Only when unlocking critical-path debugging | Re-enable immediately after test window |
+
+**Quick decision guide:**
+- Need to test RBAC, SSO, or production parity? → Keep `KAMIWAZA_USE_AUTH=true`
+- Troubleshooting startup without IdP access? → Temporarily set `false`, add reminder to revert
+- Automating integration tests? → Keep `true`; use service accounts or test users
+- Air-gapped appliance install? → Keep `true`; import realm and JWKS offline
+
+When toggling modes:
+
+```bash
+# Enable auth (recommended default)
+export KAMIWAZA_USE_AUTH=true
+bash startup/kamiwazad.sh restart
+
+# Emergency bypass (time-boxed, non-production)
+export KAMIWAZA_USE_AUTH=false
+bash startup/kamiwazad.sh restart
+```
+
+**Note:** `KAMIWAZA_USE_AUTH=false` disables ForwardAuth but does **not** stop Keycloak from running. IdP configuration, realm exports, and admin console access continue to work and should be maintained.
+
+### 1.4 Token-Based Authentication
 
 Kamiwaza uses **RS256 JWT tokens** with asymmetric cryptographic signatures.
 
@@ -65,15 +262,34 @@ Kamiwaza uses **RS256 JWT tokens** with asymmetric cryptographic signatures.
 
 ### 2.1 Accessing Keycloak Admin Console
 
-**Default Credentials** (change immediately in production):
-- **URL:** http://localhost:8080 (or your configured Keycloak URL)
-- **Username:** `admin`
-- **Password:** Set via `KEYCLOAK_ADMIN_PASSWORD` environment variable
+**Development (local install):**
+- URL: `http://localhost:8080`
+- Username: `admin`
+- Password: set via `KEYCLOAK_ADMIN_PASSWORD` in `env.sh`
+- `docker compose ps keycloak` to confirm container is running
 
-**Production Setup:**
+**Staging / production (remote environments):**
+- Keycloak typically runs behind internal networking (private subnet or Kubernetes service)
+- Reach the admin console through one of:
+  - **VPN** into the VPC / corporate network
+  - **Bastion SSH tunnel**:
+    ```bash
+    ssh -N -L 8080:keycloak.internal:8080 admin@bastion.example.com
+    open http://localhost:8080
+    ```
+  - **Reverse proxy** via Traefik with dedicated admin hostname (`https://auth-admin.example.com`)
+- Credentials must be rotated and stored in your secret manager—never commit to source control
+
+**Security notes:**
+- Keycloak availability is **independent** of `KAMIWAZA_USE_AUTH`. Even in bypass mode the IdP must stay reachable for future re-enablement and SSO flows.
+- Restrict admin console access to trusted networks/IPs; enforce MFA through IdP policies.
+- Use `kcadm.sh` on the Keycloak host for scripted changes instead of sharing web credentials.
+
 ```bash
-# Set secure admin password in env.sh
-export KEYCLOAK_ADMIN_PASSWORD="<strong-random-password>"
+# Example: rotate admin password (run once per environment)
+docker exec keycloak \
+  /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 \
+  --realm master --user admin --password "$KEYCLOAK_ADMIN_PASSWORD"
 ```
 
 ### 2.2 Creating User Accounts
@@ -230,7 +446,73 @@ The RBAC policy file is automatically reloaded when modified:
 
 **⚠️ Important:** Invalid YAML syntax will prevent reload and retain the previous valid configuration.
 
-### 3.4 Adding Custom Endpoints
+### 3.4 RBAC Policy Troubleshooting
+
+**YAML syntax validation**
+- Run a quick lint: `yamllint config/auth_gateway_policy.yaml` (or use `pip install yamllint`)
+- Fallback: `python - <<'PY'` block to load with `yaml.safe_load` and detect parse failures
+- Keep indentation consistent (two spaces) and quote glob patterns containing `*`
+
+**Policy reload verification**
+- Containers: `docker compose logs forwardauth | grep -i "Policy reloaded"` — expect success message within seconds
+- Kubernetes: `kubectl logs deploy/forwardauth -n kamiwaza --tail=20`
+- If you do not see a reload, ensure the policy file path matches `$AUTH_GATEWAY_POLICY_PATH`
+
+**Path matching debugging**
+- Enable debug logging temporarily: `export AUTH_GATEWAY_LOG_LEVEL=debug`
+- Hit the ForwardAuth endpoint with the suspected path:
+  ```bash
+  TOKEN="..."  # supply viewer/user/admin token
+  curl -v -H "Authorization: Bearer $TOKEN" \
+    -H "X-Forwarded-Uri: /api/example/path" \
+    -H "X-Forwarded-Method: GET" \
+    http://localhost:7777/auth/validate
+  ```
+- Check logs for `matching endpoint` lines to confirm which rule matched (or if default deny triggered)
+- Use `rg "/api"` inside the policy file to ensure paths include wildcards where required
+
+**Quick policy validation script**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+POLICY_FILE="${POLICY_FILE:-config/auth_gateway_policy.yaml}"
+ROLE="${ROLE:-viewer}"
+PATH_UNDER_TEST="${PATH_UNDER_TEST:-/api/models}"
+METHOD="${METHOD:-GET}"
+ISS="${ISS:-https://auth.example.com/realms/kamiwaza}"
+AUD="${AUD:-kamiwaza-platform}"
+USER="${USER:-testuser}"
+PASS="${PASS:-testpass}"
+
+python - <<'PY' "$POLICY_FILE"
+import sys, yaml
+try:
+    with open(sys.argv[1]) as f:
+        yaml.safe_load(f)
+    print("YAML syntax ✅")
+except Exception as exc:
+    print(f"YAML syntax ❌: {exc}")
+    sys.exit(1)
+PY
+
+TOKEN=$(curl -sf -X POST "$ISS/protocol/openid-connect/token" \
+  -d grant_type=password \
+  -d client_id="$AUD" \
+  -d username="$USER" \
+  -d password="$PASS" | jq -r .access_token)
+
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Forwarded-Uri: $PATH_UNDER_TEST" \
+  -H "X-Forwarded-Method: $METHOD" \
+  http://localhost:7777/auth/validate)
+
+echo "ForwardAuth returned HTTP $STATUS for $ROLE hitting $METHOD $PATH_UNDER_TEST"
+```
+
+### 3.5 Adding Custom Endpoints
 
 **Example: Protecting a new analytics endpoint**
 
@@ -414,6 +696,77 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 4. First-time users automatically create Keycloak account
 5. Subsequent logins use existing account
 
+### 4.6 SSO Testing Workflow – Complete Pre-Flight Checklist
+
+**Phase checklist:**
+
+| Phase | Goal | Owner | Exit Criteria |
+|-------|------|-------|---------------|
+| **1. Provider Prep** | Ensure IdP tenant/app exists and enabled | IdP admin | Service principals created, redirect URIs approved |
+| **2. Keycloak Broker** | Configure identity provider in Keycloak | Kamiwaza admin | Broker status `Enabled`, test user mapped |
+| **3. Environment Config** | Wire env vars & secrets | Platform ops | `AUTH_GATEWAY_*` + provider secrets present and encrypted |
+| **4. Functional Test** | Validate login, role mapping, logout | QA / admin | SSO user reaches dashboard, correct roles issued |
+| **5. Production Readiness** | Enforce policies, capture runbook | Security | MFA required, audit logs stored, incident rollback path |
+
+**Provider account setup validation**
+- Confirm IdP app registration has:
+  - Redirect URI: `https://auth.<env-domain>/realms/kamiwaza/broker/<provider>/endpoint`
+  - Logout URI (if supported) pointing to Keycloak end-session endpoint
+  - Required scopes (`openid email profile` minimal; add `offline_access` if refresh tokens needed)
+- Ensure test accounts exist with representative roles (admin, user, viewer)
+- Validate IdP-side conditional access (MFA, device trust) aligns with environment requirements
+
+**Configuration verification**
+- Check secrets loaded: `printenv | rg PROVIDER | sort`
+- Confirm Keycloak broker displays green checkmarks under **Identity Providers → <provider>**
+- Verify `AUTH_GATEWAY_SSO_PROVIDER` environment variable matches expected provider slug
+- Run `curl -I https://auth.<env-domain>/.well-known/openid-configuration` to confirm TLS chain
+
+**Testing & security validation**
+- Perform login flow in incognito/private browser window to avoid cached sessions
+- Confirm role mappings: check Keycloak **Users → Attributes** after SSO login
+- Validate logout: `https://auth.<env-domain>/realms/kamiwaza/protocol/openid-connect/logout`
+- Ensure failed login attempts are logged in both IdP audit logs and Keycloak events
+
+**Quick SSO validation script**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+REALM_URL="${REALM_URL:-https://auth.example.com/realms/kamiwaza}"
+PROVIDER="${PROVIDER:-google}"
+CLIENT_ID="${CLIENT_ID:-kamiwaza-platform}"
+REDIRECT_URI="${REDIRECT_URI:-https://app.example.com/oauth/callback}"
+
+echo "[1/4] Checking IdP configuration"
+curl -sf "$REALM_URL/.well-known/openid-configuration" >/dev/null && echo "Oidc discovery ✔️"
+
+echo "[2/4] Verifying broker status"
+curl -sf "$REALM_URL/broker/$PROVIDER/endpoint" -o /dev/null && echo "Broker endpoint reachable ✔️"
+
+echo "[3/4] Performing auth code flow (manual step)"
+echo "Open the following URL in your browser to complete the test login:"
+echo "$REALM_URL/protocol/openid-connect/auth?client_id=$CLIENT_ID&response_type=code&scope=openid&redirect_uri=$REDIRECT_URI&kc_idp_hint=$PROVIDER"
+
+echo "[4/4] After login, inspect returned code and exchange with:"
+echo "curl -X POST $REALM_URL/protocol/openid-connect/token \\"
+echo "  -d grant_type=authorization_code \\"
+echo "  -d code=<paste_code_here> \\"
+echo "  -d client_id=$CLIENT_ID \\"
+echo "  -d redirect_uri=$REDIRECT_URI"
+```
+
+**Common issues & solutions**
+
+| Symptom | Likely Cause | Fix |
+|---------|--------------|-----|
+| Login page loops back to provider selection | Redirect URI mismatch | Update IdP app registration to match Keycloak callback |
+| `invalid_grant` on token exchange | Clock skew or client secret mismatch | Sync time (NTP) and verify secret/tenant |
+| Missing roles after SSO login | Mapper not attached to broker | Add **Mapper** in Keycloak identity provider settings |
+| Logout keeps session alive | Front-channel logout disabled | Enable front-channel logout or configure post-logout redirect |
+| MFA bypassed for admin users | IdP policy excludes service | Enforce conditional access for the SSO app client |
+
 ---
 
 ## 5. Security Configuration
@@ -572,7 +925,100 @@ tail -f $KAMIWAZA_LOG_DIR/kamiwaza.log | grep AUTH
 docker logs kamiwaza-keycloak -f
 ```
 
-### 6.3 Common Issues and Solutions
+### 6.3 5-Minute Quick Diagnostic Checklist
+
+**Step-by-step workflow:**
+1. **Health endpoints:** Confirm ForwardAuth and Keycloak respond with HTTP 200.
+2. **Token mint:** Acquire an access token for a known test account.
+3. **Policy gate:** Call `/auth/validate` with that token and representative path/method.
+4. **API smoke:** Hit a core API route (`/api/models`) with the same token.
+5. **Logs sweep:** Tail auth and Keycloak logs for correlated errors or reload warnings.
+
+**Service health commands:**
+
+```bash
+curl -sf http://localhost:7777/health | jq .status
+curl -sf http://localhost:8080/health/ready | jq .status
+```
+
+**Token acquisition & validation:**
+
+```bash
+ISS="${ISS:-https://auth.example.com/realms/kamiwaza}"
+AUD="${AUD:-kamiwaza-platform}"
+USER="${USER:-testadmin}"
+PASS="${PASS:-testpass}"
+
+TOKEN=$(curl -sf -X POST "$ISS/protocol/openid-connect/token" \
+  -d grant_type=password \
+  -d client_id="$AUD" \
+  -d username="$USER" \
+  -d password="$PASS" | jq -r .access_token)
+
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Forwarded-Uri: /api/models" \
+  -H "X-Forwarded-Method: GET" \
+  http://localhost:7777/auth/validate
+```
+
+**API access validation:**
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost:7777/api/models
+```
+
+**Automated diagnostic script:**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+ISS="${ISS:-https://auth.example.com/realms/kamiwaza}"
+AUD="${AUD:-kamiwaza-platform}"
+USER="${USER:-testadmin}"
+PASS="${PASS:-testpass}"
+API_URL="${API_URL:-http://localhost:7777/api/models}"
+FORWARDAUTH_URL="${FORWARDAUTH_URL:-http://localhost:7777/auth/validate}"
+
+declare -A results
+
+results[forwardauth_health]=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:7777/health)
+results[keycloak_health]=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health/ready)
+
+TOKEN=$(curl -sf -X POST "$ISS/protocol/openid-connect/token" \
+  -d grant_type=password \
+  -d client_id="$AUD" \
+  -d username="$USER" \
+  -d password="$PASS" | jq -r .access_token)
+results[token_length]=${#TOKEN}
+
+results[forwardauth_validate]=$(curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Forwarded-Uri: /api/models" \
+  -H "X-Forwarded-Method: GET" "$FORWARDAUTH_URL")
+
+results[api_call]=$(curl -s -o /dev/null -w "%{http_code}" \
+  -H "Authorization: Bearer $TOKEN" "$API_URL")
+
+for key in "${!results[@]}"; do
+  printf "%-24s %s\n" "$key" "${results[$key]}"
+done
+```
+
+**Quick decision tree:**
+
+| Failed Step | Likely Root Cause | Next Action |
+|-------------|------------------|-------------|
+| Health endpoints | Service not running / port blocked | Restart compose stack, check firewall |
+| Token mint | Keycloak realm misconfig / credentials wrong | Verify IdP credentials, inspect Keycloak logs |
+| Policy gate (`/auth/validate`) | RBAC policy deny / JWKS refresh issue | Run [3.4](#34-rbac-policy-troubleshooting) checks, inspect policy reload logs |
+| API call | Backend service down / Traefik routing | Check service container health, review Traefik routes |
+| Logs show repeated reload failures | YAML parse errors | Restore last known good policy file, lint YAML |
+
+### 6.4 Common Issues and Solutions
 
 #### Issue: 401 Unauthorized on All Requests
 
@@ -683,7 +1129,7 @@ docker logs kamiwaza-keycloak -f
 - Ensure client secret is configured in Keycloak
 - Enable identity provider in Keycloak authentication flow
 
-### 6.4 Diagnostic Commands
+### 6.5 Diagnostic Commands
 
 **Test Token Generation:**
 
