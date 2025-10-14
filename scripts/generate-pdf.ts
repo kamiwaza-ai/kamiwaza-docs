@@ -245,6 +245,83 @@ class PDFGenerator {
       if (versionedSidebar.mainSidebar && Array.isArray(versionedSidebar.mainSidebar)) {
         extractIds(versionedSidebar.mainSidebar);
       }
+
+      // Check for versioned SDK sidebar
+      const versionedSdkSidebarPath = path.join(
+        this.projectRoot,
+        'docs',
+        'sdk_versioned_sidebars',
+        `version-${version}-sidebars.json`
+      );
+
+      // Helper function to extract SDK IDs from JSON sidebar structure
+      const extractSdkIds = (items: any[]): void => {
+        for (const item of items) {
+          if (typeof item === 'string') {
+            const docId = item;
+            const fullId = `sdk/${docId}`;
+            if (!seenIds.has(fullId) &&
+                !keywords.has(docId) &&
+                validDocPattern.test(docId) &&
+                !excludeSet.has(fullId) &&
+                (docId.includes('/') || docId.includes('-') || docId.includes('_'))) {
+              seenIds.add(fullId);
+              const title = `SDK - ${this.generateTitleFromId(docId)}`;
+              documents.push({ id: fullId, title });
+            }
+          } else if (item && typeof item === 'object') {
+            if (item.type === 'doc' && item.id) {
+              const docId = item.id;
+              const fullId = `sdk/${docId}`;
+              if (!seenIds.has(fullId) && !excludeSet.has(fullId)) {
+                seenIds.add(fullId);
+                const title = `SDK - ${item.label || this.generateTitleFromId(docId)}`;
+                documents.push({ id: fullId, title });
+              }
+            } else if (item.type === 'category' && Array.isArray(item.items)) {
+              extractSdkIds(item.items);
+            }
+          }
+        }
+      };
+
+      if (await fs.pathExists(versionedSdkSidebarPath)) {
+        console.log(`   Using versioned SDK sidebar: version-${version}-sidebars.json`);
+        const versionedSdkSidebar = JSON.parse(await fs.readFile(versionedSdkSidebarPath, 'utf8'));
+
+        // Extract from sdk sidebar
+        if (versionedSdkSidebar.sdk && Array.isArray(versionedSdkSidebar.sdk)) {
+          extractSdkIds(versionedSdkSidebar.sdk);
+        }
+      } else {
+        // Fallback to current SDK sidebar if versioned one doesn't exist
+        console.log(`   No versioned SDK sidebar found, using current SDK sidebar`);
+        const currentSdkSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars-sdk.ts');
+        if (await fs.pathExists(currentSdkSidebarPath)) {
+          const sdkSidebarContent = await fs.readFile(currentSdkSidebarPath, 'utf8');
+          const sdkDocMatches = sdkSidebarContent.matchAll(/'([^']+)'/g);
+
+          for (const match of sdkDocMatches) {
+            const docId = match[1];
+            const fullId = `sdk/${docId}`;
+
+            // Skip if already seen, is keyword, or is excluded
+            if (seenIds.has(fullId) ||
+                keywords.has(docId) ||
+                !validDocPattern.test(docId) ||
+                excludeSet.has(fullId)) {
+              continue;
+            }
+
+            // Additional check for SDK docs
+            if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
+              seenIds.add(fullId);
+              const title = `SDK - ${this.generateTitleFromId(docId)}`;
+              documents.push({ id: fullId, title });
+            }
+          }
+        }
+      }
     } else {
       // Use current sidebar (TypeScript format)
       console.log('   Using current sidebar: sidebars.ts');
