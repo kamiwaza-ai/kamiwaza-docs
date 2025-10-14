@@ -103,17 +103,17 @@ class PDFGenerator {
       throw new Error(`Profile "${profileName}" not found in pdf-config.yaml`);
     }
 
-    // If includeAll is enabled, discover all documents
-    if (profile.includeAll) {
-      profile.documents = await this.discoverAllDocuments(profile.excludeDocs || []);
-    }
-
     // Get version - if not specified, get latest from versions.json
     let targetVersion = version || this.config.settings.defaultVersion;
     if (targetVersion === 'current') {
       targetVersion = await this.getLatestVersion();
     }
     console.log(`📌 Version: ${targetVersion}`);
+
+    // If includeAll is enabled, discover all documents
+    if (profile.includeAll) {
+      profile.documents = await this.discoverAllDocuments(profile.excludeDocs || [], targetVersion);
+    }
 
     // Ensure output directory exists
     const outputDir = path.join(this.projectRoot, this.config.settings.outputDir);
@@ -174,7 +174,7 @@ class PDFGenerator {
     return 'current'; // Fallback to 'current' if versions.json doesn't exist or is empty
   }
 
-  private async discoverAllDocuments(excludeDocs: string[]): Promise<DocumentConfig[]> {
+  private async discoverAllDocuments(excludeDocs: string[], version: string): Promise<DocumentConfig[]> {
     console.log('🔍 Discovering all available documents...');
 
     const documents: DocumentConfig[] = [];
@@ -193,61 +193,116 @@ class PDFGenerator {
     // Pattern for valid document IDs (must contain / or be lowercase with hyphens/underscores)
     const validDocPattern = /^[a-z0-9][a-z0-9_/-]*$/i;
 
-    // Read main sidebar
-    const mainSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars.ts');
-    const mainSidebarContent = await fs.readFile(mainSidebarPath, 'utf8');
+    // Determine which sidebar to read based on version
+    let mainSidebarPath: string;
+    let mainSidebarContent: string;
 
-    // Extract document IDs from main sidebar
-    const mainDocMatches = mainSidebarContent.matchAll(/'([^']+)'/g);
-    for (const match of mainDocMatches) {
-      const docId = match[1];
+    // Check if we should use versioned sidebar
+    const versionedSidebarPath = path.join(
+      this.projectRoot,
+      'docs',
+      'versioned_sidebars',
+      `version-${version}-sidebars.json`
+    );
 
-      // Skip if already seen, is keyword, doesn't match pattern, or is excluded
-      if (seenIds.has(docId) ||
-          keywords.has(docId) ||
-          !validDocPattern.test(docId) ||
-          excludeSet.has(docId)) {
-        continue;
+    if (version !== 'current' && await fs.pathExists(versionedSidebarPath)) {
+      // Use versioned sidebar (JSON format)
+      console.log(`   Using versioned sidebar: version-${version}-sidebars.json`);
+      const versionedSidebar = JSON.parse(await fs.readFile(versionedSidebarPath, 'utf8'));
+
+      // Extract document IDs from JSON sidebar
+      const extractIds = (items: any[]): void => {
+        for (const item of items) {
+          if (typeof item === 'string') {
+            const docId = item;
+            if (!seenIds.has(docId) &&
+                !keywords.has(docId) &&
+                validDocPattern.test(docId) &&
+                !excludeSet.has(docId) &&
+                (docId.includes('/') || docId.includes('-') || docId.includes('_'))) {
+              seenIds.add(docId);
+              const title = this.generateTitleFromId(docId);
+              documents.push({ id: docId, title });
+            }
+          } else if (item && typeof item === 'object') {
+            if (item.type === 'doc' && item.id) {
+              const docId = item.id;
+              if (!seenIds.has(docId) && !excludeSet.has(docId)) {
+                seenIds.add(docId);
+                const title = item.label || this.generateTitleFromId(docId);
+                // Use empty ID for intro to get the root URL
+                const pdfId = docId === 'intro' ? '' : docId;
+                documents.push({ id: pdfId, title });
+              }
+            } else if (item.type === 'category' && Array.isArray(item.items)) {
+              extractIds(item.items);
+            }
+          }
+        }
+      };
+
+      // Extract from mainSidebar
+      if (versionedSidebar.mainSidebar && Array.isArray(versionedSidebar.mainSidebar)) {
+        extractIds(versionedSidebar.mainSidebar);
       }
+    } else {
+      // Use current sidebar (TypeScript format)
+      console.log('   Using current sidebar: sidebars.ts');
+      mainSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars.ts');
+      mainSidebarContent = await fs.readFile(mainSidebarPath, 'utf8');
 
-      // Additional check: must contain a slash OR hyphen/underscore (to filter out single words)
-      if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
-        seenIds.add(docId);
-        const title = this.generateTitleFromId(docId);
-        documents.push({ id: docId, title });
-      }
-    }
-
-    // Read SDK sidebar
-    const sdkSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars-sdk.ts');
-    if (await fs.pathExists(sdkSidebarPath)) {
-      const sdkSidebarContent = await fs.readFile(sdkSidebarPath, 'utf8');
-      const sdkDocMatches = sdkSidebarContent.matchAll(/'([^']+)'/g);
-
-      for (const match of sdkDocMatches) {
+      // Extract document IDs from main sidebar
+      const mainDocMatches = mainSidebarContent.matchAll(/'([^']+)'/g);
+      for (const match of mainDocMatches) {
         const docId = match[1];
-        const fullId = `sdk/${docId}`;
 
-        // Skip if already seen, is keyword, or is excluded
-        if (seenIds.has(fullId) ||
+        // Skip if already seen, is keyword, doesn't match pattern, or is excluded
+        if (seenIds.has(docId) ||
             keywords.has(docId) ||
             !validDocPattern.test(docId) ||
-            excludeSet.has(fullId)) {
+            excludeSet.has(docId)) {
           continue;
         }
 
-        // Additional check for SDK docs
+        // Additional check: must contain a slash OR hyphen/underscore (to filter out single words)
         if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
-          seenIds.add(fullId);
-          const title = `SDK - ${this.generateTitleFromId(docId)}`;
-          documents.push({ id: fullId, title });
+          seenIds.add(docId);
+          const title = this.generateTitleFromId(docId);
+          documents.push({ id: docId, title });
         }
       }
-    }
 
-    // Add intro at the beginning (with empty id for root)
-    if (!excludeSet.has('intro') && !excludeSet.has('')) {
-      documents.unshift({ id: '', title: 'Introduction' });
+      // Read SDK sidebar
+      const sdkSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars-sdk.ts');
+      if (await fs.pathExists(sdkSidebarPath)) {
+        const sdkSidebarContent = await fs.readFile(sdkSidebarPath, 'utf8');
+        const sdkDocMatches = sdkSidebarContent.matchAll(/'([^']+)'/g);
+
+        for (const match of sdkDocMatches) {
+          const docId = match[1];
+          const fullId = `sdk/${docId}`;
+
+          // Skip if already seen, is keyword, or is excluded
+          if (seenIds.has(fullId) ||
+              keywords.has(docId) ||
+              !validDocPattern.test(docId) ||
+              excludeSet.has(fullId)) {
+            continue;
+          }
+
+          // Additional check for SDK docs
+          if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
+            seenIds.add(fullId);
+            const title = `SDK - ${this.generateTitleFromId(docId)}`;
+            documents.push({ id: fullId, title });
+          }
+        }
+      }
+
+      // Add intro at the beginning (with empty id for root) - only for current version
+      if (!excludeSet.has('intro') && !excludeSet.has('')) {
+        documents.unshift({ id: '', title: 'Introduction' });
+      }
     }
 
     console.log(`   Found ${documents.length} documents (excluded ${excludeDocs.length})`);
