@@ -93,14 +93,14 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Use Case:** Local development, testing, small to medium model deployment (up to 13B parameters)
 
 **Hardware Specifications:**
-- **CPU:** 16 cores / 32 threads
-- **RAM:** 64GB
-- **Storage:** 500GB NVMe SSD
+- **CPU:** 8-16 cores / 16-32 threads
+- **RAM:** 32GB (16GB minimum)
+- **Storage:** 200GB NVMe SSD (100GB minimum)
 - **GPU:** Optional - Single GPU with 16-24GB VRAM
   - NVIDIA RTX 4090 (24GB)
   - NVIDIA RTX 4080 (16GB)
   - NVIDIA T4 (16GB)
-- **Network:** 10 Gbps
+- **Network:** 1-10 Gbps
 
 **Workload Capacity:**
 - Low-volume workloads: 1-10 concurrent requests (supports dozens of interactive users)
@@ -174,13 +174,12 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 | Tier | Instance Type | vCPU | RAM | GPU | Storage |
 |------|--------------|------|-----|-----|---------|
-| **Tier 1: CPU-only** | `m6i.4xlarge` | 16 | 64GB | None | 500GB gp3 |
-| **Tier 1: With GPU** | `g5.xlarge` | 4 | 16GB | 1x A10G (24GB) | 500GB gp3 |
-| **Tier 1: Alternative** | `g5.2xlarge` | 8 | 32GB | 1x A10G (24GB) | 500GB gp3 |
+| **Tier 1: CPU-only** | `m6i.2xlarge` | 8 | 32GB | None | 200GB gp3 |
+| **Tier 1: With GPU** | `g5.xlarge` | 4 | 16GB | 1x A10G (24GB) | 200GB gp3 |
+| **Tier 1: Alternative** | `g5.2xlarge` | 8 | 32GB | 1x A10G (24GB) | 200GB gp3 |
 | **Tier 2: Multi-GPU** | `g5.12xlarge` | 48 | 192GB | 4x A10G (96GB) | 2TB gp3 |
 | **Tier 2: Alternative** | `p4d.24xlarge` | 96 | 1152GB | 8x A100 (320GB) | 2TB gp3 |
-| **Tier 3: Head Node** | `m6i.4xlarge` | 16 | 64GB | None | 500GB gp3 |
-| **Tier 3: Worker Node** | `p4d.24xlarge` | 96 | 1152GB | 8x A100 (320GB) | 2TB gp3 |
+| **Tier 3: All Nodes** | `p4d.24xlarge` | 96 | 1152GB | 8x A100 (320GB) | 2TB gp3 |
 
 **Notes:**
 - Use `gp3` SSD volumes (not `gp2`) for better performance/cost
@@ -193,13 +192,12 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 | Tier | Machine Type | vCPU | RAM | GPU | Storage |
 |------|-------------|------|-----|-----|---------|
-| **Tier 1: CPU-only** | `n2-standard-16` | 16 | 64GB | None | 500GB SSD |
-| **Tier 1: With GPU** | `n1-standard-8` + `1x T4` | 8 | 30GB | 1x T4 (16GB) | 500GB SSD |
-| **Tier 1: Alternative** | `g2-standard-8` + `1x L4` | 8 | 32GB | 1x L4 (24GB) | 500GB SSD |
+| **Tier 1: CPU-only** | `n2-standard-8` | 8 | 32GB | None | 200GB SSD |
+| **Tier 1: With GPU** | `n1-standard-8` + `1x T4` | 8 | 30GB | 1x T4 (16GB) | 200GB SSD |
+| **Tier 1: Alternative** | `g2-standard-8` + `1x L4` | 8 | 32GB | 1x L4 (24GB) | 200GB SSD |
 | **Tier 2: Multi-GPU** | `a2-highgpu-4g` | 48 | 340GB | 4x A100 (160GB) | 2TB SSD |
 | **Tier 2: Alternative** | `g2-standard-48` + `4x L4` | 48 | 192GB | 4x L4 (96GB) | 2TB SSD |
-| **Tier 3: Head Node** | `n2-standard-16` | 16 | 64GB | None | 500GB SSD |
-| **Tier 3: Worker Node** | `a2-highgpu-8g` | 96 | 680GB | 8x A100 (320GB) | 2TB SSD |
+| **Tier 3: All Nodes** | `a2-highgpu-8g` | 96 | 680GB | 8x A100 (320GB) | 2TB SSD |
 
 **Notes:**
 - Use `pd-ssd` or `pd-balanced` persistent disks (not `pd-standard`)
@@ -212,9 +210,9 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 | Tier | VM Size | vCPU | RAM | GPU | Storage |
 |------|---------|------|-----|-----|---------|
-| **Tier 1: CPU-only** | `Standard_D16s_v5` | 16 | 64GB | None | 500GB Premium SSD |
-| **Tier 1: With GPU** | `Standard_NC4as_T4_v3` | 4 | 28GB | 1x T4 (16GB) | 500GB Premium SSD |
-| **Tier 1: Alternative** | `Standard_NC6s_v3` | 6 | 112GB | 1x V100 (16GB) | 500GB Premium SSD |
+| **Tier 1: CPU-only** | `Standard_D8s_v5` | 8 | 32GB | None | 200GB Premium SSD |
+| **Tier 1: With GPU** | `Standard_NC4as_T4_v3` | 4 | 28GB | 1x T4 (16GB) | 200GB Premium SSD |
+| **Tier 1: Alternative** | `Standard_NC6s_v3` | 6 | 112GB | 1x V100 (16GB) | 200GB Premium SSD |
 | **Tier 2: H100 (recommended)** | `Standard_NC40ads_H100_v5` | 40 | 320GB | 1x H100 (80GB) | 2TB Premium SSD |
 | **Tier 2: H100 Multi-GPU** | `Standard_NC80adis_H100_v5` | 80 | 640GB | 2x H100 (160GB) | 2TB Premium SSD |
 | **Tier 2: A100 Multi-GPU** | `Standard_NC96ads_A100_v4` | 96 | 880GB | 4x A100 (320GB) | 2TB Premium SSD |
@@ -417,8 +415,7 @@ net.ipv4.ip_forward                 = 1
 **MLX Engine Support:**
 - Kamiwaza supports Apple Silicon via the MLX inference engine
 - Unified memory architecture (shared CPU/GPU RAM)
-- Excellent performance for models up to 13B parameters; Reasonable performance for larger models when context is appropriately restricted and RAM 
-available.
+- Excellent performance for models up to 13B parameters; reasonable performance for larger models when context is appropriately restricted and RAM is available.
 - All M-series chips work in approximately the same way, but newer chips (e.g., M4) offer substantially higher performance than older versions
 - Ultra chips (Mac Studio/Mac Pro models) typically offer 50-80% more performance than Pro versions
 
