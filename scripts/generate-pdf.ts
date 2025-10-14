@@ -504,9 +504,16 @@ class PDFGenerator {
     const page = await this.browser!.newPage();
 
     try {
-      // Construct URL
-      const versionPath = version === 'current' ? '' : `${version}/`;
-      const url = `${this.config.settings.server.baseUrl}/${versionPath}${doc.id}`;
+      // Construct URL - handle SDK docs differently (version goes after /sdk/ prefix)
+      let url: string;
+      if (doc.id.startsWith('sdk/')) {
+        const sdkPath = doc.id.substring(4); // Remove 'sdk/' prefix
+        const versionPath = version === 'current' ? '' : `${version}/`;
+        url = `${this.config.settings.server.baseUrl}/sdk/${versionPath}${sdkPath}`;
+      } else {
+        const versionPath = version === 'current' ? '' : `${version}/`;
+        url = `${this.config.settings.server.baseUrl}/${versionPath}${doc.id}`;
+      }
 
       console.log(`  📄 ${doc.title}`);
       console.log(`     ${url}`);
