@@ -147,14 +147,18 @@ Offline bundles include the Kamiwaza Extension Registry so App Garden extensions
 | `KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` | `file:///opt/kamiwaza/extensions/kamiwaza-extension-registry` | Points to the unpacked registry assets on disk |
 | `KAMIWAZA_EXTENSION_INSTALL_PATH` | `/opt/kamiwaza/extensions` | Destination directory for the registry archive |
 
-If the builder omitted these entries, add them manually before restarting services:
+If the builder omitted these entries (or they differ), edit `/etc/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
 
 ```bash
-sudo tee -a /etc/kamiwaza/env.sh >/dev/null <<'EOF'
+sudo nano /etc/kamiwaza/env.sh
+```
+
+Ensure the file contains exactly one copy of each export:
+
+```bash
 export KAMIWAZA_EXTENSION_STAGE=LOCAL
 export KAMIWAZA_EXTENSION_LOCAL_STAGE_URL="file:///opt/kamiwaza/extensions/kamiwaza-extension-registry"
 export KAMIWAZA_EXTENSION_INSTALL_PATH="/opt/kamiwaza/extensions"
-EOF
 ```
 
 Restart Kamiwaza to load any environment edits:
@@ -175,12 +179,17 @@ Use the following checklist to confirm the bundled extensions are ready:
    The `apps.json` file should exist and list the expected number of extensions.
 
 2. **Extension services healthy**  
-   Run `kamiwaza status` and look for an `extension-sync` (or similarly named) entry reporting `RUNNING`.  
-   For container installs, you can also check logs:
+   Run `kamiwaza status` and confirm the extension sync service reports `RUNNING`. (In docker-compose deployments the service appears as `extension-sync`; in systemd-based installs it runs as `kamiwaza-extension-sync`.)  
+   For container installs:
    ```bash
    docker compose logs --tail=50 extension-sync
    ```
-   For systemd-managed installs, inspect `/var/log/kamiwaza/extension-sync.log`.
+   For systemd-managed installs:
+   ```bash
+   sudo systemctl status kamiwaza-extension-sync
+   sudo journalctl -u kamiwaza-extension-sync --since "10 minutes ago"
+   ```
+   Both modes also write to `/var/log/kamiwaza/extension-sync.log`.
 
 3. **App Garden validation**  
    Sign in to the Kamiwaza UI, open **App Garden → Extensions**, and confirm the extension catalog appears without network access.

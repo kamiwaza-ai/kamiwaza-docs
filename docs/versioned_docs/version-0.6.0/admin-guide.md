@@ -166,9 +166,10 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
 test "$STATUS" -eq 200
 
 echo "[6/6] RBAC spot check"
-curl -s -o /dev/null -w "%{http_code}" \
+API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer $TOKEN" \
-  http://localhost:7777/api/models >/dev/null
+  http://localhost:7777/api/models)
+test "$API_STATUS" -eq 200
 
 echo "✅ Verification complete"
 ```
