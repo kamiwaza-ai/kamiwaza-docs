@@ -3,7 +3,9 @@
 ## Base System Requirements
 
 ### Supported Operating Systems & Architecture
-- **Linux**: Ubuntu 24.04 and 22.04 LTS via .deb package installation (x64/amd64 architecture only)
+- **Linux**: 
+  - Ubuntu 24.04 and 22.04 LTS via .deb package installation (x64/amd64 architecture only)
+  - Redhat Enterprise Linux (RHEL) 9
 - **Windows**: 11 (x64 architecture) via WSL with MSI installer
 - **macOS**: 12.0 or later, Apple Silicon (ARM64) only (community edition only)
 
