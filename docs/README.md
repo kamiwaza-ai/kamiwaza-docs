@@ -117,6 +117,39 @@ npm run clear         # Clear Docusaurus cache (from docs/)
 npm run version-up -- <version>   # Create new version (e.g., 0.6.0)
 ```
 
+### PDF Generation
+Generate PDF documentation for offline installations:
+
+```bash
+# Generate offline installation PDF (essential docs only)
+npm run pdf:offline
+
+# Generate complete documentation PDF
+npm run pdf:full
+
+# Generate specific profile with version
+npm run pdf -- --profile offline-install --version 0.5.1
+
+# Output location: dist/pdf/
+```
+
+**PDF Profiles:**
+- **offline-install**: Installation guides, quickstart, admin guide, troubleshooting, release notes
+- **full-docs**: Complete platform documentation
+
+**Requirements:**
+After adding PDF dependencies, run:
+```bash
+npm install
+```
+
+**Customizing PDF Output:**
+Edit `pdf-config.yaml` in the repo root to:
+- Create custom profiles
+- Select which documents to include
+- Configure PDF styling options
+- Set output format and margins
+
 ### Deployment
 Deployment is **automatic** via GitHub Actions when merging to `main`.
 

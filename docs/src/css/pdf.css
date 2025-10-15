@@ -1,0 +1,378 @@
+/**
+ * PDF Print Stylesheet
+ *
+ * Optimizes Docusaurus content for PDF generation
+ * Applied during PDF generation process via Puppeteer
+ */
+
+/* ============================================
+   Print-Specific Styles
+   ============================================ */
+
+@media print {
+  /* Page Setup */
+  @page {
+    size: A4;
+    margin: 20mm 15mm;
+  }
+
+  /* Hide Navigation Elements */
+  nav,
+  .navbar,
+  .navbar__inner,
+  .navbar__items,
+  aside,
+  .theme-doc-sidebar-container,
+  .sidebar,
+  .docSidebarContainer,
+  .pagination-nav,
+  .theme-doc-breadcrumbs,
+  footer,
+  .footer,
+  .theme-doc-footer,
+  .theme-edit-this-page,
+  .theme-last-updated,
+  .theme-doc-toc-mobile,
+  .theme-back-to-top-button,
+  button,
+  .announcementBar,
+  .theme-admonition-caution,
+  .admonition-caution,
+  div[class*="docusaurus-mt"],
+  div[class*="alert"],
+  .theme-doc-version-banner,
+  .theme-doc-version-badge {
+    display: none !important;
+  }
+
+  /* Content Layout */
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #000;
+    background: white;
+  }
+
+  main,
+  article,
+  .theme-doc-markdown {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Typography */
+  h1 {
+    font-size: 24pt;
+    font-weight: bold;
+    margin-top: 0;
+    margin-bottom: 16pt;
+    page-break-after: avoid;
+    color: #1a1a1a;
+  }
+
+  h2 {
+    font-size: 18pt;
+    font-weight: bold;
+    margin-top: 24pt;
+    margin-bottom: 12pt;
+    page-break-after: avoid;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 4pt;
+    color: #2a2a2a;
+  }
+
+  h3 {
+    font-size: 14pt;
+    font-weight: bold;
+    margin-top: 18pt;
+    margin-bottom: 10pt;
+    page-break-after: avoid;
+    color: #3a3a3a;
+  }
+
+  h4 {
+    font-size: 12pt;
+    font-weight: bold;
+    margin-top: 14pt;
+    margin-bottom: 8pt;
+    page-break-after: avoid;
+    color: #4a4a4a;
+  }
+
+  h5, h6 {
+    font-size: 11pt;
+    font-weight: bold;
+    margin-top: 12pt;
+    margin-bottom: 6pt;
+    page-break-after: avoid;
+    color: #5a5a5a;
+  }
+
+  p {
+    margin: 8pt 0;
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Links */
+  a {
+    color: #0066cc;
+    text-decoration: none;
+  }
+
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #666;
+  }
+
+  /* Prevent URLs from breaking poorly */
+  a[href] {
+    word-wrap: break-word;
+  }
+
+  /* Code Blocks */
+  pre {
+    background: #f5f5f5 !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4pt;
+    padding: 10pt !important;
+    font-size: 9pt;
+    line-height: 1.4;
+    overflow: hidden;
+    page-break-inside: avoid;
+    margin: 12pt 0;
+  }
+
+  code {
+    background: #f5f5f5;
+    padding: 2pt 4pt;
+    border-radius: 2pt;
+    font-family: 'Courier New', monospace;
+    font-size: 9pt;
+    color: #d63384;
+  }
+
+  pre code {
+    background: transparent;
+    padding: 0;
+    color: #000;
+  }
+
+  /* Ensure code doesn't break across pages */
+  pre,
+  .prism-code,
+  .theme-code-block {
+    page-break-inside: avoid;
+  }
+
+  /* Lists */
+  ul, ol {
+    margin: 8pt 0;
+    padding-left: 20pt;
+  }
+
+  li {
+    margin: 4pt 0;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12pt 0;
+    page-break-inside: avoid;
+    font-size: 10pt;
+  }
+
+  thead {
+    display: table-header-group;
+    background: #f5f5f5 !important;
+  }
+
+  th {
+    background: #f5f5f5 !important;
+    border: 1px solid #ddd !important;
+    padding: 6pt 8pt;
+    text-align: left;
+    font-weight: bold;
+    color: #000;
+  }
+
+  td {
+    border: 1px solid #ddd !important;
+    padding: 6pt 8pt;
+    color: #000;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Images */
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid;
+    display: block;
+    margin: 12pt auto;
+  }
+
+  /* Blockquotes and Admonitions */
+  blockquote,
+  .theme-admonition {
+    background: #f9f9f9 !important;
+    border-left: 4pt solid #ccc !important;
+    padding: 8pt 12pt;
+    margin: 12pt 0;
+    page-break-inside: avoid;
+  }
+
+  .theme-admonition-note {
+    border-left-color: #0088cc !important;
+  }
+
+  .theme-admonition-tip {
+    border-left-color: #00aa00 !important;
+  }
+
+  .theme-admonition-warning {
+    border-left-color: #ff8800 !important;
+  }
+
+  .theme-admonition-danger {
+    border-left-color: #cc0000 !important;
+  }
+
+  /* Mermaid Diagrams */
+  .mermaid,
+  .mermaid svg {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid;
+    margin: 12pt 0;
+  }
+
+  /* Page Breaks */
+  h1, h2 {
+    page-break-before: auto;
+  }
+
+  h1:first-child,
+  h2:first-child {
+    page-break-before: avoid;
+  }
+
+  /* Prevent orphans and widows */
+  p, li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Tabs */
+  .tabs-container {
+    page-break-inside: avoid;
+  }
+
+  .tabs {
+    border: 1px solid #ddd !important;
+    padding: 8pt;
+  }
+
+  /* Hide tab selectors in print, show all content */
+  .tabs__item {
+    display: none;
+  }
+
+  .tabItem {
+    display: block !important;
+    border: none !important;
+  }
+
+  /* Badge and Tag Styles */
+  .badge,
+  .tag {
+    background: #e0e0e0 !important;
+    color: #000 !important;
+    border: 1px solid #ccc;
+    padding: 2pt 6pt;
+    border-radius: 3pt;
+    font-size: 9pt;
+  }
+
+  /* Details/Summary */
+  details {
+    border: 1px solid #ddd;
+    padding: 8pt;
+    margin: 8pt 0;
+    page-break-inside: avoid;
+  }
+
+  summary {
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 8pt;
+  }
+
+  /* Ensure details are expanded in PDF */
+  details {
+    display: block;
+  }
+
+  details[open] {
+    display: block;
+  }
+
+  /* HR - Horizontal Rules */
+  hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 16pt 0;
+  }
+
+  /* Search and Interactive Elements */
+  .DocSearch,
+  .searchBox {
+    display: none !important;
+  }
+
+  /* Ensure dark mode elements render properly */
+  [data-theme='dark'] * {
+    color: #000 !important;
+    background: white !important;
+  }
+
+  /* Remove any box-shadows for cleaner print */
+  * {
+    box-shadow: none !important;
+  }
+}
+
+/* ============================================
+   Screen and PDF Preview Styles
+   ============================================ */
+
+/* These styles apply to both screen and print */
+.pdf-page-break {
+  page-break-after: always;
+}
+
+.pdf-keep-together {
+  page-break-inside: avoid;
+}
+
+.pdf-page-header {
+  display: none;
+}
+
+@media print {
+  .pdf-page-header {
+    display: block;
+    text-align: center;
+    font-size: 10pt;
+    color: #666;
+    margin-bottom: 12pt;
+  }
+}

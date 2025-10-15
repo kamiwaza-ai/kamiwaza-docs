@@ -1,6 +1,6 @@
 {
   "name": "kamiwaza-docs",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
@@ -16,7 +16,10 @@
     "typecheck": "tsc",
     "sync-sdk": "node -r ts-node/register scripts/sync-sdk-docs.ts",
     "version-docs": "node -r ts-node/register scripts/version.ts",
-    "version-up": "node -r ts-node/register scripts/version-up.ts"
+    "version-up": "node -r ts-node/register scripts/version-up.ts",
+    "pdf": "node -r ts-node/register scripts/generate-pdf.ts",
+    "pdf:offline": "npm run pdf -- --profile offline-install",
+    "pdf:full": "npm run pdf -- --profile full-docs"
   },
   "dependencies": {
     "@docusaurus/core": "^3.8.1",
@@ -37,9 +40,12 @@
     "@docusaurus/types": "^3.1.0",
     "@types/fs-extra": "^11.0.0",
     "@types/js-yaml": "^4.0.5",
+    "@types/puppeteer": "^7.0.4",
     "fs-extra": "^11.0.0",
     "gh-pages": "^6.2.0",
     "js-yaml": "^4.1.0",
+    "pdf-lib": "^1.17.1",
+    "puppeteer": "^23.0.0",
     "ts-node": "^10.9.0",
     "typescript": "^5.2.0"
   },

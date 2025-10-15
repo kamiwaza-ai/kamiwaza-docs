@@ -81,7 +81,7 @@ const config: Config = {
         lastVersion: 'current',
         versions: {
           current: {
-            label: '0.5.1 (Latest)',
+            label: '0.6.0 (Latest)',
           },
         },
         sidebarCollapsible: true,
@@ -96,9 +96,10 @@ const config: Config = {
         path: 'sdk',
         routeBasePath: 'sdk',
         sidebarPath: require.resolve('./sidebars-sdk.ts'),
+        lastVersion: 'current',
         versions: {
           current: {
-            label: '0.5.1 (Latest)',
+            label: '0.6.0 (Latest)',
           },
         },
       },
@@ -161,6 +162,12 @@ const config: Config = {
         {
           type: 'docsVersionDropdown',
           position: 'right',
+          docsPluginId: 'default',
+        },
+        {
+          type: 'docsVersionDropdown',
+          position: 'right',
+          docsPluginId: 'sdk',
         },
       ],
     },
