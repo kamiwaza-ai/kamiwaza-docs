@@ -134,8 +134,7 @@ Once are all services are confirmed to be running, Kamiwaza is started.
 If you are creating a fresh install and are on the head node / a single node run the following to create a Fernet key:
 ```bash
 cd /opt/kamiwaza/kamiwaza && source venv/bin/activate
-python -c "from kamiwaza.lib.util import generate_fernet_key; print(generate_fernet_key())" | \
-            sudo tee /opt/kamiwaza/kamiwaza/runtime/fernet.key > /dev/null
+python -c "from kamiwaza.lib.util import generate_fernet_key; print(generate_fernet_key())" | sudo tee /opt/kamiwaza/kamiwaza/runtime/fernet.key > /dev/null
 ```
 
 If you are on worker nodes, copy the key from the head node.
