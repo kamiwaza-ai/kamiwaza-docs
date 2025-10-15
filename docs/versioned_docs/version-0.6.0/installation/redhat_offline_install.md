@@ -91,7 +91,7 @@ sudo dnf install -y net-tools gcc-c++ nodejs npm jq pkgconfig fontconfig-devel f
 
 You should receive these files from your builder:
 ```
-kamiwaza-[version]-offline.rpm          # Main installer package
+kamiwaza_[version]_rhel9_x86_64.rpm     # Main installer package
 kamiwaza-requirements-export.zip        # Additional dependencies (optional)
 ```
 
@@ -107,40 +107,53 @@ kamiwaza-requirements-export.zip        # Additional dependencies (optional)
 To review the full license terms, visit: https://www.kamiwaza.ai/license
 
 ```bash
-# Install the RPM package
+# Install the RPM package. Add your Kamiwaza license key between the quotation marks.
 sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install kamiwaza_[version]_rhel9_x86_64.rpm
 
 # The installer will automatically detect offline mode and use bundled resources
 ```
 
-### Step 4: Verification
+**Tip:** While the installer says "Running scriptlet", use `sudo tail -f /var/log/kamiwaza-postinst-debug.log` to monitor logs.
+
+### Step 3: Verification
 
 ```bash
 kamiwaza start
 ```
 
-It will take a few minutes for Kamiwaza to start up. You can monitor its progress by running:
+The first time you run this command, it will take take longer to start Kamiwaza as it does initial setup. Once it is starting, you can monitor its progress by running:
 
 ```bash
 kamiwaza status
 ```
 
-Once are all services are confirmed to be running, Kamiwaza is started! 
+Once are all services are confirmed to be running, Kamiwaza is started.
 
-### Step 5: Extension Configuration (Offline builds)
+#### Create a Fernet Key
 
-Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/etc/kamiwaza/env.sh`—verify they match your environment:
+If you are creating a fresh install and are on the head node / a single node run the following to create a Fernet key:
+```bash
+cd /opt/kamiwaza/kamiwaza && source venv/bin/activate
+python -c "from kamiwaza.lib.util import generate_fernet_key; print(generate_fernet_key())" | \
+            sudo tee /opt/kamiwaza/kamiwaza/runtime/fernet.key > /dev/null
+```
+
+If you are on worker nodes, copy the key from the head node.
+
+### Step 4: Extension Configuration (Offline builds)
+
+Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/opt/kamiwaza/kamiwaza/env.sh`—verify they match your environment:
 
 | Variable | Typical offline value | Purpose |
 |----------|----------------------|---------|
 | `KAMIWAZA_EXTENSION_STAGE` | `LOCAL` | Forces the platform to serve extensions from the bundled registry |
 | `KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` | `file:///opt/kamiwaza/extensions/kamiwaza-extension-registry` | Points to the unpacked registry assets on disk |
-| `KAMIWAZA_EXTENSION_INSTALL_PATH` | `/opt/kamiwaza/extensions` | Destination directory for the registry archive |
+| `KAMIWAZA_EXTENSION_INSTALL_PATH` | `/opt/kamiwaza/kamiwaza/extensions` | Destination directory for the registry archive |
 
-If the builder omitted these entries (or they differ), edit `/etc/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
+If the builder omitted these entries (or they differ), edit `/opt/kamiwaza/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
 
 ```bash
-sudo nano /etc/kamiwaza/env.sh
+sudo nano /opt/kamiwaza/kamiwaza/env.sh
 ```
 
 Ensure the file contains exactly one copy of each export:
@@ -157,7 +170,7 @@ Restart Kamiwaza to load any environment edits:
 sudo systemctl restart kamiwaza
 ```
 
-### Step 6: Verify Extensions
+### Step 5: Verify Extensions
 
 Use the following checklist to confirm the bundled extensions are ready:
 
@@ -192,7 +205,7 @@ If any step fails, rerun the installer with the `--extension-path` option or rea
 | Component | Installed Location | Purpose |
 |-----------|-------------------|---------|
 | Main Application | `/opt/kamiwaza/` | Core application files |
-| Configuration | `/etc/kamiwaza/` | Runtime configuration |
+| Configuration | `/opt/kamiwaza/kamiwaza/` | Runtime configuration |
 | Data Storage | `/var/lib/kamiwaza/` | Models, databases, logs |
 | Offline Resources | `/usr/share/kamiwaza/` | Bundled dependencies |
 | Service Scripts | `/usr/bin/kamiwaza*` | Command-line tools |
