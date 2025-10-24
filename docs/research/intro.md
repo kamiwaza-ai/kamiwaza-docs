@@ -19,7 +19,7 @@ hide_table_of_contents: false
 
 The Kamiwaza AIR initiative is dedicated to advancing the science and practice of agentic AI systems. We believe in open research, collaborative development, and sharing knowledge with the broader AI community.
 
-## Research Areas
+## Resources
 
 Our research focuses on three core pillars:
 
@@ -27,7 +27,7 @@ Our research focuses on three core pillars:
 
 ### 📄 Research Papers
 
-Peer-reviewed publications and technical reports from the Kamiwaza research team, covering topics in agentic AI, distributed systems, and intelligent computing.
+Scientific publications from Kamiwaza AIR team, covering topics in agentic AI, security, and enterprise applications.
 
 [Explore Papers →](/research/papers)
 
