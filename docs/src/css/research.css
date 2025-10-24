@@ -1,0 +1,212 @@
+/* Research section custom styling */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Research hero section - gradient banner */
+.research-hero {
+  background: linear-gradient(135deg, var(--kamiwaza-primary) 0%, var(--kamiwaza-accent) 100%);
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  color: white;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.research-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.research-hero h2 {
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.research-hero p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Research pillars section - three column cards */
+.research-pillars {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+@media (min-width: 768px) {
+  .research-pillars {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.research-pillars h3 {
+  color: var(--kamiwaza-primary);
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.research-pillars p {
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.research-pillars a {
+  display: inline-flex;
+  align-items: center;
+  color: var(--kamiwaza-primary);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.research-pillars a:hover {
+  transform: translateX(4px);
+  text-decoration: underline;
+}
+
+/* Research cards for papers, datasets, etc. */
+.research-card {
+  background: var(--ifm-background-surface-color, #f8f9fa);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid var(--ifm-toc-border-color);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.research-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--kamiwaza-primary), var(--kamiwaza-accent));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.research-card:hover {
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+  transform: translateY(-2px);
+}
+
+.research-card:hover::before {
+  transform: scaleX(1);
+}
+
+.research-card h3 {
+  color: var(--kamiwaza-primary);
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.research-card p {
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.research-card .research-meta {
+  font-size: 0.875rem;
+  color: var(--ifm-color-emphasis-600);
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .research-hero {
+  background: linear-gradient(135deg, #1e40af 0%, #0e7490 100%);
+}
+
+[data-theme='dark'] .research-card {
+  background: var(--kamiwaza-surface-dark);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .research-pillars h3 {
+  color: #60a5fa;
+}
+
+[data-theme='dark'] .research-pillars a {
+  color: #60a5fa;
+}
+
+/* Coming soon badge */
+.coming-soon-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--kamiwaza-secondary), var(--kamiwaza-accent));
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 0.5rem;
+}
+
+/* Research section headers */
+.research-section-header {
+  border-bottom: 3px solid var(--kamiwaza-primary);
+  padding-bottom: 0.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.research-section-header h2 {
+  margin: 0;
+  color: var(--kamiwaza-primary);
+}
+
+/* Dataset/paper list styling */
+.research-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.research-list li {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+}
+
+.research-list li:last-child {
+  border-bottom: none;
+}
+
+.research-list h4 {
+  color: var(--kamiwaza-primary);
+  margin-bottom: 0.5rem;
+}
+
+.research-list p {
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 0.5rem;
+}
