@@ -16,13 +16,10 @@ description: Lessons from 5.5 billion tokens' worth of agentic AI evaluations sh
 
 Enterprise adoption of agentic AI systems requires reliable evaluation methods that reflect real-world deployment scenarios. Traditional LLM benchmarks suffer from training data contamination and fail to measure agentic capabilities such as multi-step tool use and decision-making under uncertainty. We present the Kamiwaza Agentic Merit Index (KAMI) v0.1, an enterprise-focused benchmark that addresses both contamination resistance and agentic evaluation. Through 170,000 LLM test items processing over 5.5 billion tokens across 35 model configurations, we demonstrate that traditional benchmark rankings poorly predict practical agentic performance. Notably, newer generation models like Llama 4 or Qwen 3 do not always outperform their older generation variants on enterprise-relevant tasks, contradicting traditional benchmark trends. We also present insights on cost-performance tradeoffs, model-specific behavioral patterns, and the impact of reasoning capabilities on token efficiency—findings critical for enterprises making deployment decisions.
 
----
 
-**Why This Matters:**
+## Why This Matters
 
 If you're selecting AI models for production deployment, traditional benchmarks may lead you to the wrong choice. KAMI v0.1 shows that smaller, cheaper models can outperform larger ones on specific enterprise tasks, and that reasoning models' 10-14x token cost may not justify their accuracy gains for routine work. This benchmark helps enterprises make evidence-based model selection decisions aligned with actual deployment scenarios.
-
----
 
 ## Downloads & Resources
 
@@ -32,48 +29,6 @@ If you're selecting AI models for production deployment, traditional benchmarks 
 - Data availability: Test suite definitions and evaluation code (repository URL to be announced)
 - [PICARD Framework](/research/papers/picard) - Contamination-resistant evaluation methodology
 - Model Context Protocol (MCP): https://modelcontextprotocol.io/docs/getting-started/intro
-
----
-
-## Key Findings
-
-### The "Agentic Disconnect"
-
-Traditional benchmark rankings fail to predict enterprise task performance:
-- **Llama 3.1 70B**: Near-bottom on TAU2-Bench → 73.4% on KAMI v0.1 (top tier)
-- **Claude 3.5 Haiku**: Second-worst in AAII → Near-top on KAMI v0.1
-- **Qwen3 models**: Superior traditional scores → Underperformed older Qwen2.5 72B on enterprise tasks
-- **Llama 3.1 8B**: Catastrophically failed nearly all agentic tasks (10.5% accuracy)
-
-### Best Performing Models
-
-- **Qwen3 235B-A22B Instruct 2507**: 88.8% pooled accuracy (best overall)
-- **Qwen3 14B**: Consistently outperformed the larger 32B variant
-- **Llama 4 Maverick**: 74.6% despite poor TAU2 scores
-
-### Reasoning Model Tradeoffs
-
-- **Accuracy gains**: 12-15 percentage points for small models, smaller for large models
-- **Cost penalty**: 10-14x more output tokens, 4-6x longer wall-time
-- **Verdict**: Generally not justified for routine enterprise tasks
-
-### Quantization Effects (FP8)
-
-Results are model-specific, not universally positive:
-- Qwen3 14B and 32B: Slightly improved
-- Llama 3.3 70B: FP8 outperformed full precision
-- Llama 4 Maverick: FP8 underperformed full precision
-
----
-
-## Compute Resources
-
-- **32 AMD MI300X GPUs** (4 servers)
-- **8 Intel Gaudi 3 accelerators** (1 server)
-- **Anthropic API access**
-- **Total computation**: 3,541 hours (147 days compressed to ~2 weeks via parallel execution)
-
----
 
 ## Citation
 
@@ -88,18 +43,3 @@ If you use this work in your research, please cite:
   url={https://docs.kamiwaza.ai/research/papers/kami-v0-1}
 }
 ```
-
----
-
-## Topics Covered
-
-- Agentic AI evaluation
-- Benchmark contamination resistance
-- Enterprise AI deployment
-- Multi-step tool use
-- Cost-performance analysis
-- Model quantization (FP8)
-- Reasoning model efficiency
-- Database querying (SQLite)
-- CSV data processing
-- File system operations

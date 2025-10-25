@@ -5,7 +5,7 @@ description: Peer-reviewed publications and technical reports from Kamiwaza AIR
 
 # Featured Publications
 
-### [PICARD: Testing What Models Can Do, Not What They've Seen](/research/papers/picard)
+### PICARD: Testing What Models Can Do, Not What They've Seen
 
 **JV Roig** | July 2025
 
@@ -17,12 +17,13 @@ A framework for contamination-resistant LLM evaluation through multi-layered ran
 
 ---
 
-### [KAMI v0.1: Enterprise-Relevant Agentic AI Benchmark](/research/papers/kami-v0-1)
+### KAMI v0.1: Enterprise-Relevant Agentic AI Benchmark
 
 **JV Roig** | October 2025
 
 Lessons from 5.5 billion tokens' worth of agentic AI evaluations showing traditional benchmarks fail to predict real-world performance. Through massive-scale testing of 35 model configurations using the PICARD framework, we demonstrate that models ranking high on traditional benchmarks often fail at practical enterprise tasks.
 
-**Key Finding:** Llama 3.1 70B scored near-bottom on TAU2-Bench but achieved top-tier performance (73.4%) on enterprise tasks. Claude 3.5 Haiku ranked second-worst in AAII but performed near the top on our benchmark.
+**Key Finding:** Traditional benchmark rankings fail to predict enterprise task performance, even tool-calling benchmarks like BFCLv3 or TAU2-Bench, or even aggregated benchmarks. Benchmarking is not enough - **simulation** is what is needed.
+
 
 📄 [Read the paper](/research/papers/kami-v0-1) | [Download PDF](/papers/KAMI_v0_1.pdf)

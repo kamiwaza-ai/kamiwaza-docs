@@ -25,23 +25,41 @@ Our work is grounded in real-world applications and informed by our experience b
 
 <div className="research-pillars">
 
-### 📄 Research Papers
+<a href="/research/papers" className="resource-card-link">
+<div>
 
-Scientific publications from Kamiwaza AIR team, covering topics in agentic AI, security, and enterprise applications.
+### 📄 Papers
 
-[Explore Papers →](/research/papers)
+Scientific publications from Kamiwaza AIR team, covering topics in agentic AI, security, and enterprise applications. Real-world value, measurable impact, agentic AI that works.
 
-### 📝 Research Blogs
+<span className="resource-arrow">Explore Papers →</span>
+
+</div>
+</a>
+
+<a href="/research/blogs" className="resource-card-link">
+<div>
+
+### 📝 Blogs
 
 In-depth technical articles, insights, and perspectives from our research initiatives. Explore the thinking behind our work and stay updated on the latest developments.
 
-[Read Blogs →](/research/blogs)
+<span className="resource-arrow">Read Blogs →</span>
+
+</div>
+</a>
+
+<a href="/research/datasets" className="resource-card-link">
+<div>
 
 ### 📊 Datasets
 
 Open-source datasets supporting agentic AI research and development. We're committed to providing high-quality, well-documented datasets to advance the field.
 
-[Browse Datasets →](/research/datasets)
+<span className="resource-arrow">Browse Datasets →</span>
+
+</div>
+</a>
 
 </div>
 
