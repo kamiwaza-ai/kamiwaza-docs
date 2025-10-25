@@ -11,30 +11,16 @@ description: Lessons from 5.5 billion tokens' worth of agentic AI evaluations sh
 
 ---
 
-## About This Paper
-
-Traditional LLM benchmarks are broken for enterprise AI deployment. They suffer from data contamination (models memorize test answers) and fail to measure what actually matters: can the AI agent reliably handle mundane enterprise tasks like analyzing CSVs, querying databases, and managing files?
-
-We introduce **KAMI v0.1** (Kamiwaza Agentic Merit Index), a contamination-resistant benchmark focused on real-world enterprise scenarios. Through massive-scale testing—170,000+ test items processing over 5.5 billion tokens across 35 model configurations—we discovered something surprising: **models that rank high on traditional benchmarks often fail at practical enterprise tasks**.
-
-For example, Llama 3.1 70B scored near-bottom on TAU2-Bench but achieved 73.4% on KAMI v0.1 (top tier performance). Claude 3.5 Haiku ranked second-worst in AAII but performed near the top in our benchmark. Newer generation models like Qwen 3 and Llama 4 didn't always outperform their older variants on enterprise tasks, contradicting what traditional benchmarks suggest.
-
-**Key Achievements:**
-- **Contamination-resistant evaluation** using randomized test generation (PICARD framework)
-- **170,000+ test items** across 35 model configurations, processing 5.5 billion tokens
-- **Demonstrated "agentic disconnect"** between traditional benchmark rankings and practical performance
-- **Real-world deployment insights** on cost-performance tradeoffs, quantization effects, and reasoning model efficiency
-- **Reliability metrics** tracking consistency across runs—critical for enterprise decisions
-
-**Why This Matters:**
-
-If you're selecting AI models for production deployment, traditional benchmarks may lead you to the wrong choice. KAMI v0.1 shows that smaller, cheaper models can outperform larger ones on specific enterprise tasks, and that reasoning models' 10-14x token cost may not justify their accuracy gains for routine work. This benchmark helps enterprises make evidence-based model selection decisions aligned with actual deployment scenarios.
-
----
 
 ## Abstract
 
 Enterprise adoption of agentic AI systems requires reliable evaluation methods that reflect real-world deployment scenarios. Traditional LLM benchmarks suffer from training data contamination and fail to measure agentic capabilities such as multi-step tool use and decision-making under uncertainty. We present the Kamiwaza Agentic Merit Index (KAMI) v0.1, an enterprise-focused benchmark that addresses both contamination resistance and agentic evaluation. Through 170,000 LLM test items processing over 5.5 billion tokens across 35 model configurations, we demonstrate that traditional benchmark rankings poorly predict practical agentic performance. Notably, newer generation models like Llama 4 or Qwen 3 do not always outperform their older generation variants on enterprise-relevant tasks, contradicting traditional benchmark trends. We also present insights on cost-performance tradeoffs, model-specific behavioral patterns, and the impact of reasoning capabilities on token efficiency—findings critical for enterprises making deployment decisions.
+
+---
+
+**Why This Matters:**
+
+If you're selecting AI models for production deployment, traditional benchmarks may lead you to the wrong choice. KAMI v0.1 shows that smaller, cheaper models can outperform larger ones on specific enterprise tasks, and that reasoning models' 10-14x token cost may not justify their accuracy gains for routine work. This benchmark helps enterprises make evidence-based model selection decisions aligned with actual deployment scenarios.
 
 ---
 

@@ -3,14 +3,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Make h2 headers green in research section */
+article h2 {
+  color: #10b981;
+}
+
+[data-theme='dark'] article h2 {
+  color: #34d399;
+}
+
 /* Research hero section - gradient banner */
 .research-hero {
-  background: linear-gradient(135deg, var(--kamiwaza-primary) 0%, var(--kamiwaza-accent) 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   padding: 3rem 2rem;
   border-radius: 16px;
   margin-bottom: 2rem;
   color: white;
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
   position: relative;
   overflow: hidden;
 }
@@ -28,7 +37,7 @@
 }
 
 .research-hero h2 {
-  color: white;
+  color: white !important;
   font-size: 2rem;
   font-weight: 700;
   margin-bottom: 1rem;
@@ -103,14 +112,14 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--kamiwaza-primary), var(--kamiwaza-accent));
+  background: linear-gradient(90deg, #10b981, #059669);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.3s ease;
 }
 
 .research-card:hover {
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.12);
   transform: translateY(-2px);
 }
 
@@ -140,7 +149,7 @@
 
 /* Dark mode adjustments */
 [data-theme='dark'] .research-hero {
-  background: linear-gradient(135deg, #1e40af 0%, #0e7490 100%);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
 }
 
 [data-theme='dark'] .research-card {
@@ -159,7 +168,7 @@
 /* Coming soon badge */
 .coming-soon-badge {
   display: inline-block;
-  background: linear-gradient(135deg, var(--kamiwaza-secondary), var(--kamiwaza-accent));
+  background: linear-gradient(135deg, #10b981, #059669);
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 12px;

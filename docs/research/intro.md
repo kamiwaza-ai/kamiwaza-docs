@@ -10,18 +10,18 @@ hide_table_of_contents: false
   <h2>Advancing the Future of Agentic Intelligence</h2>
   <p>
     At Kamiwaza, we're pushing the boundaries of AI research through our
-    Agentic Intelligence Research (AIR) initiative. Our work spans cutting-edge
-    research papers, open datasets, and thought leadership in agentic computing.
+    Agentic Intelligence Research (AIR) initiative. We're laser-focused on
+    what matters for the enterprise: secure, trustworthy, reliable, accurate, predictable and productive agentic AI deployments in the real world.
   </p>
 </div>
 
 ## Our Mission
 
-The Kamiwaza AIR initiative is dedicated to advancing the science and practice of agentic AI systems. We believe in open research, collaborative development, and sharing knowledge with the broader AI community.
+Kamiwaza AIR is dedicated to advancing the science and practice of agentic AI systems, turning them from highly random, unpredictable and unreliable intelligent systems to **STRAPP**-y agentic deployments: **S**ecure, **T**rustworthy, **R**eliable, **A**ccurate, **P**redictable and **P**roductive.
+Our work is grounded in real-world applications and informed by our experience building the Kamiwaza AI Platform.
+
 
 ## Resources
-
-Our research focuses on three core pillars:
 
 <div className="research-pillars">
 
@@ -45,24 +45,4 @@ Open-source datasets supporting agentic AI research and development. We're commi
 
 </div>
 
----
 
-## About Kamiwaza AIR
-
-Kamiwaza Agentic Intelligence Research (AIR) brings together researchers, engineers, and domain experts to tackle the most challenging problems in agentic AI. Our work is grounded in real-world applications and informed by our experience building the Kamiwaza AI Platform.
-
-We believe that the future of computing is more personal and much more powerful. Through rigorous research and open collaboration, we're working to make that future a reality.
-
-## Get Involved
-
-Interested in collaborating with us or learning more about our research?
-
-- Join our [Discord community](https://discord.gg/cVGBS5rD2U)
-- Explore our [open-source projects](https://github.com/kamiwaza-ai)
-- Follow our latest publications and blog posts below
-
----
-
-## Latest Updates
-
-Stay tuned for our upcoming research papers, datasets, and blog posts as we continue to advance the field of agentic intelligence.
