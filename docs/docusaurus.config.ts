@@ -61,6 +61,7 @@ const config: Config = {
           customCss: [
             require.resolve('./src/css/custom.css'),
             require.resolve('./src/css/blog.css'),
+            require.resolve('./src/css/research.css'),
           ],
         },
       } satisfies Preset.Options,
@@ -103,6 +104,21 @@ const config: Config = {
         },
       },
     ],
+    // Research docs plugin
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'research',
+        path: 'research',
+        routeBasePath: 'research',
+        sidebarPath: require.resolve('./sidebars-research.ts'),
+        versions: {
+          current: {
+            label: '0.5.1 (Latest)',
+          },
+        },
+      },
+    ],
     // Local search plugin
     [
       require.resolve('@easyops-cn/docusaurus-search-local'),
@@ -118,7 +134,7 @@ const config: Config = {
         indexBlog: true,
         indexDocs: true,
         indexPages: false,
-        searchContextByPaths: ['docs', 'sdk'],
+        searchContextByPaths: ['docs', 'sdk', 'research'],
         searchBarShortcut: true,
         searchBarShortcutHint: false,
         ignoreFiles: /(?:^|\/)_/,
@@ -153,6 +169,12 @@ const config: Config = {
           to: '/blog',
           label: 'Blog',
           position: 'left',
+        },
+        {
+          to: '/research/intro',
+          position: 'left',
+          label: 'Research',
+          activeBasePath: '/research',
         },
         {
           type: 'search',
