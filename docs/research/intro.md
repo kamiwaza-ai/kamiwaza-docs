@@ -40,11 +40,10 @@ Scientific publications from Kamiwaza AIR team, covering topics in agentic AI, s
 <a href="/research/blogs" className="resource-card-link">
 <div>
 
-### 📝 Blogs
+### 📝 Insights
+Shorter, more frequent articles containing insights from our on-going research initiatives. Explore the thinking behind our work and stay updated on the latest developments.
 
-In-depth technical articles, insights, and perspectives from our research initiatives. Explore the thinking behind our work and stay updated on the latest developments.
-
-<span className="resource-arrow">Read Blogs →</span>
+<span className="resource-arrow">Read Insights →</span>
 
 </div>
 </a>

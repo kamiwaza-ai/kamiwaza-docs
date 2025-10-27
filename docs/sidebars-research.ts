@@ -15,7 +15,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Research Blogs',
+      label: 'Research Insights',
       collapsed: false,
       items: [
         'blogs/index',

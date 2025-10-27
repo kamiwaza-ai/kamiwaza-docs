@@ -1,11 +1,11 @@
 ---
-title: Index
+title: Insights Index
 description: In-depth technical articles and insights from Kamiwaza AIR
 ---
 
-# Research Blogs
+# Research Insights
 
-Dive into detailed technical articles, research insights, and perspectives from the Kamiwaza Agentic Intelligence Research team.
+Shorter, more timely and frequent research insights and perspectives from the Kamiwaza Agentic Intelligence Research team. Research insights provide a preview into our latest research findings before they are aggregated and summarized as part of future paper releases.    
 
 ---
 
@@ -13,6 +13,6 @@ Dive into detailed technical articles, research insights, and perspectives from 
 
 ### Coming Soon
 
-Our research team is preparing in-depth technical articles exploring the cutting edge of agentic AI. Stay tuned for our first publications.
+Stay tuned for our first publications!
 
-In the meantime, check out our [main blog](/blog) for articles on agentic computing and AI platform development.
+In the meantime, check out our [main blog](/blog) for articles on agentic computing, orchestration and AI platform development.
