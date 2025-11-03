@@ -64,6 +64,7 @@ const sidebars: SidebarsConfig = {
           label: 'Platform Overview',
         },
         'architecture/components',
+        'architecture/rebac-overview',
         'architecture/core-services',
       ],
     },
