@@ -93,3 +93,8 @@ For a walkthrough that exercises authentication, tuple enforcement, and observab
 - ReBAC currently covers catalog/model APIs; ingestion write paths, retrieval, and custom connectors will be added in upcoming updates.
 
 Need help integrating ReBAC or exporting evidence for accreditation? Reach out to your Kamiwaza support representative for the latest runbooks and automation scripts.
+
+## Next steps
+
+- Follow the [Stage 1 Quick Start](./rebac-stage1-quickstart.md) to configure the gateway.
+- Run the [Stage 1 Smoke Test](./rebac-stage1-smoke-test.md) to validate tuple enforcement and logging.

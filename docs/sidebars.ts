@@ -65,6 +65,8 @@ const sidebars: SidebarsConfig = {
         },
         'architecture/components',
         'architecture/rebac-overview',
+        'architecture/rebac-stage1-quickstart',
+        'architecture/rebac-stage1-smoke-test',
         'architecture/core-services',
       ],
     },
