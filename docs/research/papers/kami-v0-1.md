@@ -5,9 +5,10 @@ description: Lessons from 5.5 billion tokens' worth of agentic AI evaluations sh
 
 # Towards a Standard, Enterprise-Relevant Agentic AI Benchmark
 
+**Lessons from 5.5 billion tokens' worth of agentic AI evaluations**
+
 **Authors:** JV Roig
-**Published:** 2025 (Technical Report)
-**Affiliations:** Kamiwaza AI
+**Published:** Oct 2025
 
 ---
 
@@ -28,7 +29,6 @@ If you're selecting AI models for production deployment, traditional benchmarks 
 🔗 **Additional Links:**
 - Data availability: Test suite definitions and evaluation code (repository URL to be announced)
 - [PICARD Framework](/research/papers/picard) - Contamination-resistant evaluation methodology
-- Model Context Protocol (MCP): https://modelcontextprotocol.io/docs/getting-started/intro
 
 ## Citation
 
