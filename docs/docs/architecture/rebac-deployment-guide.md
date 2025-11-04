@@ -7,6 +7,12 @@ Use this guide to bring the Kamiwaza 0.7 authentication and relationship-based a
 
 > Internal operators should continue using the detailed runbooks in the private `kamiwaza` repository (`docs-internal/guides/`). This page is safe to share with customer teams.
 
+## Platform assumptions
+
+- Latest Kamiwaza 0.7 RPM or release-candidate build (for example `kamiwaza-0.7.0-rc3`) installed on Red Hat Enterprise Linux 8.6+ or equivalent.
+- Installation created the managed systemd units or Docker Compose stack for Auth, Keycloak, and Traefik.
+- You have shell access to restart those services and reach the Traefik gateway externally.
+
 ---
 
 ## Prerequisites

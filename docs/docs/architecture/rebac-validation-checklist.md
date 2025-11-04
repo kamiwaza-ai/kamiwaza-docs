@@ -7,6 +7,12 @@ After completing the Release 0.7 ReBAC Deployment Guide, run this validation che
 
 > Internal operators who need the detailed evidence capture should use `docs-internal/guides/rebac_demo_workflow.md` in the private repository. This page is the customer-safe summary.
 
+## Platform assumptions
+
+- Environment was provisioned using the Release 0.7 RPM/RC build (for example `kamiwaza-0.7.0-rc3`) on RHEL 8.6+ or equivalent.
+- The ReBAC Deployment Guide steps completed successfully on the same host, including `run_oidc_uat.sh --seed-only`.
+- You can reach the Traefik gateway (`https://<gateway-host>`) from your workstation to run curl commands.
+
 ---
 
 ## Prerequisites
