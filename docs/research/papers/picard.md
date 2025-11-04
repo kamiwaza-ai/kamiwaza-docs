@@ -8,8 +8,7 @@ description: A framework for contamination-resistant LLM evaluation through mult
 **Probing Intelligent Capabilities via Artificial Randomized Data**
 
 **Authors:** JV Roig
-**Published:** July 2025 (Technical Report)
-**Affiliations:** Metro Manila, Philippines
+**Published:** July 2025
 
 ---
 
