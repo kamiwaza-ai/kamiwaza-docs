@@ -33,6 +33,7 @@ const sidebars: SidebarsConfig = {
         'models/gui-walkthrough',
         'models/downloading-models',
         'models/deployment',
+        'models/bedrock',
         'models/troubleshooting'
       ],
     },
