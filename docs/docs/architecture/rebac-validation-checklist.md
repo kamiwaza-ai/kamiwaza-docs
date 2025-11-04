@@ -1,9 +1,9 @@
 ---
-title: Stage 1 ReBAC Smoke Test
-sidebar_label: Stage 1 Smoke Test
+title: Release 0.7 ReBAC Validation Checklist
+sidebar_label: ReBAC Validation Checklist
 ---
 
-After completing the Stage 1 Auth & ReBAC quick start, run this smoke test to confirm tuple enforcement, audit logging, and session controls match the 0.7 RPM artifacts. The flow mirrors what we run internally before shipping daily builds.
+After completing the Release 0.7 ReBAC Deployment Guide, run this validation checklist to confirm tuple enforcement, audit logging, and session controls match the 0.7 RPM artifacts. The flow mirrors what we run internally before shipping daily builds.
 
 > Internal operators who need the detailed evidence capture should use `docs-internal/guides/rebac_demo_workflow.md` in the private repository. This page is the customer-safe summary.
 
@@ -11,8 +11,8 @@ After completing the Stage 1 Auth & ReBAC quick start, run this smoke test to 
 
 ## Prerequisites
 
-- Stage 1 environment with the latest 0.7 Auth/ReBAC RPMs (or compose stack) running.
-- Quick start steps completed, including `run_oidc_uat.sh --seed-only` and service restarts.
+- Release 0.7 environment with the latest 0.7 Auth/ReBAC RPMs (or compose stack) running.
+- Deployment guide steps completed, including `run_oidc_uat.sh --seed-only` and service restarts.
 - Tuple bootstrap applied:
   ```bash
   uv run python scripts/rebac_tenant.py bootstrap configs/rebac/tenants/__default__.yaml
@@ -67,7 +67,7 @@ for token in OWNER_TOKEN VIEWER_TOKEN ADMIN_TOKEN; do
 done
 ```
 
-If token retrieval fails, double-check that the quick start variables are sourced and that Keycloak is reachable from the gateway host.
+If token retrieval fails, double-check that the deployment guide variables are sourced and that Keycloak is reachable from the gateway host.
 
 ---
 
@@ -180,4 +180,4 @@ echo "DATASET_URN=${DATASET_URN}"
 
 Archive the curl outputs and log excerpts alongside the RPM build you validated for auditability.
 
-Return to the [Stage 1 quick start](./rebac-stage1-quickstart.md) if you need to reconfigure environment variables.
+Return to the [Release 0.7 quick start](./rebac-stage1-quickstart.md) if you need to reconfigure environment variables.

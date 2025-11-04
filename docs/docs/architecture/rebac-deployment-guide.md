@@ -1,9 +1,9 @@
 ---
-title: Stage 1 Auth & ReBAC Quick Start
-sidebar_label: Stage 1 Quick Start
+title: Release 0.7 ReBAC Deployment Guide
+sidebar_label: ReBAC Deployment Guide
 ---
 
-Use this guide to bring the Kamiwaza 0.7 Stage 1 authentication and relationship-based access control (ReBAC) stack online in a lab or pilot environment. It assumes you have installed the latest 0.7 RPM bundle (or container images) and can restart services via the provided scripts.
+Use this guide to bring the Kamiwaza 0.7 authentication and relationship-based access control (ReBAC) stack online in a lab or pilot environment. It assumes you have installed the latest 0.7 RPM bundle (or container images) and can restart services via the provided scripts.
 
 > Internal operators should continue using the detailed runbooks in the private `kamiwaza` repository (`docs-internal/guides/`). This page is safe to share with customer teams.
 
@@ -14,7 +14,7 @@ Use this guide to bring the Kamiwaza 0.7 Stage 1 authentication and relationsh
 | Item | Notes |
 |------|-------|
 | Keycloak 22.x+ | Administrative access to create a realm and confidential client. |
-| Kamiwaza Stage 1 install | Latest 0.7 RPM build (or the equivalent compose stack). |
+| Kamiwaza Release 0.7 install | Latest 0.7 RPM build (or the equivalent compose stack). |
 | Shell access | Ability to edit `env.sh`, run helper scripts, and restart Auth/Keycloak/Traefik. |
 | TLS assets | Certificates for the public gateway hostname (self-signed is fine for labs). |
 
@@ -24,7 +24,7 @@ Before starting, ensure Docker/RPM services are stopped or restarted cleanly so 
 
 ## Configure environment
 
-Update `env.sh` (or export the variables directly) with the Stage 1 Auth/ReBAC settings. Replace placeholders with the values for your deployment.
+Update `env.sh` (or export the variables directly) with the Release 0.7 ReBAC settings. Replace placeholders with the values for your deployment.
 
 ```bash
 # Auth gateway ↔ Keycloak
@@ -94,6 +94,6 @@ If you are running the RPM services under systemd, restart `kamiwaza-auth.servic
 
 ## Next steps
 
-- Walk through the [Stage 1 smoke test](./rebac-stage1-smoke-test.md) to exercise tuple enforcement and decision logging.
+- Walk through the [ReBAC validation checklist](./rebac-validation-checklist.md) to exercise tuple enforcement and decision logging.
 - Review the [ReBAC overview](./rebac-overview.md) for architecture context.
 - Coordinate with your security team to replace the demo realm with production IdP settings before go-live.

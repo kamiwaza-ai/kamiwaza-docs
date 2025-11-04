@@ -84,7 +84,7 @@ flowchart LR
 
 ## Demonstrating ReBAC
 
-For a walkthrough that exercises authentication, tuple enforcement, and observability dashboards, use the Stage 1 demo workflow that accompanies release `0.7.0`. It covers token capture, allow/deny checks, and the expected log output for accreditation reviews.
+For a walkthrough that exercises authentication, tuple enforcement, and observability dashboards, use the Release 0.7 demo workflow that accompanies release `0.7.0`. It covers token capture, allow/deny checks, and the expected log output for accreditation reviews.
 
 ## Limitations & Roadmap
 
@@ -96,5 +96,5 @@ Need help integrating ReBAC or exporting evidence for accreditation? Reach out t
 
 ## Next steps
 
-- Follow the [Stage 1 Quick Start](./rebac-stage1-quickstart.md) to configure the gateway.
-- Run the [Stage 1 Smoke Test](./rebac-stage1-smoke-test.md) to validate tuple enforcement and logging.
+- Follow the [ReBAC Deployment Guide](./rebac-deployment-guide.md) to configure the gateway.
+- Run the [ReBAC Validation Checklist](./rebac-validation-checklist.md) to validate tuple enforcement and logging.
