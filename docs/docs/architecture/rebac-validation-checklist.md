@@ -1,31 +1,31 @@
 ---
-title: Release 0.7 ReBAC Validation Checklist
+title: ReBAC Validation Checklist
 sidebar_label: ReBAC Validation Checklist
 ---
 
-After completing the Release 0.7 ReBAC Deployment Guide, run this validation checklist to confirm tuple enforcement, audit logging, and session controls match the 0.7 RPM artifacts. The flow mirrors what we run internally before shipping daily builds.
+After completing the ReBAC Deployment Guide, run this validation checklist to confirm tuple enforcement, audit logging, and session controls match the current Kamiwaza artifacts. The flow mirrors what we run internally before shipping daily builds.
 
 > Internal operators who need the detailed evidence capture should use `docs-internal/guides/rebac_demo_workflow.md` in the private repository. This page is the customer-safe summary.
 
 ## Platform assumptions
 
-- Environment was provisioned using the Release 0.7 RPM/RC build (for example `kamiwaza-0.7.0-rc3`) on RHEL 8.6+ or equivalent.
-- The ReBAC Deployment Guide steps completed successfully on the same host, including `run_oidc_uat.sh --seed-only`.
+- Environment meets the published Kamiwaza system requirements for this release (minimum RHEL 9.6+). See [System Requirements](../installation/system_requirements.md) for details.
+- The ReBAC Deployment Guide steps completed successfully on the same host, including seeding with `run_oidc_uat.sh`.
 - You can reach the Traefik gateway (`https://<gateway-host>`) from your workstation to run curl commands.
 
 ---
 
 ## Prerequisites
 
-- Release 0.7 environment with the latest 0.7 Auth/ReBAC RPMs (or compose stack) running.
-- Deployment guide steps completed, including `run_oidc_uat.sh --seed-only` and service restarts.
+- Kamiwaza environment with the current Auth/ReBAC services running (RPM or compose stack).
+- Deployment guide steps completed, including seeding with `run_oidc_uat.sh` and service restarts.
 - Tuple bootstrap applied:
   ```bash
   uv run python scripts/rebac_tenant.py bootstrap configs/rebac/tenants/__default__.yaml
   ```
 - CLI utilities: `curl`, `jq`, and access to `docker compose` or `journalctl` for logs.
 
-The helper script seeds demo users in Keycloak:
+The helper script seeds demo users in Keycloak (credentials are printed when the script finishes and stored in `runtime/oidc-uat.env`):
 
 | Username | Password | Role |
 |----------|----------|------|
@@ -79,7 +79,7 @@ If token retrieval fails, double-check that the deployment guide variables are s
 
 ## Authentication checkpoints
 
-1. Browser login: visit `https://<gateway-host>/api/auth/login`, sign in as `admin`, and confirm you are redirected back without errors.
+1. Browser login: visit `https://<gateway-host>/api/auth/login`, sign in with the seeded `admin` credentials, and confirm you are redirected back without errors.
 2. Session validation:
    ```bash
    curl -i https://<gateway-host>/api/auth/validate \
@@ -158,21 +158,15 @@ echo "DATASET_URN=${DATASET_URN}"
 
 1. **Logs**
    ```bash
-   docker compose logs auth | rg rebac_decision
+   docker compose logs auth | grep rebac_decision
    ```
    Or, if using the RPM systemd units:
    ```bash
-   journalctl -u kamiwaza-auth.service | rg rebac_decision
+   journalctl -u kamiwaza-auth.service | grep rebac_decision
    ```
    Confirm allow/deny entries include `deployment_id`, `relation`, and correlation IDs.
 
-2. **Metrics**
-   Check Prometheus (or `/metrics`) for:
-   - `rebac_check_requests_total`
-   - `rebac_decision_latency_seconds`
-   - `rebac_shadow_mismatch_total` (should stay at zero)
-
-3. **Redis**
+2. **Redis**
    Verify TLS configuration matches your security policy (`rediss://` for production). Document any `AUTH_REBAC_SESSION_ALLOW_INSECURE=true` exceptions for development environments.
 
 ---
@@ -181,9 +175,9 @@ echo "DATASET_URN=${DATASET_URN}"
 
 ✅ Login flow completes and issues session cookies.  
 ✅ Tuple enforcement allows owners and blocks viewers.  
-✅ Decision logs and metrics capture both allow/deny outcomes.  
+✅ Decision logs capture both allow/deny outcomes.  
 ✅ Session purge responds with revoked counts.
 
 Archive the curl outputs and log excerpts alongside the RPM build you validated for auditability.
 
-Return to the [Release 0.7 quick start](./rebac-stage1-quickstart.md) if you need to reconfigure environment variables.
+Return to the [ReBAC Deployment Guide](./rebac-deployment-guide.md) if you need to reconfigure environment variables.

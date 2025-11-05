@@ -5,7 +5,7 @@ sidebar_label: ReBAC Overview
 
 # Relationship-Based Access Control Overview
 
-Kamiwaza uses relationship-based access control (ReBAC) to enforce tenant-scoped and role-aware policies across the platform. This page summarizes the capabilities delivered with release `0.7.0`, how to integrate an identity provider, and the operational practices required to keep the system healthy.
+Kamiwaza uses relationship-based access control (ReBAC) to enforce tenant-scoped and role-aware policies across the platform. This page summarizes the capabilities delivered with the current release, how to integrate an identity provider, and the operational practices required to keep the system healthy.
 
 ## What ReBAC Delivers
 
@@ -19,12 +19,12 @@ Kamiwaza uses relationship-based access control (ReBAC) to enforce tenant-scoped
 
 ```mermaid
 flowchart LR
-    Client[User / Service] -->|OIDC| Gateway[Auth Gateway]
-    Gateway -->|Signed headers| Services[Model & Catalog APIs]
-    Gateway -->|Tuple checks| ADE[Access Decision Engine]
-    ADE -->|Read tuples| Store[(Relationship Store)]
-    Store --> Spice[SpiceDB (shadow/primary)]
-    Services -->|Allow / Deny response| Client
+    Client[User / Service] -->|OIDC| Gateway[Auth Gateway];
+    Gateway -->|Signed headers| Services[Model & Catalog APIs];
+    Gateway -->|Tuple checks| ADE[Access Decision Engine];
+    ADE -->|Read tuples| Store[(Relationship Store)];
+    Store --> Spice[SpiceDB (shadow/primary)];
+    Services -->|Allow / Deny response| Client;
 ```
 
 | Component | Purpose | Notes |
@@ -32,7 +32,7 @@ flowchart LR
 | Auth Gateway | Terminates OIDC sessions, issues personal access tokens (PAT), forwards signed headers. | Keycloak is supported today; SAML/card reader flows are roadmap items. |
 | Access Decision Engine | Evaluates tuples stored in Postgres or SpiceDB and returns permit/deny with reasoning. | Targets <100 ms latency for typical requests. |
 | Relationship Store | Persists tuple data and mirrors to SpiceDB when enabled. | Ships with default tuples for system tenants. |
-| Service Guards | Wrap API endpoints with `enforce_*` helpers to require specific relations. | Catalog dataset deletes and model deletes are ReBAC-protected in 0.7.0. |
+| Service Guards | Wrap API endpoints with `enforce_*` helpers to require specific relations. | Catalog dataset deletes and model deletes ship protected in this release. |
 | Policy Assets | `configs/rebac/policies/*.yaml` and tenant bootstraps under `configs/rebac/tenants/`. | Validate before applying changes. |
 
 ## Identity Provider Integration
@@ -46,17 +46,11 @@ flowchart LR
    - Ensure the token carries `exp`, `iat`, `sub`, and `iss` claims; Kamiwaza validates them on every request.
 
 3. **Configure the Auth Gateway** (environment variables or `env.sh`).
-   ```bash
-   AUTH_GATEWAY_JWT_ISSUER=https://<keycloak>/realms/<realm>
-   AUTH_GATEWAY_JWKS_URL=https://<keycloak>/realms/<realm>/protocol/openid-connect/certs
-   AUTH_GATEWAY_JWT_AUDIENCE=kamiwaza-platform
-   AUTH_GATEWAY_POLICY_FILE=/config/auth_gateway_policy.yaml
-   AUTH_REBAC_ENABLED=true
-   AUTH_REBAC_BACKEND=postgres        # switch to spicedb after shadow validation
-   AUTH_REBAC_SESSION_REDIS_URL=rediss://<redis-host>:<port>
-   AUTH_REBAC_SHADOW_COMPARE=true     # keep enabled while validating SpiceDB parity
-   AUTH_GATEWAY_TLS_INSECURE=false
-   ```
+   - Set the issuer and JWKS URL to match your Keycloak realm (`https://<keycloak>/realms/<realm>` and `/protocol/openid-connect/certs`).
+   - Align `AUTH_GATEWAY_JWT_AUDIENCE` with the confidential client you created (`kamiwaza-platform` by default).
+   - Enable ReBAC (`AUTH_REBAC_ENABLED=true`) and choose your primary backend (`postgres` or `spicedb`).
+   - Point the session store at your Redis deployment (`AUTH_REBAC_SESSION_REDIS_URL=rediss://<redis-host>:6380/0`).
+   - See the [ReBAC Deployment Guide](./rebac-deployment-guide.md) for the full variable list and examples.
 
 4. **Optional PAT workflow** – use the Auth gateway PAT endpoint to issue automation tokens that embed tenant metadata.
 
@@ -78,13 +72,13 @@ flowchart LR
 
 - **Gateway policy** – enable `default_deny: true` and explicitly list the `/api/*` paths users require.
 - **Shadow validation** – run with `AUTH_REBAC_BACKEND=postgres` and `AUTH_REBAC_SHADOW_COMPARE=true` until SpiceDB decisions match Postgres, then cut over.
-- **Monitoring** – track Prometheus metrics (`rebac_check_requests_total`, `rebac_decision_latency_seconds`, `rebac_rate_limited_total`) and structured decision logs (`rebac_decision`).
+- **Monitoring** – tail structured `rebac_decision` logs today; metrics endpoints will be documented when generally available.
 - **Session store** – ensure Redis is served over TLS (`rediss://`), authentication is enabled, and session TTLs match your security policy (default 8 hours).
 - **Audit artifacts** – capture policy validation output, tuple plans, and decision logs for the release record.
 
 ## Demonstrating ReBAC
 
-For a walkthrough that exercises authentication, tuple enforcement, and observability dashboards, use the Release 0.7 demo workflow that accompanies release `0.7.0`. It covers token capture, allow/deny checks, and the expected log output for accreditation reviews.
+For a walkthrough that exercises authentication, tuple enforcement, and observability dashboards, follow the [ReBAC Validation Checklist](./rebac-validation-checklist.md). It covers token capture, allow/deny checks, and the expected log output for accreditation reviews.
 
 ## Limitations & Roadmap
 
