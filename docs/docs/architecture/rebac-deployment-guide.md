@@ -68,8 +68,15 @@ After updating the file, reload it so the helper scripts and restart commands pi
 source env.sh
 ```
 
-:::tip Local development
-For quick experiments, use `https://localhost` for `AUTH_GATEWAY_PUBLIC_URL` and set `AUTH_REBAC_SESSION_REDIS_URL=redis://localhost:6379/0` with `AUTH_REBAC_SESSION_ALLOW_INSECURE=true`. Switch to TLS (`rediss://`) before promoting the environment.
+:::tip Environment-specific Redis settings
+Local labs usually run the bundled Redis instance without authentication. In that case, export:
+
+```bash
+export AUTH_REBAC_SESSION_ALLOW_INSECURE=true
+export AUTH_REBAC_SESSION_REDIS_URL=redis://localhost:6379/0
+```
+
+As soon as you point the gateway at a secured or shared Redis deployment, switch to a credentialed URL—e.g. `rediss://user:pass@redis.example.com:6380/0`—and omit `AUTH_REBAC_SESSION_ALLOW_INSECURE`.
 :::
 
 ---
@@ -81,6 +88,13 @@ Run the helper to import the UAT realm, create the confidential client, and gene
 ```bash
 ./scripts/run_oidc_uat.sh --no-smoke --skip-install --no-start-keycloak \
   --callback-url "https://<gateway-host>/api/auth/callback"
+source runtime/oidc-uat.env
+```
+
+After generating the realm, reload your shell environment so the new client metadata is active for subsequent commands:
+
+```bash
+source env.sh
 source runtime/oidc-uat.env
 ```
 
@@ -112,13 +126,13 @@ sudo ./containers-down.sh keycloak
 sudo ./containers-up.sh keycloak
 sudo ./containers-down.sh traefik
 sudo ./containers-up.sh traefik
-./stop-core.sh
-./start-env.sh -y "${KAMIWAZA_ENV:-default}"
+sudo ./stop-core.sh
+sudo ./start-env.sh -y "${KAMIWAZA_ENV:-default}"
 ```
 
 If the helper reports the node is already part of a swarm, either reuse the existing manager by exporting `KAMIWAZA_HEAD_IP=<manager-ip>` before rerunning, or leave the old swarm (`docker swarm leave --force`) and re-run with `KAMIWAZA_SWARM_HEAD=true`.
 
-If you are running the packaged RPM install under systemd, restart the bundled service and confirm its status:
+If you are running the RPM services under systemd, restart the bundled service and confirm its status:
 
 ```bash
 sudo systemctl daemon-reload
@@ -137,6 +151,22 @@ If you made changes to the deployment assets in `deployment/`, rerun `./copy-com
 
 ---
 
+### Using an external identity provider
+
+Keycloak ships with the bundle to keep the walkthrough self-contained. To exercise a managed provider (Google Workspace, Okta, Azure AD, etc.), create an OIDC client there with the same redirect URI (`https://<gateway-host>/api/auth/callback`) and copy the issued client ID and secret into `env.sh` before sourcing it:
+
+```bash
+export AUTH_GATEWAY_KEYCLOAK_URL=https://accounts.google.com      # replace with provider base URL
+export AUTH_GATEWAY_KEYCLOAK_REALM=<idp-tenant-or-realm>
+export AUTH_GATEWAY_KEYCLOAK_CLIENT_ID=<issued-client-id>
+export AUTH_GATEWAY_KEYCLOAK_CLIENT_SECRET=<issued-client-secret>
+source env.sh
+```
+
+Skip `run_oidc_uat.sh` in that scenario; the managed IdP is now the source of truth. You still need the Redis exports from the earlier tip so the gateway can persist sessions.
+
+---
+
 ## Verify login & header passthrough
 
 1. Visit `https://<gateway-host>/api/auth/login` and sign in with the credentials seeded by the helper (defaults `admin` / `kamiwaza`; confirm the password with `make auth-print-admin-password` or by reading `runtime/secrets/keycloak-admin-password`).
@@ -146,7 +176,14 @@ If you made changes to the deployment assets in `deployment/`, rerun `./copy-com
      -H "Cookie: <copied-session-cookie>"
    ```
    Expect HTTP `200` with `X-User-*` headers.
-3. If you receive a redirect loop or `401`, confirm `AUTH_GATEWAY_COOKIE_DOMAIN` matches the hostname, re-run `source env.sh`, and rerun `run_oidc_uat.sh` with the same flags you used earlier so the helper can refresh the Keycloak client metadata. Re-check the admin password with `make auth-print-admin-password` if the login still fails.
+3. If you receive a redirect loop, `401`, or `{"detail":"Authentication failed"}`, confirm `AUTH_GATEWAY_COOKIE_DOMAIN` matches the hostname, then re-run:
+   ```bash
+   source env.sh
+   source runtime/oidc-uat.env
+   sudo ./stop-core.sh
+   sudo ./start-env.sh -y "${KAMIWAZA_ENV:-default}"
+   ```
+   This reloads the freshly generated client secret and other gateway settings. If the admin password is unknown, rerun `run_oidc_uat.sh` with the same flags and confirm it with `make auth-print-admin-password`.
 
 ---
 
