@@ -104,16 +104,19 @@ If you are seeding from a workstation that is not running the packaged stack, om
 
 Bounce the authentication plane so the new settings apply:
 
-If you installed via the developer bundle, use the deployment helpers to bounce the containers so the new configuration is picked up:
+If you installed via the developer bundle, use the deployment helpers to bounce the containers so the new configuration is picked up. Run these from the repository root after `source env.sh`; set the swarm role explicitly (single-node labs export `KAMIWAZA_SWARM_HEAD=true`, multi-node environments can export `KAMIWAZA_HEAD_IP=<manager-ip>` instead). Use `sudo` if the helper needs to create `/etc/kamiwaza` swarm metadata or secrets:
 
 ```bash
-./containers-down.sh keycloak
-./containers-up.sh keycloak
-./containers-down.sh traefik
-./containers-up.sh traefik
+export KAMIWAZA_SWARM_HEAD=${KAMIWAZA_SWARM_HEAD:-true}
+sudo ./containers-down.sh keycloak
+sudo ./containers-up.sh keycloak
+sudo ./containers-down.sh traefik
+sudo ./containers-up.sh traefik
 ./stop-core.sh
 ./start-env.sh -y "${KAMIWAZA_ENV:-default}"
 ```
+
+If the helper reports the node is already part of a swarm, either reuse the existing manager by exporting `KAMIWAZA_HEAD_IP=<manager-ip>` before rerunning, or leave the old swarm (`docker swarm leave --force`) and re-run with `KAMIWAZA_SWARM_HEAD=true`.
 
 If you are running the packaged RPM install under systemd, restart the bundled service and confirm its status:
 
