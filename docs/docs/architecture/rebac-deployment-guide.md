@@ -84,7 +84,7 @@ Run the helper to import the UAT realm, create the confidential client, and gene
 source runtime/oidc-uat.env
 ```
 
-The script prints the generated client ID/secret and writes `runtime/oidc-uat.env` containing the exports above. If you need to regenerate credentials (for example, after rotating secrets), rerun the helper with the same flags.
+The script prints the generated client ID/secret and writes `runtime/oidc-uat.env` containing the exports above. If you need to regenerate credentials (for example, after rotating secrets), rerun the helper with the same flags. On Linux hosts you can omit `--skip-install`; on macOS keep it so the helper doesn’t rerun the bootstrap installer.
 
 Confirm the helper populated the Keycloak secrets that the restart step expects:
 
@@ -114,6 +114,8 @@ sudo systemctl restart kamiwaza-auth.service
 sudo systemctl restart kamiwaza-keycloak.service
 sudo systemctl restart kamiwaza-traefik.service
 ```
+
+If you made changes to the deployment assets in `deployment/`, rerun `./copy-compose.sh` before the restart so the staged Compose bundles pick up the latest configuration.
 
 ---
 
