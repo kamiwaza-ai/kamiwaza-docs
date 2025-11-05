@@ -88,7 +88,6 @@ Run the helper to import the UAT realm, create the confidential client, and gene
 ```bash
 ./scripts/run_oidc_uat.sh --no-smoke --skip-install --no-start-keycloak \
   --callback-url "https://<gateway-host>/api/auth/callback"
-source runtime/oidc-uat.env
 ```
 
 After generating the realm, reload your shell environment so the new client metadata is active for subsequent commands:
