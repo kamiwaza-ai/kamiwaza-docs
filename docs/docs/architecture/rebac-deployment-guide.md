@@ -115,12 +115,19 @@ If you installed via the developer bundle, use the deployment helpers to bounce 
 ./start-env.sh -y "${KAMIWAZA_ENV:-default}"
 ```
 
-If you are running the RPM services under systemd instead of Docker Compose, restart the units directly:
+If you are running the packaged RPM install under systemd, restart the bundled service and confirm its status:
 
 ```bash
-sudo systemctl restart kamiwaza-auth.service
-sudo systemctl restart kamiwaza-keycloak.service
-sudo systemctl restart kamiwaza-traefik.service
+sudo systemctl daemon-reload
+sudo systemctl restart kamiwaza.service
+sudo systemctl status kamiwaza.service --no-pager
+```
+
+If your site defines additional Kamiwaza units, list them first and restart only the ones that exist (for example, a custom Keycloak unit):
+
+```bash
+sudo systemctl list-units '*kamiwaza*' --no-pager
+sudo systemctl restart kamiwaza-keycloak.service   # only if present
 ```
 
 If you made changes to the deployment assets in `deployment/`, rerun `./copy-compose.sh` before the restart so the staged Compose bundles pick up the latest configuration.
