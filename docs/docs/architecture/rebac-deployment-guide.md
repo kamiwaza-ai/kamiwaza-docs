@@ -135,3 +135,10 @@ sudo systemctl restart kamiwaza-traefik.service
 - Walk through the [ReBAC validation checklist](./rebac-validation-checklist.md) to exercise tuple enforcement and decision logging.
 - Review the [ReBAC overview](./rebac-overview.md) for architecture context.
 - Coordinate with your security team to replace the demo realm with production IdP settings before go-live.
+
+---
+
+## Troubleshooting
+
+- **`Authentication failed` during Keycloak login** – confirm the admin password by checking `KEYCLOAK_ADMIN_PASSWORD` in `runtime/oidc-uat.env`. If it does not match what you are entering, run `source env.sh` followed by `./scripts/run_oidc_uat.sh` with the same flags to regenerate the client and credentials.
+- **`KAMIWAZA_KEYCLOAK_ADMIN_PASSWORD is missing` when restarting containers** – ensure you have run `source env.sh` in the current shell before invoking `docker compose` so the restart inherits the required variables. Re-run `copy-compose.sh` if you have not refreshed the deployment artifacts since editing `env.sh`.
