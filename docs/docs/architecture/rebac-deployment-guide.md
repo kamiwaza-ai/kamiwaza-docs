@@ -84,13 +84,15 @@ Run the helper to import the UAT realm, create the confidential client, and gene
 source runtime/oidc-uat.env
 ```
 
-The script prints the generated client ID/secret and writes `runtime/oidc-uat.env` containing the exports above. If you need to regenerate credentials (for example, after rotating secrets), rerun the helper with the same flags. On Linux hosts you can omit `--skip-install`; on macOS keep it so the helper doesn’t rerun the bootstrap installer.
-
-Confirm the helper populated the Keycloak secrets that the restart step expects:
+The helper writes `runtime/oidc-uat.env` with the gateway OIDC exports so follow-on scripts stay in sync. If you need to regenerate credentials (for example, after rotating secrets), rerun the helper with the same flags. Linux hosts can omit `--skip-install`; keep it on macOS to avoid rerunning the bootstrap installer. Keycloak administrator credentials continue to be managed by the install prelaunch step; they are not copied into that snapshot. Use the built-in utility (or read the secret file directly) to retrieve the value needed for the login test:
 
 ```bash
-grep KEYCLOAK_ADMIN_PASSWORD runtime/oidc-uat.env
+make auth-print-admin-password
+# or, if Make is unavailable:
+cat "${KAMIWAZA_ROOT:-$PWD}/runtime/secrets/keycloak-admin-password"
 ```
+
+If the command reports that the password is unavailable, ensure the packaged Keycloak stack has been started at least once (for example, `./containers-up.sh keycloak` or the equivalent systemd unit) so the prelaunch script can write the secret.
 
 :::note
 If you are seeding from a workstation that is not running the packaged stack, omit `--no-start-keycloak` so the helper can launch its disposable Keycloak container.
@@ -102,12 +104,18 @@ If you are seeding from a workstation that is not running the packaged stack, om
 
 Bounce the authentication plane so the new settings apply:
 
+If you installed via the developer bundle, use the deployment helpers to bounce the containers so the new configuration is picked up:
+
 ```bash
-docker compose -f "${KAMIWAZA_ROOT:-$PWD}/deployment/community/docker-compose.yml" \
-  restart auth keycloak traefik
+./containers-down.sh keycloak
+./containers-up.sh keycloak
+./containers-down.sh traefik
+./containers-up.sh traefik
+./stop-core.sh
+./start-env.sh -y "${KAMIWAZA_ENV:-default}"
 ```
 
-Or, if you are running the RPM services under systemd:
+If you are running the RPM services under systemd instead of Docker Compose, restart the units directly:
 
 ```bash
 sudo systemctl restart kamiwaza-auth.service
@@ -121,14 +129,14 @@ If you made changes to the deployment assets in `deployment/`, rerun `./copy-com
 
 ## Verify login & header passthrough
 
-1. Visit `https://<gateway-host>/api/auth/login` and sign in with the credentials seeded by the helper (defaults `admin` / `kamiwaza`; confirm the values in `runtime/oidc-uat.env`).
+1. Visit `https://<gateway-host>/api/auth/login` and sign in with the credentials seeded by the helper (defaults `admin` / `kamiwaza`; confirm the password with `make auth-print-admin-password` or by reading `runtime/secrets/keycloak-admin-password`).
 2. Call the validation endpoint to ensure the session cookie works. Copy the session cookie from your browser (Developer Tools → Application → Cookies) and pass it in the request:
    ```bash
    curl -i https://<gateway-host>/api/auth/validate \
      -H "Cookie: <copied-session-cookie>"
    ```
    Expect HTTP `200` with `X-User-*` headers.
-3. If you receive a redirect loop or `401`, confirm `AUTH_GATEWAY_COOKIE_DOMAIN` matches the hostname, re-run `source env.sh`, and rerun `run_oidc_uat.sh` with the same flags you used earlier so the helper can refresh the Keycloak client metadata (including the Keycloak admin password).
+3. If you receive a redirect loop or `401`, confirm `AUTH_GATEWAY_COOKIE_DOMAIN` matches the hostname, re-run `source env.sh`, and rerun `run_oidc_uat.sh` with the same flags you used earlier so the helper can refresh the Keycloak client metadata. Re-check the admin password with `make auth-print-admin-password` if the login still fails.
 
 ---
 
