@@ -51,7 +51,11 @@ export AUTH_REBAC_ENABLED=true
 export AUTH_REBAC_BACKEND=postgres
 export AUTH_REBAC_SESSION_ENABLED=true
 export AUTH_REBAC_SESSION_REDIS_URL=rediss://<redis-host>:6380/0
-export AUTH_REBAC_SESSION_ALLOW_INSECURE=false  # set true only for localhost labs
+```
+
+For localhost / self-signed certs, include this:
+```
+export AUTH_REBAC_SESSION_ALLOW_INSECURE=false
 ```
 
 :::caution Avoid stale overrides
