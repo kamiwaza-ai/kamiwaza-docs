@@ -66,6 +66,7 @@ The default `env.sh.example` ships with `AUTH_CALLBACK_URL=http://localhost:7777
 
 :::tip Quick sanity check
 After editing `env.sh`, run `grep AUTH_GATEWAY env.sh` to confirm no stray exports remain (especially ones that regenerate client secrets or point at alternate hosts). Post-restart, `grep AUTH_GATEWAY runtime/oidc-uat.env` should match, and `tail -n 50 runtime/logs/kamiwaza.log` is an easy way to verify the gateway started cleanly.
+To keep Traefik in sync, also run `grep AUTH_FORWARD_HEADER_SECRET deployment/envs/${KAMIWAZA_ENV:-default}/kamiwaza-traefik/*/.env` and make sure the value matches `env.sh`. Any mismatch triggers `forward_auth_signature_invalid` when downloading models.
 :::
 
 Where to substitute values:
@@ -214,3 +215,4 @@ Skip `run_oidc_uat.sh` in that scenario; the managed IdP is now the source of tr
 - **`Authentication failed` during Keycloak login** – confirm the admin password by checking `KEYCLOAK_ADMIN_PASSWORD` in `runtime/oidc-uat.env`. If it does not match what you are entering, run `source env.sh` followed by `./scripts/run_oidc_uat.sh` with the same flags to regenerate the client and credentials.
 - **`KAMIWAZA_KEYCLOAK_ADMIN_PASSWORD is missing` when restarting containers** – ensure you have run `source env.sh` in the current shell before invoking `docker compose` so the restart inherits the required variables. Re-run `copy-compose.sh` if you have not refreshed the deployment artifacts since editing `env.sh`.
 - **Token exchange fails (`/api/auth/callback` returns 400/502)** – Keycloak is rejecting the client credentials. Verify `AUTH_GATEWAY_KEYCLOAK_CLIENT_SECRET` is not being overridden in `env.sh` (see the caution note above) and matches the secret shown in Keycloak for the `kamiwaza-platform` client. Re-run the helper (`./scripts/run_oidc_uat.sh …`), source `runtime/oidc-uat.env`, restart the services, and inspect `docker logs kamiwaza-keycloak-uat --tail 100` for `invalid_client` or redirect errors.
+- **`forward_auth_signature_invalid` when downloading models** – Traefik is rejecting the gateway’s HMAC signature. Confirm `AUTH_FORWARD_HEADER_SECRET` matches across `env.sh`, `runtime/oidc-uat.env`, and `deployment/envs/${KAMIWAZA_ENV:-default}/kamiwaza-traefik/*/.env`. After updating the secret, rerun `./copy-compose.sh` and `./startup/kamiwazad.sh restart-core` so Traefik picks up the change.
