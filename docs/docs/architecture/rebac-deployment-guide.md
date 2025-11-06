@@ -44,7 +44,7 @@ export AUTH_GATEWAY_COOKIE_DOMAIN=<gateway-host>
 
 # ForwardAuth secret shared with Traefik
 export AUTH_FORWARD_AUTH_STRICT=true
-export AUTH_FORWARD_HEADER_SECRET=$(openssl rand -hex 32)
+export AUTH_FORWARD_HEADER_SECRET=<literal fixed 64‑hex string>
 
 # ReBAC session store
 export AUTH_REBAC_ENABLED=true
@@ -187,18 +187,18 @@ Skip `run_oidc_uat.sh` in that scenario; the managed IdP is now the source of tr
 ## Verify login & header passthrough
 
 1. Visit `https://<gateway-host>/api/auth/login` and sign in with the credentials seeded by the helper (defaults `admin` / `kamiwaza`; confirm the password by reading `runtime/secrets/keycloak-admin-password`).
-2. Call the validation endpoint to ensure the session cookie works. Copy the session cookie from your browser (Developer Tools → Application → Cookies) and pass it in the request:
+2. Call the validation endpoint to ensure the session cookie works. Copy the session cookie from your browser (Developer Tools → Application → Cookies → access_token) and pass it in the request:
    ```bash
+   #  If testing with a self-signed cert, include the -k (insecure) flag in the curl command.
    curl -i https://<gateway-host>/api/auth/validate \
-     -H "Cookie: <copied-session-cookie>"
+     -H "Cookie: access_token=<copied-session-cookie>"
    ```
    Expect HTTP `200` with `X-User-*` headers.
 3. If you receive a redirect loop, `401`, or `{"detail":"Authentication failed"}`, confirm `AUTH_GATEWAY_COOKIE_DOMAIN` matches the hostname, then re-run:
    ```bash
    source env.sh
    source runtime/oidc-uat.env
-   sudo ./stop-core.sh
-   sudo ./start-env.sh -y "${KAMIWAZA_ENV:-default}"
+   kamiwaza restart-core
    ```
    This reloads the freshly generated client secret and other gateway settings. If the admin password is unknown, rerun `run_oidc_uat.sh` with the same flags and re-check `runtime/secrets/keycloak-admin-password`.
 
