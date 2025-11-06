@@ -33,6 +33,7 @@ const sidebars: SidebarsConfig = {
         'models/gui-walkthrough',
         'models/downloading-models',
         'models/deployment',
+        'models/bedrock',
         'models/troubleshooting'
       ],
     },
@@ -64,6 +65,9 @@ const sidebars: SidebarsConfig = {
           label: 'Platform Overview',
         },
         'architecture/components',
+        'architecture/rebac-overview',
+        'architecture/rebac-deployment-guide',
+        'architecture/rebac-validation-checklist',
         'architecture/core-services',
       ],
     },
