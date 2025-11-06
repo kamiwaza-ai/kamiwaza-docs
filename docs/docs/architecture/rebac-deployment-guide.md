@@ -5,8 +5,6 @@ sidebar_label: ReBAC Deployment Guide
 
 Use this guide to bring the Kamiwaza authentication and relationship-based access control (ReBAC) stack online for lab, pilot, or production deployments. It assumes you have installed the current Kamiwaza platform bundle (RPM or container images) and can restart services via the provided scripts.
 
-> Internal operators should continue using the detailed runbooks in the private `kamiwaza` repository (`docs-internal/guides/`). This page is safe to share with customer teams.
-
 ## Platform assumptions
 
 - Host meets the published system requirements. See [System Requirements](../installation/system_requirements.md) for the supported operating systems and hardware profiles.
