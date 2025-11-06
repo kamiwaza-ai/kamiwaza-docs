@@ -1,10 +1,10 @@
 # Distributed Data Engine
 
-Kamiwaza’s Distributed Data Engine (DDE) aligns unstructured and tabular content under a unified ingestion framework. Release 0.7 focuses on connector-driven pipelines that push cleaned documents into the platform’s vector stores while keeping credentials and scheduling consistent with the rest of the control plane.
+Kamiwaza’s Distributed Data Engine (DDE) aligns unstructured and tabular content under a unified ingestion framework. The 0.7 release introduced connector-driven pipelines that push cleaned documents into the platform’s vector stores while keeping credentials and scheduling consistent with the rest of the control plane. Subsequent point releases continue to build on the same structure, so the guidance below applies to the current GA build unless otherwise noted.
 
 ## Platform assumptions
 
-- Kamiwaza 0.7 release is installed with the control plane available over HTTPS.
+- The current Kamiwaza platform build is installed with the control plane available over HTTPS.
 - You have administrative access to configure connectors and manage secrets.
 - Target storage (Kamiwaza vector database or an external store) is reachable from the ingestion workers.
 
@@ -15,7 +15,7 @@ Kamiwaza’s Distributed Data Engine (DDE) aligns unstructured and tabular conte
 3. **Schedule ingestion** – Select one-time or recurring runs. DDE batches updates to minimize load on the source system.
 4. **Monitor jobs** – Each run emits status events and logging metadata that flow into the standard observability dashboards.
 
-## Supported sources (0.7)
+## Supported sources
 
 | Source | Notes |
 |--------|-------|

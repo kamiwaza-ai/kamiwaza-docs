@@ -9,7 +9,7 @@ Use this guide to bring the Kamiwaza authentication and relationship-based acces
 
 ## Platform assumptions
 
-- Host meets the published system requirements (minimum RHEL 9.6+ for this release). See [System Requirements](../installation/system_requirements.md) for the full matrix.
+- Host meets the published system requirements. See [System Requirements](../installation/system_requirements.md) for the supported operating systems and hardware profiles.
 - Installation created the managed systemd units or Docker Compose stack for Auth, Keycloak, and Traefik.
 - You have shell access to restart those services and reach the Traefik gateway externally.
 
@@ -114,12 +114,10 @@ source runtime/oidc-uat.env
 The helper writes `runtime/oidc-uat.env` with the gateway OIDC exports so follow-on scripts stay in sync. If you need to regenerate credentials (for example, after rotating secrets), rerun the helper with the same flags. Linux hosts can omit `--skip-install`; keep it on macOS to avoid rerunning the bootstrap installer. Keycloak administrator credentials continue to be managed by the install prelaunch step; they are not copied into that snapshot. Use the built-in utility (or read the secret file directly) to retrieve the value needed for the login test:
 
 ```bash
-make auth-print-admin-password
-# or, if Make is unavailable:
 cat "${KAMIWAZA_ROOT:-$PWD}/runtime/secrets/keycloak-admin-password"
 ```
 
-If the command reports that the password is unavailable, ensure the packaged Keycloak stack has been started at least once (for example, `./containers-up.sh keycloak` or the equivalent systemd unit) so the prelaunch script can write the secret.
+If the file is missing, ensure the packaged Keycloak stack has been started at least once (for example, `./containers-up.sh keycloak` or the equivalent systemd unit) so the prelaunch script can write the secret.
 
 :::note
 If you are seeding from a workstation that is not running the packaged stack, omit `--no-start-keycloak` so the helper can launch its disposable Keycloak container.
@@ -139,13 +137,12 @@ sudo ./containers-down.sh keycloak
 sudo ./containers-up.sh keycloak
 sudo ./containers-down.sh traefik
 sudo ./containers-up.sh traefik
-sudo ./stop-core.sh
-sudo ./start-env.sh -y "${KAMIWAZA_ENV:-default}"
+./startup/kamiwazad.sh restart-core
 ```
 
 If the helper reports the node is already part of a swarm, either reuse the existing manager by exporting `KAMIWAZA_HEAD_IP=<manager-ip>` before rerunning, or leave the old swarm (`docker swarm leave --force`) and re-run with `KAMIWAZA_SWARM_HEAD=true`.
 
-If you are running the RPM services under systemd, restart the bundled service and confirm its status:
+If you are running the RPM or DEB services under systemd, restart the bundled service and confirm its status. Package installs also ship a convenience wrapper, `sudo kamiwaza restart-core`, which orchestrates the same steps.
 
 ```bash
 sudo systemctl daemon-reload
@@ -161,6 +158,10 @@ sudo systemctl restart kamiwaza-keycloak.service   # only if present
 ```
 
 If you made changes to the deployment assets in `deployment/`, rerun `./copy-compose.sh` before the restart so the staged Compose bundles pick up the latest configuration.
+
+:::tip
+If `./startup/kamiwazad.sh` is not executable (for example, `zsh: permission denied`), run `chmod +x startup/kamiwazad.sh` once before invoking `restart-core`.
+:::
 
 ---
 
@@ -182,7 +183,7 @@ Skip `run_oidc_uat.sh` in that scenario; the managed IdP is now the source of tr
 
 ## Verify login & header passthrough
 
-1. Visit `https://<gateway-host>/api/auth/login` and sign in with the credentials seeded by the helper (defaults `admin` / `kamiwaza`; confirm the password with `make auth-print-admin-password` or by reading `runtime/secrets/keycloak-admin-password`).
+1. Visit `https://<gateway-host>/api/auth/login` and sign in with the credentials seeded by the helper (defaults `admin` / `kamiwaza`; confirm the password by reading `runtime/secrets/keycloak-admin-password`).
 2. Call the validation endpoint to ensure the session cookie works. Copy the session cookie from your browser (Developer Tools → Application → Cookies) and pass it in the request:
    ```bash
    curl -i https://<gateway-host>/api/auth/validate \
@@ -196,7 +197,7 @@ Skip `run_oidc_uat.sh` in that scenario; the managed IdP is now the source of tr
    sudo ./stop-core.sh
    sudo ./start-env.sh -y "${KAMIWAZA_ENV:-default}"
    ```
-   This reloads the freshly generated client secret and other gateway settings. If the admin password is unknown, rerun `run_oidc_uat.sh` with the same flags and confirm it with `make auth-print-admin-password`.
+   This reloads the freshly generated client secret and other gateway settings. If the admin password is unknown, rerun `run_oidc_uat.sh` with the same flags and re-check `runtime/secrets/keycloak-admin-password`.
 
 ---
 
