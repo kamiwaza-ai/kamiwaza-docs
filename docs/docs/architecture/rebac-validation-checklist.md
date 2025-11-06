@@ -4,9 +4,6 @@ sidebar_label: ReBAC Validation Checklist
 ---
 
 After completing the ReBAC Deployment Guide, run this validation checklist to confirm tuple enforcement, audit logging, and session controls match the current Kamiwaza artifacts. The flow mirrors what we run internally before shipping daily builds.
-
-> Internal operators who need the detailed evidence capture should use `docs-internal/guides/rebac_demo_workflow.md` in the private repository. This page is the customer-safe summary.
-
 ## Platform assumptions
 
 - Environment meets the published Kamiwaza system requirements for this release (minimum RHEL 9.6+). See [System Requirements](../installation/system_requirements.md) for details.
