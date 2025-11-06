@@ -38,7 +38,9 @@ export AUTH_GATEWAY_OIDC_ENABLED=true
 export AUTH_GATEWAY_KEYCLOAK_URL=https://<keycloak-host>
 export AUTH_GATEWAY_KEYCLOAK_REALM=<realm>
 export AUTH_GATEWAY_KEYCLOAK_CLIENT_ID=kamiwaza-platform
-export AUTH_GATEWAY_KEYCLOAK_CLIENT_SECRET=<client-secret>
+export AUTH_CALLBACK_URL=https://<gateway-host>/api/auth/callback
+# Optional: only set if the Keycloak client enforces confidential secret auth
+# export AUTH_GATEWAY_KEYCLOAK_CLIENT_SECRET=<client-secret>
 export AUTH_GATEWAY_PUBLIC_URL=https://<gateway-host>
 export AUTH_GATEWAY_COOKIE_DOMAIN=<gateway-host>
 
@@ -58,6 +60,10 @@ export AUTH_REBAC_SESSION_ALLOW_INSECURE=false  # set true only for localhost la
 If `env.sh` already contains older `AUTH_GATEWAY_*` exports, remove or comment them before adding the block above. Leaving legacy lines (for example, forcing `https://127.0.0.1` or generating a fresh client secret with `$(openssl rand -hex 32)`) overrides the helper output and will cause the Keycloak callback to fail. After running `run_oidc_uat.sh`, rely on the values written to `runtime/oidc-uat.env`.
 :::
 
+:::note
+The default `env.sh.example` ships with `AUTH_CALLBACK_URL=http://localhost:7777/api/auth/callback`. Update it to the HTTPS gateway URL (`https://<gateway-host>/api/auth/callback`) so the Keycloak redirect matches the public entrypoint.
+:::
+
 :::tip Quick sanity check
 After editing `env.sh`, run `grep AUTH_GATEWAY env.sh` to confirm no stray exports remain (especially ones that regenerate client secrets or point at alternate hosts). Post-restart, `grep AUTH_GATEWAY runtime/oidc-uat.env` should match, and `tail -n 50 runtime/logs/kamiwaza.log` is an easy way to verify the gateway started cleanly.
 :::
@@ -67,7 +73,7 @@ Where to substitute values:
 - `<keycloak-host>` – the external hostname for the Keycloak realm (for example `sso.example.com`).
 - `<realm>` – the Keycloak realm that contains the Kamiwaza client (default `kamiwaza`).
 - `<gateway-host>` – the public Traefik hostname for the Kamiwaza environment.
-- `<client-secret>` – the confidential client secret created in Keycloak for `kamiwaza-platform`.
+- `<client-secret>` – only required if the `kamiwaza-platform` client is configured as confidential with client-secret authentication.
 - `<redis-host>` – the TLS endpoint of the Redis deployment used for ReBAC sessions (include a custom port if it is not `6380`).
 
 After updating the file, reload it so the helper scripts and restart commands pick up the new values (especially `KAMIWAZA_KEYCLOAK_ADMIN_PASSWORD`).
