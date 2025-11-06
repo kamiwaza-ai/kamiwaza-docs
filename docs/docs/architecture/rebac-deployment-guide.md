@@ -54,6 +54,10 @@ export AUTH_REBAC_SESSION_REDIS_URL=rediss://<redis-host>:6380/0
 export AUTH_REBAC_SESSION_ALLOW_INSECURE=false  # set true only for localhost labs
 ```
 
+:::caution Avoid stale overrides
+If `env.sh` already contains older `AUTH_GATEWAY_*` exports, remove or comment them before adding the block above. Leaving legacy lines (for example, forcing `https://127.0.0.1` or generating a fresh client secret with `$(openssl rand -hex 32)`) overrides the helper output and will cause the Keycloak callback to fail. After running `run_oidc_uat.sh`, rely on the values written to `runtime/oidc-uat.env`.
+:::
+
 Where to substitute values:
 
 - `<keycloak-host>` – the external hostname for the Keycloak realm (for example `sso.example.com`).
