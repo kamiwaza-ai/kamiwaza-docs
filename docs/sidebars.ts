@@ -20,6 +20,20 @@ const sidebars: SidebarsConfig = {
       ],
     },
     {
+      type: 'category',
+      label: 'Security',
+      items: [
+        'security/rebac-overview',
+        'security/rebac-deployment-guide',
+        'security/rebac-validation-checklist',
+      ],
+    },
+    {
+      type: 'doc',
+      id: 'quickstart',
+      label: 'Quickstart',
+    },
+    {
       type: 'doc',
       id: 'quickstart',
       label: 'Quickstart',
@@ -65,9 +79,6 @@ const sidebars: SidebarsConfig = {
           label: 'Platform Overview',
         },
         'architecture/components',
-        'architecture/rebac-overview',
-        'architecture/rebac-deployment-guide',
-        'architecture/rebac-validation-checklist',
         'architecture/core-services',
       ],
     },
