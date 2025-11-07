@@ -23,14 +23,14 @@ flowchart LR
     Gateway -->|Signed headers| Services[Model & Catalog APIs]
     Gateway -->|Tuple checks| ADE[Access Decision Engine]
     ADE -->|Read tuples| Store[(Relationship Store)]
-    Store --> Spice[SpiceDB (shadow/primary)]
+    Store --> Spice["SpiceDB (shadow/primary)"]
     Services -->|Allow / Deny response| Client
 ```
 
 | Component | Purpose | Notes |
 | --- | --- | --- |
 | Auth Gateway | Terminates OIDC sessions, issues personal access tokens (PAT), forwards signed headers. | Keycloak is supported today; SAML/card reader flows are roadmap items. |
-| Access Decision Engine | Evaluates tuples stored in Postgres or SpiceDB and returns permit/deny with reasoning. | Targets <100 ms latency for typical requests. |
+| Access Decision Engine | Evaluates tuples stored in Postgres or SpiceDB and returns permit/deny with reasoning. | Targets &lt;100 ms latency for typical requests. |
 | Relationship Store | Persists tuple data and mirrors to SpiceDB when enabled. | Ships with default tuples for system tenants. |
 | Service Guards | Wrap API endpoints with `enforce_*` helpers to require specific relations. | Catalog dataset deletes and model deletes ship protected in this release. |
 | Policy Assets | `configs/rebac/policies/*.yaml` and tenant bootstraps under `configs/rebac/tenants/`. | Validate before applying changes. |
