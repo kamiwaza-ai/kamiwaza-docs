@@ -2,6 +2,7 @@
 title: Kamiwaza Agentic Intelligence Research (AIR)
 description: Pioneering research in agentic AI systems and advancing the future of intelligent computing
 hide_table_of_contents: false
+image: /img/research/Kamiwaza_AIR.png
 ---
 
 # Kamiwaza Agentic Intelligence Research (AIR)
