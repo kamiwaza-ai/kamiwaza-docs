@@ -19,12 +19,12 @@ Kamiwaza uses relationship-based access control (ReBAC) to enforce tenant-scoped
 
 ```mermaid
 flowchart LR
-    Client[User / Service] -->|OIDC| Gateway[Auth Gateway];
-    Gateway -->|Signed headers| Services[Model & Catalog APIs];
-    Gateway -->|Tuple checks| ADE[Access Decision Engine];
-    ADE -->|Read tuples| Store[(Relationship Store)];
-    Store --> Spice[SpiceDB (shadow/primary)];
-    Services -->|Allow / Deny response| Client;
+    Client[User / Service] -->|OIDC| Gateway[Auth Gateway]
+    Gateway -->|Signed headers| Services[Model & Catalog APIs]
+    Gateway -->|Tuple checks| ADE[Access Decision Engine]
+    ADE -->|Read tuples| Store[(Relationship Store)]
+    Store --> Spice[SpiceDB (shadow/primary)]
+    Services -->|Allow / Deny response| Client
 ```
 
 | Component | Purpose | Notes |

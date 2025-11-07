@@ -4,7 +4,6 @@ sidebar_label: ReBAC Deployment Guide
 ---
 
 Use this guide to bring the Kamiwaza authentication and relationship-based access control (ReBAC) stack online for lab, pilot, or production deployments. It assumes you have installed the current Kamiwaza platform bundle (RPM or container images) and can restart services via the provided scripts.
-
 ## Platform assumptions
 
 - Host meets the published system requirements. See [System Requirements](../installation/system_requirements.md) for the supported operating systems and hardware profiles.
@@ -44,18 +43,14 @@ export AUTH_GATEWAY_COOKIE_DOMAIN=<gateway-host>
 
 # ForwardAuth secret shared with Traefik
 export AUTH_FORWARD_AUTH_STRICT=true
-export AUTH_FORWARD_HEADER_SECRET=<literal fixed 64‑hex string>
+export AUTH_FORWARD_HEADER_SECRET=<64-hex-secret>
 
 # ReBAC session store
 export AUTH_REBAC_ENABLED=true
 export AUTH_REBAC_BACKEND=postgres
 export AUTH_REBAC_SESSION_ENABLED=true
 export AUTH_REBAC_SESSION_REDIS_URL=rediss://<redis-host>:6380/0
-```
-
-For localhost / self-signed certs, include this:
-```
-export AUTH_REBAC_SESSION_ALLOW_INSECURE=false
+export AUTH_REBAC_SESSION_ALLOW_INSECURE=false  # set true only for localhost labs
 ```
 
 :::caution Avoid stale overrides
@@ -68,7 +63,7 @@ The default `env.sh.example` ships with `AUTH_CALLBACK_URL=http://localhost:7777
 
 :::tip Quick sanity check
 After editing `env.sh`, run `grep AUTH_GATEWAY env.sh` to confirm no stray exports remain (especially ones that regenerate client secrets or point at alternate hosts). Post-restart, `grep AUTH_GATEWAY runtime/oidc-uat.env` should match, and `tail -n 50 runtime/logs/kamiwaza.log` is an easy way to verify the gateway started cleanly.
-To keep Traefik in sync, also run `grep AUTH_FORWARD_HEADER_SECRET deployment/envs/${KAMIWAZA_ENV:-default}/kamiwaza-traefik/*/.env` and make sure the value matches `env.sh`. Any mismatch triggers `forward_auth_signature_invalid` when downloading models.
+Set `AUTH_FORWARD_HEADER_SECRET` to a 64-character hex string (generate once with `openssl rand -hex 32`) and reuse it everywhere. To keep Traefik in sync, run `grep AUTH_FORWARD_HEADER_SECRET deployment/envs/${KAMIWAZA_ENV:-default}/kamiwaza-traefik/*/.env` and ensure the value matches `env.sh`. Whenever you change the secret, rerun `./copy-compose.sh` and `./startup/kamiwazad.sh restart-core`. Any mismatch triggers `forward_auth_signature_invalid` when downloading models.
 :::
 
 Where to substitute values:
