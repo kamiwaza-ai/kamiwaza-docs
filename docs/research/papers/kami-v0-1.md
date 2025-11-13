@@ -1,6 +1,7 @@
 ---
 title: "KAMI v0.1: Enterprise-Relevant Agentic AI Benchmark"
 description: Lessons from 5.5 billion tokens' worth of agentic AI evaluations showing traditional benchmarks fail to predict real-world performance
+image: /img/research/kami_v01_paper_ogcard.png
 ---
 
 # Towards a Standard, Enterprise-Relevant Agentic AI Benchmark
