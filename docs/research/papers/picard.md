@@ -1,6 +1,7 @@
 ---
 title: "PICARD: Testing What Models Can Do, Not What They've Seen"
 description: A framework for contamination-resistant LLM evaluation through multi-layered randomization and agentic task assessment
+image: /img/research/picard_paper_ogcard.png
 ---
 
 # Testing What Models Can Do, Not What They've Seen: PICARD
