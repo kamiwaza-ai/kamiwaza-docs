@@ -91,8 +91,9 @@ sudo dnf install -y net-tools gcc-c++ nodejs npm jq pkgconfig fontconfig-devel f
 
 You should receive these files from your builder:
 ```
-kamiwaza_[version]_rhel9_x86_64.rpm     # Main installer package
-kamiwaza-requirements-export.zip        # Additional dependencies (optional)
+kamiwaza_[version]_rhel9_x86_64.rpm     							# Main installer package
+kamiwaza_[version]_rhel9_x86_64_docker_images.tar.gz	# Docker images
+install_docker_images.sh															# Docker image installation script
 ```
 
 **Transfer Methods:**
@@ -101,6 +102,14 @@ kamiwaza-requirements-export.zip        # Additional dependencies (optional)
 - Physical media delivery
 
 ### Step 2: Basic Installation
+
+#### 2a. Install docker images
+
+```bash
+sudo bash install_docker_images.sh 
+```
+
+#### 2b. Install RPM
 
 **IMPORTANT:** You must accept the Kamiwaza License Agreement to install Kamiwaza. By including `KAMIWAZA_ACCEPT_LICENSE=yes` in the installation command, you are agreeing to the Kamiwaza License Agreement
 
@@ -128,16 +137,6 @@ kamiwaza status
 ```
 
 Once are all services are confirmed to be running, Kamiwaza is started.
-
-#### Create a Fernet Key
-
-If you are creating a fresh install and are on the head node / a single node run the following to create a Fernet key:
-```bash
-cd /opt/kamiwaza/kamiwaza && source venv/bin/activate
-python -c "from kamiwaza.lib.util import generate_fernet_key; print(generate_fernet_key())" | sudo tee /opt/kamiwaza/kamiwaza/runtime/fernet.key > /dev/null
-```
-
-If you are on worker nodes, copy the key from the head node.
 
 ### Step 4: Extension Configuration (Offline builds)
 
