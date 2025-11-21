@@ -128,7 +128,7 @@ npm run pdf:offline
 npm run pdf:full
 
 # Generate specific profile with version
-npm run pdf -- --profile offline-install --version 0.5.1
+npm run pdf -- --profile full-docs --version 0.5.1
 
 # Output location: dist/pdf/
 ```
