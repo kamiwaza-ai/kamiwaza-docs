@@ -8,6 +8,11 @@ const sidebars: SidebarsConfig = {
       label: 'Introduction',
     },
     {
+      type: 'doc',
+      id: 'quickstart',
+      label: 'Quickstart',
+    },
+    {
       type: 'category',
       label: 'Installation',
       items: [
@@ -23,20 +28,11 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Security',
       items: [
+        'security/admin-guide',
         'security/rebac-overview',
         'security/rebac-deployment-guide',
         'security/rebac-validation-checklist',
       ],
-    },
-    {
-      type: 'doc',
-      id: 'quickstart',
-      label: 'Quickstart',
-    },
-    {
-      type: 'doc',
-      id: 'quickstart',
-      label: 'Quickstart',
     },
     {
       type: 'category',
@@ -84,11 +80,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
-      id: 'admin-guide',
-      label: 'Administrator Guide',
-    },
-    {
-      type: 'doc',
       id: 'other-topics',
       label: 'Other Topics',
     },
@@ -96,11 +87,6 @@ const sidebars: SidebarsConfig = {
       type: 'doc',
       id: 'help-and-fixes',
       label: 'Help & Fixes',
-    },
-    {
-      type: 'doc',
-      id: 'release-notes',
-      label: 'Release Notes',
     },
     {
       type: 'category',
