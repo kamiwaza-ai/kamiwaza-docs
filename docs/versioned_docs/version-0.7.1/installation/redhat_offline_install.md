@@ -91,9 +91,14 @@ sudo dnf install -y net-tools gcc-c++ nodejs npm jq pkgconfig fontconfig-devel f
 
 You should receive these files from your builder:
 ```
-kamiwaza_[version]_rhel9_x86_64.rpm     							# Main installer package
-kamiwaza_[version]_rhel9_x86_64_docker_images.tar.gz	# Docker images
-install_docker_images.sh															# Docker image installation script
+# Main installer package
+kamiwaza_[version]_rhel9_x86_64.rpm
+
+# Docker images					
+kamiwaza_[version]_rhel9_x86_64_docker_images.tar.gz
+
+# Docker image installation script
+install_docker_images.sh
 ```
 
 **Transfer Methods:**
@@ -123,6 +128,14 @@ sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install kamiw
 ```
 
 **Tip:** While the installer says "Running scriptlet", use `sudo tail -f /var/log/kamiwaza-postinst-debug.log` to monitor logs.
+
+#### 2c. (Optional) Configure system for insecure TLS
+On non-production systems, where insecure TLS is acceptable, perform the following configuration to enable users to sign into Kamiwaza.
+
+Edit `/etc/kamiwaza/env.sh`, which requires sudo access, to set the following environment variable:
+```bash
+AUTH_GATEWAY_TLS_INSECURE=true
+```
 
 ### Step 3: Verification
 
