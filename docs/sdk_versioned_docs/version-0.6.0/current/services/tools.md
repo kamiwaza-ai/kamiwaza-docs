@@ -245,6 +245,5 @@ Tool servers implement the Model Context Protocol (MCP), which standardizes how 
 
 ## See Also
 
-- [Example Notebook](../../../examples/08_app_garden_and_tools.ipynb) - Complete examples of Tool Shed usage
-- [App Service](../apps/README.md) - Deploy containerized applications
-- [Authentication Guide](../auth/README.md) - Setting up authentication
+- [App Service](./apps.md) - Deploy containerized applications
+- [Authentication Guide](./auth.md) - Setting up authentication
