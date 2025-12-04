@@ -51,6 +51,14 @@ export AUTH_REBAC_BACKEND=postgres
 export AUTH_REBAC_SESSION_ENABLED=true
 export AUTH_REBAC_SESSION_REDIS_URL=rediss://<redis-host>:6380/0
 export AUTH_REBAC_SESSION_ALLOW_INSECURE=false  # set true only for localhost labs
+# Tenant defaults & PAT tagging
+export AUTH_REBAC_DEFAULT_TENANT_ID="__default__"  # single-tenant labs; omit for multi-tenant installs
+export AUTH_PAT_TENANT_TAGGING_ENABLED=true        # ensures new PATs include tenant_id
+# Optional: override only if you must disable automatic tuple writes (defaults to true when ReBAC is enabled)
+# export AUTH_DATASET_OWNER_TUPLES_ENABLED=true
+
+# ForwardAuth policy file (stateless requirement)
+export AUTH_GATEWAY_POLICY_FILE=$KAMIWAZA_ROOT/config/auth_gateway_policy.yaml
 ```
 
 :::caution Avoid stale overrides
@@ -112,18 +120,31 @@ As soon as you point the gateway at a secured or shared Redis deployment, switch
 
 ### Tenant fallback for labs (0.7.0 only)
 
-Stage‑1 bundles do not yet stamp `tenant_id` into the access token. Until the Keycloak protocol mapper is in place, allow the gateway to fall back to the `_default_` tenant by exporting:
+Stage‑1 bundles do not yet stamp `tenant_id` into the access token. Until the Keycloak protocol mapper is in place, allow the gateway to fall back to the `__default__` tenant by exporting:
 
 ```bash
 export AUTH_REBAC_ALLOW_COMMUNITY_FALLBACK=true
-export AUTH_REBAC_DEFAULT_TENANT_ID="_default_"
+export AUTH_REBAC_DEFAULT_TENANT_ID="__default__"
 ```
 
 Only use these flags in local or UAT environments. As soon as tokens carry real tenant metadata, remove both exports so ReBAC enforces per-tenant policy.
 
 ### Seed ReBAC tuples
 
-Before operators can download or deploy a model they must be granted the appropriate tuples in the target tenant. The quickest way to unblock labs is to seed tuples for the default admin account:
+Before operators can download or deploy a model they must be granted the appropriate tuples in the target tenant.
+
+1. **Bootstrap the tenant manifest (recommended).**
+   ```bash
+   python scripts/rebac_tenant.py bootstrap configs/rebac/tenants/__default__.yaml
+   ```
+   Expected output:
+   ```
+   INFO:kamiwaza.services.auth.bootstrap:Applied tenant bootstrap
+   INFO:rebac_tenant:Tenant bootstrap applied successfully
+   ```
+   Replace the manifest path with your tenant-specific file in production.
+
+2. **Optionally add ad-hoc tuples** for additional relations:
 
 ```bash
 python scripts/rebac_policy.py tuple add \
@@ -132,7 +153,26 @@ python scripts/rebac_policy.py tuple add \
   subject:user:admin@kamiwaza.local
 ```
 
-Repeat for `can_read`, `can_deploy`, or any other relationships your policy enforces. Production environments should instead enable `auto_assign_owner` in the model service so tuples are created automatically when assets are onboarded.
+Repeat for `can_read`, `can_deploy`, or any other relationships your policy enforces. Production environments should instead rely on the automatic owner helper (enabled by default when `AUTH_REBAC_ENABLED=true`) so catalog/model uploads seed owner/editor/viewer tuples without manual intervention.
+
+### quick smoke test
+
+After the bootstrap, verify allow/deny flows before handing the stack to analysts:
+
+1. Upload a dataset (or use an existing one) via the `/api/catalog/datasets/` endpoint.
+2. Confirm list calls work:
+   ```bash
+   curl -H "Authorization: Bearer $TOKEN" https://<gateway>/api/catalog/datasets/
+   ```
+   Expected: HTTP `200` with the uploaded dataset URN in the JSON payload.
+3. Confirm direct lookups succeed:
+   ```bash
+   curl -H "Authorization: Bearer $TOKEN" \
+        "https://<gateway>/api/catalog/datasets/by-urn?urn=<dataset-urn>"
+   ```
+   Expected: HTTP `200` with the dataset metadata. A `403 rebac_denied` indicates tuples are missing; re-run the bootstrap manifest.
+
+Re-run the smoke test any time you rotate manifests or onboard a new tenant to ensure the guard coverage remains intact.
 
 ---
 

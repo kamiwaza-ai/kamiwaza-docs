@@ -41,6 +41,12 @@ Kamiwaza supports two operational modes:
 export KAMIWAZA_USE_AUTH=true
 bash startup/kamiwazad.sh restart
 ```
+Expected output:
+```text
+Stopping kamiwazad ...
+Starting kamiwazad ...
+kamiwazad status: active (running)
+```
 
 **⚠️ Warning:** Bypass mode (`KAMIWAZA_USE_AUTH=false`) disables all authentication. Use only in secure development environments.
 
@@ -154,6 +160,8 @@ Access control is defined in **YAML policy files** that map endpoints to require
 **Default Location:**
 - Host installs: `$KAMIWAZA_ROOT/config/auth_gateway_policy.yaml`
 - Docker installs: Mounted at `/app/config/auth_gateway_policy.yaml`
+
+ForwardAuth is stateless—set `AUTH_GATEWAY_POLICY_FILE=$KAMIWAZA_ROOT/config/auth_gateway_policy.yaml` (or the mounted path) so every restart reloads the same policy file.
 
 **Policy File Structure:**
 
@@ -546,6 +554,10 @@ curl http://localhost:7777/health
 ```bash
 curl http://localhost:8080/health/ready
 ```
+**Response:**
+```json
+{"status":"UP"}
+```
 
 ### 6.2 Log Monitoring
 
@@ -589,6 +601,10 @@ docker logs kamiwaza-keycloak -f
    ```bash
    docker ps | grep keycloak
    curl http://localhost:8080/health/ready
+   ```
+   Expected `docker ps` output:
+   ```text
+   default_kamiwaza-keycloak-web   Up 2 minutes (healthy)   0.0.0.0:8080->8080/tcp
    ```
 
 3. **Check JWT issuer matches:**
@@ -716,6 +732,19 @@ curl -v -H "Authorization: Bearer $TOKEN" \
 # Fetch public keys for signature validation
 curl http://localhost:8080/realms/kamiwaza/protocol/openid-connect/certs | jq .
 ```
+Expected response:
+```json
+{
+  "keys": [
+    {
+      "kid": "example-kid",
+      "kty": "RSA",
+      "alg": "RS256",
+      "use": "sig"
+    }
+  ]
+}
+```
 
 **Check RBAC Policy:**
 
@@ -726,6 +755,28 @@ cat $KAMIWAZA_ROOT/config/auth_gateway_policy.yaml
 # Watch for policy reload events
 tail -f $KAMIWAZA_LOG_DIR/kamiwaza.log | grep POLICY_RELOADED
 ```
+
+---
+
+## Verify Keycloak login flows
+
+Use these checks after configuring SAML/OIDC to confirm the gateway and Keycloak agree on redirect URIs and credentials.
+
+1. **OIDC loop**
+   ```bash
+   curl -I https://<gateway-host>/api/auth/login
+   ```
+   Expected result: HTTP `302` redirecting to `https://<keycloak-host>/realms/<realm>/protocol/openid-connect/auth`. After signing in, call:
+   ```bash
+   curl -H "Authorization: Bearer $TOKEN" https://<gateway-host>/api/whoami
+   ```
+   Expected response: HTTP `200` JSON containing `user_id`, `tenant_id`, and `roles`.
+2. **SAML provider**
+   - In Keycloak, open **Identity Providers → SAML → Actions → Test**.
+   - Complete the upstream login.
+   - Expected result: Keycloak displays *Successfully authenticated* and shows the mapped attributes (email, first name, last name). If the test fails, confirm the SAML IdP metadata matches the Keycloak binding URLs listed earlier in this guide.
+
+The same curl commands can be scripted in CI to ensure future changes do not break either flow.
 
 ---
 
