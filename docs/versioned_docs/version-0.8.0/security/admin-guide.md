@@ -155,6 +155,53 @@ Kamiwaza defines three primary roles:
 
 **⚠️ Important:** Configure SMTP settings in Keycloak for email-based password reset to function.
 
+### 2.6 Create a Local User in Lite Mode
+
+Use this flow when `KAMIWAZA_LITE=true` and `KAMIWAZA_USE_AUTH=false`.
+
+1) **Set the admin password (required)**
+```bash
+export KAMIWAZA_LITE=true
+export KAMIWAZA_USE_AUTH=false
+# Provide a password or allow generation (written under $KAMIWAZA_ROOT/runtime)
+export KAMIWAZA_ADMIN_PASSWORD="kamiwaza"  # any >=12 chars for non-community builds
+# export KAMIWAZA_ALLOW_GENERATED_ADMIN_PASSWORD=true  # optional fallback
+```
+
+2) **Start services**
+```bash
+bash launch.sh
+```
+
+3) **Mint an admin bearer token** (direct to core on port 7777)
+```bash
+ADMIN_TOKEN=$(curl -sk -X POST http://localhost:7777/api/auth/token \
+  -H 'content-type: application/x-www-form-urlencoded' \
+  -d 'grant_type=password' \
+  -d 'client_id=kamiwaza-platform' \
+  -d "username=admin" \
+  -d "password=${KAMIWAZA_ADMIN_PASSWORD}" | jq -r '.access_token')
+```
+If you start `kamiwaza/main.py` with `--no-url-prefix`, drop the `/api` prefix.
+
+4) **Create the user**
+```bash
+curl -sk -X POST http://localhost:7777/api/auth/users/local \
+  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+  -H "content-type: application/json" \
+  -d '{"username":"demo","password":"demo12345678","email":"demo@example.com","roles":["user"]}' | jq
+```
+
+5) **Verify**
+```bash
+curl -sk http://localhost:7777/api/auth/users -H "Authorization: Bearer ${ADMIN_TOKEN}" | jq
+```
+
+Troubleshooting:
+- `401/403` → missing or expired admin token.
+- `Password changes not supported` → account is external; use local users only in Lite.
+- `KAMIWAZA_ADMIN_PASSWORD` missing → set it or enable `KAMIWAZA_ALLOW_GENERATED_ADMIN_PASSWORD=true` and read `runtime/generated-admin-password.txt`.
+
 ---
 
 ## 3. Role-Based Access Control (RBAC)
