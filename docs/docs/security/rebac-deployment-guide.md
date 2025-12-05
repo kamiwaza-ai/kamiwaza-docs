@@ -144,16 +144,26 @@ Before operators can download or deploy a model they must be granted the appropr
    ```
    Replace the manifest path with your tenant-specific file in production.
 
-2. **Optionally add ad-hoc tuples** for additional relations:
+   - The manifests live in `configs/rebac/tenants/*.yaml`. Copy `__default__.yaml` to a tenant-specific file (for example `configs/rebac/tenants/acme-labs.yaml`) and edit the `relationships` section to declare owners, editors, and viewers for your resources.
+   - Preview changes with `python scripts/rebac_tenant.py plan <manifest>` before applying them with `bootstrap`. The CLI is idempotent and can target a different tenant using `--tenant tenant-id`.
 
-```bash
-python scripts/rebac_policy.py tuple add \
-  object:model:Qwen/Qwen2.5-7B-GGUF \
-  relation:can_download \
-  subject:user:admin@kamiwaza.local
-```
+2. **Optionally add ad-hoc tuples** by editing the manifest and rerunning `plan`/`bootstrap`. Example entry:
 
-Repeat for `can_read`, `can_deploy`, or any other relationships your policy enforces. Production environments should instead rely on the automatic owner helper (enabled by default when `AUTH_REBAC_ENABLED=true`) so catalog/model uploads seed owner/editor/viewer tuples without manual intervention.
+   ```yaml
+   relationships:
+     - subject: user:analyst@example.com
+       relation: viewer
+       object: dataset:govdocs-ingest
+   ```
+
+   Apply the change:
+
+   ```bash
+   python scripts/rebac_tenant.py plan configs/rebac/tenants/acme-labs.yaml
+   python scripts/rebac_tenant.py bootstrap configs/rebac/tenants/acme-labs.yaml
+   ```
+
+   Production environments should rely on the automatic owner helper (enabled by default when `AUTH_REBAC_ENABLED=true`) so catalog/model uploads seed owner/editor/viewer tuples without manual intervention. Use manifest edits for explicit overrides or cross-team sharing.
 
 ### quick smoke test
 

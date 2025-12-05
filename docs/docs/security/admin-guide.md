@@ -169,12 +169,12 @@ Access control is defined in **YAML policy files** that map endpoints to require
 
 ForwardAuth is stateless—set `AUTH_GATEWAY_POLICY_FILE=$KAMIWAZA_ROOT/config/auth_gateway_policy.yaml` (or the mounted path) so every restart reloads the same policy file.
 
-**Policy File Structure:**
+**Policy File Structure (default `config/auth_gateway_policy.yaml`):**
 
 ```yaml
 version: 1
-env: production
-default_deny: true  # Block all endpoints unless explicitly allowed
+env: dev
+default_deny: true
 
 roles:
   - id: admin
@@ -183,39 +183,93 @@ roles:
     description: "Standard user access"
   - id: viewer
     description: "Read-only access"
+  - id: guest
+    description: "Minimal guest access"
 
 endpoints:
-  # Model Management
+  # Health checks
+  - path: "/health"
+    methods: ["GET"]
+    roles: ["*"]
+  - path: "/api/health"
+    methods: ["GET"]
+    roles: ["*"]
+
+  # Auth endpoints (login/logout)
+  - path: "/auth/login"
+    methods: ["POST"]
+    roles: ["*"]
+  - path: "/auth/logout"
+    methods: ["POST"]
+    roles: ["*"]
+
+  # Who am I
+  - path: "/api/whoami"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer", "guest"]
+
+  # Models
   - path: "/api/models*"
     methods: ["GET"]
-    roles: ["viewer", "user", "admin"]
-
+    roles: ["admin", "user", "viewer"]
   - path: "/api/models*"
     methods: ["POST", "PUT", "DELETE"]
-    roles: ["user", "admin"]
+    roles: ["admin", "user"]
 
-  # Cluster Management (Admin-only)
+  # Serving deployments
+  - path: "/api/serving/deployments*"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer"]
+  - path: "/api/serving/deployments*"
+    methods: ["POST", "PUT", "DELETE"]
+    roles: ["admin", "user"]
+
+  # Admin-only APIs
   - path: "/api/cluster*"
     methods: ["*"]
     roles: ["admin"]
+  - path: "/api/activity*"
+    methods: ["*"]
+    roles: ["admin"]
 
-  # Vector Database (User and Admin)
-  - path: "/api/vectordb*"
+  # Garden apps + tools
+  - path: "/api/apps*"
     methods: ["GET"]
-    roles: ["viewer", "user", "admin"]
-
-  - path: "/api/vectordb*"
+    roles: ["admin", "user", "viewer"]
+  - path: "/api/apps*"
     methods: ["POST", "PUT", "DELETE"]
-    roles: ["user", "admin"]
-
-  # Public endpoints (no auth required)
-  - path: "/health"
+    roles: ["admin", "user"]
+  - path: "/api/tools*"
     methods: ["GET"]
-    roles: ["*"]  # Public
+    roles: ["admin", "user", "viewer"]
+  - path: "/api/tools*"
+    methods: ["POST", "PUT", "DELETE"]
+    roles: ["admin", "user"]
 
-  - path: "/docs"
+  # Data Discovery Engine
+  - path: "/api/dde/status"
     methods: ["GET"]
-    roles: ["*"]  # Public API documentation
+    roles: ["viewer", "admin"]
+  - path: "/api/dde/search"
+    methods: ["POST"]
+    roles: ["viewer", "admin"]
+  - path: "/api/dde/reindex"
+    methods: ["POST"]
+    roles: ["admin"]
+
+  # Static assets
+  - path: "/static/*"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer", "guest"]
+  - path: "/assets/*"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer", "guest"]
+  - path: "/favicon.ico"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer", "guest"]
+  - path: "/manifest.json"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer", "guest"]
 ```
 
 ### 3.2 Path Matching Rules
@@ -240,15 +294,14 @@ Roles gate entire endpoints, while ReBAC expresses *who* can act on a specific r
    python scripts/rebac_tenant.py bootstrap configs/rebac/tenants/__default__.yaml
    ```<br/>
    This seeds owner/editor/clearance relationships for every default resource.
-3. **Share resources by relationship** – to grant someone viewer or editor access, add a tuple instead of editing YAML. Example:<br/>
-   ```bash
-   python scripts/rebac_tenant.py grant \
-     --tenant __default__ \
-     --subject user:testuser \
-     --relation viewer \
-     --object model:catalog-sdk
+3. **Share resources by relationship** – edit the tenant manifest and reapply it. Example snippet (`configs/rebac/tenants/__default__.yaml`):<br/>
+   ```yaml
+   relationships:
+     - subject: user:testuser
+       relation: viewer
+       object: model:catalog-sdk
    ```<br/>
-   (Use `subject=user:<name>` or `role:<role>` depending on your policy.)
+   Save the file, preview the change with `python scripts/rebac_tenant.py plan configs/rebac/tenants/__default__.yaml`, then apply it with the same `bootstrap` command. The CLI ensures tuples are deduplicated and can target any tenant with `--tenant <id>`.
 4. **Validate the experience** – follow the [ReBAC Validation Checklist](./rebac-validation-checklist.md) to exercise both allow and deny flows from the SDK/UI. The checklist calls out the expected log messages and API responses so you can sign off without digging into tuples manually.
 
 **At a glance:** every tuple stored in the relationship service takes the form `subject --(relation)--> object`. Common relations:
