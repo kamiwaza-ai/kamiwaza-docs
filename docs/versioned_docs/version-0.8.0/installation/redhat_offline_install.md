@@ -99,7 +99,11 @@ kamiwaza_[version]_rhel9_x86_64_docker_images.tar.gz
 
 # Docker image installation script
 install_docker_images.sh
+
+# Extension registry tarball (for installing extensions)
+kamiwaza-registry-[date].tar.gz
 ```
+
 
 **Transfer Methods:**
 - USB drive/removable media
@@ -137,7 +141,17 @@ Edit `/etc/kamiwaza/env.sh`, which requires sudo access, to set the following en
 AUTH_GATEWAY_TLS_INSECURE=true
 ```
 
-### Step 3: Verification
+### Step 3: Install Extensions
+
+Before starting Kamiwaza, install the extensions from the registry tarball:
+
+```bash
+kamiwaza extensions install kamiwaza-registry-[date].tar.gz
+```
+
+Replace `kamiwaza-registry-[date].tar.gz` with the actual filename of the registry package you received.
+
+### Step 4: Verification
 
 ```bash
 kamiwaza start
@@ -151,7 +165,40 @@ kamiwaza status
 
 Once are all services are confirmed to be running, Kamiwaza is started.
 
-### Step 4: Extension Configuration (Offline builds)
+### Step 5: Configure and Sync Extensions
+
+After confirming Kamiwaza is running, verify and configure the extension settings:
+
+1. **Verify extension environment variables**
+
+   Check that `/etc/kamiwaza/env.sh` contains the following settings:
+
+   ```bash
+   export KAMIWAZA_EXTENSION_STAGE=LOCAL
+   export KAMIWAZA_EXTENSION_LOCAL_STAGE_URL=file:///opt/kamiwaza/extensions/kamiwaza-extension-registry
+   ```
+
+   If these settings are missing or incorrect, edit the file:
+
+   ```bash
+   sudo vim /etc/kamiwaza/env.sh
+   ```
+
+   Add or update the export statements to match the values above. After making changes, restart Kamiwaza:
+
+   ```bash
+   kamiwaza restart
+   ```
+
+2. **Sync extensions**
+
+   Run the extension sync command:
+
+   ```bash
+   kamiwaza extensions sync
+   ```
+
+### Step 6: Extension Configuration (Offline builds)
 
 Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/opt/kamiwaza/kamiwaza/env.sh`—verify they match your environment:
 
@@ -181,7 +228,7 @@ Restart Kamiwaza to load any environment edits:
 sudo systemctl restart kamiwaza
 ```
 
-### Step 5: Verify Extensions
+### Step 7: Verify Extensions
 
 Use the following checklist to confirm the bundled extensions are ready:
 
