@@ -143,13 +143,18 @@ AUTH_GATEWAY_TLS_INSECURE=true
 
 ### Step 3: Install Extensions
 
-Before starting Kamiwaza, install the extensions from the registry tarball:
+1. Before starting Kamiwaza, install the extensions from the registry tarball:
 
 ```bash
 kamiwaza extensions install kamiwaza-registry-[date].tar.gz
 ```
 
 Replace `kamiwaza-registry-[date].tar.gz` with the actual filename of the registry package you received.
+
+2. Import the extensions images using the provided shell script
+```bash
+bash import-extension-images.sh 
+```
 
 ### Step 4: Verification
 
@@ -165,40 +170,39 @@ kamiwaza status
 
 Once are all services are confirmed to be running, Kamiwaza is started.
 
-### Step 5: Configure and Sync Extensions
+### Step 5: Verify Extensions
 
-After confirming Kamiwaza is running, verify and configure the extension settings:
+Use the following checklist to confirm the bundled extensions are ready:
 
-1. **Verify extension environment variables**
+Sign in to the Kamiwaza UI, open **App Garden → Extensions**, and confirm the extension catalog appears without network access.
+Note: Extension logs get written to `/var/log/kamiwaza/extension-sync.log`.
 
-   Check that `/etc/kamiwaza/env.sh` contains the following settings:
 
-   ```bash
-   export KAMIWAZA_EXTENSION_STAGE=LOCAL
-   export KAMIWAZA_EXTENSION_LOCAL_STAGE_URL=file:///opt/kamiwaza/extensions/kamiwaza-extension-registry
-   ```
+### File Locations
 
-   If these settings are missing or incorrect, edit the file:
+| Component | Installed Location | Purpose |
+|-----------|-------------------|---------|
+| Main Application | `/opt/kamiwaza/` | Core application files |
+| Configuration | `/opt/kamiwaza/kamiwaza/` | Runtime configuration |
+| Data Storage | `/var/lib/kamiwaza/` | Models, databases, logs |
+| Offline Resources | `/usr/share/kamiwaza/` | Bundled dependencies |
+| Service Scripts | `/usr/bin/kamiwaza*` | Command-line tools |
+| Log Files | `/var/log/kamiwaza/` | Application logs |
 
-   ```bash
-   sudo vim /etc/kamiwaza/env.sh
-   ```
+---
 
-   Add or update the export statements to match the values above. After making changes, restart Kamiwaza:
+### Network Ports
 
-   ```bash
-   kamiwaza restart
-   ```
+| Service | Port | Purpose |
+|---------|------|---------|
+| Web Interface | 3000 | Main UI |
+| API Server | 8000 | REST API |
+| Ray Dashboard | 8265 | Ray monitoring |
+| Ray Client | 10001 | Ray cluster comm |
+| Traefik | 80/443 | Reverse proxy |
 
-2. **Sync extensions**
 
-   Run the extension sync command:
-
-   ```bash
-   kamiwaza extensions sync
-   ```
-
-### Step 6: Extension Configuration (Offline builds)
+### Troubleshooting: Extension Configuration (Offline builds)
 
 Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/opt/kamiwaza/kamiwaza/env.sh`—verify they match your environment:
 
@@ -228,55 +232,3 @@ Restart Kamiwaza to load any environment edits:
 sudo systemctl restart kamiwaza
 ```
 
-### Step 7: Verify Extensions
-
-Use the following checklist to confirm the bundled extensions are ready:
-
-1. **Registry assets present**
-   ```bash
-   ls /opt/kamiwaza/extensions/kamiwaza-extension-registry/garden/default/apps.json
-   jq '.apps | length' /opt/kamiwaza/extensions/kamiwaza-extension-registry/garden/default/apps.json
-   ```
-   The `apps.json` file should exist and list the expected number of extensions.
-
-2. **Extension services healthy**  
-   Run `kamiwaza status` and confirm the extension sync service reports `RUNNING`. (In docker-compose deployments the service appears as `extension-sync`; in systemd-based installs it runs as `kamiwaza-extension-sync`.)  
-   For container installs:
-   ```bash
-   docker compose logs --tail=50 extension-sync
-   ```
-   For systemd-managed installs:
-   ```bash
-   sudo systemctl status kamiwaza-extension-sync
-   sudo journalctl -u kamiwaza-extension-sync --since "10 minutes ago"
-   ```
-   Both modes also write to `/var/log/kamiwaza/extension-sync.log`.
-
-3. **App Garden validation**  
-   Sign in to the Kamiwaza UI, open **App Garden → Extensions**, and confirm the extension catalog appears without network access.
-
-If any step fails, rerun the installer with the `--extension-path` option or reapply the registry archive, then repeat the verification steps above.
-
-
-### File Locations
-
-| Component | Installed Location | Purpose |
-|-----------|-------------------|---------|
-| Main Application | `/opt/kamiwaza/` | Core application files |
-| Configuration | `/opt/kamiwaza/kamiwaza/` | Runtime configuration |
-| Data Storage | `/var/lib/kamiwaza/` | Models, databases, logs |
-| Offline Resources | `/usr/share/kamiwaza/` | Bundled dependencies |
-| Service Scripts | `/usr/bin/kamiwaza*` | Command-line tools |
-| Log Files | `/var/log/kamiwaza/` | Application logs |
-
----
-
-### Network Ports
-
-| Service | Port | Purpose |
-|---------|------|---------|
-| Web Interface | 3000 | Main UI |
-| API Server | 8000 | REST API |
-| Ray Dashboard | 8265 | Ray monitoring |
-| Ray Client | 10001 | Ray cluster comm |
-| Traefik | 80/443 | Reverse proxy |
