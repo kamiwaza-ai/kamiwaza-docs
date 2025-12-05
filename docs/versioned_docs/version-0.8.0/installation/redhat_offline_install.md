@@ -115,7 +115,7 @@ kamiwaza-registry-[date].tar.gz
 #### 2a. Install docker images
 
 ```bash
-sudo bash install_docker_images.sh 
+sudo bash install_docker_images.sh <path/to/images.tar.gz>
 ```
 
 #### 2b. Install RPM
