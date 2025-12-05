@@ -164,7 +164,7 @@ Offline bundles include the Kamiwaza Extension Registry so App Garden extensions
 If the builder omitted these entries (or they differ), edit `/opt/kamiwaza/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
 
 ```bash
-sudo nano /opt/kamiwaza/kamiwaza/env.sh
+sudo vim /opt/kamiwaza/kamiwaza/env.sh
 ```
 
 Ensure the file contains exactly one copy of each export:
