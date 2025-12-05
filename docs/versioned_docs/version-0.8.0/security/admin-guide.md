@@ -69,50 +69,51 @@ Kamiwaza uses **RS256 JWT tokens** with asymmetric cryptographic signatures.
 
 ## 2. User Management
 
-### 2.1 Accessing Keycloak Admin Console
+### 2.1 Manage Local Users in the Console
 
-**Default Credentials** (change immediately in production):
-- **URL:** http://localhost:8080 (or your configured Keycloak URL)
+The **Settings → Auth & Users** screen is the fastest way to create local accounts.
+
+1. Sign in to the Kamiwaza console with an administrator account.
+2. Open **Settings** in the left nav and switch to the **Auth & Users** tab.
+3. Click **Add User**.
+4. Fill in the modal:
+   - **Username** – required login name.
+   - **Full Name** / **Email** – optional but recommended for auditing.
+   - **Role** – pick one of the built-in roles (`viewer`, `user`, `admin`). You can add multiple roles before saving.
+   - **Password** – enter the initial password and **disable the “Must change password” toggle** if this account needs to log in programmatically.
+5. Click **Save**. The new user appears in the **Local Users** table.
+6. Use the pencil icon to edit roles later, the key icon to reset passwords, and the trash can to remove the user.
+
+**Why disable “Must change password”?** ReBAC smoke tests and SDK logins need to authenticate immediately. Leaving the toggle enabled causes Keycloak to demand a password reset on first login, resulting in an “Invalid credentials” error for CLIs and service accounts.
+
+### 2.2 Configure External Identity Providers
+
+If your organization uses Google Workspace or another OIDC provider:
+
+1. In **Settings → Auth & Users**, switch to the **Authentication Providers** section.
+2. Choose **Google** or **Generic OIDC**.
+3. Supply the provider’s **client ID**, **secret**, and optional **hosted domain**.
+4. Click **Register**. The new provider shows up under **Configured Providers** immediately—no restart required.
+
+### 2.3 Advanced: Use the Keycloak Admin Console
+
+Some enterprise workflows (e.g., SCIM integrations or custom password policies) still require direct access to Keycloak.
+
+**Default Admin Credentials** (rotate immediately in production):
+- **URL:** http://localhost:8080 (or your Keycloak endpoint)
 - **Username:** `admin`
-- **Password:** Set via `KEYCLOAK_ADMIN_PASSWORD` environment variable
+- **Password:** Value of `KEYCLOAK_ADMIN_PASSWORD`
 
-**Production Setup:**
-```bash
-# Set secure admin password in env.sh
-export KEYCLOAK_ADMIN_PASSWORD="<strong-random-password>"
-```
+To create users in Keycloak:
 
-### 2.2 Creating User Accounts
+1. Navigate to **Users** → **Add User**.
+2. Supply username/email and click **Save**.
+3. Open the **Credentials** tab, set a password, and toggle **Temporary** to `OFF`.
+4. Assign roles on the **Role Mappings** tab the same way you would in the console UI.
 
-**Via Keycloak Admin Console:**
+Use this console when you need to bulk-manage accounts, configure SAML, or integrate with corporate IdPs.
 
-1. Navigate to **Users** in left sidebar
-2. Click **Add User**
-3. Fill in required fields:
-   - **Username** (required)
-   - **Email** (required for password reset)
-   - **First Name / Last Name** (optional)
-4. Toggle **Email Verified** to `ON`
-5. Click **Save**
-6. Go to **Credentials** tab
-7. Set the initial password *and* toggle **Temporary** to `OFF`
-8. Click **Set Password** to persist the change
-9. Assign roles (see Role Management below)
-
-> ⚠️ **Tip:** Keycloak marks newly-set passwords as *temporary* by default. If you leave the toggle enabled, the user must change their password on first login and CLI/SDK sign-ins will return `Invalid credentials`. Always disable the **Temporary** slider for service or test accounts so the password can be used immediately.
-
-### Recommended Test Accounts
-
-Kamiwaza does **not** ship with default users. If you need handy accounts for demos or smoke tests, create them manually using the steps above:
-
-| Username | Password | Roles | Use Case |
-|----------|----------|-------|----------|
-| `testuser` | `testpass` | viewer | Read-only testing |
-| `testadmin` | `testpass` | admin | Administrative testing |
-
-Remove or rotate these credentials before promoting to production.
-
-### 2.3 User Roles and Permissions
+### 2.4 User Roles and Permissions
 
 Kamiwaza defines three primary roles:
 
@@ -130,7 +131,7 @@ Kamiwaza defines three primary roles:
 4. Click **Add selected**
 5. Changes take effect immediately (no logout required)
 
-### 2.4 Password Policies
+### 2.5 Password Policies
 
 **Configuring Password Requirements:**
 
@@ -228,6 +229,37 @@ endpoints:
 - `/api/models*` matches `/api/models`, `/api/models/123`, `/api/models/search`
 - `/api/*/health` matches `/api/models/health`, `/api/cluster/health`
 - `/api/**` matches all paths under `/api/`
+
+### 3.3 Relationship-Based Access Control (ReBAC)
+
+Roles gate entire endpoints, while ReBAC expresses *who* can act on a specific resource (model, dataset, container, etc.). When ReBAC is enabled:
+
+1. **Turn on the feature flags** – set `AUTH_REBAC_ENABLED=true`, `AUTH_REBAC_DEFAULT_TENANT_ID`, and PAT tagging variables as described in the [ReBAC Deployment Guide](./rebac-deployment-guide.md#enable-rebac).
+2. **Bootstrap tenant tuples** – run<br/>
+   ```bash
+   python scripts/rebac_tenant.py bootstrap configs/rebac/tenants/__default__.yaml
+   ```<br/>
+   This seeds owner/editor/clearance relationships for every default resource.
+3. **Share resources by relationship** – to grant someone viewer or editor access, add a tuple instead of editing YAML. Example:<br/>
+   ```bash
+   python scripts/rebac_tenant.py grant \
+     --tenant __default__ \
+     --subject user:testuser \
+     --relation viewer \
+     --object model:catalog-sdk
+   ```<br/>
+   (Use `subject=user:<name>` or `role:<role>` depending on your policy.)
+4. **Validate the experience** – follow the [ReBAC Validation Checklist](./rebac-validation-checklist.md) to exercise both allow and deny flows from the SDK/UI. The checklist calls out the expected log messages and API responses so you can sign off without digging into tuples manually.
+
+**At a glance:** every tuple stored in the relationship service takes the form `subject --(relation)--> object`. Common relations:
+
+| Relation | Description | Example |
+|----------|-------------|---------|
+| `owner` | Full control over the resource | `user:testadmin owner model:demo-llm` |
+| `editor` | Update/delete rights without being the original owner | `role:user editor dataset:sales-ingest` |
+| `viewer` | Read-only access | `user:testuser viewer container:govdocs` |
+
+Once a tuple exists, the UI/API automatically enforces it—no redeploy or restart required.
 
 ### 3.3 Hot Reload (No Restart Required)
 
