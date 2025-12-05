@@ -95,17 +95,22 @@ export KEYCLOAK_ADMIN_PASSWORD="<strong-random-password>"
 4. Toggle **Email Verified** to `ON`
 5. Click **Save**
 6. Go to **Credentials** tab
-7. Set temporary or permanent password
-8. Assign roles (see Role Management below)
+7. Set the initial password *and* toggle **Temporary** to `OFF`
+8. Click **Set Password** to persist the change
+9. Assign roles (see Role Management below)
 
-**Pre-configured Test Users:**
+> ⚠️ **Tip:** Keycloak marks newly-set passwords as *temporary* by default. If you leave the toggle enabled, the user must change their password on first login and CLI/SDK sign-ins will return `Invalid credentials`. Always disable the **Temporary** slider for service or test accounts so the password can be used immediately.
+
+### Recommended Test Accounts
+
+Kamiwaza does **not** ship with default users. If you need handy accounts for demos or smoke tests, create them manually using the steps above:
 
 | Username | Password | Roles | Use Case |
 |----------|----------|-------|----------|
 | `testuser` | `testpass` | viewer | Read-only testing |
 | `testadmin` | `testpass` | admin | Administrative testing |
 
-**⚠️ Important:** Remove or secure test users before production deployment.
+Remove or rotate these credentials before promoting to production.
 
 ### 2.3 User Roles and Permissions
 
@@ -561,28 +566,7 @@ curl http://localhost:8080/health/ready
 
 ### 6.2 Log Monitoring
 
-**Auth Service Logs:**
-
-```bash
-# Docker deployments
-docker logs kamiwaza-api -f | grep AUTH
-
-# Host deployments
-tail -f $KAMIWAZA_LOG_DIR/kamiwaza.log | grep AUTH
-```
-
-**Important Log Events:**
-- `AUTH_FAILED` - Authentication failure with reason
-- `ACCESS_DENIED` - Authorization denial with path/method/roles
-- `JWKS_REFRESHED` - JWKS key cache refresh
-- `POLICY_RELOADED` - RBAC policy file reload
-- `TOKEN_VALIDATED` - Successful token validation
-
-**Keycloak Logs:**
-
-```bash
-docker logs kamiwaza-keycloak -f
-```
+Refer to the [Observability Guide](../observability.md) for end-to-end logging, OTEL, and SIEM integration. It covers how to tail auth logs, forward them to your enterprise collectors, and verify that allow/deny events appear in the standard dashboards.
 
 ### 6.3 Common Issues and Solutions
 

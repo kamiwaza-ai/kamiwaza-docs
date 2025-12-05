@@ -118,7 +118,7 @@ export AUTH_REBAC_SESSION_REDIS_URL=redis://localhost:6379/0
 As soon as you point the gateway at a secured or shared Redis deployment, switch to a credentialed URL—e.g. `rediss://user:pass@redis.example.com:6380/0`—and omit `AUTH_REBAC_SESSION_ALLOW_INSECURE`.
 :::
 
-### Tenant fallback for labs (0.7.0 only)
+### Tenant fallback for labs
 
 Stage‑1 bundles do not yet stamp `tenant_id` into the access token. Until the Keycloak protocol mapper is in place, allow the gateway to fall back to the `__default__` tenant by exporting:
 
