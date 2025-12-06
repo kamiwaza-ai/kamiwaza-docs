@@ -242,35 +242,3 @@ Restart Kamiwaza to load any environment edits:
 sudo systemctl restart kamiwaza
 ```
 
-
-
-### Troubleshooting: Extension Configuration (Offline builds)
-
-Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/opt/kamiwaza/kamiwaza/env.sh`—verify they match your environment:
-
-| Variable | Typical offline value | Purpose |
-|----------|----------------------|---------|
-| `KAMIWAZA_EXTENSION_STAGE` | `LOCAL` | Forces the platform to serve extensions from the bundled registry |
-| `KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` | `file:///opt/kamiwaza/extensions/kamiwaza-extension-registry` | Points to the unpacked registry assets on disk |
-| `KAMIWAZA_EXTENSION_INSTALL_PATH` | `/opt/kamiwaza/kamiwaza/extensions` | Destination directory for the registry archive |
-
-If the builder omitted these entries (or they differ), edit `/opt/kamiwaza/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
-
-```bash
-sudo vim /opt/kamiwaza/kamiwaza/env.sh
-```
-
-Ensure the file contains exactly one copy of each export:
-
-```bash
-export KAMIWAZA_EXTENSION_STAGE=LOCAL
-export KAMIWAZA_EXTENSION_LOCAL_STAGE_URL="file:///opt/kamiwaza/extensions/kamiwaza-extension-registry"
-export KAMIWAZA_EXTENSION_INSTALL_PATH="/opt/kamiwaza/extensions"
-```
-
-Restart Kamiwaza to load any environment edits:
-
-```bash
-sudo systemctl restart kamiwaza
-```
-
