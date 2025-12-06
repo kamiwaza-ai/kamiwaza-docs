@@ -139,8 +139,9 @@ Edit `/etc/kamiwaza/env.sh`, which requires sudo access, to set the following en
 
 **Required:**
 ```bash
-export KAMIWAZA_ORIGIN=[YOUR_EXTERNAL_IP]
+export KAMIWAZA_ORIGIN=<the-full-url-to-access-app>
 ```
+Be sure to include `https://` in your env variable.
 
 **Optional (for non-production systems only):**
 On non-production systems, where insecure TLS is acceptable, you may also set:
