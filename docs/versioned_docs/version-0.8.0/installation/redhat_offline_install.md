@@ -104,6 +104,8 @@ install_docker_images.sh
 kamiwaza-registry-[date].tar.gz
 ```
 
+Transfer them to the `/tmp/` folder on your target system
+
 
 **Transfer Methods:**
 - USB drive/removable media
