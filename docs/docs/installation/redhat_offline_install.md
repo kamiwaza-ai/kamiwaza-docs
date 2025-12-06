@@ -80,7 +80,7 @@ The following dependencies are required:
 For systems that can temporarily connect to the internet, these dependencies can be installed via the command:
 
 ```bash
-sudo dnf install -y net-tools gcc-c++ nodejs npm jq pkgconfig fontconfig-devel freetype-devel libX11-devel libXrender-devel libXext-devel libpng-devel libSM-devel pixman-devel libxcb-devel glib2-devel python3-devel libffi-devel gtk3-devel ca-certificates curl libcurl-devel cmake gnupg2 iptables pciutils dos2unix unzip coreutils systemd wget make gcc openssl sqlite ncurses-libs readline libffi xz-libs expat tk zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel xz-devel expat-devel libuuid-devel yum-utils device-mapper-persistent-data lvm2 git python3.12 python3.12-pip python3.12-devel
+sudo dnf install -y net-tools gcc-c++ nodejs npm jq pkgconfig fontconfig-devel freetype-devel libX11-devel libXrender-devel libXext-devel libpng-devel libSM-devel pixman-devel libxcb-devel glib2-devel python3-devel libffi-devel gtk3-devel ca-certificates curl libcurl-devel cmake gnupg2 iptables pciutils dos2unix unzip coreutils systemd wget make gcc openssl sqlite ncurses-libs readline libffi xz-libs expat tk zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel xz-devel expat-devel libuuid-devel yum-utils device-mapper-persistent-data lvm2 git python3.12 python3.12-pip python3.12-devel vim
 ```
 
 ---
@@ -99,7 +99,13 @@ kamiwaza_[version]_rhel9_x86_64_docker_images.tar.gz
 
 # Docker image installation script
 install_docker_images.sh
+
+# Extension registry tarball (for installing extensions)
+kamiwaza-registry-[date].tar.gz
 ```
+
+Transfer them to the `/tmp/` folder on your target system
+
 
 **Transfer Methods:**
 - USB drive/removable media
@@ -111,7 +117,7 @@ install_docker_images.sh
 #### 2a. Install docker images
 
 ```bash
-sudo bash install_docker_images.sh 
+sudo bash install_docker_images.sh <path/to/images.tar.gz>
 ```
 
 #### 2b. Install RPM
@@ -137,7 +143,22 @@ Edit `/etc/kamiwaza/env.sh`, which requires sudo access, to set the following en
 AUTH_GATEWAY_TLS_INSECURE=true
 ```
 
-### Step 3: Verification
+### Step 3: Install Extensions
+
+1. Before starting Kamiwaza, install the extensions from the registry tarball:
+
+```bash
+kamiwaza extensions install kamiwaza-registry-[date].tar.gz
+```
+
+Replace `kamiwaza-registry-[date].tar.gz` with the actual filename of the registry package you received.
+
+2. Import the extensions images using the provided shell script
+```bash
+bash import-extension-images.sh 
+```
+
+### Step 4: Verification
 
 ```bash
 kamiwaza start
@@ -151,64 +172,12 @@ kamiwaza status
 
 Once are all services are confirmed to be running, Kamiwaza is started.
 
-### Step 4: Extension Configuration (Offline builds)
-
-Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/opt/kamiwaza/kamiwaza/env.sh`—verify they match your environment:
-
-| Variable | Typical offline value | Purpose |
-|----------|----------------------|---------|
-| `KAMIWAZA_EXTENSION_STAGE` | `LOCAL` | Forces the platform to serve extensions from the bundled registry |
-| `KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` | `file:///opt/kamiwaza/extensions/kamiwaza-extension-registry` | Points to the unpacked registry assets on disk |
-| `KAMIWAZA_EXTENSION_INSTALL_PATH` | `/opt/kamiwaza/kamiwaza/extensions` | Destination directory for the registry archive |
-
-If the builder omitted these entries (or they differ), edit `/opt/kamiwaza/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
-
-```bash
-sudo nano /opt/kamiwaza/kamiwaza/env.sh
-```
-
-Ensure the file contains exactly one copy of each export:
-
-```bash
-export KAMIWAZA_EXTENSION_STAGE=LOCAL
-export KAMIWAZA_EXTENSION_LOCAL_STAGE_URL="file:///opt/kamiwaza/extensions/kamiwaza-extension-registry"
-export KAMIWAZA_EXTENSION_INSTALL_PATH="/opt/kamiwaza/extensions"
-```
-
-Restart Kamiwaza to load any environment edits:
-
-```bash
-sudo systemctl restart kamiwaza
-```
-
 ### Step 5: Verify Extensions
 
 Use the following checklist to confirm the bundled extensions are ready:
 
-1. **Registry assets present**
-   ```bash
-   ls /opt/kamiwaza/extensions/kamiwaza-extension-registry/garden/default/apps.json
-   jq '.apps | length' /opt/kamiwaza/extensions/kamiwaza-extension-registry/garden/default/apps.json
-   ```
-   The `apps.json` file should exist and list the expected number of extensions.
-
-2. **Extension services healthy**  
-   Run `kamiwaza status` and confirm the extension sync service reports `RUNNING`. (In docker-compose deployments the service appears as `extension-sync`; in systemd-based installs it runs as `kamiwaza-extension-sync`.)  
-   For container installs:
-   ```bash
-   docker compose logs --tail=50 extension-sync
-   ```
-   For systemd-managed installs:
-   ```bash
-   sudo systemctl status kamiwaza-extension-sync
-   sudo journalctl -u kamiwaza-extension-sync --since "10 minutes ago"
-   ```
-   Both modes also write to `/var/log/kamiwaza/extension-sync.log`.
-
-3. **App Garden validation**  
-   Sign in to the Kamiwaza UI, open **App Garden → Extensions**, and confirm the extension catalog appears without network access.
-
-If any step fails, rerun the installer with the `--extension-path` option or reapply the registry archive, then repeat the verification steps above.
+Sign in to the Kamiwaza UI, open **App Garden → Extensions**, and confirm the extension catalog appears without network access.
+Note: Extension logs get written to `/var/log/kamiwaza/extension-sync.log`.
 
 
 ### File Locations
@@ -233,3 +202,35 @@ If any step fails, rerun the installer with the `--extension-path` option or rea
 | Ray Dashboard | 8265 | Ray monitoring |
 | Ray Client | 10001 | Ray cluster comm |
 | Traefik | 80/443 | Reverse proxy |
+
+
+### Troubleshooting: Extension Configuration (Offline builds)
+
+Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/opt/kamiwaza/kamiwaza/env.sh`—verify they match your environment:
+
+| Variable | Typical offline value | Purpose |
+|----------|----------------------|---------|
+| `KAMIWAZA_EXTENSION_STAGE` | `LOCAL` | Forces the platform to serve extensions from the bundled registry |
+| `KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` | `file:///opt/kamiwaza/extensions/kamiwaza-extension-registry` | Points to the unpacked registry assets on disk |
+| `KAMIWAZA_EXTENSION_INSTALL_PATH` | `/opt/kamiwaza/kamiwaza/extensions` | Destination directory for the registry archive |
+
+If the builder omitted these entries (or they differ), edit `/opt/kamiwaza/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
+
+```bash
+sudo vim /opt/kamiwaza/kamiwaza/env.sh
+```
+
+Ensure the file contains exactly one copy of each export:
+
+```bash
+export KAMIWAZA_EXTENSION_STAGE=LOCAL
+export KAMIWAZA_EXTENSION_LOCAL_STAGE_URL="file:///opt/kamiwaza/extensions/kamiwaza-extension-registry"
+export KAMIWAZA_EXTENSION_INSTALL_PATH="/opt/kamiwaza/extensions"
+```
+
+Restart Kamiwaza to load any environment edits:
+
+```bash
+sudo systemctl restart kamiwaza
+```
+

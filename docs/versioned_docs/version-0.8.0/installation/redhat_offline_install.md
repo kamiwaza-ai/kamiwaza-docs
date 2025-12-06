@@ -81,6 +81,7 @@ For systems that can temporarily connect to the internet, these dependencies can
 
 ```bash
 sudo dnf install -y net-tools gcc-c++ nodejs npm jq pkgconfig fontconfig-devel freetype-devel libX11-devel libXrender-devel libXext-devel libpng-devel libSM-devel pixman-devel libxcb-devel glib2-devel python3-devel libffi-devel gtk3-devel ca-certificates curl libcurl-devel cmake gnupg2 iptables pciutils dos2unix unzip coreutils systemd wget make gcc openssl sqlite ncurses-libs readline libffi xz-libs expat tk zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel xz-devel expat-devel libuuid-devel yum-utils device-mapper-persistent-data lvm2 git python3.12 python3.12-pip python3.12-devel vim
+sudo dnf install -y net-tools gcc-c++ nodejs npm jq pkgconfig fontconfig-devel freetype-devel libX11-devel libXrender-devel libXext-devel libpng-devel libSM-devel pixman-devel libxcb-devel glib2-devel python3-devel libffi-devel gtk3-devel ca-certificates curl libcurl-devel cmake gnupg2 iptables pciutils dos2unix unzip coreutils systemd wget make gcc openssl sqlite ncurses-libs readline libffi xz-libs expat tk zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel xz-devel expat-devel libuuid-devel yum-utils device-mapper-persistent-data lvm2 git python3.12 python3.12-pip python3.12-devel vim
 ```
 
 ---
@@ -102,7 +103,11 @@ install_docker_images.sh
 
 # Extension registry tarball (for installing extensions)
 kamiwaza-registry-[date].tar.gz
+
+# Extension registry tarball (for installing extensions)
+kamiwaza-registry-[date].tar.gz
 ```
+
 
 
 **Transfer Methods:**
@@ -184,6 +189,8 @@ Use the following checklist to confirm the bundled extensions are ready:
 
 Sign in to the Kamiwaza UI, open **App Garden → Extensions**, and confirm the extension catalog appears without network access.
 Note: Extension logs get written to `/var/log/kamiwaza/extension-sync.log`.
+Sign in to the Kamiwaza UI, open **App Garden → Extensions**, and confirm the extension catalog appears without network access.
+Note: Extension logs get written to `/var/log/kamiwaza/extension-sync.log`.
 
 
 ### File Locations
@@ -208,6 +215,38 @@ Note: Extension logs get written to `/var/log/kamiwaza/extension-sync.log`.
 | Ray Dashboard | 8265 | Ray monitoring |
 | Ray Client | 10001 | Ray cluster comm |
 | Traefik | 80/443 | Reverse proxy |
+
+
+### Troubleshooting: Extension Configuration (Offline builds)
+
+Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/opt/kamiwaza/kamiwaza/env.sh`—verify they match your environment:
+
+| Variable | Typical offline value | Purpose |
+|----------|----------------------|---------|
+| `KAMIWAZA_EXTENSION_STAGE` | `LOCAL` | Forces the platform to serve extensions from the bundled registry |
+| `KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` | `file:///opt/kamiwaza/extensions/kamiwaza-extension-registry` | Points to the unpacked registry assets on disk |
+| `KAMIWAZA_EXTENSION_INSTALL_PATH` | `/opt/kamiwaza/kamiwaza/extensions` | Destination directory for the registry archive |
+
+If the builder omitted these entries (or they differ), edit `/opt/kamiwaza/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
+
+```bash
+sudo vim /opt/kamiwaza/kamiwaza/env.sh
+```
+
+Ensure the file contains exactly one copy of each export:
+
+```bash
+export KAMIWAZA_EXTENSION_STAGE=LOCAL
+export KAMIWAZA_EXTENSION_LOCAL_STAGE_URL="file:///opt/kamiwaza/extensions/kamiwaza-extension-registry"
+export KAMIWAZA_EXTENSION_INSTALL_PATH="/opt/kamiwaza/extensions"
+```
+
+Restart Kamiwaza to load any environment edits:
+
+```bash
+sudo systemctl restart kamiwaza
+```
+
 
 
 ### Troubleshooting: Extension Configuration (Offline builds)
