@@ -97,6 +97,9 @@ kamiwaza_[version]_rhel9_x86_64.rpm
 # Docker images					
 kamiwaza_[version]_rhel9_x86_64_docker_images.tar.gz
 
+# Docker image installation script
+install_docker_images.sh
+
 # Extension registry tarball (for installing extensions)
 kamiwaza-registry-[date].tar.gz
 ```
