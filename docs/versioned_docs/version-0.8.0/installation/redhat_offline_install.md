@@ -97,16 +97,9 @@ kamiwaza_[version]_rhel9_x86_64.rpm
 # Docker images					
 kamiwaza_[version]_rhel9_x86_64_docker_images.tar.gz
 
-# Docker image installation script
-install_docker_images.sh
-
-# Extension registry tarball (for installing extensions)
-kamiwaza-registry-[date].tar.gz
-
 # Extension registry tarball (for installing extensions)
 kamiwaza-registry-[date].tar.gz
 ```
-
 
 
 **Transfer Methods:**
@@ -186,8 +179,6 @@ Once are all services are confirmed to be running, Kamiwaza is started.
 
 Use the following checklist to confirm the bundled extensions are ready:
 
-Sign in to the Kamiwaza UI, open **App Garden → Extensions**, and confirm the extension catalog appears without network access.
-Note: Extension logs get written to `/var/log/kamiwaza/extension-sync.log`.
 Sign in to the Kamiwaza UI, open **App Garden → Extensions**, and confirm the extension catalog appears without network access.
 Note: Extension logs get written to `/var/log/kamiwaza/extension-sync.log`.
 
