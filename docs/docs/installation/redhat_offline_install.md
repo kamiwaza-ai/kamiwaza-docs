@@ -117,7 +117,7 @@ Transfer them to the `/tmp/` folder on your target system
 #### 2a. Install docker images
 
 ```bash
-sudo bash install_docker_images.sh <path/to/images.tar.gz>
+sudo bash install_docker_images.sh <"path/to/images.tar.gz">
 ```
 
 #### 2b. Install RPM
@@ -135,12 +135,20 @@ sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install kamiw
 
 **Tip:** While the installer says "Running scriptlet", use `sudo tail -f /var/log/kamiwaza-postinst-debug.log` to monitor logs.
 
-#### 2c. (Optional) Configure system for insecure TLS
-On non-production systems, where insecure TLS is acceptable, perform the following configuration to enable users to sign into Kamiwaza.
+#### 2c. Configure system environment variables
 
-Edit `/etc/kamiwaza/env.sh`, which requires sudo access, to set the following environment variable:
+Edit `/etc/kamiwaza/env.sh`, which requires sudo access, to set the following environment variables:
+
+**Required:**
 ```bash
-AUTH_GATEWAY_TLS_INSECURE=true
+export KAMIWAZA_ORIGIN=<the-full-url-to-access-app>
+```
+Be sure to include `https://` in your env variable.
+
+**Optional (for non-production systems only):**
+On non-production systems, where insecure TLS is acceptable, you may also set:
+```bash
+export AUTH_GATEWAY_TLS_INSECURE=true
 ```
 
 ### Step 3: Install Extensions
