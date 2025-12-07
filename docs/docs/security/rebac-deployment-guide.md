@@ -129,6 +129,12 @@ export AUTH_REBAC_DEFAULT_TENANT_ID="__default__"
 
 Only use these flags in local or UAT environments. As soon as tokens carry real tenant metadata, remove both exports so ReBAC enforces per-tenant policy.
 
+### Logout redirect expectations
+  
+  - Set `KAMIWAZA_UI_URL` to the full UI base (including any subpath) so logout returns users to the correct page. Example: `https://ui.example/app`.
+  - The gateway only trusts forwarded hosts that match the allowed hosts (UI URL or request host). Mismatched `X-Forwarded-Host` values are ignored.
+  - Localhost fallback (`https://localhost/login`) is used only when `KAMIWAZA_COMMUNITY` or `KAMIWAZA_LITE` is set. Without those flags and no valid base, logout returns HTTP 500 instead of redirecting to `/`.
+  - 
 ### Seed ReBAC tuples
 
 Before operators can download or deploy a model they must be granted the appropriate tuples in the target tenant.
