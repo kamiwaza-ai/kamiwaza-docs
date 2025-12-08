@@ -127,6 +127,13 @@ sudo bash install_docker_images.sh <"path/to/images.tar.gz">
 To review the full license terms, visit: https://www.kamiwaza.ai/license
 
 ```bash
+# Enable and start Docker
+sudo systemctl enable docker
+sudo systemctl start docker 
+sudo chmod 666 /var/run/docker.sock
+```
+
+```bash
 # Install the RPM package. Add your Kamiwaza license key between the quotation marks.
 sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install kamiwaza_[version]_rhel9_x86_64.rpm
 
