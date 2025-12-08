@@ -6,7 +6,7 @@ Kamiwaza provides a comprehensive observability stack designed to give administr
 
 Kamiwaza's observability architecture is built on open standards:
 - **Structured Logging**: All services emit JSON-structured logs.
-- **OpenTelemetry (OTEL)**: Telemetry data is collected and routed via a standard OTEL Collector.
+- **OpenTelemetry (OTEL)**: Telemetry data is collected and routed via a standard OTEL Collector (In preview).
 - **Trace Correlation**: Requests are traced across distributed services (API → Model Serving → Engine).
 
 By default, Kamiwaza stores logs locally and can optionally aggregate them into a local Grafana/Loki stack or forward them to external systems like Splunk, Datadog, or Dynatrace.
@@ -47,6 +47,10 @@ To view logs:
 ## OpenTelemetry Integration
 
 Kamiwaza uses an OpenTelemetry Collector to route telemetry data. This allows you to integrate with any OTLP-compatible backend without modifying the application code.
+
+:::note Preview
+OTEL support is in preview. Trace context propagation across Ray Serve calls and inference engine instrumentation are still in development. Configuration and behavior may change in future releases.
+:::
 
 ### Enabling OpenTelemetry
 OTEL is disabled by default. You can enable it via environment variables in your `env.sh` or runtime configuration:
@@ -157,39 +161,3 @@ Key variables for configuring observability:
 | `KAMIWAZA_DISABLE_SYSLOG` | Profile-driven | Controls forwarding to system syslog. |
 | `CUSTOMER_OTLP_ENDPOINT` | - | External OTLP endpoint for exporting telemetry. |
 | `CUSTOMER_OTLP_AUTH` | - | Authentication header for the external endpoint. |
-
----
-
-## ReBAC Decision Logs
-
-When relationship checks run, the auth service emits structured `rebac_decision` log entries. These capture the tenant, subject, resource, relation, outcome, latency, and decision ID for every guard evaluation.
-
-### Viewing decision logs
-
-```bash
-# Docker deployment
-docker compose logs auth | grep "rebac_decision"
-
-# Systemd deployment
-journalctl -u kamiwaza-auth.service | grep "rebac_decision"
-```
-
-Each entry looks like:
-
-```text
-INFO rebac_decision {"tenant_id":"__default__","subject_namespace":"user","subject_id":"testuser","object_namespace":"model","object_id":"catalog-sdk","relation":"viewer","result":"allow","reason":"tuple_match","decision_id":"4cb88ea3","latency_ms":2.1}
-```
-
-Key fields:
-
-| Field | Meaning |
-|-------|---------|
-| `tenant_id` | Tenant selected for the request (falls back to `AUTH_REBAC_DEFAULT_TENANT_ID` when allowed). |
-| `subject_namespace`/`subject_id` | User or role evaluated. |
-| `object_namespace`/`object_id` | Resource under protection (models, datasets, containers, etc.). |
-| `relation` | Guard relation (`viewer`, `editor`, `owner`, custom relations). |
-| `result` | `allow` or `deny`. |
-| `reason` | Why the decision was taken (`tuple_match`, `tuple_missing`, `clearance_blocked`, etc.). |
-| `decision_id` | Correlates API responses with log entries. Include this in support tickets. |
-
-Feed these logs into Loki/Splunk/Datadog to build dashboards and alerts (for example, count deny trends per tenant or alert when `reason=tuple_missing`). The built-in Grafana dashboards (`deployment/kamiwaza-loki/*/grafana-provisioning`) already query `rebac_decision` for you.

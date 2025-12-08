@@ -28,8 +28,7 @@ sudo systemctl disable kamiwaza.service 2>/dev/null || true
 
 ### 2) Remove Docker containers
 
-> The user requested *remove all running docker containers*.  
-> Below are two options — the conservative version (stops/removes running containers only) and the thorough version (stops/removes all containers, running or stopped). Use whichever you want.
+> Below are two options — the conservative version (stops/removes running containers only) and the thorough version (stops/removes all containers, running or stopped).
 
 **Conservative – stop and remove current running containers only:**
 ```bash
