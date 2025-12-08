@@ -120,6 +120,14 @@ Transfer them to the `/tmp/` folder on your target system
 sudo bash install_docker_images.sh <"path/to/images.tar.gz">
 ```
 
+**Note:** To ensure that docker will work prior to install, just run this locally prior to install:
+
+```bash
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo chmod 666 /var/run/docker.sock
+```
+
 #### 2b. Install RPM
 
 **IMPORTANT:** You must accept the Kamiwaza License Agreement to install Kamiwaza. By including `KAMIWAZA_ACCEPT_LICENSE=yes` in the installation command, you are agreeing to the Kamiwaza License Agreement
