@@ -104,7 +104,7 @@ install_docker_images.sh
 kamiwaza-registry-[date].tar.gz
 ```
 
-Transfer them to the `/tmp/` folder on your target system
+Transfer them to a folder on your target system that is accessible by all users.
 
 
 **Transfer Methods:**
