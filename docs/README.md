@@ -51,10 +51,10 @@ npm run start
    npm run version-up -- 0.6.0
    ```
 
-   **Option B - Update existing version** (for fixes):
+   **Option B - Update existing version** (for fixes; run from `docs/` directory):
    ```bash
    # From docs/ directory
-   export DOCS_VERSION=0.5.1
+   export DOCS_VERSION=<X.Y.Z>
    rm -rf versioned_docs/version-$DOCS_VERSION versioned_sidebars/version-$DOCS_VERSION-sidebars.json
    node -e "const fs=require('fs');const p='versions.json';const v=JSON.parse(fs.readFileSync(p));fs.writeFileSync(p, JSON.stringify(v.filter(x=>x!=='$DOCS_VERSION'), null, 2)+'\n');"
    npm run clear
@@ -64,7 +64,7 @@ npm run start
 
 4. **Verify build after versioning**
    ```bash
-   # From repo root
+   # From `docs/` directory
    npm run build
 
    # Check for broken links or build errors

@@ -29,6 +29,7 @@ const config: Config = {
 
   onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
+  onBrokenAnchors: 'ignore',
 
   i18n: {
     defaultLocale: 'en',
@@ -81,7 +82,7 @@ const config: Config = {
         lastVersion: 'current',
         versions: {
           current: {
-            label: '0.7.1 (Latest)',
+            label: '0.8.0 (Latest)',
           },
         },
         sidebarCollapsible: true,
@@ -99,7 +100,7 @@ const config: Config = {
         lastVersion: 'current',
         versions: {
           current: {
-            label: '0.7.1 (Latest)',
+            label: '0.8.0 (Latest)',
           },
         },
       },

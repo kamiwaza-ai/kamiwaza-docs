@@ -32,6 +32,7 @@ const sidebars: SidebarsConfig = {
         'security/rebac-overview',
         'security/rebac-deployment-guide',
         'security/rebac-validation-checklist',
+        'security/cac-overview',
       ],
     },
     {
@@ -58,12 +59,9 @@ const sidebars: SidebarsConfig = {
       label: 'Distributed Data Engine',
     },
     {
-      type: 'category',
-      label: 'Use Cases',
-      items: [
-        'use-cases/index',
-        'use-cases/building-a-rag-pipeline',
-      ],
+      type: 'doc',
+      id: 'observability',
+      label: 'Observability',
     },
     {
       type: 'category',
@@ -79,9 +77,12 @@ const sidebars: SidebarsConfig = {
       ],
     },
     {
-      type: 'doc',
-      id: 'other-topics',
-      label: 'Other Topics',
+      type: 'category',
+      label: 'Use Cases',
+      items: [
+        'use-cases/index',
+        'use-cases/building-a-rag-pipeline',
+      ],
     },
     {
       type: 'doc',
