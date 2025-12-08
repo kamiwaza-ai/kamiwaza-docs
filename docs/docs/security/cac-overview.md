@@ -13,20 +13,20 @@
   - KAMIWAZA_USE_AUTH=true
   - AUTH_GATEWAY_CAC_ENABLED=true
   - AUTH_GATEWAY_MTLS_REQUIRED=true (required when CAC is enabled)
-  - AUTH_GATEWAY_CAC_ALLOWED_ISSUERS="<issuer1>,<issuer2>" (DNs or SHA-256 hashes; required)
+  - `AUTH_GATEWAY_CAC_ALLOWED_ISSUERS="<issuer1>,<issuer2>"` (DNs or SHA-256 hashes; required)
   - Optional subject parsing (e.g., EDIPI):
-      - AUTH_GATEWAY_CAC_SUBJECT_REGEX='(?P<last>[^.]+)\.(?P<first>[^.]+)\.(?P<middle>[^.]+)\.(?P<edipi>\d+)'
+      - `AUTH_GATEWAY_CAC_SUBJECT_REGEX='(?P<last>[^.]+)\.(?P<first>[^.]+)\.(?P<middle>[^.]+)\.(?P<edipi>\d+)'`
 
   ### Revocation (recommended)
 
-  - AUTH_GATEWAY_CAC_CRL_URLS=<url1,url2,...>
+  - `AUTH_GATEWAY_CAC_CRL_URLS=<url1,url2,...>`
   - AUTH_GATEWAY_CAC_CRL_CACHE_TTL_SECONDS=86400 (default)
   - Dev-only fail-open: AUTH_GATEWAY_CAC_FAIL_OPEN=true to allow logins if revocation data is missing (default false blocks in that case).
 
   ### Edge Header Protection (optional)
 
-  - AUTH_GATEWAY_CAC_EDGE_HEADER=<header name>
-  - AUTH_GATEWAY_EDGE_SHARED_SECRET=<16+ chars>
+  - `AUTH_GATEWAY_CAC_EDGE_HEADER=<header name>`
+  - `AUTH_GATEWAY_EDGE_SHARED_SECRET=<16+ chars>`
 
   ### TLS Hardening
 
@@ -54,7 +54,7 @@
   1. Apply the configuration above and restart services.
   2. If no CRL/OCSP data in non-prod, either load a CRL cache or set AUTH_GATEWAY_CAC_FAIL_OPEN=true temporarily.
   3. From a client with a CAC (or test client cert), call:
-      - POST https://<gateway>/api/auth/cac/login via the ingress (not localhost).
+      - POST `https://<gateway>/api/auth/cac/login` via the ingress (not localhost).
   4. Expected: 200 with JWT/session cookies. Failures return 4xx with reasons (issuer not allowed, revocation, missing/invalid headers).
   5. Validate token/cookies by calling a simple endpoint with the bearer token (e.g., /api/ping).
 

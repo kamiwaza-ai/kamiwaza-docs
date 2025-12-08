@@ -32,6 +32,7 @@ const sidebars: SidebarsConfig = {
         'security/rebac-overview',
         'security/rebac-deployment-guide',
         'security/rebac-validation-checklist',
+        'security/cac-overview',
       ],
     },
     {
