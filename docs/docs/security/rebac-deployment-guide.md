@@ -134,6 +134,9 @@ Only use these flags in local or UAT environments. As soon as tokens carry real 
   - Set `KAMIWAZA_UI_URL` to the full UI base (including any subpath) so logout returns users to the correct page. Example: `https://ui.example/app`.
   - The gateway only trusts forwarded hosts that match the allowed hosts (UI URL or request host). Mismatched `X-Forwarded-Host` values are ignored.
   - Localhost fallback (`https://localhost/login`) is used only when `KAMIWAZA_COMMUNITY` or `KAMIWAZA_LITE` is set. Without those flags and no valid base, logout returns HTTP 500 instead of redirecting to `/`.
+
+  ### ReBAC manifest on RPM installs
+   - The RPM does not include `configs/rebac/tenants` or a default manifest. ReBAC still runs, but no tuples are preseeded. To bootstrap tuples, create `configs/rebac/tenants` under `/opt/kamiwaza/kamiwaza`, add a manifest (for example `__default__.yaml` from the repo/docs), and run your bootstrap/drift checks. Otherwise, you can run with an empty graph and add tuples later.
     
 ### Seed ReBAC tuples
 
