@@ -82,7 +82,7 @@ const config: Config = {
         lastVersion: 'current',
         versions: {
           current: {
-            label: '0.8.0 (Latest)',
+            label: '0.8.1 (Latest)',
           },
         },
         sidebarCollapsible: true,
@@ -100,7 +100,7 @@ const config: Config = {
         lastVersion: 'current',
         versions: {
           current: {
-            label: '0.8.0 (Latest)',
+            label: '0.8.1 (Latest)',
           },
         },
       },
