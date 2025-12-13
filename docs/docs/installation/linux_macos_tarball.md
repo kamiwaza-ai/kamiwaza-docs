@@ -82,7 +82,7 @@ sudo ln -sf /usr/bin/python3.10 /usr/local/bin/python
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3.10 python3.10-dev libpython3.10-dev python3.10-venv golang-cfssl python-is-python3 etcd-client net-tools curl jq libcairo2-dev libgirepository1.0-dev
+sudo apt install -y python3.10 python3.10-dev libpython3.10-dev python3.10-venv golang-cfssl python-is-python3 etcd-client net-tools curl jq libcairo2-dev libgirepository1.0-dev cmake libcurl4-openssl-dev
 ```
 
 ### 3) Node.js 22 with NVM
