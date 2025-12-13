@@ -190,6 +190,8 @@ After installation completes:
 
 ```bash
 # Community Edition
+cd [INSTALL_ROOT]
+source .venv/bin/activate
 bash startup/kamiwazad.sh start
 ```
 
