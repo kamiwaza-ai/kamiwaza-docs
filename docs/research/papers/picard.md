@@ -21,8 +21,6 @@ As large language model training datasets absorb popular benchmarks, evaluation 
 
 If you're evaluating LLMs for production deployment, static benchmarks are measuring the wrong thing. PICARD provides a sustainable solution that measures genuine problem-solving capability instead of memorization, while testing scenarios that actually reflect how you'll use these models—as agents with tools, not as quiz-takers.
 
-The framework revealed surprising insights: Llama 3.3 70B beat both its newer siblings and generally-superior Qwen models (89.0% vs 81.5% and 60.0%). Amazon Nova Premier unnecessarily invoked tools for trivial questions, going on elaborate explorations for simple requests. These are actionable insights impossible to get from traditional benchmark scores.
-
 ## Downloads & Resources
 
 📄 **[Download PDF](/papers/picard_paper.pdf)** (347 KB)

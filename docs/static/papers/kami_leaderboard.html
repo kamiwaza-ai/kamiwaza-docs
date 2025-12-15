@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAMI: Kamiwaza Agentic Merit Index (preview)</title>
+    <link rel="icon" href="/img/favicon.ico" type="image/x-icon">
+
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    
+    <style>
+        :root {
+            --kamiwaza-primary: #10b981;
+            --kamiwaza-primary-dark: #059669;
+            --kamiwaza-secondary: #14b8a6;
+            --kamiwaza-accent: #06d6a0;
+            --kamiwaza-bg-dark: #0f172a;
+            --kamiwaza-bg-card: #1e293b;
+            --kamiwaza-bg-secondary: #334155;
+            --kamiwaza-text-primary: #f8fafc;
+            --kamiwaza-text-secondary: #cbd5e1;
+            --kamiwaza-text-muted: #94a3b8;
+            --kamiwaza-border: #475569;
+            --kamiwaza-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --kamiwaza-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+            --kamiwaza-gradient: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+            
+            --primary-color: #10b981;
+            --secondary-color: #8b5cf6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --border-color: #475569;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--kamiwaza-bg-dark);
+            background-image: 
+                radial-gradient(circle at 25% 25%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(6, 214, 160, 0.05) 0%, transparent 50%);
+            min-height: 100vh;
+            color: var(--kamiwaza-text-primary);
+        }
+
+        .container {
+            max-width: 2100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: var(--kamiwaza-text-primary);
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 10px;
+            background: var(--kamiwaza-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+        }
+
+        .header .subtitle {
+            font-size: 1.2rem;
+            font-weight: 400;
+            color: var(--kamiwaza-accent);
+            margin-bottom: 5px;
+        }
+
+        .header .description {
+            font-size: 1rem;
+            color: var(--kamiwaza-text-secondary);
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .main-content {
+            background: var(--kamiwaza-bg-card);
+            border-radius: 20px;
+            box-shadow: var(--kamiwaza-shadow-lg);
+            overflow: hidden;
+            border: 1px solid var(--kamiwaza-border);
+        }
+
+        .section {
+            padding: 30px;
+            border-bottom: 1px solid var(--kamiwaza-border);
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--kamiwaza-text-primary);
+        }
+
+        .section-title i {
+            color: var(--kamiwaza-primary);
+        }
+
+        /* Enhanced Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--kamiwaza-bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--kamiwaza-shadow);
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid var(--kamiwaza-border);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--kamiwaza-shadow-lg);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--kamiwaza-primary);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--kamiwaza-text-secondary);
+            font-weight: 500;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--kamiwaza-border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: var(--kamiwaza-bg-card);
+            color: var(--kamiwaza-text-primary);
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--kamiwaza-primary);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
+        .search-box input::placeholder {
+            color: var(--kamiwaza-text-muted);
+        }
+
+        .filter-select {
+            padding: 12px 16px;
+            border: 2px solid var(--kamiwaza-border);
+            border-radius: 8px;
+            background: var(--kamiwaza-bg-card);
+            color: var(--kamiwaza-text-primary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--kamiwaza-primary);
+        }
+
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+            background: var(--kamiwaza-bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--kamiwaza-border);
+        }
+
+        /* Heatmap Styles */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--kamiwaza-border);
+        }
+
+        .analysis-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--kamiwaza-bg-dark);
+        }
+        .analysis-table thead {
+            background: var(--kamiwaza-gradient);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .analysis-table th {
+            padding: 15px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+            white-space: nowrap;
+        }
+
+        .analysis-table th:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .analysis-table th.sortable::after {
+            content: '⇅';
+            position: absolute;
+            right: 6px;
+            opacity: 0.6;
+            font-size: 0.8rem;
+        }
+
+        .analysis-table th.sort-asc::after {
+            content: '↑';
+            opacity: 1;
+        }
+
+        .analysis-table th.sort-desc::after {
+            content: '↓';
+            opacity: 1;
+        }
+
+        .analysis-table td {
+            padding: 12px 8px;
+            border-bottom: 1px solid var(--kamiwaza-border);
+            font-size: 0.85rem;
+            vertical-align: middle;
+            background: var(--kamiwaza-bg-card);
+        }
+
+        .analysis-table tbody tr {
+            transition: background-color 0.2s, transform 0.2s;
+        }
+
+        .analysis-table tbody tr:hover {
+            background-color: var(--kamiwaza-bg-secondary);
+            transform: scale(1.01);
+        }
+
+        .analysis-table tbody tr:hover td {
+            background-color: var(--kamiwaza-bg-secondary);
+        }
+
+        /* Heatmap Styles */
+
+        /* Shared Table Styles */
+        .provider-cell {
+            font-weight: 600;
+        }
+
+        .provider-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .provider-alibaba { background: #ff6b35; color: white; }
+        .provider-anthropic { background: #d4af37; color: white; }
+        .provider-aws { background: #ff9900; color: white; }
+        .provider-intel { background: #0071c5; color: white; }
+        .provider-amd { background: #ed1c24; color: white; }
+        .provider-google { background: #0F9D58; color: white; }
+        .provider-openai { background: #000000; color: white; }
+        .provider-kamiwaza { background: #0ad295; color: white; }
+
+        .model-cell {
+            font-weight: 500;
+            max-width: 250px;
+        }
+
+        .score-perfect { background: #059669; color: white; }
+        .score-good { background: #14b8a6; color: white; }
+        .score-fair { background: #f59e0b; color: white; }
+        .score-poor { background: #ef4444; color: white; }
+
+        .total-score-cell {
+            font-weight: 700;
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        /* Performance Indicators */
+        .metric-cell {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .accuracy-cell {
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .confidence-cell {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .rse-cell {
+            font-size: 0.75rem;
+            color: var(--warning-color);
+            text-align: center;
+        }
+
+        .time-cell {
+            color: #10b981;
+            font-weight: 600;
+            text-align: center;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+        }
+
+        .tokens-cell {
+            color: #14b8a6;
+            font-weight: 600;
+            text-align: center;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+        }
+
+        .performance-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-primary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .performance-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .perf-excellent { background: var(--success-color); }
+        .perf-good { background: #22d3ee; }
+        .perf-fair { background: var(--warning-color); }
+        .perf-poor { background: var(--error-color); }
+
+        /* Section Toggle Buttons */
+        .section-toggle {
+            margin-left: auto;
+            background: transparent;
+            border: 2px solid var(--kamiwaza-primary);
+            color: var(--kamiwaza-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .section-toggle:hover {
+            background: var(--kamiwaza-primary);
+            color: white;
+        }
+
+        .section-toggle.collapsed {
+            background: var(--kamiwaza-bg-secondary);
+            color: var(--kamiwaza-text-muted);
+            border-color: var(--kamiwaza-border);
+        }
+
+        .section-content {
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        /* Heatmap Styles */
+        .heatmap-question-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: var(--kamiwaza-bg-secondary);
+            border-radius: 12px;
+            flex-wrap: wrap;
+            border: 1px solid var(--kamiwaza-border);
+        }
+
+        .question-categories {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .category-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .category-group h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .category-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .category-group label:hover {
+            color: var(--text-primary);
+        }
+
+        .category-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary-color);
+        }
+
+        .heatmap-controls-right {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .btn-secondary {
+            padding: 8px 16px;
+            background: var(--kamiwaza-bg-card);
+            border: 2px solid var(--kamiwaza-border);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--kamiwaza-text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: var(--kamiwaza-primary);
+            color: white;
+            border-color: var(--kamiwaza-primary);
+        }
+
+        .heatmap-legend {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: var(--kamiwaza-bg-card);
+            border-radius: 8px;
+            box-shadow: var(--kamiwaza-shadow);
+            flex-wrap: wrap;
+            border: 1px solid var(--kamiwaza-border);
+        }
+
+        .legend-label {
+            font-weight: 600;
+            color: var(--kamiwaza-text-primary);
+            font-size: 0.9rem;
+        }
+
+        .legend-scale {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+
+        .legend-item span {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .heatmap-container {
+            overflow-x: auto;
+            background: var(--kamiwaza-bg-card);
+            border-radius: 12px;
+            box-shadow: var(--kamiwaza-shadow);
+            border: 1px solid var(--kamiwaza-border);
+        }
+
+        .heatmap-table-wrapper {
+            min-width: 800px;
+        }
+
+        .heatmap-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .heatmap-table thead {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .heatmap-table th {
+            padding: 15px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .heatmap-table th.provider-header {
+            text-align: left;
+            min-width: 120px;
+        }
+
+        .heatmap-table th.model-header {
+            text-align: left;
+            min-width: 200px;
+        }
+
+        .heatmap-table th.question-header {
+            min-width: 50px;
+        }
+
+        .heatmap-table td {
+            padding: 0;
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .heatmap-table td.info-cell {
+            padding: 12px 8px;
+            font-size: 0.9rem;
+        }
+
+        .heatmap-cell {
+            width: 100%;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .heatmap-cell:hover {
+            transform: scale(1.05);
+            z-index: 5;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .heatmap-cell.score-0-5 { background: #ef4444; }
+        .heatmap-cell.score-6-10 { background: #f59e0b; }
+        .heatmap-cell.score-11-15 { background: #22d3ee; }
+        .heatmap-cell.score-16-19 { background: #10b981; }
+        .heatmap-cell.score-20 { background: #059669; }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .analysis-table, .leaderboard-table {
+                font-size: 0.8rem;
+            }
+            
+            .analysis-table th, .analysis-table td,
+            .leaderboard-table th, .leaderboard-table td {
+                padding: 10px 8px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .header .subtitle {
+                font-size: 1rem;
+            }
+            
+            .section {
+                padding: 20px;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            .search-box {
+                min-width: 100%;
+            }
+        }
+
+        .fa-trophy {
+            color: #ffd700;
+        }
+
+        /* Sponsor Sections */
+        .sponsor-section {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--kamiwaza-border);
+        }
+
+        .sponsor-section.platinum {
+            background: linear-gradient(135deg, rgba(229, 228, 226, 0.1) 0%, rgba(192, 192, 192, 0.05) 100%);
+            border-bottom: 2px solid #e5e4e2;
+        }
+
+        .sponsor-section.bottom-sponsors {
+            background: var(--kamiwaza-bg-secondary);
+            border-bottom: none;
+            border-top: 1px solid var(--kamiwaza-border);
+        }
+
+        .sponsor-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--kamiwaza-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sponsor-title.platinum {
+            color: #e5e4e2;
+            font-size: 1.1rem;
+        }
+
+        .sponsor-title.gold {
+            color: #ffd700;
+        }
+
+        .sponsor-title.silver {
+            color: #c0c0c0;
+        }
+
+        .sponsor-title.bronze {
+            color: #cd7f32;
+        }
+
+        .sponsor-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .sponsor-card {
+            background: var(--kamiwaza-bg-card);
+            border: 1px solid var(--kamiwaza-border);
+            border-radius: 10px;
+            padding: 15px 25px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .sponsor-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--kamiwaza-shadow-lg);
+        }
+
+        .sponsor-card.platinum {
+            border-color: #e5e4e2;
+            padding: 20px 40px;
+            background: #ffffff;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            text-align: left;
+        }
+
+        .sponsor-card.platinum .sponsor-description {
+            color: #334155;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            max-width: 500px;
+            font-style: italic;
+        }
+
+        .sponsor-section.platinum .sponsor-grid {
+            justify-content: flex-start;
+        }
+
+        .sponsor-card.gold {
+            border-color: #ffd700;
+        }
+
+        .sponsor-card.silver {
+            border-color: #c0c0c0;
+        }
+
+        .sponsor-card.bronze {
+            border-color: #cd7f32;
+        }
+
+        .sponsor-card a {
+            color: var(--kamiwaza-text-primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .sponsor-card a:hover {
+            color: var(--kamiwaza-primary);
+        }
+
+        .sponsor-placeholder {
+            color: var(--kamiwaza-text-muted);
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .bottom-sponsors-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .bottom-sponsor-tier {
+            text-align: left;
+        }
+
+        .bottom-sponsor-tier .sponsor-grid {
+            justify-content: flex-start;
+        }
+
+        .bottom-sponsor-tier.gold {
+            width: 100%;
+        }
+
+        .bottom-sponsors-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .bottom-sponsors-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Layout 2: Two-column with sticky sidebar */
+        .page-layout {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .main-column {
+            min-width: 0; /* Prevents grid blowout */
+        }
+
+        .partners-sidebar {
+            position: sticky;
+            top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            background: var(--kamiwaza-bg-card);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid var(--kamiwaza-border);
+        }
+
+        .sidebar-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-title.platinum { color: #e5e4e2; }
+        .sidebar-title.gold { color: #ffd700; }
+        .sidebar-title.silver { color: #c0c0c0; }
+        .sidebar-title.bronze { color: #cd7f32; }
+
+        .sidebar-card {
+            background: var(--kamiwaza-bg-secondary);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid var(--kamiwaza-border);
+        }
+
+        .sidebar-card.platinum {
+            background: #ffffff;
+            border-color: #e5e4e2;
+        }
+
+        .sidebar-card.gold { border-color: #ffd700; }
+        .sidebar-card.silver { border-color: #c0c0c0; }
+        .sidebar-card.bronze { border-color: #cd7f32; }
+
+        .sidebar-card a {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .sidebar-card img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .sidebar-card .sponsor-description {
+            color: #334155;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .sidebar-card .sponsor-placeholder {
+            color: var(--kamiwaza-text-muted);
+            font-size: 0.8rem;
+            font-style: italic;
+            text-align: center;
+        }
+
+        .partners-header {
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--kamiwaza-border);
+            margin-bottom: 15px;
+        }
+
+        .partners-header h3 {
+            font-size: 1rem;
+            color: var(--kamiwaza-primary);
+            margin: 0;
+        }
+
+        @media (max-width: 1200px) {
+            .page-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .partners-sidebar {
+                position: static;
+                max-height: none;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .sidebar-section {
+                flex: 1;
+                min-width: 200px;
+                max-width: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .partners-sidebar {
+                flex-direction: column;
+            }
+
+            .sidebar-section {
+                max-width: none;
+            }
+        }
+    </style>
+</head><body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-trophy"></i> KAMI</h1>
+            <div class="subtitle">Kamiwaza Agentic Merit Index</div>
+            <div class="description">
+                Comprehensive evaluation of Large Language Models across various enterprise tasks using the <a href="https://docs.kamiwaza.ai/research/papers/picard" target="_blank" style="color: var(--kamiwaza-accent); text-decoration: none;">PICARD framework</a>.
+                Results from MI300X, Gaudi3, Anthropic API, AWS Bedrock, Google AI Studio, OpenAI, and Alibaba Cloud Model Studio.
+                <br><a href="https://docs.kamiwaza.ai/research/papers/kami-v0-1" target="_blank" style="color: var(--kamiwaza-primary); text-decoration: none; font-weight: 500;">Read the paper →</a>
+            </div>
+        </div>
+
+        <div class="page-layout">
+            <div class="main-column">
+                <div class="main-content">
+                    <!-- Top Section: Enhanced Stats Overview -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Performance Overview
+                </div>
+                <div class="stats-grid" id="statsGrid">
+                    <!-- Enhanced stats will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Upper-Middle Section: Statistical Analysis -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-table"></i>
+                    Statistical Analysis
+                    <button class="section-toggle" id="toggleStats" onclick="toggleSection('stats')">Collapse</button>
+                </div>
+                <div class="section-content" id="statsContent">
+                    <div class="controls">
+                        <div class="search-box">
+                            <input type="text" id="searchInput" placeholder="Search models (comma-separated for multiple)...">
+                        </div>
+                        <select class="filter-select" id="providerFilter">
+                            <option value="">All Providers</option>
+                        </select>
+                        <select class="filter-select" id="performanceFilter">
+                            <option value="">All Performance Levels</option>
+                            <option value="excellent">Excellent (90%+)</option>
+                            <option value="good">Good (80-89%)</option>
+                            <option value="fair">Fair (70-79%)</option>
+                            <option value="poor">Poor (<70%)</option>
+                        </select>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="analysis-table" id="analysisTable">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="provider">Provider</th>
+                                    <th class="sortable" data-sort="model">Model</th>
+                                    <th class="sortable" data-sort="n_runs">Runs</th>
+                                    <th class="sortable" data-sort="mean_run_accuracy">Mean Accuracy</th>
+                                    <th class="sortable" data-sort="std_run_accuracy">Std Dev</th>
+                                    <th class="sortable" data-sort="rse_std_dev">RSE</th>
+                                    <th class="sortable" data-sort="t_ci_lower">95% t-CI</th>
+                                    <th class="sortable" data-sort="range_accuracy">Range</th>
+                                    <th class="sortable" data-sort="total_pooled_accuracy">Pooled Accuracy</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analysisTableBody">
+                                <!-- Table rows will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Bottom Section: Performance Heatmap -->
+            <div class="section">
+                <div class="section-title">
+                    <i class="fas fa-th"></i>
+                    Performance Heatmap
+                    <button class="section-toggle" id="toggleHeatmap" onclick="toggleSection('heatmap')">Collapse</button>
+                </div>
+                <div class="section-content" id="heatmapContent">
+                    <div class="controls">
+                        <div class="search-box">
+                            <input type="text" id="heatmapSearchInput" placeholder="Search models (comma-separated for multiple)...">
+                        </div>
+                        <select class="filter-select" id="heatmapProviderFilter">
+                            <option value="">All Providers</option>
+                        </select>
+                        <select class="filter-select" id="heatmapScoreFilter">
+                            <option value="">All Scores</option>
+                            <option value="90+">90%+ (Excellent)</option>
+                            <option value="80-89">80-89% (Very Good)</option>
+                            <option value="70-79">70-79% (Good)</option>
+                            <option value="60-69">60-69% (Fair)</option>
+                            <option value="<60"><60% (Poor)</option>
+                        </select>
+                    </div>
+
+                    <div class="heatmap-question-controls">
+                        <div class="question-categories">
+                            <div class="category-group">
+                                <h4>Basic Sanity Check</h4>
+                                <label><input type="checkbox" id="q101" checked> Q101</label>
+                                <label><input type="checkbox" id="q102" checked> Q102</label>
+                            </div>
+                            <div class="category-group">
+                                <h4>Filesystem Tasks</h4>
+                                <label><input type="checkbox" id="q201" checked> Q201</label>
+                                <label><input type="checkbox" id="q202" checked> Q202</label>
+                            </div>
+                            <div class="category-group">
+                                <h4>Finding Needles in Text Files</h4>
+                                <label><input type="checkbox" id="q301" checked> Q301</label>
+                                <label><input type="checkbox" id="q302" checked> Q302</label>
+                                <label><input type="checkbox" id="q303" checked> Q303</label>
+                                <label><input type="checkbox" id="q304" checked> Q304</label>
+                            </div>
+                            <div class="category-group">
+                                <h4>CSV Processing</h4>
+                                <label><input type="checkbox" id="q401" checked> Q401</label>
+                                <label><input type="checkbox" id="q402" checked> Q402</label>
+                                <label><input type="checkbox" id="q403" checked> Q403</label>
+                            </div>
+                            <div class="category-group">
+                                <h4>Database Processing</h4>
+                                <label><input type="checkbox" id="q501" checked> Q501</label>
+                                <label><input type="checkbox" id="q502" checked> Q502</label>
+                                <label><input type="checkbox" id="q503" checked> Q503</label>
+                            </div>
+                            <div class="category-group">
+                                <h4>DB Proc (Easy/Hinted)</h4>
+                                <label><input type="checkbox" id="q601" checked> Q601</label>
+                                <label><input type="checkbox" id="q602" checked> Q602</label>
+                            </div>
+                            <div class="category-group">
+                                <h4>Instruction Following / </h4>
+                                <h4>Output Formatting</h4>
+                                <label><input type="checkbox" id="q701" checked> Q701</label>
+                                <label><input type="checkbox" id="q702" checked> Q702</label>
+                                <label><input type="checkbox" id="q703" checked> Q703</label>
+                            </div>
+                        </div>
+                        <div class="heatmap-controls-right">
+                            <button class="btn-secondary" id="selectAllQuestions">Select All</button>
+                            <button class="btn-secondary" id="clearAllQuestions">Clear All</button>
+                            <select class="filter-select" id="heatmapSort">
+                                <option value="percentage_score">Sort by Overall Score</option>
+                                <option value="provider">Sort by Provider</option>
+                                <option value="model">Sort by Model Name</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="heatmap-legend">
+                        <span class="legend-label">Performance Scale:</span>
+                        <div class="legend-scale">
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #ef4444;"></div>
+                                <span>0-8</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #f59e0b;"></div>
+                                <span>9-14</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #22d3ee;"></div>
+                                <span>15-22</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #10b981;"></div>
+                                <span>23-29</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #059669;"></div>
+                                <span>30 (Perfect)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="heatmap-container">
+                        <div class="heatmap-table-wrapper">
+                            <table class="heatmap-table" id="heatmapTable">
+                                <thead id="heatmapHeader">
+                                    <!-- Headers will be populated by JavaScript -->
+                                </thead>
+                                <tbody id="heatmapBody">
+                                    <!-- Heatmap cells will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                </div>
+            </div>
+
+            <!-- Partners Sidebar -->
+            <aside class="partners-sidebar">
+                <div class="partners-header">
+                    <h3><i class="fas fa-handshake"></i> Partners</h3>
+                </div>
+
+                <!-- Platinum -->
+                <div class="sidebar-section">
+                    <div class="sidebar-title platinum">
+                        <i class="fas fa-gem"></i> Platinum
+                    </div>
+                    <div class="sidebar-card platinum">
+                        <a href="https://signal65.com/" target="_blank" rel="noopener noreferrer">
+                            <img src="/img/research/signal65-logo_color.svg" alt="Signal65" height="40">
+                            <span class="sponsor-description">Signal65 exists to be a source of data in a world where technology markets and product landscapes create complex and distorted views of product truth.</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Gold -->
+                <div class="sidebar-section">
+                    <div class="sidebar-title gold">
+                        <i class="fas fa-medal"></i> Gold
+                    </div>
+                    <div class="sidebar-card gold">
+                        <span class="sponsor-placeholder">Partner with us to set the standard for Enterprise Agentic AI.<br><br>Contact jv@kamiwaza.ai</span>
+                    </div>
+                </div>
+
+                <!-- Silver -->
+                <div class="sidebar-section">
+                    <div class="sidebar-title silver">
+                        <i class="fas fa-medal"></i> Silver
+                    </div>
+                    <div class="sidebar-card silver">
+                        <span class="sponsor-placeholder">Coming Soon</span>
+                    </div>
+                </div>
+
+                <!-- Bronze -->
+                <div class="sidebar-section">
+                    <div class="sidebar-title bronze">
+                        <i class="fas fa-medal"></i> Bronze
+                    </div>
+                    <div class="sidebar-card bronze">
+                        <span class="sponsor-placeholder">Coming Soon</span>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        // Data file paths (CSV files loaded via fetch)
+        const RAW_DATA_URL = './kami_raw_results.csv';
+        const STATS_DATA_URL = './kami_statistical_analysis.csv';
+
+        // Parse CSV data functions
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                const row = {};
+                headers.forEach((header, index) => {
+                    const value = values[index];
+                    // Convert numeric columns for raw data
+                    if (['q101', 'q102', 'q201', 'q202', 'q301', 'q302', 'q303', 'q304', 'q401', 'q402', 'q403', 'q501', 'q502', 'q503', 'q601', 'q602', 'q701', 'q702', 'q703', 'total_score', 'percentage_score'].includes(header)) {
+                        row[header] = parseFloat(value);
+                    }
+                    // Convert numeric columns for statistical data
+                    else if (['n_runs', 'mean_run_accuracy', 'std_run_accuracy', 'rse_std_dev',
+                             'min_accuracy', 'max_accuracy', 'range_accuracy', 't_ci_lower',
+                             't_ci_upper', 'total_pooled_accuracy', 'pooled_ci_lower', 'pooled_ci_upper'].includes(header)) {
+                        row[header] = parseFloat(value);
+                    } else {
+                        row[header] = value;
+                    }
+                });
+                data.push(row);
+            }
+
+            return data;
+        }
+
+        // Global data variables (populated after fetch)
+        let rawBenchmarkData = [];
+        let statisticalData = [];
+        let filteredStatisticalData = [];
+        let filteredHeatmapData = [];
+
+        // Sorting state
+        let currentSort = { column: 'percentage_score', direction: 'desc' }; // Used by heatmap
+        let statisticalSort = { column: 'mean_run_accuracy', direction: 'desc' };
+        let selectedQuestions = ['q101', 'q102', 'q201', 'q202', 'q301', 'q302', 'q303', 'q304', 'q401', 'q402', 'q403', 'q501', 'q502', 'q503', 'q601', 'q602', 'q701', 'q702', 'q703'];
+
+        // Section toggle functionality
+        function toggleSection(sectionName) {
+            const content = document.getElementById(sectionName + 'Content');
+            const button = document.getElementById('toggle' + sectionName.charAt(0).toUpperCase() + sectionName.slice(1));
+
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                button.textContent = 'Collapse';
+                button.classList.remove('collapsed');
+            } else {
+                content.classList.add('collapsed');
+                content.style.maxHeight = '0';
+                button.textContent = 'Expand';
+                button.classList.add('collapsed');
+            }
+        }
+
+        // Fetch CSV data from server
+        async function fetchCSVData(url) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${url}: ${response.status}`);
+            }
+            return await response.text();
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Show loading state
+                document.getElementById('statsGrid').innerHTML = '<div class="stat-card"><div class="stat-value">Loading...</div><div class="stat-label">Fetching data</div></div>';
+
+                // Fetch both CSV files in parallel
+                const [rawDataText, statsDataText] = await Promise.all([
+                    fetchCSVData(RAW_DATA_URL),
+                    fetchCSVData(STATS_DATA_URL)
+                ]);
+
+                // Parse the CSV data
+                rawBenchmarkData = parseCSV(rawDataText);
+                statisticalData = parseCSV(statsDataText);
+                filteredStatisticalData = [...statisticalData];
+                filteredHeatmapData = [...rawBenchmarkData];
+
+                // Initialize all components
+                initializeEnhancedStats();
+                initializeStatisticalAnalysis();
+                initializeHeatmap();
+                initializeFilters();
+                initializeEventListeners();
+                initializeChart();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('statsGrid').innerHTML = `<div class="stat-card"><div class="stat-value">Error</div><div class="stat-label">${error.message}</div></div>`;
+            }
+        });
+
+        function initializeEnhancedStats() {
+            // Calculate enhanced statistics combining both datasets
+            const totalRawResults = rawBenchmarkData.length;
+            const avgRawScore = (rawBenchmarkData.reduce((sum, item) => sum + item.percentage_score, 0) / totalRawResults).toFixed(1);
+            const avgStatisticalScore = (statisticalData.reduce((sum, item) => sum + item.mean_run_accuracy, 0) / statisticalData.length * 100).toFixed(1);
+            const bestRawScore = Math.max(...rawBenchmarkData.map(item => item.percentage_score)).toFixed(1);
+            const bestStatisticalScore = (Math.max(...statisticalData.map(item => item.mean_run_accuracy)) * 100).toFixed(1);
+            const providers = [...new Set(rawBenchmarkData.map(item => item.provider))].length;
+
+            const statsHtml = `
+                <div class="stat-card">
+                    <div class="stat-value">${totalRawResults}</div>
+                    <div class="stat-label">Total Runs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${avgRawScore}%</div>
+                    <div class="stat-label">Avg Raw Score</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${avgStatisticalScore}%</div>
+                    <div class="stat-label">Avg Mean Accuracy</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${bestRawScore}%</div>
+                    <div class="stat-label">Best Raw Score</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${bestStatisticalScore}%</div>
+                    <div class="stat-label">Best Mean Accuracy</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${providers}</div>
+                    <div class="stat-label">Providers</div>
+                </div>
+            `;
+            
+            document.getElementById('statsGrid').innerHTML = statsHtml;
+        }
+
+        function initializeStatisticalAnalysis() {
+            sortStatisticalData(statisticalSort.column, statisticalSort.direction);
+            renderStatisticalTable();
+        }
+
+        function initializeLeaderboard() {
+            // Removed - using heatmap instead
+        }
+
+        function initializeHeatmap() {
+            renderHeatmap();
+        }
+
+        function initializeFilters() {
+            // Populate provider filters for all sections
+            const providers = [...new Set(rawBenchmarkData.map(item => item.provider))];
+            
+            // Statistical analysis filters
+            const providerSelect = document.getElementById('providerFilter');
+            providers.forEach(provider => {
+                const option = document.createElement('option');
+                option.value = provider;
+                option.textContent = provider;
+                providerSelect.appendChild(option);
+            });
+
+            // Heatmap filters
+            const heatmapProviderSelect = document.getElementById('heatmapProviderFilter');
+            providers.forEach(provider => {
+                const option = document.createElement('option');
+                option.value = provider;
+                option.textContent = provider;
+                heatmapProviderSelect.appendChild(option);
+            });
+        }
+        function initializeEventListeners() {
+            // Statistical analysis event listeners
+            document.getElementById('searchInput').addEventListener('input', handleStatisticalFilters);
+            document.getElementById('providerFilter').addEventListener('change', handleStatisticalFilters);
+            document.getElementById('performanceFilter').addEventListener('change', handleStatisticalFilters);
+            
+            // Heatmap event listeners
+            document.getElementById('heatmapSearchInput').addEventListener('input', handleHeatmapFilters);
+            document.getElementById('heatmapProviderFilter').addEventListener('change', handleHeatmapFilters);
+            document.getElementById('heatmapScoreFilter').addEventListener('change', handleHeatmapFilters);
+            document.getElementById('heatmapSort').addEventListener('change', handleHeatmapSort);
+            document.getElementById('selectAllQuestions').addEventListener('click', selectAllQuestions);
+            document.getElementById('clearAllQuestions').addEventListener('click', clearAllQuestions);
+
+            // Sorting functionality for statistical table
+            document.querySelectorAll('#analysisTable .sortable').forEach(header => {
+                header.addEventListener('click', handleStatisticalSort);
+            });
+
+            
+            // Question checkboxes for heatmap
+            selectedQuestions.forEach(q => {
+                document.getElementById(q).addEventListener('change', handleQuestionToggle);
+            });
+        }
+
+        // Statistical Analysis Functions
+        function handleStatisticalFilters() {
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const providerFilter = document.getElementById('providerFilter').value;
+            const performanceFilter = document.getElementById('performanceFilter').value;
+
+            // Support comma-separated search terms
+            const searchTerms = searchInput.split(',').map(term => term.trim()).filter(term => term.length > 0);
+
+            filteredStatisticalData = statisticalData.filter(item => {
+                // If no search terms, match all; otherwise match ANY term
+                const matchesSearch = searchTerms.length === 0 || searchTerms.some(term =>
+                    item.model.toLowerCase().includes(term) ||
+                    item.provider.toLowerCase().includes(term)
+                );
+                
+                const matchesProvider = !providerFilter || item.provider === providerFilter;
+                
+                let matchesPerformance = true;
+                if (performanceFilter) {
+                    const accuracy = item.mean_run_accuracy * 100;
+                    switch (performanceFilter) {
+                        case 'excellent': matchesPerformance = accuracy >= 90; break;
+                        case 'good': matchesPerformance = accuracy >= 80 && accuracy < 90; break;
+                        case 'fair': matchesPerformance = accuracy >= 70 && accuracy < 80; break;
+                        case 'poor': matchesPerformance = accuracy < 70; break;
+                    }
+                }
+                
+                return matchesSearch && matchesProvider && matchesPerformance;
+            });
+
+            sortStatisticalData(statisticalSort.column, statisticalSort.direction);
+            renderStatisticalTable();
+        }
+
+        function handleStatisticalSort(event) {
+            const column = event.target.dataset.sort;
+            if (!column) return;
+
+            if (statisticalSort.column === column) {
+                statisticalSort.direction = statisticalSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                statisticalSort.column = column;
+                statisticalSort.direction = column === 'model' || column === 'provider' ? 'asc' : 'desc';
+            }
+
+            document.querySelectorAll('#analysisTable .sortable').forEach(header => {
+                header.classList.remove('sort-asc', 'sort-desc');
+            });
+            event.target.classList.add(statisticalSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+
+            sortStatisticalData(column, statisticalSort.direction);
+            renderStatisticalTable();
+        }
+
+        function sortStatisticalData(column, direction) {
+            filteredStatisticalData.sort((a, b) => {
+                let aVal = a[column];
+                let bVal = b[column];
+                
+                if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+                
+                if (direction === 'asc') {
+                    return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                } else {
+                    return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+                }
+            });
+        }
+
+        function renderStatisticalTable() {
+            const tbody = document.getElementById('analysisTableBody');
+            const html = filteredStatisticalData.map((item, index) => {
+                const accuracy = (item.mean_run_accuracy * 100).toFixed(1);
+                const stdDev = (item.std_run_accuracy * 100).toFixed(2);
+                const rse = isFinite(item.rse_std_dev) ? (item.rse_std_dev * 100).toFixed(1) : 'N/A';
+                const ciLower = (item.t_ci_lower * 100).toFixed(1);
+                const ciUpper = (item.t_ci_upper * 100).toFixed(1);
+                const range = (item.range_accuracy * 100).toFixed(2);
+                const pooled = (item.total_pooled_accuracy * 100).toFixed(1);
+                
+                const perfClass = getPerformanceClass(item.mean_run_accuracy);
+                
+                return `
+                    <tr>
+                        <td class="provider-cell">
+                            <span class="provider-badge ${getProviderClass(item.provider)}">${item.provider}</span>
+                        </td>
+                        <td class="model-cell" title="${item.model}">${item.model}</td>
+                        <td class="metric-cell">${item.n_runs}</td>
+                        <td class="accuracy-cell">
+                            ${accuracy}%
+                            <div class="performance-bar">
+                                <div class="performance-fill ${perfClass}" style="width: ${accuracy}%;"></div>
+                            </div>
+                        </td>
+                        <td class="metric-cell">±${stdDev}%</td>
+                        <td class="rse-cell">${rse === 'N/A' ? rse : '±' + rse + '%'}</td>
+                        <td class="confidence-cell">(${ciLower}%, ${ciUpper}%)</td>
+                        <td class="metric-cell">${range}%</td>
+                        <td class="metric-cell">${pooled}%</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            tbody.innerHTML = html;
+        }
+
+        // Leaderboard Functions removed - using heatmap instead
+
+        // Heatmap Functions
+        function handleHeatmapFilters() {
+            const searchInput = document.getElementById('heatmapSearchInput').value.toLowerCase();
+            const providerFilter = document.getElementById('heatmapProviderFilter').value;
+            const scoreFilter = document.getElementById('heatmapScoreFilter').value;
+
+            // Support comma-separated search terms
+            const searchTerms = searchInput.split(',').map(term => term.trim()).filter(term => term.length > 0);
+
+            filteredHeatmapData = rawBenchmarkData.filter(item => {
+                // If no search terms, match all; otherwise match ANY term
+                const matchesSearch = searchTerms.length === 0 || searchTerms.some(term =>
+                    item.model.toLowerCase().includes(term) ||
+                    item.provider.toLowerCase().includes(term)
+                );
+                
+                const matchesProvider = !providerFilter || item.provider === providerFilter;
+                
+                let matchesScore = true;
+                if (scoreFilter) {
+                    const score = item.percentage_score;
+                    switch (scoreFilter) {
+                        case '90+': matchesScore = score >= 90; break;
+                        case '80-89': matchesScore = score >= 80 && score < 90; break;
+                        case '70-79': matchesScore = score >= 70 && score < 80; break;
+                        case '60-69': matchesScore = score >= 60 && score < 70; break;
+                        case '<60': matchesScore = score < 60; break;
+                    }
+                }
+                
+                return matchesSearch && matchesProvider && matchesScore;
+            });
+
+            handleHeatmapSort();
+        }
+
+        function handleHeatmapSort() {
+            const sortBy = document.getElementById('heatmapSort').value;
+            
+            filteredHeatmapData.sort((a, b) => {
+                let aVal = a[sortBy];
+                let bVal = b[sortBy];
+                
+                if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+                
+                if (sortBy === 'model' || sortBy === 'provider') {
+                    return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                } else {
+                    return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+                }
+            });
+
+            renderHeatmap();
+        }
+
+        function selectAllQuestions() {
+            selectedQuestions = ['q101', 'q102', 'q201', 'q202', 'q301', 'q302', 'q303', 'q304', 'q401', 'q402', 'q403', 'q501', 'q502', 'q503', 'q601', 'q602', 'q701', 'q702', 'q703'];
+            selectedQuestions.forEach(q => {
+                document.getElementById(q).checked = true;
+            });
+            renderHeatmap();
+        }
+
+        function clearAllQuestions() {
+            selectedQuestions = [];
+            ['q101', 'q102', 'q201', 'q202', 'q301', 'q302', 'q303', 'q304', 'q401', 'q402', 'q403', 'q501', 'q502', 'q503', 'q601', 'q602', 'q701', 'q702', 'q703'].forEach(q => {
+                document.getElementById(q).checked = false;
+            });
+            renderHeatmap();
+        }
+
+        function handleQuestionToggle(event) {
+            const questionId = event.target.id;
+            if (event.target.checked) {
+                if (!selectedQuestions.includes(questionId)) {
+                    selectedQuestions.push(questionId);
+                }
+            } else {
+                selectedQuestions = selectedQuestions.filter(q => q !== questionId);
+            }
+            renderHeatmap();
+        }
+
+        function renderHeatmap() {
+            if (selectedQuestions.length === 0) {
+                document.getElementById('heatmapHeader').innerHTML = '<tr><th colspan="3">Please select at least one question to display</th></tr>';
+                document.getElementById('heatmapBody').innerHTML = '';
+                return;
+            }
+
+            const header = document.getElementById('heatmapHeader');
+            const body = document.getElementById('heatmapBody');
+
+            // Create header
+            const headerRow = `
+                <tr>
+                    <th class="provider-header">Provider</th>
+                    <th class="model-header">Model</th>
+                    ${selectedQuestions.map(q => `<th class="question-header">${q.toUpperCase()}</th>`).join('')}
+                    <th class="question-header">Total</th>
+                </tr>
+            `;
+            header.innerHTML = headerRow;
+
+            // Create body rows
+            const bodyRows = filteredHeatmapData.map(item => {
+                return `
+                    <tr>
+                        <td class="info-cell">
+                            <span class="provider-badge ${getProviderClass(item.provider)}">${item.provider}</span>
+                        </td>
+                        <td class="info-cell">${item.model}</td>
+                        ${selectedQuestions.map(q => {
+                            const score = item[q];
+                            const scoreClass = getHeatmapScoreClass(score);
+                            return `
+                                <td>
+                                    <div class="heatmap-cell ${scoreClass}" 
+                                         onmouseover="showTooltip(event, '${item.model}', '${q.toUpperCase()}', ${score})"
+                                         onmouseout="hideTooltip(event)">
+                                        ${score}
+                                    </div>
+                                </td>
+                            `;
+                        }).join('')}
+                        <td class="info-cell total-score-cell">${item.total_score}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            body.innerHTML = bodyRows;
+        }
+
+        // Utility Functions
+        function getProviderClass(provider) {
+            const providerMap = {
+                'Alibaba Cloud': 'provider-alibaba',
+                'Anthropic': 'provider-anthropic',
+                'AWS Bedrock': 'provider-aws',
+                'Intel Gaudi3': 'provider-intel',
+                'AMD MI300X': 'provider-amd',
+                'OpenAI': 'provider-openai',
+                'Google AI Studio': 'provider-google',
+                'Kamiwaza': 'provider-kamiwaza'
+            };
+            return providerMap[provider] || 'provider-other';
+        }
+
+        function getPerformanceClass(accuracy) {
+            const pct = accuracy * 100;
+            if (pct >= 90) return 'perf-excellent';
+            if (pct >= 80) return 'perf-good';
+            if (pct >= 70) return 'perf-fair';
+            return 'perf-poor';
+        }
+
+        function getScoreClass(score) {
+            if (score === 30) return 'score-perfect';
+            if (score >= 23) return 'score-good';
+            if (score >= 15) return 'score-fair';
+            return 'score-poor';
+        }
+
+        function getHeatmapScoreClass(score) {
+            if (score === 30) return 'score-20';
+            if (score >= 23) return 'score-16-19';
+            if (score >= 15) return 'score-11-15';
+            if (score >= 9) return 'score-6-10';
+            return 'score-0-5';
+        }
+
+        function getPercentageColor(percentage) {
+            if (percentage >= 90) return '#059669';
+            if (percentage >= 80) return '#14b8a6';
+            if (percentage >= 70) return '#f59e0b';
+            return '#ef4444';
+        }
+
+        function getPercentageTextColor(percentage) {
+            if (percentage >= 90) return '#059669';
+            if (percentage >= 80) return '#14b8a6';
+            if (percentage >= 70) return '#d97706';
+            return '#dc2626';
+        }
+
+        function showTooltip(event, model, question, score) {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip show';
+            tooltip.innerHTML = `${model}<br>${question}: ${score}/30`;
+            
+            document.body.appendChild(tooltip);
+            
+            const rect = event.target.getBoundingClientRect();
+            tooltip.style.left = rect.left + window.scrollX + 'px';
+            tooltip.style.top = (rect.top + window.scrollY - 60) + 'px';
+        }
+
+        function hideTooltip(event) {
+            const tooltips = document.querySelectorAll('.tooltip');
+            tooltips.forEach(tooltip => tooltip.remove());
+        }
+
+        // Chart initialization
+        function initializeChart() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Model Performance',
+                        data: statisticalData.map(item => ({
+                            x: item.mean_run_accuracy * 100,
+                            y: item.std_run_accuracy * 100,
+                            provider: item.provider,
+                            model: item.model,
+                            runs: item.n_runs
+                        })),
+                        backgroundColor: function(context) {
+                            const point = context.parsed;
+                            if (point.x >= 90) return '#10b981';
+                            if (point.x >= 80) return '#22d3ee';
+                            if (point.x >= 70) return '#f59e0b';
+                            return '#ef4444';
+                        },
+                        borderColor: function(context) {
+                            const point = context.parsed;
+                            if (point.x >= 90) return '#065f46';
+                            if (point.x >= 80) return '#0e7490';
+                            if (point.x >= 70) return '#92400e';
+                            return '#991b1b';
+                        },
+                        pointRadius: 8,
+                        pointHoverRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#f8fafc'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#475569',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: function(context) {
+                                    const data = context[0].raw;
+                                    return `${data.provider} - ${data.model}`;
+                                },
+                                label: function(context) {
+                                    const data = context.raw;
+                                    return [
+                                        `Mean Accuracy: ${data.x.toFixed(1)}%`,
+                                        `Std Deviation: ${data.y.toFixed(2)}%`,
+                                        `Runs: ${data.runs}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Mean Accuracy (%)',
+                                color: '#f8fafc'
+                            },
+                            ticks: {
+                                color: '#cbd5e1'
+                            },
+                            grid: {
+                                color: '#475569'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Standard Deviation (%)',
+                                color: '#f8fafc'
+                            },
+                            ticks: {
+                                color: '#cbd5e1'
+                            },
+                            grid: {
+                                color: '#475569'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
+</body>
+</html>

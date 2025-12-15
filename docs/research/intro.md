@@ -26,6 +26,30 @@ Our work is grounded in real-world applications and informed by our experience b
 
 <div className="research-pillars">
 
+<a href="/research/agentic-merit-index" className="resource-card-link">
+<div>
+
+### 🏆 Agentic Merit Index
+
+The definitive leaderboard for enterprise agentic AI performance. Live rankings powered by the Kamiwaza Agentic Merit Index (KAMI) benchmark.
+
+<span className="resource-arrow">View Leaderboard →</span>
+
+</div>
+</a>
+
+<a href="/research/executive-insights" className="resource-card-link">
+<div>
+
+### 💼 Executive Insights
+
+Business-friendly whitepapers distilling our technical research into actionable insights for executives and decision-makers.
+
+<span className="resource-arrow">Read Whitepapers →</span>
+
+</div>
+</a>
+
 <a href="/research/papers" className="resource-card-link">
 <div>
 
