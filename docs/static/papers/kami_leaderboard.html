@@ -326,6 +326,7 @@
         .provider-amd { background: #ed1c24; color: white; }
         .provider-google { background: #0F9D58; color: white; }
         .provider-openai { background: #000000; color: white; }
+        .provider-kamiwaza { background: #0ad295; color: white; }
 
         .model-cell {
             font-weight: 500;
@@ -1367,7 +1368,8 @@
                 'Intel Gaudi3': 'provider-intel',
                 'AMD MI300X': 'provider-amd',
                 'OpenAI': 'provider-openai',
-                'Google AI Studio': 'provider-google'
+                'Google AI Studio': 'provider-google',
+                'Kamiwaza': 'provider-kamiwaza'
             };
             return providerMap[provider] || 'provider-other';
         }
