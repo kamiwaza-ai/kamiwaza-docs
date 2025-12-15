@@ -905,31 +905,9 @@
     </div>
 
     <script>
-        // Raw results data (from leaderboard)
-        const rawData = `provider,model,q101,q102,q201,q202,q301,q302,q303,q304,q401,q402,q403,q501,q502,q503,q601,q602,q701,q702,q703,total_score,percentage_score
-AMD MI300X,deepseek_v3_1_run1,30,30,30,30,27,30,27,20,30,20,30,30,14,20,30,27,30,30,30,515,90.35
-AMD MI300X,deepseek_v3_1_run2,30,30,30,30,29,30,27,20,30,26,30,30,16,26,30,25,30,30,30,529,92.81
-AMD MI300X,deepseek_v3_1_run3,30,30,30,30,30,30,24,21,30,29,30,30,20,21,30,28,30,30,30,533,93.51
-AMD MI300X,deepseek_v3_1_run4,30,30,30,30,28,30,27,23,30,23,29,30,15,29,30,28,30,30,30,532,93.33
-AMD MI300X,deepseek_v3_1_run5,30,30,30,30,29,30,27,21,30,27,29,30,18,24,29,25,30,30,30,529,92.81
-AMD MI300X,deepseek_v3_1_run6,30,30,30,29,29,29,24,20,30,26,30,30,12,23,30,28,30,30,30,520,91.23
-AMD MI300X,deepseek_v3_1_run7,30,30,30,30,30,30,26,22,30,20,30,30,19,27,30,23,30,30,30,527,92.46
-AMD MI300X,deepseek_v3_1_run8,30,30,30,30,29,30,24,21,30,23,29,30,13,24,30,26,30,30,30,519,91.05
-AMD MI300X,deepseek_v3_run1,30,30,30,30,30,28,0,0,4,6,6,15,9,26,30,1,30,0,30,335,58.77
-AMD MI300X,deepseek_v3_run2,30,30,30,30,30,28,0,0,4,2,8,18,10,28,30,3,30,0,30,341,59.82
-AMD MI300X,deepseek_v3_run3,30,30,30,29,30,30,0,1,7,3,8,14,9,24,30,2,30,0,30,337,59.12
-AMD MI300X,deepseek_v3_run4,30,30,30,30,30,29,0,0,7,5,7,14,10,27,30,2,30,0,30,341,59.82
-AMD MI300X,deepseek_v3_run5,30,30,30,29,30,30,1,0,6,4,7,15,6,27,30,2,30,0,30,337,59.12
-AMD MI300X,deepseek_v3_run6,30,30,30,30,30,29,0,2,6,4,4,15,10,25,30,2,30,0,30,337,59.12
-AMD MI300X,deepseek_v3_run7,30,30,30,29,30,30,1,1,5,5,3,17,8,28,30,3,30,0,30,340,59.65
-AMD MI300X,deepseek_v3_run8,30,30,30,30,30,30,0,1,6,1,9,20,4,27,30,1,30,0,30,339,59.47
-`;
-
-        // Statistical analysis data (from dashboard_v1)
-        const csvData = `provider,model,n_runs,mean_run_accuracy,std_run_accuracy,rse_std_dev,min_accuracy,max_accuracy,range_accuracy,t_ci_lower,t_ci_upper,total_pooled_accuracy,pooled_ci_lower,pooled_ci_upper
-AMD MI300X,glm_4_6,8,0.9256578947368421,0.011482759128363614,0.2672612419124244,0.9087719298245615,0.9403508771929825,0.03157894736842104,0.9160580678674956,0.9352577216061887,0.9256578947368421,0.9176804673127701,0.9329187559571628
-AMD MI300X,deepseek_v3_1,8,0.9219298245614035,0.011637279966159294,0.2672612419124244,0.9035087719298246,0.9350877192982456,0.03157894736842104,0.912200815038832,0.931658834083975,0.9219298245614035,0.9137830921796201,0.9293662666927914
-`;
+        // Data file paths (CSV files loaded via fetch)
+        const RAW_DATA_URL = './kami_raw_results.csv';
+        const STATS_DATA_URL = './kami_statistical_analysis.csv';
 
         // Parse CSV data functions
         function parseCSV(csvText) {
@@ -961,11 +939,11 @@ AMD MI300X,deepseek_v3_1,8,0.9219298245614035,0.011637279966159294,0.26726124191
             return data;
         }
 
-        // Global data variables
-        let rawBenchmarkData = parseCSV(rawData);
-        let statisticalData = parseCSV(csvData);
-        let filteredStatisticalData = [...statisticalData];
-        let filteredHeatmapData = [...rawBenchmarkData];
+        // Global data variables (populated after fetch)
+        let rawBenchmarkData = [];
+        let statisticalData = [];
+        let filteredStatisticalData = [];
+        let filteredHeatmapData = [];
 
         // Sorting state
         let currentSort = { column: 'percentage_score', direction: 'desc' }; // Used by heatmap
@@ -976,7 +954,7 @@ AMD MI300X,deepseek_v3_1,8,0.9219298245614035,0.011637279966159294,0.26726124191
         function toggleSection(sectionName) {
             const content = document.getElementById(sectionName + 'Content');
             const button = document.getElementById('toggle' + sectionName.charAt(0).toUpperCase() + sectionName.slice(1));
-            
+
             if (content.classList.contains('collapsed')) {
                 content.classList.remove('collapsed');
                 content.style.maxHeight = content.scrollHeight + 'px';
@@ -990,14 +968,44 @@ AMD MI300X,deepseek_v3_1,8,0.9219298245614035,0.011637279966159294,0.26726124191
             }
         }
 
+        // Fetch CSV data from server
+        async function fetchCSVData(url) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${url}: ${response.status}`);
+            }
+            return await response.text();
+        }
+
         // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeEnhancedStats();
-            initializeStatisticalAnalysis();
-            initializeHeatmap();
-            initializeFilters();
-            initializeEventListeners();
-            initializeChart();
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Show loading state
+                document.getElementById('statsGrid').innerHTML = '<div class="stat-card"><div class="stat-value">Loading...</div><div class="stat-label">Fetching data</div></div>';
+
+                // Fetch both CSV files in parallel
+                const [rawDataText, statsDataText] = await Promise.all([
+                    fetchCSVData(RAW_DATA_URL),
+                    fetchCSVData(STATS_DATA_URL)
+                ]);
+
+                // Parse the CSV data
+                rawBenchmarkData = parseCSV(rawDataText);
+                statisticalData = parseCSV(statsDataText);
+                filteredStatisticalData = [...statisticalData];
+                filteredHeatmapData = [...rawBenchmarkData];
+
+                // Initialize all components
+                initializeEnhancedStats();
+                initializeStatisticalAnalysis();
+                initializeHeatmap();
+                initializeFilters();
+                initializeEventListeners();
+                initializeChart();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('statsGrid').innerHTML = `<div class="stat-card"><div class="stat-value">Error</div><div class="stat-label">${error.message}</div></div>`;
+            }
         });
 
         function initializeEnhancedStats() {
