@@ -1,6 +1,7 @@
 ---
 title: "How Do LLMs Fail In Agentic Scenarios?"
 description: A qualitative analysis of success and failure scenarios of various LLMs in agentic simulations, identifying four recurring failure archetypes across 900 execution traces
+image: /img/research/how_do_llms_fail_ogcard.png
 ---
 
 # How Do LLMs Fail In Agentic Scenarios?
