@@ -705,6 +705,123 @@
         .fa-trophy {
             color: #ffd700;
         }
+
+        /* Sponsor Sections */
+        .sponsor-section {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--kamiwaza-border);
+        }
+
+        .sponsor-section.platinum {
+            background: linear-gradient(135deg, rgba(229, 228, 226, 0.1) 0%, rgba(192, 192, 192, 0.05) 100%);
+            border-bottom: 2px solid #e5e4e2;
+        }
+
+        .sponsor-section.bottom-sponsors {
+            background: var(--kamiwaza-bg-secondary);
+            border-bottom: none;
+            border-top: 1px solid var(--kamiwaza-border);
+        }
+
+        .sponsor-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--kamiwaza-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sponsor-title.platinum {
+            color: #e5e4e2;
+            font-size: 1.1rem;
+        }
+
+        .sponsor-title.gold {
+            color: #ffd700;
+        }
+
+        .sponsor-title.silver {
+            color: #c0c0c0;
+        }
+
+        .sponsor-title.bronze {
+            color: #cd7f32;
+        }
+
+        .sponsor-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .sponsor-card {
+            background: var(--kamiwaza-bg-card);
+            border: 1px solid var(--kamiwaza-border);
+            border-radius: 10px;
+            padding: 15px 25px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .sponsor-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--kamiwaza-shadow-lg);
+        }
+
+        .sponsor-card.platinum {
+            border-color: #e5e4e2;
+            padding: 20px 40px;
+        }
+
+        .sponsor-card.gold {
+            border-color: #ffd700;
+        }
+
+        .sponsor-card.silver {
+            border-color: #c0c0c0;
+        }
+
+        .sponsor-card.bronze {
+            border-color: #cd7f32;
+        }
+
+        .sponsor-card a {
+            color: var(--kamiwaza-text-primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .sponsor-card a:hover {
+            color: var(--kamiwaza-primary);
+        }
+
+        .sponsor-placeholder {
+            color: var(--kamiwaza-text-muted);
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .bottom-sponsors-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+        }
+
+        .bottom-sponsor-tier {
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .bottom-sponsors-container {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head><body>
     <div class="container">
@@ -718,6 +835,19 @@
         </div>
 
         <div class="main-content">
+            <!-- Platinum Partner Section -->
+            <div class="sponsor-section platinum">
+                <div class="sponsor-title platinum">
+                    <i class="fas fa-gem"></i>
+                    Platinum Partner
+                </div>
+                <div class="sponsor-grid">
+                    <div class="sponsor-card platinum">
+                        <span class="sponsor-placeholder">Your company here</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Top Section: Enhanced Stats Overview -->
             <div class="section">
                 <div class="section-title">
@@ -897,6 +1027,45 @@
                                     <!-- Heatmap cells will be populated by JavaScript -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Sponsors Section -->
+            <div class="sponsor-section bottom-sponsors">
+                <div class="bottom-sponsors-container">
+                    <div class="bottom-sponsor-tier">
+                        <div class="sponsor-title gold">
+                            <i class="fas fa-medal"></i>
+                            Gold Partners
+                        </div>
+                        <div class="sponsor-grid">
+                            <div class="sponsor-card gold">
+                                <span class="sponsor-placeholder">Your company here</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bottom-sponsor-tier">
+                        <div class="sponsor-title silver">
+                            <i class="fas fa-medal"></i>
+                            Silver Partners
+                        </div>
+                        <div class="sponsor-grid">
+                            <div class="sponsor-card silver">
+                                <span class="sponsor-placeholder">Your company here</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bottom-sponsor-tier">
+                        <div class="sponsor-title bronze">
+                            <i class="fas fa-medal"></i>
+                            Bronze Partners
+                        </div>
+                        <div class="sponsor-grid">
+                            <div class="sponsor-card bronze">
+                                <span class="sponsor-placeholder">Your company here</span>
+                            </div>
                         </div>
                     </div>
                 </div>
