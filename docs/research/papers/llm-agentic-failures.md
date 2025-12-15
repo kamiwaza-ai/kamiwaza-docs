@@ -19,7 +19,7 @@ We investigate how large language models (LLMs) fail when operating as autonomou
 
 ## Why This Matters
 
-Understanding *how* models fail is often more important than knowing *that* they fail. While benchmark scores tell you a model achieves 75% accuracy, they tell you nothing about whether the remaining 25% of failures are random, systematic, recoverable, or catastrophic.
+Understanding *how* models fail is often more important than just knowing their *failure rate*. While benchmark scores tell you a model achieves 75% accuracy, they tell you nothing about whether the remaining 25% of failures are random, systematic, recoverable, or catastrophic.
 
 This qualitative analysis reveals that **recovery capability—not initial correctness—best predicts overall success**. DeepSeek V3.1's dominance stems not from never failing, but from consistently recognizing errors, diagnosing root causes, and iteratively refining its approach. This insight is critical for enterprises making deployment decisions: a model that fails gracefully and recovers reliably may be preferable to one with higher initial accuracy but brittle error handling.
 
