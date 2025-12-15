@@ -5,6 +5,14 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
+      label: 'Agentic Merit Index',
+      collapsed: false,
+      items: [
+        'agentic-merit-index/index',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Research Papers',
       collapsed: false,
       items: [
@@ -12,6 +20,14 @@ const sidebars: SidebarsConfig = {
         'papers/llm-agentic-failures',
         'papers/kami-v0-1',
         'papers/picard',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Executive Insights',
+      collapsed: false,
+      items: [
+        'executive-insights/index',
       ],
     },
     {
