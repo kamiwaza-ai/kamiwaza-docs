@@ -7,7 +7,7 @@ description: Live leaderboard of KAMI benchmark results tracking enterprise agen
 
 The definitive leaderboard for enterprise agentic AI performance, powered by the Kamiwaza Agentic Merit Index (KAMI) benchmark.
 
-**[Open Full Leaderboard in New Tab](/papers/kami_leaderboard.html)** (recommended for best experience)
+<a href="/papers/kami_leaderboard.html" target="_blank">**Open Full Leaderboard in New Tab**</a> (recommended for best experience)
 
 ---
 
