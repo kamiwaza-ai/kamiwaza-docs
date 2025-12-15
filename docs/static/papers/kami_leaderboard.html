@@ -826,8 +826,8 @@
         }
 
         .bottom-sponsors-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            display: flex;
+            flex-direction: column;
             gap: 30px;
         }
 
@@ -835,8 +835,18 @@
             text-align: center;
         }
 
+        .bottom-sponsor-tier.gold {
+            width: 100%;
+        }
+
+        .bottom-sponsors-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+
         @media (max-width: 768px) {
-            .bottom-sponsors-container {
+            .bottom-sponsors-row {
                 grid-template-columns: 1fr;
             }
         }
@@ -1056,7 +1066,7 @@
             <!-- Bottom Sponsors Section -->
             <div class="sponsor-section bottom-sponsors">
                 <div class="bottom-sponsors-container">
-                    <div class="bottom-sponsor-tier">
+                    <div class="bottom-sponsor-tier gold">
                         <div class="sponsor-title gold">
                             <i class="fas fa-medal"></i>
                             Gold Partners
@@ -1067,25 +1077,27 @@
                             </div>
                         </div>
                     </div>
-                    <div class="bottom-sponsor-tier">
-                        <div class="sponsor-title silver">
-                            <i class="fas fa-medal"></i>
-                            Silver Partners
-                        </div>
-                        <div class="sponsor-grid">
-                            <div class="sponsor-card silver">
-                                <span class="sponsor-placeholder">Coming Soon</span>
+                    <div class="bottom-sponsors-row">
+                        <div class="bottom-sponsor-tier">
+                            <div class="sponsor-title silver">
+                                <i class="fas fa-medal"></i>
+                                Silver Partners
+                            </div>
+                            <div class="sponsor-grid">
+                                <div class="sponsor-card silver">
+                                    <span class="sponsor-placeholder">Coming Soon</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="bottom-sponsor-tier">
-                        <div class="sponsor-title bronze">
-                            <i class="fas fa-medal"></i>
-                            Bronze Partners
-                        </div>
-                        <div class="sponsor-grid">
-                            <div class="sponsor-card bronze">
-                                <span class="sponsor-placeholder">Your company here</span>
+                        <div class="bottom-sponsor-tier">
+                            <div class="sponsor-title bronze">
+                                <i class="fas fa-medal"></i>
+                                Bronze Partners
+                            </div>
+                            <div class="sponsor-grid">
+                                <div class="sponsor-card bronze">
+                                    <span class="sponsor-placeholder">Coming Soon</span>
+                                </div>
                             </div>
                         </div>
                     </div>
