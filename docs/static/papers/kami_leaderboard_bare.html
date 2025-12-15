@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KAMI: Kamiwaza Agentic Merit Index (preview)</title>
-    <link rel="icon" href="/img/favicon.ico" type="image/x-icon">
-
+    
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
@@ -855,138 +854,6 @@
                 grid-template-columns: 1fr;
             }
         }
-
-        /* Layout 2: Two-column with sticky sidebar */
-        .page-layout {
-            display: grid;
-            grid-template-columns: 1fr 280px;
-            gap: 30px;
-            align-items: start;
-        }
-
-        .main-column {
-            min-width: 0; /* Prevents grid blowout */
-        }
-
-        .partners-sidebar {
-            position: sticky;
-            top: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            max-height: calc(100vh - 40px);
-            overflow-y: auto;
-        }
-
-        .sidebar-section {
-            background: var(--kamiwaza-bg-card);
-            border-radius: 12px;
-            padding: 15px;
-            border: 1px solid var(--kamiwaza-border);
-        }
-
-        .sidebar-title {
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .sidebar-title.platinum { color: #e5e4e2; }
-        .sidebar-title.gold { color: #ffd700; }
-        .sidebar-title.silver { color: #c0c0c0; }
-        .sidebar-title.bronze { color: #cd7f32; }
-
-        .sidebar-card {
-            background: var(--kamiwaza-bg-secondary);
-            border-radius: 8px;
-            padding: 12px;
-            border: 1px solid var(--kamiwaza-border);
-        }
-
-        .sidebar-card.platinum {
-            background: #ffffff;
-            border-color: #e5e4e2;
-        }
-
-        .sidebar-card.gold { border-color: #ffd700; }
-        .sidebar-card.silver { border-color: #c0c0c0; }
-        .sidebar-card.bronze { border-color: #cd7f32; }
-
-        .sidebar-card a {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-        }
-
-        .sidebar-card img {
-            max-width: 100%;
-            height: auto;
-        }
-
-        .sidebar-card .sponsor-description {
-            color: #334155;
-            font-size: 0.75rem;
-            line-height: 1.4;
-            text-align: center;
-            font-style: italic;
-        }
-
-        .sidebar-card .sponsor-placeholder {
-            color: var(--kamiwaza-text-muted);
-            font-size: 0.8rem;
-            font-style: italic;
-            text-align: center;
-        }
-
-        .partners-header {
-            text-align: center;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--kamiwaza-border);
-            margin-bottom: 15px;
-        }
-
-        .partners-header h3 {
-            font-size: 1rem;
-            color: var(--kamiwaza-primary);
-            margin: 0;
-        }
-
-        @media (max-width: 1200px) {
-            .page-layout {
-                grid-template-columns: 1fr;
-            }
-
-            .partners-sidebar {
-                position: static;
-                max-height: none;
-                flex-direction: row;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-
-            .sidebar-section {
-                flex: 1;
-                min-width: 200px;
-                max-width: 300px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .partners-sidebar {
-                flex-direction: column;
-            }
-
-            .sidebar-section {
-                max-width: none;
-            }
-        }
     </style>
 </head><body>
     <div class="container">
@@ -1000,10 +867,24 @@
             </div>
         </div>
 
-        <div class="page-layout">
-            <div class="main-column">
-                <div class="main-content">
-                    <!-- Top Section: Enhanced Stats Overview -->
+        <div class="main-content">
+            <!-- Platinum Partner Section -->
+            <div class="sponsor-section platinum">
+                <div class="sponsor-title platinum">
+                    <i class="fas fa-gem"></i>
+                    Platinum Partner
+                </div>
+                <div class="sponsor-grid">
+                    <div class="sponsor-card platinum">
+                        <a href="https://signal65.com/" target="_blank" rel="noopener noreferrer">
+                            <img src="/img/research/signal65-logo_color.svg" alt="Signal65" height="50">
+                        </a>
+                        <span class="sponsor-description">Signal65 exists to be a source of data in a world where technology markets and product landscapes create complex and distorted views of product truth.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Section: Enhanced Stats Overview -->
             <div class="section">
                 <div class="section-title">
                     <i class="fas fa-chart-bar"></i>
@@ -1186,58 +1067,48 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Bottom Sponsors Section -->
+            <div class="sponsor-section bottom-sponsors">
+                <div class="bottom-sponsors-container">
+                    <div class="bottom-sponsor-tier gold">
+                        <div class="sponsor-title gold">
+                            <i class="fas fa-medal"></i>
+                            Gold Partners
+                        </div>
+                        <div class="sponsor-grid">
+                            <div class="sponsor-card gold">
+                                <span class="sponsor-placeholder">Partner with us to set the standard for Enterprise Agentic AI. Contact jv@kamiwaza.ai</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bottom-sponsors-row">
+                        <div class="bottom-sponsor-tier">
+                            <div class="sponsor-title silver">
+                                <i class="fas fa-medal"></i>
+                                Silver Partners
+                            </div>
+                            <div class="sponsor-grid">
+                                <div class="sponsor-card silver">
+                                    <span class="sponsor-placeholder">Coming Soon</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bottom-sponsor-tier">
+                            <div class="sponsor-title bronze">
+                                <i class="fas fa-medal"></i>
+                                Bronze Partners
+                            </div>
+                            <div class="sponsor-grid">
+                                <div class="sponsor-card bronze">
+                                    <span class="sponsor-placeholder">Coming Soon</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Partners Sidebar -->
-            <aside class="partners-sidebar">
-                <div class="partners-header">
-                    <h3><i class="fas fa-handshake"></i> Partners</h3>
-                </div>
-
-                <!-- Platinum -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title platinum">
-                        <i class="fas fa-gem"></i> Platinum
-                    </div>
-                    <div class="sidebar-card platinum">
-                        <a href="https://signal65.com/" target="_blank" rel="noopener noreferrer">
-                            <img src="/img/research/signal65-logo_color.svg" alt="Signal65" height="40">
-                            <span class="sponsor-description">Signal65 exists to be a source of data in a world where technology markets and product landscapes create complex and distorted views of product truth.</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Gold -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title gold">
-                        <i class="fas fa-medal"></i> Gold
-                    </div>
-                    <div class="sidebar-card gold">
-                        <span class="sponsor-placeholder">Partner with us to set the standard for Enterprise Agentic AI.<br><br>Contact jv@kamiwaza.ai</span>
-                    </div>
-                </div>
-
-                <!-- Silver -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title silver">
-                        <i class="fas fa-medal"></i> Silver
-                    </div>
-                    <div class="sidebar-card silver">
-                        <span class="sponsor-placeholder">Coming Soon</span>
-                    </div>
-                </div>
-
-                <!-- Bronze -->
-                <div class="sidebar-section">
-                    <div class="sidebar-title bronze">
-                        <i class="fas fa-medal"></i> Bronze
-                    </div>
-                    <div class="sidebar-card bronze">
-                        <span class="sponsor-placeholder">Coming Soon</span>
-                    </div>
-                </div>
-            </aside>
         </div>
     </div>
 
