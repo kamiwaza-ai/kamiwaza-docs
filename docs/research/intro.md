@@ -38,18 +38,6 @@ The definitive leaderboard for enterprise agentic AI performance. Live rankings 
 </div>
 </a>
 
-<a href="/research/papers" className="resource-card-link">
-<div>
-
-### 📄 Papers
-
-Scientific publications from Kamiwaza AIR team, covering topics in agentic AI, security, and enterprise applications. Real-world value, measurable impact, agentic AI that works.
-
-<span className="resource-arrow">Explore Papers →</span>
-
-</div>
-</a>
-
 <a href="/research/executive-insights" className="resource-card-link">
 <div>
 
@@ -58,6 +46,18 @@ Scientific publications from Kamiwaza AIR team, covering topics in agentic AI, s
 Business-friendly whitepapers distilling our technical research into actionable insights for executives and decision-makers.
 
 <span className="resource-arrow">Read Whitepapers →</span>
+
+</div>
+</a>
+
+<a href="/research/papers" className="resource-card-link">
+<div>
+
+### 📄 Papers
+
+Scientific publications from Kamiwaza AIR team, covering topics in agentic AI, security, and enterprise applications. Real-world value, measurable impact, agentic AI that works.
+
+<span className="resource-arrow">Explore Papers →</span>
 
 </div>
 </a>
