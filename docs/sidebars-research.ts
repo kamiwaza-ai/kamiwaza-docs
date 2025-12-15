@@ -13,6 +13,14 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Executive Insights',
+      collapsed: false,
+      items: [
+        'executive-insights/index',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Research Papers',
       collapsed: false,
       items: [
@@ -20,14 +28,6 @@ const sidebars: SidebarsConfig = {
         'papers/llm-agentic-failures',
         'papers/kami-v0-1',
         'papers/picard',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Executive Insights',
-      collapsed: false,
-      items: [
-        'executive-insights/index',
       ],
     },
     {
