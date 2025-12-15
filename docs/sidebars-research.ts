@@ -11,6 +11,7 @@ const sidebars: SidebarsConfig = {
         'papers/index',
         'papers/picard',
         'papers/kami-v0-1',
+        'papers/llm-agentic-failures',
       ],
     },
     {

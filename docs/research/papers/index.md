@@ -27,3 +27,15 @@ Lessons from 5.5 billion tokens' worth of agentic AI evaluations showing traditi
 
 
 📄 [Read the paper](/research/papers/kami-v0-1) | [Download PDF](/papers/KAMI_v0_1.pdf)
+
+---
+
+### How Do LLMs Fail In Agentic Scenarios?
+
+**JV Roig** | December 2025
+
+A qualitative analysis of 900 execution traces from three representative models (Granite 4 Small, Llama 4 Maverick, DeepSeek V3.1) revealing how LLMs fail when operating as autonomous agents. Rather than aggregate scores, this study surfaces the behavioral strategies that enable success and the recurring failure modes that undermine reliability.
+
+**Key Finding:** Recovery capability—not initial correctness—best predicts overall success. Four failure archetypes emerge across all models: premature action without grounding, over-helpfulness under uncertainty, context pollution vulnerability, and fragile execution under load.
+
+📄 [Read the paper](/research/papers/llm-agentic-failures) | [Download PDF](/papers/How_do_LLMs_fail_in_agentic_scenarios.pdf)
