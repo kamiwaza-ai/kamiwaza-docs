@@ -25,6 +25,7 @@ yarn-error.log*
 docs/package-lock.json
 package-lock.json
 package-lock.json
-.claude
-.claude/settings.local.json
-.claude/settings.json
+
+# PDF generation output - only save numbered versions
+dist/pdf/*vcurrent.pdf
+*.DS_Store

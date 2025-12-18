@@ -47,19 +47,34 @@ npm run serve
 
 **Option A - Create new version (for releases)**
 ```bash
-# From repo root only
+# From repo root only - versions BOTH main docs AND SDK docs
 npm run version-up -- <version-number>
 # Example: npm run version-up -- 0.6.0
 ```
+
+This script will:
+1. Create versioned snapshot of main platform docs
+2. Create versioned snapshot of SDK docs
+3. Update package.json files with new version
+4. Update docusaurus.config.ts version labels
 
 **Option B - Update existing version (for fixes)**
 ```bash
 # From docs/ directory
 export DOCS_VERSION=0.5.1
+
+# Remove main docs version
 rm -rf versioned_docs/version-$DOCS_VERSION versioned_sidebars/version-$DOCS_VERSION-sidebars.json
 node -e "const fs=require('fs');const p='versions.json';const v=JSON.parse(fs.readFileSync(p));fs.writeFileSync(p, JSON.stringify(v.filter(x=>x!=='$DOCS_VERSION'), null, 2)+'\n');"
+
+# Remove SDK docs version
+rm -rf sdk_versioned_docs/version-$DOCS_VERSION sdk_versioned_sidebars/version-$DOCS_VERSION-sidebars.json
+node -e "const fs=require('fs');const p='sdk_versions.json';const v=JSON.parse(fs.readFileSync(p));fs.writeFileSync(p, JSON.stringify(v.filter(x=>x!=='$DOCS_VERSION'), null, 2)+'\n');"
+
+# Clear cache and recreate versions
 npm run clear
 npm run docusaurus -- docs:version $DOCS_VERSION
+npm run docusaurus -- docs:version:sdk $DOCS_VERSION
 npm run build
 ```
 
@@ -80,21 +95,27 @@ set GIT_USER=<username> && npm run deploy
 ### Directory Structure
 - **Root level**: Contains main `package.json`, scripts, and configuration
 - **`docs/`**: Contains the Docusaurus site with its own `package.json` and dependencies
-- **`docs/docs/`**: Main platform documentation content
-- **`docs/sdk/`**: SDK documentation (auto-generated from external kamiwaza-sdk repo)
-- **`docs/versioned_docs/`**: Archived versions of documentation
+- **`docs/docs/`**: Main platform documentation content (current version)
+- **`docs/sdk/`**: SDK documentation (auto-generated from external kamiwaza-sdk repo, current version)
+- **`docs/versioned_docs/`**: Archived versions of main platform documentation
+- **`docs/sdk_versioned_docs/`**: Archived versions of SDK documentation
+- **`docs/versions.json`**: List of main docs versions
+- **`docs/sdk_versions.json`**: List of SDK docs versions
 - **`scripts/`**: TypeScript automation scripts for versioning and SDK sync
 
 ### Key Scripts and Their Purpose
 1. **`sync-sdk-docs.ts`**: Syncs SDK documentation from external kamiwaza-sdk repository
-2. **`version-up.ts`**: Automates the complete versioning process (creates snapshots, updates configs)
+2. **`version-up.ts`**: Automates the complete versioning process for BOTH main docs AND SDK docs (creates snapshots, updates configs)
 3. **`version.ts`**: Helper script for version management
+4. **`generate-pdf.ts`**: Generates PDF documentation with configurable document selection
 
 ### Documentation Organization
 The site has multiple documentation sections configured as separate Docusaurus plugin instances:
-- **Main docs** (`/`): Platform documentation with versioning
-- **SDK docs** (`/sdk`): API reference and service documentation
+- **Main docs** (`/`): Platform documentation with full versioning support
+- **SDK docs** (`/sdk`): API reference and service documentation with full versioning support
 - **Blog** (`/blog`): Blog posts and announcements
+
+Both main docs and SDK docs are fully versioned and synchronized via the `version-up` script.
 
 ### SDK Documentation Sync
 The `sync-sdk-docs` script automatically pulls documentation from the kamiwaza-sdk repository. It looks for the SDK in these locations:

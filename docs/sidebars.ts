@@ -1,11 +1,28 @@
 import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
+// Check if federal docs should be included (excluded by default)
+const includeFederal = process.env.INCLUDE_FEDERAL_DOCS === 'true';
+
+// Federal category definition
+const federalCategory = {
+  type: 'category' as const,
+  label: 'Federal',
+  items: [
+    'federal/cac-overview',
+  ],
+};
+
 const sidebars: SidebarsConfig = {
   mainSidebar: [
     {
       type: 'doc',
       id: 'intro',
       label: 'Introduction',
+    },
+    {
+      type: 'doc',
+      id: 'quickstart',
+      label: 'Quickstart',
     },
     {
       type: 'category',
@@ -15,14 +32,22 @@ const sidebars: SidebarsConfig = {
         'installation/system_requirements',
         'installation/linux_macos_tarball',
         'installation/windows_installation_guide',
+        "installation/redhat_offline_install",
         'installation/gpu_setup_guide',
       ],
     },
     {
-      type: 'doc',
-      id: 'quickstart',
-      label: 'Quickstart',
+      type: 'category',
+      label: 'Security',
+      items: [
+        'security/admin-guide',
+        'security/rebac-overview',
+        'security/rebac-deployment-guide',
+        'security/rebac-validation-checklist',
+      ],
     },
+    // Conditionally include Federal category
+    ...(includeFederal ? [federalCategory] : []),
     {
       type: 'category',
       label: 'Models',
@@ -32,6 +57,7 @@ const sidebars: SidebarsConfig = {
         'models/gui-walkthrough',
         'models/downloading-models',
         'models/deployment',
+        'models/bedrock',
         'models/troubleshooting'
       ],
     },
@@ -46,12 +72,9 @@ const sidebars: SidebarsConfig = {
       label: 'Distributed Data Engine',
     },
     {
-      type: 'category',
-      label: 'Use Cases',
-      items: [
-        'use-cases/index',
-        'use-cases/building-a-rag-pipeline',
-      ],
+      type: 'doc',
+      id: 'observability',
+      label: 'Observability',
     },
     {
       type: 'category',
@@ -67,9 +90,12 @@ const sidebars: SidebarsConfig = {
       ],
     },
     {
-      type: 'doc',
-      id: 'other-topics',
-      label: 'Other Topics',
+      type: 'category',
+      label: 'Use Cases',
+      items: [
+        'use-cases/index',
+        'use-cases/building-a-rag-pipeline',
+      ],
     },
     {
       type: 'doc',
@@ -85,7 +111,7 @@ const sidebars: SidebarsConfig = {
           id: 'team/kamiwaza',
           label: 'About Kamiwaza',
         },
-        'team/jobs', 
+        'team/jobs',
         'team/mts',
       ],
     },

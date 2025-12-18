@@ -2,6 +2,9 @@ import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+// Check if federal docs should be included (excluded by default)
+const includeFederal = process.env.INCLUDE_FEDERAL_DOCS === 'true';
+
 const config: Config = {
   title: 'Kamiwaza Docs',
   tagline: 'Kamiwaza AI Platform Documentation',
@@ -29,6 +32,7 @@ const config: Config = {
 
   onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
+  onBrokenAnchors: 'ignore',
 
   i18n: {
     defaultLocale: 'en',
@@ -82,7 +86,7 @@ const config: Config = {
         lastVersion: 'current',
         versions: {
           current: {
-            label: '0.5.1 (Latest)',
+            label: '0.8.1 (Latest)',
           },
         },
         sidebarCollapsible: true,
@@ -97,9 +101,10 @@ const config: Config = {
         path: 'sdk',
         routeBasePath: 'sdk',
         sidebarPath: require.resolve('./sidebars-sdk.ts'),
+        lastVersion: 'current',
         versions: {
           current: {
-            label: '0.5.1 (Latest)',
+            label: '0.8.1 (Latest)',
           },
         },
       },
@@ -137,7 +142,10 @@ const config: Config = {
         searchContextByPaths: ['docs', 'sdk', 'research'],
         searchBarShortcut: true,
         searchBarShortcutHint: false,
-        ignoreFiles: /(?:^|\/)_/,
+        // Exclude underscore-prefixed files; also exclude federal/ when not in federal mode
+        ignoreFiles: includeFederal
+          ? /(?:^|\/)_/
+          : /(?:^|\/)(_|federal\/)/,
         removeDefaultStopWordFilter: false,
         searchResultLimits: 8,
         searchResultContextMaxLength: 50,
@@ -183,6 +191,12 @@ const config: Config = {
         {
           type: 'docsVersionDropdown',
           position: 'right',
+          docsPluginId: 'default',
+        },
+        {
+          type: 'docsVersionDropdown',
+          position: 'right',
+          docsPluginId: 'sdk',
         },
       ],
     },
