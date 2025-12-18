@@ -150,6 +150,25 @@ Edit `pdf-config.yaml` in the repo root to:
 - Configure PDF styling options
 - Set output format and margins
 
+### Federal Documentation
+
+Federal-specific documentation (air-gapped deployments, GovCloud, IL levels) is **excluded by default** from builds. To include Federal docs:
+
+```bash
+# Development with Federal docs
+npm run start:federal
+
+# Production build with Federal docs
+npm run build:federal
+
+# Or set the environment variable directly
+INCLUDE_FEDERAL_DOCS=true npm run start
+```
+
+**Federal docs location:** `docs/docs/federal/`
+
+The Federal section appears in the sidebar after the Security category when enabled.
+
 ### Deployment
 Deployment is **automatic** via GitHub Actions when merging to `main`.
 
