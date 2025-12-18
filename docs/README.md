@@ -51,15 +51,13 @@ npm run start
    npm run version-up -- 0.6.0
    ```
 
-   **Option B - Update existing version** (for fixes; run from `docs/` directory):
+   **Option B - Update existing version** (for fixes):
    ```bash
-   # From docs/ directory
-   export DOCS_VERSION=<X.Y.Z>
-   rm -rf versioned_docs/version-$DOCS_VERSION versioned_sidebars/version-$DOCS_VERSION-sidebars.json
-   node -e "const fs=require('fs');const p='versions.json';const v=JSON.parse(fs.readFileSync(p));fs.writeFileSync(p, JSON.stringify(v.filter(x=>x!=='$DOCS_VERSION'), null, 2)+'\n');"
-   npm run clear
-   npm run docusaurus -- docs:version $DOCS_VERSION
-   npm run build
+   # From repo root - updates most recent version by default
+   npm run version-update
+
+   # Or specify a version
+   npm run version-update -- 0.8.0
    ```
 
 4. **Verify build after versioning**
@@ -114,7 +112,9 @@ npm run clear         # Clear Docusaurus cache (from docs/)
 ### Versioning
 ```bash
 # From repo root only
-npm run version-up -- <version>   # Create new version (e.g., 0.6.0)
+npm run version-up -- <version>      # Create new version (e.g., 0.6.0)
+npm run version-update               # Update most recent version with current docs
+npm run version-update -- <version>  # Update specific version (e.g., 0.7.0)
 ```
 
 ### PDF Generation

@@ -17,6 +17,7 @@
     "sync-sdk": "node -r ts-node/register scripts/sync-sdk-docs.ts",
     "version-docs": "node -r ts-node/register scripts/version.ts",
     "version-up": "node -r ts-node/register scripts/version-up.ts",
+    "version-update": "bash scripts/update-version.sh",
     "pdf": "node -r ts-node/register scripts/generate-pdf.ts",
     "pdf:offline": "npm run pdf -- --profile offline-install",
     "pdf:full": "npm run pdf -- --profile full-docs",
