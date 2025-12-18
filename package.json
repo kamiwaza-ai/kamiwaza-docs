@@ -1,6 +1,6 @@
 {
   "name": "kamiwaza-docs",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
@@ -17,9 +17,13 @@
     "sync-sdk": "node -r ts-node/register scripts/sync-sdk-docs.ts",
     "version-docs": "node -r ts-node/register scripts/version.ts",
     "version-up": "node -r ts-node/register scripts/version-up.ts",
+    "version-update": "bash scripts/update-version.sh",
     "pdf": "node -r ts-node/register scripts/generate-pdf.ts",
     "pdf:offline": "npm run pdf -- --profile offline-install",
-    "pdf:full": "npm run pdf -- --profile full-docs"
+    "pdf:full": "npm run pdf -- --profile full-docs",
+    "pdf:federal": "INCLUDE_FEDERAL_DOCS=true npm run pdf -- --profile federal-docs",
+    "start:federal": "INCLUDE_FEDERAL_DOCS=true npm run start",
+    "build:federal": "INCLUDE_FEDERAL_DOCS=true npm run build"
   },
   "dependencies": {
     "@docusaurus/core": "^3.9.2",
