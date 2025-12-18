@@ -69,51 +69,45 @@ Kamiwaza uses **RS256 JWT tokens** with asymmetric cryptographic signatures.
 
 ## 2. User Management
 
-### 2.1 Manage Local Users in the Console
+### 2.1 Accessing Keycloak Admin Console
 
-The **Settings → Auth & Users** screen is the fastest way to create local accounts.
-
-1. Sign in to the Kamiwaza console with an administrator account.
-2. Open **Settings** in the left nav and switch to the **Auth & Users** tab.
-3. Click **Add User**.
-4. Fill in the modal:
-   - **Username** – required login name.
-   - **Full Name** / **Email** – optional but recommended for auditing.
-   - **Role** – pick one of the built-in roles (`viewer`, `user`, `admin`). You can add multiple roles before saving.
-   - **Password** – enter the initial password and **disable the “Must change password” toggle** if this account needs to log in programmatically.
-5. Click **Save**. The new user appears in the **Local Users** table.
-6. Use the pencil icon to edit roles later, the key icon to reset passwords, and the trash can to remove the user.
-
-**Why disable “Must change password”?** ReBAC smoke tests and SDK logins need to authenticate immediately. Leaving the toggle enabled causes Keycloak to demand a password reset on first login, resulting in an “Invalid credentials” error for CLIs and service accounts.
-
-### 2.2 Configure External Identity Providers
-
-If your organization uses Google Workspace or another OIDC provider:
-
-1. In **Settings → Auth & Users**, switch to the **Authentication Providers** section.
-2. Choose **Google** or **Generic OIDC**.
-3. Supply the provider’s **client ID**, **secret**, and optional **hosted domain**.
-4. Click **Register**. The new provider shows up under **Configured Providers** immediately—no restart required.
-
-### 2.3 Advanced: Use the Keycloak Admin Console
-
-Some enterprise workflows (e.g., SCIM integrations or custom password policies) still require direct access to Keycloak.
-
-**Default Admin Credentials** (rotate immediately in production):
-- **URL:** http://localhost:8080 (or your Keycloak endpoint)
+**Default Credentials** (change immediately in production):
+- **URL:** http://localhost:8080 (or your configured Keycloak URL)
 - **Username:** `admin`
-- **Password:** Value of `KEYCLOAK_ADMIN_PASSWORD`
+- **Password:** Set via `KEYCLOAK_ADMIN_PASSWORD` environment variable
 
-To create users in Keycloak:
+**Production Setup:**
+```bash
+# Set secure admin password in env.sh
+export KEYCLOAK_ADMIN_PASSWORD="<strong-random-password>"
+```
 
-1. Navigate to **Users** → **Add User**.
-2. Supply username/email and click **Save**.
-3. Open the **Credentials** tab, set a password, and toggle **Temporary** to `OFF`.
-4. Assign roles on the **Role Mappings** tab the same way you would in the console UI.
+### 2.2 Creating User Accounts
 
-Use this console when you need to bulk-manage accounts, configure SAML, or integrate with corporate IdPs.
+**Via Keycloak Admin Console:**
 
-### 2.4 User Roles and Permissions
+1. Navigate to **Users** in left sidebar
+2. Click **Add User**
+3. Fill in required fields:
+   - **Username** (required)
+   - **Email** (required for password reset)
+   - **First Name / Last Name** (optional)
+4. Toggle **Email Verified** to `ON`
+5. Click **Save**
+6. Go to **Credentials** tab
+7. Set temporary or permanent password
+8. Assign roles (see Role Management below)
+
+**Pre-configured Test Users:**
+
+| Username | Password | Roles | Use Case |
+|----------|----------|-------|----------|
+| `testuser` | `testpass` | viewer | Read-only testing |
+| `testadmin` | `testpass` | admin | Administrative testing |
+
+**⚠️ Important:** Remove or secure test users before production deployment.
+
+### 2.3 User Roles and Permissions
 
 Kamiwaza defines three primary roles:
 
@@ -131,7 +125,7 @@ Kamiwaza defines three primary roles:
 4. Click **Add selected**
 5. Changes take effect immediately (no logout required)
 
-### 2.5 Password Policies
+### 2.4 Password Policies
 
 **Configuring Password Requirements:**
 
@@ -154,53 +148,6 @@ Kamiwaza defines three primary roles:
 4. New password must meet policy requirements
 
 **⚠️ Important:** Configure SMTP settings in Keycloak for email-based password reset to function.
-
-### 2.6 Create a Local User in Lite Mode
-
-Use this flow when `KAMIWAZA_LITE=true` and `KAMIWAZA_USE_AUTH=false`.
-
-1) **Set the admin password (required)**
-```bash
-export KAMIWAZA_LITE=true
-export KAMIWAZA_USE_AUTH=false
-# Provide a password or allow generation (written under $KAMIWAZA_ROOT/runtime)
-export KAMIWAZA_ADMIN_PASSWORD="kamiwaza"  # any >=12 chars for non-community builds
-# export KAMIWAZA_ALLOW_GENERATED_ADMIN_PASSWORD=true  # optional fallback
-```
-
-2) **Start services**
-```bash
-bash launch.sh
-```
-
-3) **Mint an admin bearer token** (direct to core on port 7777)
-```bash
-ADMIN_TOKEN=$(curl -sk -X POST http://localhost:7777/api/auth/token \
-  -H 'content-type: application/x-www-form-urlencoded' \
-  -d 'grant_type=password' \
-  -d 'client_id=kamiwaza-platform' \
-  -d "username=admin" \
-  -d "password=${KAMIWAZA_ADMIN_PASSWORD}" | jq -r '.access_token')
-```
-If you start `kamiwaza/main.py` with `--no-url-prefix`, drop the `/api` prefix.
-
-4) **Create the user**
-```bash
-curl -sk -X POST http://localhost:7777/api/auth/users/local \
-  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-  -H "content-type: application/json" \
-  -d '{"username":"demo","password":"demo12345678","email":"demo@example.com","roles":["user"]}' | jq
-```
-
-5) **Verify**
-```bash
-curl -sk http://localhost:7777/api/auth/users -H "Authorization: Bearer ${ADMIN_TOKEN}" | jq
-```
-
-Troubleshooting:
-- `401/403` → missing or expired admin token.
-- `Password changes not supported` → account is external; use local users only in Lite.
-- `KAMIWAZA_ADMIN_PASSWORD` missing → set it or enable `KAMIWAZA_ALLOW_GENERATED_ADMIN_PASSWORD=true` and read `runtime/generated-admin-password.txt`.
 
 ---
 

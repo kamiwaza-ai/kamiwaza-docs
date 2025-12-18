@@ -1,3 +1,8 @@
+---
+title: Relationship-Based Access Control (ReBAC)
+sidebar_label: ReBAC Overview
+---
+
 # Relationship-Based Access Control Overview
 
 Kamiwaza uses relationship-based access control (ReBAC) to enforce tenant-scoped and role-aware policies across the platform. This page summarizes the capabilities delivered with the current release, how to integrate an identity provider, and the operational practices required to keep the system healthy.
