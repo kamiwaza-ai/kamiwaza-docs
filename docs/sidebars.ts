@@ -1,5 +1,17 @@
 import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
+// Check if federal docs should be included (excluded by default)
+const includeFederal = process.env.INCLUDE_FEDERAL_DOCS === 'true';
+
+// Federal category definition
+const federalCategory = {
+  type: 'category' as const,
+  label: 'Federal',
+  items: [
+    'federal/cac-overview',
+  ],
+};
+
 const sidebars: SidebarsConfig = {
   mainSidebar: [
     {
@@ -34,6 +46,8 @@ const sidebars: SidebarsConfig = {
         'security/rebac-validation-checklist',
       ],
     },
+    // Conditionally include Federal category
+    ...(includeFederal ? [federalCategory] : []),
     {
       type: 'category',
       label: 'Models',
@@ -97,7 +111,7 @@ const sidebars: SidebarsConfig = {
           id: 'team/kamiwaza',
           label: 'About Kamiwaza',
         },
-        'team/jobs', 
+        'team/jobs',
         'team/mts',
       ],
     },

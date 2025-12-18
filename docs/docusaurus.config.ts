@@ -2,6 +2,9 @@ import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+// Check if federal docs should be included (excluded by default)
+const includeFederal = process.env.INCLUDE_FEDERAL_DOCS === 'true';
+
 const config: Config = {
   title: 'Kamiwaza Docs',
   tagline: 'Kamiwaza AI Platform Documentation',
@@ -123,7 +126,10 @@ const config: Config = {
         searchContextByPaths: ['docs', 'sdk'],
         searchBarShortcut: true,
         searchBarShortcutHint: false,
-        ignoreFiles: /(?:^|\/)_/,
+        // Exclude underscore-prefixed files; also exclude federal/ when not in federal mode
+        ignoreFiles: includeFederal
+          ? /(?:^|\/)_/
+          : /(?:^|\/)(_|federal\/)/,
         removeDefaultStopWordFilter: false,
         searchResultLimits: 8,
         searchResultContextMaxLength: 50,

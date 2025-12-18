@@ -6,7 +6,7 @@ Kamiwaza provides a comprehensive observability stack designed to give administr
 
 Kamiwaza's observability architecture is built on open standards:
 - **Structured Logging**: All services emit JSON-structured logs.
-- **OpenTelemetry (OTEL)**: Telemetry data is collected and routed via a standard OTEL Collector.
+- **OpenTelemetry (OTEL)**: Telemetry data is collected and routed via a standard OTEL Collector (In preview).
 - **Trace Correlation**: Requests are traced across distributed services (API → Model Serving → Engine).
 
 By default, Kamiwaza stores logs locally and can optionally aggregate them into a local Grafana/Loki stack or forward them to external systems like Splunk, Datadog, or Dynatrace.
@@ -47,6 +47,10 @@ To view logs:
 ## OpenTelemetry Integration
 
 Kamiwaza uses an OpenTelemetry Collector to route telemetry data. This allows you to integrate with any OTLP-compatible backend without modifying the application code.
+
+:::note Preview
+OTEL support is in preview. Trace context propagation across Ray Serve calls and inference engine instrumentation are still in development. Configuration and behavior may change in future releases.
+:::
 
 ### Enabling OpenTelemetry
 OTEL is disabled by default. You can enable it via environment variables in your `env.sh` or runtime configuration:

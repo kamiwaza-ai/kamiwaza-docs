@@ -41,6 +41,12 @@ Kamiwaza supports two operational modes:
 export KAMIWAZA_USE_AUTH=true
 bash startup/kamiwazad.sh restart
 ```
+Expected output:
+```text
+Stopping kamiwazad ...
+Starting kamiwazad ...
+kamiwazad status: active (running)
+```
 
 **⚠️ Warning:** Bypass mode (`KAMIWAZA_USE_AUTH=false`) disables all authentication. Use only in secure development environments.
 
@@ -155,12 +161,14 @@ Access control is defined in **YAML policy files** that map endpoints to require
 - Host installs: `$KAMIWAZA_ROOT/config/auth_gateway_policy.yaml`
 - Docker installs: Mounted at `/app/config/auth_gateway_policy.yaml`
 
-**Policy File Structure:**
+ForwardAuth is stateless—set `AUTH_GATEWAY_POLICY_FILE=$KAMIWAZA_ROOT/config/auth_gateway_policy.yaml` (or the mounted path) so every restart reloads the same policy file.
+
+**Policy File Structure (default `config/auth_gateway_policy.yaml`):**
 
 ```yaml
 version: 1
-env: production
-default_deny: true  # Block all endpoints unless explicitly allowed
+env: dev
+default_deny: true
 
 roles:
   - id: admin
@@ -169,39 +177,93 @@ roles:
     description: "Standard user access"
   - id: viewer
     description: "Read-only access"
+  - id: guest
+    description: "Minimal guest access"
 
 endpoints:
-  # Model Management
+  # Health checks
+  - path: "/health"
+    methods: ["GET"]
+    roles: ["*"]
+  - path: "/api/health"
+    methods: ["GET"]
+    roles: ["*"]
+
+  # Auth endpoints (login/logout)
+  - path: "/auth/login"
+    methods: ["POST"]
+    roles: ["*"]
+  - path: "/auth/logout"
+    methods: ["POST"]
+    roles: ["*"]
+
+  # Who am I
+  - path: "/api/whoami"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer", "guest"]
+
+  # Models
   - path: "/api/models*"
     methods: ["GET"]
-    roles: ["viewer", "user", "admin"]
-
+    roles: ["admin", "user", "viewer"]
   - path: "/api/models*"
     methods: ["POST", "PUT", "DELETE"]
-    roles: ["user", "admin"]
+    roles: ["admin", "user"]
 
-  # Cluster Management (Admin-only)
+  # Serving deployments
+  - path: "/api/serving/deployments*"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer"]
+  - path: "/api/serving/deployments*"
+    methods: ["POST", "PUT", "DELETE"]
+    roles: ["admin", "user"]
+
+  # Admin-only APIs
   - path: "/api/cluster*"
     methods: ["*"]
     roles: ["admin"]
+  - path: "/api/activity*"
+    methods: ["*"]
+    roles: ["admin"]
 
-  # Vector Database (User and Admin)
-  - path: "/api/vectordb*"
+  # Garden apps + tools
+  - path: "/api/apps*"
     methods: ["GET"]
-    roles: ["viewer", "user", "admin"]
-
-  - path: "/api/vectordb*"
+    roles: ["admin", "user", "viewer"]
+  - path: "/api/apps*"
     methods: ["POST", "PUT", "DELETE"]
-    roles: ["user", "admin"]
-
-  # Public endpoints (no auth required)
-  - path: "/health"
+    roles: ["admin", "user"]
+  - path: "/api/tools*"
     methods: ["GET"]
-    roles: ["*"]  # Public
+    roles: ["admin", "user", "viewer"]
+  - path: "/api/tools*"
+    methods: ["POST", "PUT", "DELETE"]
+    roles: ["admin", "user"]
 
-  - path: "/docs"
+  # Data Discovery Engine
+  - path: "/api/dde/status"
     methods: ["GET"]
-    roles: ["*"]  # Public API documentation
+    roles: ["viewer", "admin"]
+  - path: "/api/dde/search"
+    methods: ["POST"]
+    roles: ["viewer", "admin"]
+  - path: "/api/dde/reindex"
+    methods: ["POST"]
+    roles: ["admin"]
+
+  # Static assets
+  - path: "/static/*"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer", "guest"]
+  - path: "/assets/*"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer", "guest"]
+  - path: "/favicon.ico"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer", "guest"]
+  - path: "/manifest.json"
+    methods: ["GET"]
+    roles: ["admin", "user", "viewer", "guest"]
 ```
 
 ### 3.2 Path Matching Rules
@@ -215,6 +277,36 @@ endpoints:
 - `/api/models*` matches `/api/models`, `/api/models/123`, `/api/models/search`
 - `/api/*/health` matches `/api/models/health`, `/api/cluster/health`
 - `/api/**` matches all paths under `/api/`
+
+### 3.3 Relationship-Based Access Control (ReBAC)
+
+Roles gate entire endpoints, while ReBAC expresses *who* can act on a specific resource (model, dataset, container, etc.). When ReBAC is enabled:
+
+1. **Turn on the feature flags** – set `AUTH_REBAC_ENABLED=true`, `AUTH_REBAC_DEFAULT_TENANT_ID`, and PAT tagging variables as described in the [ReBAC Deployment Guide](./rebac-deployment-guide.md#enable-rebac).
+2. **Bootstrap tenant tuples** – run<br/>
+   ```bash
+   python scripts/rebac_tenant.py bootstrap configs/rebac/tenants/__default__.yaml
+   ```<br/>
+   This seeds owner/editor/clearance relationships for every default resource.
+3. **Share resources by relationship** – edit the tenant manifest and reapply it. Example snippet (`configs/rebac/tenants/__default__.yaml`):<br/>
+   ```yaml
+   relationships:
+     - subject: user:testuser
+       relation: viewer
+       object: model:catalog-sdk
+   ```<br/>
+   Save the file, preview the change with `python scripts/rebac_tenant.py plan configs/rebac/tenants/__default__.yaml`, then apply it with the same `bootstrap` command. The CLI ensures tuples are deduplicated and can target any tenant with `--tenant <id>`.
+4. **Validate the experience** – follow the [ReBAC Validation Checklist](./rebac-validation-checklist.md) to exercise both allow and deny flows from the SDK/UI. The checklist calls out the expected log messages and API responses so you can sign off without digging into tuples manually.
+
+**At a glance:** every tuple stored in the relationship service takes the form `subject --(relation)--> object`. Common relations:
+
+| Relation | Description | Example |
+|----------|-------------|---------|
+| `owner` | Full control over the resource | `user:testadmin owner model:demo-llm` |
+| `editor` | Update/delete rights without being the original owner | `role:user editor dataset:sales-ingest` |
+| `viewer` | Read-only access | `user:testuser viewer container:govdocs` |
+
+Once a tuple exists, the UI/API automatically enforces it—no redeploy or restart required.
 
 ### 3.3 Hot Reload (No Restart Required)
 
@@ -546,31 +638,14 @@ curl http://localhost:7777/health
 ```bash
 curl http://localhost:8080/health/ready
 ```
+**Response:**
+```json
+{"status":"UP"}
+```
 
 ### 6.2 Log Monitoring
 
-**Auth Service Logs:**
-
-```bash
-# Docker deployments
-docker logs kamiwaza-api -f | grep AUTH
-
-# Host deployments
-tail -f $KAMIWAZA_LOG_DIR/kamiwaza.log | grep AUTH
-```
-
-**Important Log Events:**
-- `AUTH_FAILED` - Authentication failure with reason
-- `ACCESS_DENIED` - Authorization denial with path/method/roles
-- `JWKS_REFRESHED` - JWKS key cache refresh
-- `POLICY_RELOADED` - RBAC policy file reload
-- `TOKEN_VALIDATED` - Successful token validation
-
-**Keycloak Logs:**
-
-```bash
-docker logs kamiwaza-keycloak -f
-```
+Refer to the [Observability Guide](../observability.md) for end-to-end logging, OTEL, and SIEM integration. It covers how to tail auth logs, forward them to your enterprise collectors, and verify that allow/deny events appear in the standard dashboards.
 
 ### 6.3 Common Issues and Solutions
 
@@ -589,6 +664,10 @@ docker logs kamiwaza-keycloak -f
    ```bash
    docker ps | grep keycloak
    curl http://localhost:8080/health/ready
+   ```
+   Expected `docker ps` output:
+   ```text
+   default_kamiwaza-keycloak-web   Up 2 minutes (healthy)   0.0.0.0:8080->8080/tcp
    ```
 
 3. **Check JWT issuer matches:**
@@ -716,6 +795,19 @@ curl -v -H "Authorization: Bearer $TOKEN" \
 # Fetch public keys for signature validation
 curl http://localhost:8080/realms/kamiwaza/protocol/openid-connect/certs | jq .
 ```
+Expected response:
+```json
+{
+  "keys": [
+    {
+      "kid": "example-kid",
+      "kty": "RSA",
+      "alg": "RS256",
+      "use": "sig"
+    }
+  ]
+}
+```
 
 **Check RBAC Policy:**
 
@@ -726,6 +818,28 @@ cat $KAMIWAZA_ROOT/config/auth_gateway_policy.yaml
 # Watch for policy reload events
 tail -f $KAMIWAZA_LOG_DIR/kamiwaza.log | grep POLICY_RELOADED
 ```
+
+---
+
+## Verify Keycloak login flows
+
+Use these checks after configuring SAML/OIDC to confirm the gateway and Keycloak agree on redirect URIs and credentials.
+
+1. **OIDC loop**
+   ```bash
+   curl -I https://<gateway-host>/api/auth/login
+   ```
+   Expected result: HTTP `302` redirecting to `https://<keycloak-host>/realms/<realm>/protocol/openid-connect/auth`. After signing in, call:
+   ```bash
+   curl -H "Authorization: Bearer $TOKEN" https://<gateway-host>/api/whoami
+   ```
+   Expected response: HTTP `200` JSON containing `user_id`, `tenant_id`, and `roles`.
+2. **SAML provider**
+   - In Keycloak, open **Identity Providers → SAML → Actions → Test**.
+   - Complete the upstream login.
+   - Expected result: Keycloak displays *Successfully authenticated* and shows the mapped attributes (email, first name, last name). If the test fails, confirm the SAML IdP metadata matches the Keycloak binding URLs listed earlier in this guide.
+
+The same curl commands can be scripted in CI to ensure future changes do not break either flow.
 
 ---
 
