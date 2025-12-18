@@ -1,6 +1,6 @@
 # Distributed Data Engine
 
-Kamiwaza’s Distributed Data Engine (DDE) aligns unstructured and tabular content under a unified ingestion framework. The 0.7 release introduced connector-driven pipelines that push cleaned documents into the platform’s vector stores while keeping credentials and scheduling consistent with the rest of the control plane. Subsequent point releases continue to build on the same structure, so the guidance below applies to the current GA build unless otherwise noted.
+Kamiwaza’s Distributed Data Engine (DDE) aligns unstructured and tabular content under a unified ingestion framework. Connector-driven pipelines push cleaned documents into the platform’s vector stores while keeping credentials and scheduling consistent with the rest of the control plane. Subsequent point releases continue to build on the same structure, so the guidance below applies to the current GA build unless otherwise noted.
 
 ## Platform assumptions
 
@@ -33,8 +33,3 @@ Kamiwaza’s Distributed Data Engine (DDE) aligns unstructured and tabular conte
 - Use the ReBAC validation checklist to ensure only authorized operators can create or run connectors.
 - Combine DDE jobs with Kamiwaza’s retrieval pipelines to expose fresh content in RAG applications.
 - For connector-specific tuning (chunking, file size limits), refer your operators to the internal runbooks provided with your support agreement.
-
-## Next steps
-
-- After configuring a connector, run a test sync and review the validation checklist to confirm data lands in the expected index.
-- Pair DDE ingestion with Bedrock deployments to light up new retrieval-augmented experiences.
