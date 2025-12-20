@@ -27,6 +27,17 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
 <div className="doc-card-grid">
   <div className="doc-card">
     <div className="card__header">
+      <h3>⚡ Quickstart</h3>
+    </div>
+    <div className="card__body">
+      <p>Get up and running with a real application from the App Garden.</p>
+    </div>
+    <div className="card__footer">
+      <a href="quickstart" className="button button--primary button--block">Launch an App →</a>
+    </div>
+  </div>
+  <div className="doc-card">
+    <div className="card__header">
       <h3>🚀 Installation Guide</h3>
     </div>
     <div className="card__body">
@@ -38,13 +49,13 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
   </div>
   <div className="doc-card">
     <div className="card__header">
-      <h3>⚡ Quickstart</h3>
+      <h3>🔒 Security</h3>
     </div>
     <div className="card__body">
-      <p>Get up and running with a real application from the App Garden.</p>
+      <p>Configure authentication, authorization, and access control for your platform.</p>
     </div>
     <div className="card__footer">
-      <a href="quickstart" className="button button--primary button--block">Launch an App →</a>
+      <a href="security/admin-guide" className="button button--primary button--block">Security Guide →</a>
     </div>
   </div>
   <div className="doc-card">
@@ -82,13 +93,13 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
   </div>
   <div className="doc-card">
     <div className="card__header">
-      <h3>📦 SDK</h3>
+      <h3>📊 Observability</h3>
     </div>
     <div className="card__body">
-      <p>Interact with the Kamiwaza platform programmatically using our Python SDK.</p>
+      <p>Monitor platform health, track metrics, and debug issues with built-in observability.</p>
     </div>
     <div className="card__footer">
-      <a href="sdk/intro" className="button button--primary button--block">Explore the SDK →</a>
+      <a href="observability" className="button button--primary button--block">View Observability →</a>
     </div>
   </div>
   <div className="doc-card">
@@ -115,13 +126,13 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
   </div>
   <div className="doc-card">
     <div className="card__header">
-      <h3>📚 Other Topics</h3>
+      <h3>📦 SDK</h3>
     </div>
     <div className="card__body">
-      <p>Dive into cluster management, activity logging, administration, and more.</p>
+      <p>Interact with the Kamiwaza platform programmatically using our Python SDK.</p>
     </div>
     <div className="card__footer">
-      <a href="other-topics" className="button button--primary button--block">See Other Topics →</a>
+      <a href="sdk/intro" className="button button--primary button--block">Explore the SDK →</a>
     </div>
   </div>
 </div>
