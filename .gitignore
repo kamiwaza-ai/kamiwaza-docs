@@ -25,3 +25,7 @@ yarn-error.log*
 docs/package-lock.json
 package-lock.json
 package-lock.json
+
+# PDF generation output - only save numbered versions
+dist/pdf/*vcurrent.pdf
+*.DS_Store
