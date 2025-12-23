@@ -610,6 +610,150 @@ rate_limits:
     per_ip: true
 ```
 
+### 5.5 Ephemeral Sessions for App Garden
+
+Ephemeral sessions automatically clean up App Garden deployments when users log out or their session expires. This prevents orphaned containers and ensures sensitive workloads don't persist beyond the user's session.
+
+#### Understanding Ephemeral Deployments
+
+When a user deploys an application from App Garden with "Ephemeral session" enabled:
+
+1. The deployment is tied to the user's authentication session
+2. When the user logs out or their session expires, the deployment is automatically purged
+3. All containers, data, and resources associated with that deployment are cleaned up
+4. On Kamiwaza core restart, any orphaned ephemeral deployments are also purged
+
+This is ideal for:
+- Demo environments where users should not leave resources running
+- Sensitive workloads that must not persist beyond a session
+- Multi-tenant environments where cleanup is critical
+- Development/testing scenarios
+
+#### Configuration Options
+
+**Default Behavior (Per-Deployment Choice):**
+
+By default, users can choose whether each deployment is ephemeral via a checkbox in the App Garden deploy modal:
+
+```bash
+# Default behavior - users choose per deployment
+# No environment variable needed
+```
+
+**Force All Deployments to be Ephemeral:**
+
+For environments where all App Garden deployments must be ephemeral (e.g., demo servers, shared labs), set:
+
+```bash
+# In env.sh or environment
+export KAMIWAZA_EPHEMERAL_EXTENSIONS=true
+```
+
+When enabled:
+- All App Garden deployments are automatically ephemeral
+- The "Ephemeral session" checkbox is checked and disabled in the UI
+- Users cannot create non-ephemeral deployments
+- The API ignores any `is_ephemeral_session=false` requests
+
+**Configure Default Value (Without Forcing):**
+
+To change the default checkbox state without forcing ephemeral mode:
+
+```bash
+# In env.sh - sets default to ephemeral, but users can uncheck
+export KAMIWAZA_APP_SESSION_EPHEMERAL_DEFAULT=true
+```
+
+#### Environment Variable Reference
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KAMIWAZA_EPHEMERAL_EXTENSIONS` | Force all App Garden deployments to be ephemeral | `false` |
+| `KAMIWAZA_APP_SESSION_EPHEMERAL_DEFAULT` | Default value for ephemeral checkbox when not forced | `false` |
+
+#### Verifying Ephemeral Session Compliance
+
+**Check Current Configuration:**
+
+```bash
+# Verify environment variable is set
+echo $KAMIWAZA_EPHEMERAL_EXTENSIONS
+
+# Check via API
+curl -s https://localhost/api/v1/apps/config/ephemeral_forced | jq
+```
+
+Expected response when forced:
+```json
+{"ephemeral_forced": true}
+```
+
+**Verify Deployment is Ephemeral:**
+
+```bash
+# List deployments and check is_ephemeral_session field
+curl -s https://localhost/api/v1/apps/deployments | jq '.[].is_ephemeral_session'
+```
+
+All values should be `true` when `KAMIWAZA_EPHEMERAL_EXTENSIONS=true`.
+
+**Verify Cleanup on Logout:**
+
+1. Deploy an ephemeral app from App Garden
+2. Note the container name: `docker ps | grep kamiwaza-app`
+3. Log out of Kamiwaza
+4. Verify container was removed: `docker ps | grep kamiwaza-app`
+
+**Verify Cleanup on Core Restart:**
+
+1. Deploy an ephemeral app
+2. Restart Kamiwaza core: `bash startup/kamiwazad.sh restart-core`
+3. Check logs for cleanup: `grep "ephemeral" $KAMIWAZA_LOG_DIR/kamiwaza.log`
+4. Verify deployment was purged in UI or via API
+
+**Audit Ephemeral Deployments:**
+
+```bash
+# Check for any non-ephemeral deployments (compliance check)
+curl -s https://localhost/api/v1/apps/deployments | \
+  jq '.[] | select(.is_ephemeral_session == false) | {id, name, is_ephemeral_session}'
+```
+
+If `KAMIWAZA_EPHEMERAL_EXTENSIONS=true` is set, this should return empty results.
+
+#### Troubleshooting Ephemeral Sessions
+
+**Issue: Deployments not being cleaned up on logout**
+
+1. Check that the deployment was created as ephemeral:
+   ```bash
+   curl -s https://localhost/api/v1/apps/deployments/{id} | jq '.is_ephemeral_session'
+   ```
+
+2. Verify the session cleanup service is running:
+   ```bash
+   grep "ephemeral cleanup" $KAMIWAZA_LOG_DIR/kamiwaza.log
+   ```
+
+3. Check for errors during cleanup:
+   ```bash
+   grep -i "cleanup failed\|purge failed" $KAMIWAZA_LOG_DIR/kamiwaza.log
+   ```
+
+**Issue: Checkbox not disabled when forcing ephemeral mode**
+
+1. Verify environment variable is set and exported:
+   ```bash
+   env | grep KAMIWAZA_EPHEMERAL
+   ```
+
+2. Restart Kamiwaza core to pick up the change:
+   ```bash
+   bash startup/kamiwazad.sh restart-core
+   ```
+
+3. Hard refresh the browser (Ctrl+Shift+R or Cmd+Shift+R)
+
 ---
 
 ## 6. Monitoring & Troubleshooting
