@@ -50,6 +50,20 @@ Tips:
 - **Can’t reach the app**: Use the Open button from the UI. Avoid direct container ports; App Garden routes traffic for you.
 - **AI features not working**: Verify at least one model is deployed and healthy. Some apps expose a preference for model type—set it before deployment.
 
+## Ephemeral Sessions
+
+When deploying an app, you can enable **Ephemeral session** mode. This automatically cleans up the deployment when you log out or your session expires.
+
+- **Check the box** during deployment to make the app ephemeral
+- **Ephemeral apps** are automatically purged on logout or session timeout
+- **Persistent apps** (unchecked) remain running until manually stopped
+
+This is useful for demo environments or when you want automatic cleanup of test deployments.
+
+:::tip Administrator Configuration
+Administrators can force all deployments to be ephemeral by setting `KAMIWAZA_EPHEMERAL_EXTENSIONS=true`. See the [Administrator Guide](/docs/security/admin-guide#55-ephemeral-sessions-for-app-garden) for details.
+:::
+
 ## Advanced Options
 
 App customization is coming soon!
