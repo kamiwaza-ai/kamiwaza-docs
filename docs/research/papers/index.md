@@ -5,6 +5,18 @@ description: Peer-reviewed publications and technical reports from Kamiwaza AIR
 
 # Featured Publications
 
+### RIKER: Scalable and Reliable Evaluation of AI Knowledge Retrieval Systems
+
+**JV Roig** | December 2025
+
+A ground-truth-first synthetic evaluation methodology for LLMs, RAG, and knowledge graphs. RIKER inverts the traditional approach—generating documents from known ground truth rather than extracting ground truth from documents—enabling deterministic scoring without human annotation and contamination resistance through regenerable corpora.
+
+**Key Finding:** Context length claims frequently exceed usable capacity (significant degradation beyond 32K tokens), cross-document aggregation is fundamentally harder than single-document extraction, and grounding ability and hallucination resistance are distinct capabilities.
+
+📄 [Read the paper](/research/papers/riker) | [Download PDF](/papers/riker2025.pdf)
+
+---
+
 ### How Do LLMs Fail In Agentic Scenarios?
 
 **JV Roig** | December 2025
