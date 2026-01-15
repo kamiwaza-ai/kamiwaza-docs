@@ -118,37 +118,54 @@ npm run version-update -- <version>  # Update specific version (e.g., 0.7.0)
 ```
 
 ### PDF Generation
-Generate PDF documentation for offline installations:
 
+Generate professional PDF documentation packages with enhanced features for offline installations and customer deliverables.
+
+**Prerequisites:**
 ```bash
-# Generate offline installation PDF (essential docs only)
+# Build documentation first
+npm run build
+```
+
+**Quick Commands:**
+```bash
+# Generate offline installation guide PDF (essential docs)
 npm run pdf:offline
 
 # Generate complete documentation PDF
 npm run pdf:full
 
-# Generate specific profile with version
-npm run pdf -- --profile full-docs --version 0.5.1
+# Generate federal documentation PDF (if INCLUDE_FEDERAL_DOCS is set)
+npm run pdf:federal
+
+# Generate specific profile and version
+npm run pdf -- --profile offline-install --version 0.9.2
 
 # Output location: dist/pdf/
 ```
 
-**PDF Profiles:**
-- **offline-install**: Installation guides, quickstart, admin guide, troubleshooting, release notes
-- **full-docs**: Complete platform documentation
+**Enhanced Features:**
+- **Hierarchical Table of Contents**: Includes H1 and H2 sections with accurate page numbers and dotted leaders (e.g., "1. Introduction .......... 5")
+- **Two-Pass Generation**: Automatically extracts accurate page numbers from first pass, then regenerates TOC with page numbers
+- **Markdown Processing**: Directly processes markdown source files with full control over formatting and styling
+- **Professional Headers**: Kamiwaza logo and date on every page with green accent border
+- **Professional Footers**: "kamiwaza.ai" branding with continuous page numbers ("Page X of Y")
+- **Auto-Numbered Sections**: CSS-based automatic section numbering (1., 1.1, 1.1.1, etc.)
+- **Docusaurus Syntax Support**: Handles admonitions (:::tip, :::note), frontmatter removal, and mermaid diagram placeholders
+- **Print-Optimized Typography**: 11pt body text, 9pt code, 1.15 line height, Arial font throughout
+- **Smart Page Breaks**: Keeps headings with following content, avoids orphaned text
 
-**Requirements:**
-After adding PDF dependencies, run:
-```bash
-npm install
-```
+**Available PDF Profiles:**
+- **offline-install**: Essential docs for air-gapped installations (Admin Guide, System Requirements, Installation Process, GPU Setup, Quickstart)
+- **full-docs**: Complete platform documentation with automatic document discovery
 
 **Customizing PDF Output:**
 Edit `pdf-config.yaml` in the repo root to:
-- Create custom profiles
-- Select which documents to include
-- Configure PDF styling options
-- Set output format and margins
+- Create custom document profiles
+- Select specific documents to include or exclude
+- Configure cover page (title, subtitle, logo, version)
+- Control TOC, headers, footers, and page numbering
+- Set PDF format and margins
 
 ### Federal Documentation
 

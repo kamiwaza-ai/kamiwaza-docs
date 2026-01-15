@@ -14,7 +14,7 @@ profiles:
       includeVersion: true
       includeLogo: true
     documents:
-      - id: "admin-guide"
+      - id: "security/admin-guide"
         title: "Administrator Guide"
       - id: "installation/system_requirements"
         title: "System Requirements"
@@ -24,8 +24,6 @@ profiles:
         title: "GPU Setup Guide"
       - id: "quickstart"
         title: "Quickstart Guide"
-      - id: "release-notes"
-        title: "Release Notes"
     options:
       includeTOC: true
       includePageNumbers: true

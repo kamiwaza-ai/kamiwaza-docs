@@ -1,878 +1,735 @@
 #!/usr/bin/env node
-
 /**
- * PDF Documentation Generator
- *
- * Generates PDF documentation from Docusaurus site based on profiles
- * defined in pdf-config.yaml
- *
- * Usage:
- *   npm run pdf -- --profile offline-install --version 0.5.1
- *   npm run pdf -- --profile full-docs
+ * Kamiwaza Documentation PDF Generator
+ * Reads markdown files and generates professionally formatted PDFs
+ * Two-pass generation with accurate page number extraction
  */
 
-import * as fs from 'fs-extra';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import puppeteer, { Browser, Page } from 'puppeteer';
-import { PDFDocument, rgb } from 'pdf-lib';
-import { spawn, ChildProcess } from 'child_process';
+import puppeteer from 'puppeteer';
+import matter from 'gray-matter';
+import MarkdownIt from 'markdown-it';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js';
 
-interface PDFConfig {
-  profiles: Record<string, ProfileConfig>;
-  settings: GlobalSettings;
-}
-
-interface ProfileConfig {
-  name: string;
-  description: string;
-  filename: string;
-  cover: CoverConfig;
-  documents?: DocumentConfig[];
-  includeAll?: boolean;
-  excludeDocs?: string[];
-  options: PDFOptions;
+// Configuration interfaces
+interface DocumentConfig {
+  id: string;
+  title: string;
+  path?: string;
 }
 
 interface CoverConfig {
   title: string;
   subtitle: string;
   includeVersion: boolean;
-  includeLogo: boolean;
 }
 
-interface DocumentConfig {
-  id: string;
-  title: string;
-}
-
-interface PDFOptions {
-  includeTOC: boolean;
-  includePageNumbers: boolean;
-  includeHeaders: boolean;
-  includeFooters: boolean;
-  pageNumberStart: number;
-}
-
-interface GlobalSettings {
-  defaultVersion: string;
-  outputDir: string;
-  pdf: PDFSettings;
-  server: ServerSettings;
-  css: CSSSettings;
-}
-
-interface PDFSettings {
-  format: string;
-  margin: {
-    top: string;
-    right: string;
-    bottom: string;
-    left: string;
+interface ProfileConfig {
+  name: string;
+  filename: string;
+  cover: CoverConfig;
+  documents: DocumentConfig[];
+  options: {
+    includeTOC: boolean;
+    includePageNumbers: boolean;
   };
-  printBackground: boolean;
-  preferCSSPageSize: boolean;
 }
 
-interface ServerSettings {
-  port: number;
-  baseUrl: string;
+interface PDFConfig {
+  profiles: Record<string, ProfileConfig>;
+  settings: {
+    pdf: {
+      format: string;
+      printBackground: boolean;
+      preferCSSPageSize: boolean;
+      margin: {
+        top: string;
+        right: string;
+        bottom: string;
+        left: string;
+      };
+    };
+  };
 }
 
-interface CSSSettings {
-  customStylesheet: string;
+interface MarkdownFile {
+  path: string;
+  relativePath: string;
+  content: string;
+  title: string;
+  htmlContent: string;
 }
 
 class PDFGenerator {
   private config: PDFConfig;
-  private projectRoot: string;
-  private browser: Browser | null = null;
-  private server: ChildProcess | null = null;
+  private docsPath: string;
+  private outputPath: string;
+  private docTitle: string;
+  private subtitle: string;
+  private version: string;
+  private includeVersion: boolean;
+  private markdownFiles: MarkdownFile[] = [];
+  private logoBase64: string = '';
+  private pageNumbers: Map<string, number> = new Map();
+  private md: MarkdownIt;
 
-  constructor(configPath: string) {
-    this.projectRoot = path.resolve(__dirname, '..');
-    const configFile = fs.readFileSync(configPath, 'utf8');
-    this.config = yaml.load(configFile) as PDFConfig;
+  constructor(configPath: string, docsPath: string, profile: string, version: string) {
+    // Load config
+    const configContent = fs.readFileSync(configPath, 'utf8');
+    this.config = yaml.load(configContent) as PDFConfig;
+
+    const profileConfig = this.config.profiles[profile];
+    if (!profileConfig) {
+      throw new Error(`Profile "${profile}" not found in config`);
+    }
+
+    this.docsPath = docsPath;
+    this.outputPath = path.join(
+      process.cwd(),
+      'dist',
+      'pdf',
+      `${profileConfig.filename}-v${version}.pdf`
+    );
+    this.docTitle = profileConfig.cover.title;
+    this.subtitle = profileConfig.cover.subtitle;
+    this.version = version;
+    this.includeVersion = profileConfig.cover.includeVersion;
+
+    // Initialize markdown-it
+    this.md = new MarkdownIt({
+      html: true,
+      breaks: true,
+      linkify: true,
+    });
+
+    console.log(`\n📄 Generating PDF for profile: ${profile}`);
+    console.log(`📌 Version: ${version}\n`);
   }
 
-  async generate(profileName: string, version?: string): Promise<void> {
-    console.log(`\n📄 Generating PDF for profile: ${profileName}`);
+  /**
+   * Collect markdown files from docs directory based on profile configuration
+   */
+  private collectMarkdownFiles(profileConfig: ProfileConfig): void {
+    console.log('📑 Collecting markdown files...\n');
 
-    const profile = this.config.profiles[profileName];
-    if (!profile) {
-      throw new Error(`Profile "${profileName}" not found in pdf-config.yaml`);
+    for (const doc of profileConfig.documents) {
+      try {
+        // Resolve markdown file path
+        const docPath = doc.path || doc.id;
+        let mdFilePath: string;
+
+        // Try various path combinations
+        const possiblePaths = [
+          path.join(this.docsPath, `${docPath}.md`),
+          path.join(this.docsPath, `${docPath}.mdx`),
+          path.join(this.docsPath, docPath, 'index.md'),
+          path.join(this.docsPath, docPath, 'index.mdx'),
+          path.join(this.docsPath, `${docPath}/README.md`),
+        ];
+
+        mdFilePath = possiblePaths.find(p => fs.existsSync(p)) || '';
+
+        if (!mdFilePath || !fs.existsSync(mdFilePath)) {
+          console.log(`  ⚠️  Skipping: ${doc.title} (file not found at ${docPath})`);
+          continue;
+        }
+
+        const content = fs.readFileSync(mdFilePath, 'utf8');
+        const relativePath = path.relative(this.docsPath, mdFilePath);
+
+        this.markdownFiles.push({
+          path: mdFilePath,
+          relativePath,
+          content,
+          title: doc.title,
+          htmlContent: '',
+        });
+
+        console.log(`  ✅ ${doc.title}`);
+      } catch (error) {
+        console.error(`  ❌ Error loading ${doc.title}:`, error);
+      }
     }
 
-    // Get version - if not specified, get latest from versions.json
-    let targetVersion = version || this.config.settings.defaultVersion;
-    if (targetVersion === 'current') {
-      targetVersion = await this.getLatestVersion();
-    }
-    console.log(`📌 Version: ${targetVersion}`);
+    console.log(`\n📊 Collected ${this.markdownFiles.length} markdown files\n`);
+  }
 
-    // If includeAll is enabled, discover all documents
-    if (profile.includeAll) {
-      profile.documents = await this.discoverAllDocuments(profile.excludeDocs || [], targetVersion);
+  /**
+   * Remove frontmatter from markdown content
+   */
+  private removeFrontmatter(content: string): string {
+    const { content: cleanContent } = matter(content);
+    return cleanContent;
+  }
+
+  /**
+   * Convert Docusaurus admonitions to HTML
+   */
+  private convertAdmonitions(content: string): string {
+    const admonitionStyles: Record<string, { icon: string; color: string; bg: string; label: string }> = {
+      tip: { icon: '💡', color: '#00a86b', bg: '#e6f7f0', label: 'Tip' },
+      note: { icon: '📝', color: '#1976d2', bg: '#e3f2fd', label: 'Note' },
+      info: { icon: 'ℹ️', color: '#0288d1', bg: '#e1f5fe', label: 'Info' },
+      warning: { icon: '⚠️', color: '#f57c00', bg: '#fff3e0', label: 'Warning' },
+      caution: { icon: '⚠️', color: '#f57c00', bg: '#fff3e0', label: 'Caution' },
+      danger: { icon: '🚨', color: '#d32f2f', bg: '#ffebee', label: 'Danger' },
+    };
+
+    const lines = content.split('\n');
+    const result: string[] = [];
+    let inAdmonition = false;
+    let admonitionType = '';
+    let admonitionTitle = '';
+    let admonitionContent: string[] = [];
+
+    for (const line of lines) {
+      const stripped = line.trim();
+      const admonitionMatch = stripped.match(/^:::(\w+)\s*(.*)$/);
+
+      if (admonitionMatch && !inAdmonition) {
+        inAdmonition = true;
+        admonitionType = admonitionMatch[1].toLowerCase();
+        admonitionTitle = admonitionMatch[2].trim();
+        admonitionContent = [];
+        continue;
+      }
+
+      if (inAdmonition && stripped === ':::') {
+        const style = admonitionStyles[admonitionType] || admonitionStyles.note;
+        const title = admonitionTitle || style.label;
+
+        result.push(
+          `<div style="border-left: 4px solid ${style.color}; background-color: ${style.bg}; padding: 12px 16px; margin: 12px 0; border-radius: 4px;">`,
+          `<p style="margin: 0 0 8px 0; font-weight: bold; color: ${style.color};">${style.icon} ${title}</p>`
+        );
+
+        const contentText = admonitionContent.join('\n').trim();
+        if (contentText) {
+          result.push(`<p style="margin: 0; color: #333;">${contentText}</p>`);
+        }
+
+        result.push('</div>', '');
+
+        inAdmonition = false;
+        admonitionType = '';
+        admonitionTitle = '';
+        admonitionContent = [];
+        continue;
+      }
+
+      if (inAdmonition) {
+        admonitionContent.push(line);
+      } else {
+        result.push(line);
+      }
     }
+
+    return result.join('\n');
+  }
+
+  /**
+   * Convert mermaid blocks to placeholder
+   */
+  private convertMermaidBlocks(content: string): string {
+    const placeholder = '<div style="border: 1px solid #ccc; background-color: #f9f9f9; padding: 16px; margin: 12px 0; border-radius: 4px; text-align: center; color: #666;"><em>[Diagram - see online documentation for interactive version]</em></div>\n';
+    return content.replace(/```mermaid\s*.*?```/gs, placeholder);
+  }
+
+  /**
+   * Remove images from content
+   */
+  private handleImages(content: string): string {
+    return content.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
+  }
+
+  /**
+   * Convert markdown to HTML
+   */
+  private convertMarkdownToHTML(): void {
+    console.log('🔄 Converting markdown to HTML...\n');
+
+    for (const mdFile of this.markdownFiles) {
+      try {
+        let content = mdFile.content;
+
+        // Process content
+        content = this.removeFrontmatter(content);
+        content = this.convertAdmonitions(content);
+        content = this.convertMermaidBlocks(content);
+        content = this.handleImages(content);
+
+        // Convert to HTML
+        const html = this.md.render(content);
+        mdFile.htmlContent = html;
+
+        console.log(`  ✅ ${mdFile.title}`);
+      } catch (error) {
+        console.error(`  ❌ Error converting ${mdFile.title}:`, error);
+        mdFile.htmlContent = `<p>Error converting file: ${error}</p>`;
+      }
+    }
+
+    console.log();
+  }
+
+  /**
+   * Decode HTML entities
+   */
+  private decodeHTMLEntities(text: string): string {
+    const entities: Record<string, string> = {
+      '&amp;': '&',
+      '&lt;': '<',
+      '&gt;': '>',
+      '&quot;': '"',
+      '&#39;': "'",
+      '&nbsp;': ' ',
+    };
+
+    return text.replace(/&[a-z]+;|&#\d+;/gi, (match) => entities[match] || match);
+  }
+
+  /**
+   * Sanitize text for use as HTML ID
+   */
+  private sanitizeId(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  /**
+   * Generate table of contents HTML
+   */
+  private generateTOC(includePageNumbers: boolean = false): string {
+    console.log('📋 Generating table of contents...');
+
+    const tocItems: string[] = ['<div class="toc-content">'];
+    let h1Counter = 0;
+
+    for (const mdFile of this.markdownFiles) {
+      h1Counter++;
+      const fileId = this.sanitizeId(mdFile.relativePath);
+      const h1PageNum = includePageNumbers && this.pageNumbers.has(fileId)
+        ? this.pageNumbers.get(fileId)
+        : null;
+
+      // H1 entry
+      if (h1PageNum !== null) {
+        tocItems.push(
+          `<div class="toc-item-h1">`,
+          `<a href="#${fileId}">`,
+          `<span class="toc-text">${h1Counter}. ${mdFile.title}</span>`,
+          `<span class="toc-leader"></span>`,
+          `<span class="toc-page-num">${h1PageNum}</span>`,
+          `</a>`,
+          `</div>`
+        );
+      } else {
+        tocItems.push(
+          `<div class="toc-item-h1">`,
+          `<a href="#${fileId}">${h1Counter}. ${mdFile.title}</a>`,
+          `</div>`
+        );
+      }
+
+      // Extract and add H2 entries
+      const h2Regex = /<h2[^>]*>(.*?)<\/h2>/gi;
+      let h2Counter = 0;
+      let match: RegExpExecArray | null;
+
+      while ((match = h2Regex.exec(mdFile.htmlContent)) !== null) {
+        h2Counter++;
+        let h2Text = match[1].replace(/<[^>]*>/g, '').trim();
+
+        // Decode HTML entities (&amp; -> &, etc.)
+        h2Text = this.decodeHTMLEntities(h2Text);
+
+        // Strip leading numbers from H2 text (e.g., "1. Auth" -> "Auth")
+        h2Text = h2Text.replace(/^\d+[\.\)]\s*/, '');
+
+        const h2Id = `${fileId}-h2-${h2Counter - 1}`;
+
+        // Add ID to H2 in HTML content
+        mdFile.htmlContent = mdFile.htmlContent.replace(
+          match[0],
+          match[0].replace('<h2', `<h2 id="${h2Id}"`)
+        );
+
+        const h2PageNum = includePageNumbers && this.pageNumbers.has(h2Id)
+          ? this.pageNumbers.get(h2Id)
+          : null;
+
+        if (h2PageNum !== null) {
+          tocItems.push(
+            `<div class="toc-item-h2">`,
+            `<a href="#${h2Id}">`,
+            `<span class="toc-text">${h1Counter}.${h2Counter} ${h2Text}</span>`,
+            `<span class="toc-leader"></span>`,
+            `<span class="toc-page-num">${h2PageNum}</span>`,
+            `</a>`,
+            `</div>`
+          );
+        } else {
+          tocItems.push(
+            `<div class="toc-item-h2">`,
+            `<a href="#${h2Id}">${h1Counter}.${h2Counter} ${h2Text}</a>`,
+            `</div>`
+          );
+        }
+      }
+    }
+
+    tocItems.push('</div>');
+    return tocItems.join('\n');
+  }
+
+  /**
+   * Load logo and convert to base64
+   */
+  private loadLogo(): void {
+    const logoPath = path.join(process.cwd(), 'kamiwaza-logo.png');
+    if (fs.existsSync(logoPath)) {
+      const logoData = fs.readFileSync(logoPath);
+      this.logoBase64 = logoData.toString('base64');
+    } else {
+      console.log('⚠️  Logo not found at kamiwaza-logo.png');
+    }
+  }
+
+  /**
+   * Generate header HTML
+   */
+  private generateHeaderHTML(): string {
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const logoImg = this.logoBase64
+      ? `<img src='data:image/png;base64,${this.logoBase64}' style='height: 15mm; width: auto; vertical-align: bottom;'>`
+      : '';
+
+    return `<div style="width: 100%; margin: 0 auto; max-width: calc(100% - 40mm); display: table; font-family: Arial, sans-serif; font-size: 10pt; border-bottom: 1pt solid #0ecc8a; padding-bottom: 3pt;">
+    <div style="display: table-cell; vertical-align: bottom; text-align: left;">
+        ${logoImg}
+    </div>
+    <div style="display: table-cell; vertical-align: bottom; text-align: right; line-height: 1.2;">
+        <div>${this.docTitle}</div>
+        <div>${currentDate}</div>
+        <div>${this.version}</div>
+    </div>
+</div>`;
+  }
+
+  /**
+   * Generate footer HTML
+   */
+  private generateFooterHTML(): string {
+    return `<div style="width: 100%; margin: 0 auto; max-width: calc(100% - 40mm); display: flex; justify-content: space-between; align-items: center; padding-top: 3pt; font-family: Arial, sans-serif; font-size: 10pt; border-top: 1pt solid #0ecc8a;">
+    <div>kamiwaza.ai</div>
+    <div>Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>
+</div>`;
+  }
+
+  /**
+   * Generate complete HTML document
+   */
+  private generateHTML(includePageNumbers: boolean = false): string {
+    console.log('📝 Generating HTML document...');
+
+    this.loadLogo();
+
+    // Load CSS
+    const cssPath = path.join(process.cwd(), 'templates', 'print-styles.css');
+    const css = fs.readFileSync(cssPath, 'utf8');
+
+    // Generate TOC
+    const tocHTML = this.generateTOC(includePageNumbers);
+
+    // Generate content
+    const contentParts: string[] = [];
+    for (const mdFile of this.markdownFiles) {
+      const fileId = this.sanitizeId(mdFile.relativePath);
+      contentParts.push(`<div id="${fileId}" class="doc-section">`);
+      contentParts.push(mdFile.htmlContent);
+      contentParts.push('</div>');
+    }
+
+    const contentHTML = contentParts.join('\n');
+
+    // Generate complete HTML
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>${this.docTitle}</title>
+    <style>
+${css}
+    </style>
+</head>
+<body>
+<div class="cover-page">
+    <div class="cover-content">
+        ${this.logoBase64 ? `<img src='data:image/png;base64,${this.logoBase64}' alt='Logo' class='cover-logo'>` : ''}
+        <h1 class="cover-title">${this.docTitle}</h1>
+        ${this.subtitle ? `<div class="subtitle">${this.subtitle}</div>` : ''}
+        ${this.includeVersion ? `<div class="version">Version ${this.version}</div>` : ''}
+    </div>
+</div>
+<div class="toc-page">
+    <h2 class="toc-heading">Table of Contents</h2>
+    ${tocHTML}
+</div>
+<div class="doc-content">
+    ${contentHTML}
+</div>
+</body>
+</html>`;
+
+    return html;
+  }
+
+  /**
+   * Generate PDF from HTML
+   */
+  private async generatePDF(htmlContent: string, outputPath: string, includeHeaderFooter: boolean = true): Promise<void> {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+      const page = await browser.newPage();
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+      await page.pdf({
+        path: outputPath,
+        format: 'A4',
+        printBackground: true,
+        displayHeaderFooter: includeHeaderFooter,
+        headerTemplate: includeHeaderFooter ? this.generateHeaderHTML() : '<span></span>',
+        footerTemplate: includeHeaderFooter ? this.generateFooterHTML() : '<span></span>',
+        margin: {
+          top: '30mm',
+          right: '20mm',
+          bottom: '25mm',
+          left: '20mm',
+        },
+      });
+
+      const stats = fs.statSync(outputPath);
+      console.log(`✅ PDF generated: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+    } finally {
+      await browser.close();
+    }
+  }
+
+  /**
+   * Extract page numbers from PDF
+   */
+  private async extractPageNumbers(pdfPath: string): Promise<void> {
+    console.log('\n🔍 Extracting page numbers from PDF...');
+
+    // Read PDF file
+    const pdfBuffer = fs.readFileSync(pdfPath);
+    const uint8Array = new Uint8Array(pdfBuffer);
+
+    // Load PDF document
+    const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
+    const pdfDocument = await loadingTask.promise;
+    const totalPages = pdfDocument.numPages;
+
+    console.log(`  Found ${totalPages} pages in PDF`);
+
+    // Extract text from each page
+    const pageTexts: string[] = [];
+    for (let i = 1; i <= totalPages; i++) {
+      const page = await pdfDocument.getPage(i);
+      const textContent = await page.getTextContent();
+      // Join text items with space, handling empty items
+      const text = textContent.items
+        .map((item: any) => item.str)
+        .filter((str: string) => str.trim().length > 0)
+        .join(' ');
+      pageTexts.push(text);
+    }
+
+    // Find content start (after TOC)
+    let contentStart = 3;
+    for (let i = 1; i < Math.min(15, totalPages); i++) {
+      const textLower = pageTexts[i].toLowerCase();
+      if (textLower.includes('table of contents')) {
+        contentStart = i + 1;
+      }
+    }
+
+    console.log(`  Content starts at page ${contentStart + 1}`);
+
+    // Find each section
+    let currentPage = contentStart;
+    for (const mdFile of this.markdownFiles) {
+      const fileId = this.sanitizeId(mdFile.relativePath);
+      const titleLower = mdFile.title.toLowerCase();
+
+      let found = false;
+      for (let i = currentPage; i < totalPages; i++) {
+        if (pageTexts[i].toLowerCase().includes(titleLower)) {
+          this.pageNumbers.set(fileId, i + 1);
+          currentPage = i;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        this.pageNumbers.set(fileId, currentPage + 1);
+      }
+
+      // Find H2s
+      const h2Regex = /<h2[^>]*id="([^"]+)"[^>]*>(.*?)<\/h2>/gi;
+      let h2Match: RegExpExecArray | null;
+      let h2Index = 0;
+      let lastFoundPage = currentPage;
+
+      while ((h2Match = h2Regex.exec(mdFile.htmlContent)) !== null) {
+        h2Index++;
+        const h2Id = h2Match[1];
+        let h2Text = h2Match[2].replace(/<[^>]*>/g, '').trim();
+
+        // Decode HTML entities (&amp; -> &, etc.)
+        h2Text = this.decodeHTMLEntities(h2Text);
+
+        // Strip leading numbers from H2 text for search (e.g., "1. Auth" -> "Auth")
+        h2Text = h2Text.replace(/^\d+[\.\)]\s*/, '');
+
+        // The PDF renders H2 with CSS counter prefix: "1.X SectionName"
+        // So we need to search for the counter prefix + text
+        const h1Num = this.markdownFiles.indexOf(mdFile) + 1;
+        const prefixedH2Text = `${h1Num}.${h2Index} ${h2Text}`;
+
+        // Try multiple search variations to handle PDF text extraction quirks
+        const searchVariations = [
+          prefixedH2Text.toLowerCase(),
+          // Remove spaces to handle "Con fi guration" -> "Configuration"
+          prefixedH2Text.toLowerCase().replace(/\s+/g, ''),
+          h2Text.toLowerCase(),
+          h2Text.toLowerCase().replace(/\s+/g, ''),
+        ];
+
+        let h2Found = false;
+        // Always start from parent document's page, not last H2 page (handles same-page H2s)
+        for (let i = currentPage; i < totalPages; i++) {
+          const pageTextLower = pageTexts[i].toLowerCase();
+          const pageTextNoSpaces = pageTextLower.replace(/\s+/g, '');
+
+          for (const searchText of searchVariations) {
+            const textToSearch = searchText.includes(prefixedH2Text.toLowerCase().substring(0, 3))
+              ? pageTextLower
+              : pageTextNoSpaces;
+
+            if (textToSearch.includes(searchText)) {
+              // Only accept this page if it's >= last found page (maintains order)
+              if (i >= lastFoundPage) {
+                this.pageNumbers.set(h2Id, i + 1);
+                lastFoundPage = i;
+                h2Found = true;
+                break;
+              }
+            }
+          }
+
+          if (h2Found) break;
+        }
+
+        if (!h2Found) {
+          // Debug: Log when we can't find an H2
+          if (process.env.DEBUG_PDF) {
+            console.log(`  ⚠️  Could not find H2: "${prefixedH2Text}" (searching from page ${currentPage + 1})`);
+          }
+          // Default to parent section's page number
+          this.pageNumbers.set(h2Id, this.pageNumbers.get(fileId) || lastFoundPage + 1);
+        }
+      }
+    }
+
+    console.log(`  Extracted ${this.pageNumbers.size} page number mappings\n`);
+  }
+
+  /**
+   * Main generation process
+   */
+  async generate(profile: string): Promise<void> {
+    const profileConfig = this.config.profiles[profile];
+
+    // Collect and convert markdown files
+    this.collectMarkdownFiles(profileConfig);
+    this.convertMarkdownToHTML();
 
     // Ensure output directory exists
-    const outputDir = path.join(this.projectRoot, this.config.settings.outputDir);
-    await fs.ensureDir(outputDir);
-
-    try {
-      // Start local server
-      await this.startServer();
-
-      // Launch browser
-      this.browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
-
-      // Generate cover page with TOC if enabled
-      const pdfBuffers: Buffer[] = [];
-
-      if (profile.options.includeTOC) {
-        console.log('\n📋 Generating Table of Contents...\n');
-        const tocBuffer = await this.generateTOC(profile, targetVersion);
-        pdfBuffers.push(tocBuffer);
-      }
-
-      console.log(`\n📑 Generating ${profile.documents.length} document(s)...\n`);
-
-      for (const doc of profile.documents) {
-        const pdfBuffer = await this.generateDocumentPDF(doc, targetVersion, profile);
-        pdfBuffers.push(pdfBuffer);
-      }
-
-      // Merge PDFs
-      console.log('\n📦 Merging PDFs...');
-      const mergedPDF = await this.mergePDFs(pdfBuffers, profile);
-
-      // Save final PDF
-      const filename = `${profile.filename}-v${targetVersion}.pdf`;
-      const outputPath = path.join(outputDir, filename);
-      await fs.writeFile(outputPath, mergedPDF);
-
-      console.log(`\n✅ PDF generated successfully!`);
-      console.log(`📍 Location: ${outputPath}`);
-      console.log(`📊 Size: ${(mergedPDF.length / 1024 / 1024).toFixed(2)} MB\n`);
-
-    } finally {
-      await this.cleanup();
+    const outputDir = path.dirname(this.outputPath);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
     }
-  }
 
-  private async getLatestVersion(): Promise<string> {
-    const versionsPath = path.join(this.projectRoot, 'docs', 'versions.json');
-    if (await fs.pathExists(versionsPath)) {
-      const versions = JSON.parse(await fs.readFile(versionsPath, 'utf8')) as string[];
-      if (versions.length > 0) {
-        return versions[0]; // First entry is the latest version
-      }
-    }
-    return 'current'; // Fallback to 'current' if versions.json doesn't exist or is empty
-  }
+    if (profileConfig.options.includeTOC) {
+      console.log('📋 Two-pass generation for accurate page numbers...\n');
 
-  private async discoverAllDocuments(excludeDocs: string[], version: string): Promise<DocumentConfig[]> {
-    console.log('🔍 Discovering all available documents...');
+      // Pass 1: Generate without page numbers
+      console.log('Pass 1: Generating PDF without page numbers...');
+      const html1 = this.generateHTML(false);
+      const tempPath = path.join(outputDir, `temp_${path.basename(this.outputPath)}`);
+      await this.generatePDF(html1, tempPath, false);
 
-    const documents: DocumentConfig[] = [];
-    const excludeSet = new Set(excludeDocs);
-    const seenIds = new Set<string>();
+      // Extract page numbers
+      await this.extractPageNumbers(tempPath);
 
-    // Keywords to exclude (TypeScript/config keywords and category labels)
-    const keywords = new Set([
-      'doc', 'category', 'label', 'type', 'items', 'id', 'collapsed',
-      'Introduction', 'Installation', 'Models', 'Use Cases', 'Architecture',
-      'Our Team', 'Services', 'Platform Overview', 'About Kamiwaza',
-      'Quickstart', 'App Garden', 'Distributed Data Engine', 'Administrator Guide',
-      'Help & Fixes', 'Release Notes', 'Other Topics'
-    ]);
+      // Clean up temp file
+      fs.unlinkSync(tempPath);
 
-    // Pattern for valid document IDs (must contain / or be lowercase with hyphens/underscores)
-    const validDocPattern = /^[a-z0-9][a-z0-9_/-]*$/i;
-
-    // Determine which sidebar to read based on version
-    let mainSidebarPath: string;
-    let mainSidebarContent: string;
-
-    // Check if we should use versioned sidebar
-    const versionedSidebarPath = path.join(
-      this.projectRoot,
-      'docs',
-      'versioned_sidebars',
-      `version-${version}-sidebars.json`
-    );
-
-    if (version !== 'current' && await fs.pathExists(versionedSidebarPath)) {
-      // Use versioned sidebar (JSON format)
-      console.log(`   Using versioned sidebar: version-${version}-sidebars.json`);
-      const versionedSidebar = JSON.parse(await fs.readFile(versionedSidebarPath, 'utf8'));
-
-      // Extract document IDs from JSON sidebar
-      const extractIds = (items: any[]): void => {
-        for (const item of items) {
-          if (typeof item === 'string') {
-            const docId = item;
-            if (!seenIds.has(docId) &&
-                !keywords.has(docId) &&
-                validDocPattern.test(docId) &&
-                !excludeSet.has(docId) &&
-                (docId.includes('/') || docId.includes('-') || docId.includes('_'))) {
-              seenIds.add(docId);
-              const title = this.generateTitleFromId(docId);
-              documents.push({ id: docId, title });
-            }
-          } else if (item && typeof item === 'object') {
-            if (item.type === 'doc' && item.id) {
-              const docId = item.id;
-              if (!seenIds.has(docId) && !excludeSet.has(docId)) {
-                seenIds.add(docId);
-                const title = item.label || this.generateTitleFromId(docId);
-                // Use empty ID for intro to get the root URL
-                const pdfId = docId === 'intro' ? '' : docId;
-                documents.push({ id: pdfId, title });
-              }
-            } else if (item.type === 'category' && Array.isArray(item.items)) {
-              extractIds(item.items);
-            }
-          }
-        }
-      };
-
-      // Extract from mainSidebar
-      if (versionedSidebar.mainSidebar && Array.isArray(versionedSidebar.mainSidebar)) {
-        extractIds(versionedSidebar.mainSidebar);
-      }
-
-      // Check for versioned SDK sidebar
-      const versionedSdkSidebarPath = path.join(
-        this.projectRoot,
-        'docs',
-        'sdk_versioned_sidebars',
-        `version-${version}-sidebars.json`
-      );
-
-      // Helper function to extract SDK IDs from JSON sidebar structure
-      const extractSdkIds = (items: any[]): void => {
-        for (const item of items) {
-          if (typeof item === 'string') {
-            const docId = item;
-            const fullId = `sdk/${docId}`;
-            if (!seenIds.has(fullId) &&
-                !keywords.has(docId) &&
-                validDocPattern.test(docId) &&
-                !excludeSet.has(fullId) &&
-                (docId.includes('/') || docId.includes('-') || docId.includes('_'))) {
-              seenIds.add(fullId);
-              const title = `SDK - ${this.generateTitleFromId(docId)}`;
-              documents.push({ id: fullId, title });
-            }
-          } else if (item && typeof item === 'object') {
-            if (item.type === 'doc' && item.id) {
-              const docId = item.id;
-              const fullId = `sdk/${docId}`;
-              if (!seenIds.has(fullId) && !excludeSet.has(fullId)) {
-                seenIds.add(fullId);
-                const title = `SDK - ${item.label || this.generateTitleFromId(docId)}`;
-                documents.push({ id: fullId, title });
-              }
-            } else if (item.type === 'category' && Array.isArray(item.items)) {
-              extractSdkIds(item.items);
-            }
-          }
-        }
-      };
-
-      if (await fs.pathExists(versionedSdkSidebarPath)) {
-        console.log(`   Using versioned SDK sidebar: version-${version}-sidebars.json`);
-        const versionedSdkSidebar = JSON.parse(await fs.readFile(versionedSdkSidebarPath, 'utf8'));
-
-        // Extract from sdk sidebar
-        if (versionedSdkSidebar.sdk && Array.isArray(versionedSdkSidebar.sdk)) {
-          extractSdkIds(versionedSdkSidebar.sdk);
-        }
-      } else {
-        // Fallback to current SDK sidebar if versioned one doesn't exist
-        console.log(`   No versioned SDK sidebar found, using current SDK sidebar`);
-        const currentSdkSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars-sdk.ts');
-        if (await fs.pathExists(currentSdkSidebarPath)) {
-          const sdkSidebarContent = await fs.readFile(currentSdkSidebarPath, 'utf8');
-          const sdkDocMatches = sdkSidebarContent.matchAll(/'([^']+)'/g);
-
-          for (const match of sdkDocMatches) {
-            const docId = match[1];
-            const fullId = `sdk/${docId}`;
-
-            // Skip if already seen, is keyword, or is excluded
-            if (seenIds.has(fullId) ||
-                keywords.has(docId) ||
-                !validDocPattern.test(docId) ||
-                excludeSet.has(fullId)) {
-              continue;
-            }
-
-            // Additional check for SDK docs
-            if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
-              seenIds.add(fullId);
-              const title = `SDK - ${this.generateTitleFromId(docId)}`;
-              documents.push({ id: fullId, title });
-            }
-          }
-        }
-      }
+      // Pass 2: Generate with page numbers
+      console.log('Pass 2: Generating final PDF with page numbers...');
+      const html2 = this.generateHTML(true);
+      await this.generatePDF(html2, this.outputPath, true);
     } else {
-      // Use current sidebar (TypeScript format)
-      console.log('   Using current sidebar: sidebars.ts');
-      mainSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars.ts');
-      mainSidebarContent = await fs.readFile(mainSidebarPath, 'utf8');
-
-      // Extract document IDs from main sidebar
-      const mainDocMatches = mainSidebarContent.matchAll(/'([^']+)'/g);
-      for (const match of mainDocMatches) {
-        const docId = match[1];
-
-        // Skip if already seen, is keyword, doesn't match pattern, or is excluded
-        if (seenIds.has(docId) ||
-            keywords.has(docId) ||
-            !validDocPattern.test(docId) ||
-            excludeSet.has(docId)) {
-          continue;
-        }
-
-        // Additional check: must contain a slash OR hyphen/underscore (to filter out single words)
-        if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
-          seenIds.add(docId);
-          const title = this.generateTitleFromId(docId);
-          documents.push({ id: docId, title });
-        }
-      }
-
-      // Read SDK sidebar
-      const sdkSidebarPath = path.join(this.projectRoot, 'docs', 'sidebars-sdk.ts');
-      if (await fs.pathExists(sdkSidebarPath)) {
-        const sdkSidebarContent = await fs.readFile(sdkSidebarPath, 'utf8');
-        const sdkDocMatches = sdkSidebarContent.matchAll(/'([^']+)'/g);
-
-        for (const match of sdkDocMatches) {
-          const docId = match[1];
-          const fullId = `sdk/${docId}`;
-
-          // Skip if already seen, is keyword, or is excluded
-          if (seenIds.has(fullId) ||
-              keywords.has(docId) ||
-              !validDocPattern.test(docId) ||
-              excludeSet.has(fullId)) {
-            continue;
-          }
-
-          // Additional check for SDK docs
-          if (docId.includes('/') || docId.includes('-') || docId.includes('_')) {
-            seenIds.add(fullId);
-            const title = `SDK - ${this.generateTitleFromId(docId)}`;
-            documents.push({ id: fullId, title });
-          }
-        }
-      }
-
-      // Add intro at the beginning (with empty id for root) - only for current version
-      if (!excludeSet.has('intro') && !excludeSet.has('')) {
-        documents.unshift({ id: '', title: 'Introduction' });
-      }
+      // Single pass
+      const html = this.generateHTML(false);
+      await this.generatePDF(html, this.outputPath, true);
     }
 
-    console.log(`   Found ${documents.length} documents (excluded ${excludeDocs.length})`);
-
-    return documents;
-  }
-
-  private generateTitleFromId(docId: string): string {
-    // Convert doc ID to readable title
-    // e.g., "installation/system_requirements" -> "System Requirements"
-    // e.g., "services/auth/README" -> "Auth Service"
-
-    const parts = docId.split('/');
-    let lastPart = parts[parts.length - 1];
-
-    // Remove README
-    if (lastPart === 'README' && parts.length > 1) {
-      lastPart = parts[parts.length - 2];
-    }
-
-    // Remove file extensions
-    lastPart = lastPart.replace(/\.(md|mdx)$/, '');
-
-    // Convert snake_case or kebab-case to Title Case
-    return lastPart
-      .replace(/[_-]/g, ' ')
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  }
-
-  private async findAvailablePort(startPort: number): Promise<number> {
-    const { exec } = require('child_process');
-    const util = require('util');
-    const execPromise = util.promisify(exec);
-
-    for (let port = startPort; port < startPort + 10; port++) {
-      try {
-        const { stdout } = await execPromise(`lsof -i:${port}`);
-        // If lsof returns output, port is in use
-        if (stdout) {
-          continue;
-        }
-      } catch (error) {
-        // lsof returns error if port is free
-        return port;
-      }
-    }
-
-    throw new Error(`Could not find available port in range ${startPort}-${startPort + 9}`);
-  }
-
-  private async startServer(): Promise<void> {
-    console.log('\n🚀 Starting local documentation server...');
-
-    // Check if build directory exists
-    const buildPath = path.join(this.projectRoot, 'docs', 'build');
-    if (!await fs.pathExists(buildPath)) {
-      throw new Error(
-        'Build directory not found. Please run "npm run build" first.'
-      );
-    }
-
-    // Find an available port
-    const basePort = this.config.settings.server.port;
-    const port = await this.findAvailablePort(basePort);
-
-    if (port !== basePort) {
-      console.log(`⚠️  Port ${basePort} is in use, using port ${port} instead`);
-      // Update config with new port
-      this.config.settings.server.port = port;
-      this.config.settings.server.baseUrl = `http://localhost:${port}`;
-    }
-
-    return new Promise((resolve, reject) => {
-      const docsPath = path.join(this.projectRoot, 'docs');
-      const portStr = port.toString();
-
-      this.server = spawn('npm', ['run', 'serve', '--', '--port', portStr], {
-        cwd: docsPath,
-        shell: true,
-        stdio: 'pipe'
-      });
-
-      let serverReady = false;
-
-      this.server.stdout?.on('data', (data) => {
-        const output = data.toString();
-        if (output.includes('Serving') || output.includes('localhost')) {
-          if (!serverReady) {
-            serverReady = true;
-            console.log('✅ Server started');
-            // Give server extra time to be fully ready
-            setTimeout(() => resolve(), 2000);
-          }
-        }
-      });
-
-      this.server.stderr?.on('data', (data) => {
-        console.error('Server error:', data.toString());
-      });
-
-      this.server.on('error', (error) => {
-        reject(new Error(`Failed to start server: ${error.message}`));
-      });
-
-      // Timeout after 30 seconds
-      setTimeout(() => {
-        if (!serverReady) {
-          reject(new Error('Server failed to start within 30 seconds'));
-        }
-      }, 30000);
-    });
-  }
-
-  private async generateTOC(profile: ProfileConfig, version: string): Promise<Buffer> {
-    const page = await this.browser!.newPage();
-
-    try {
-      // Read and encode logo if needed
-      let logoBase64 = '';
-      if (profile.cover.includeLogo) {
-        const logoPath = path.join(this.projectRoot, 'docs', 'static', 'img', 'KW_logo.png');
-        if (await fs.pathExists(logoPath)) {
-          const logoBuffer = await fs.readFile(logoPath);
-          logoBase64 = logoBuffer.toString('base64');
-        }
-      }
-
-      // Create HTML content for TOC
-      const tocHTML = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            @page {
-              size: A4;
-              margin: 20mm 15mm;
-            }
-            body {
-              font-family: 'Helvetica Neue', Arial, sans-serif;
-              margin: 0;
-              padding: 40px;
-              color: #1a1a1a;
-            }
-            .cover {
-              text-align: center;
-              margin-bottom: 60px;
-            }
-            .logo {
-              width: 150px;
-              height: auto;
-              margin-bottom: 30px;
-            }
-            h1 {
-              font-size: 32pt;
-              font-weight: bold;
-              margin-bottom: 10px;
-              color: #1a1a1a;
-            }
-            .subtitle {
-              font-size: 18pt;
-              color: #666;
-              margin-bottom: 5px;
-            }
-            .version {
-              font-size: 14pt;
-              color: #888;
-              margin-top: 20px;
-            }
-            .toc-container {
-              margin-top: 60px;
-            }
-            h2 {
-              font-size: 20pt;
-              font-weight: bold;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #333;
-              padding-bottom: 10px;
-            }
-            .toc-list {
-              list-style: none;
-              padding: 0;
-              margin: 0;
-            }
-            .toc-item {
-              padding: 12px 0;
-              border-bottom: 1px solid #eee;
-              font-size: 12pt;
-              line-height: 1.5;
-            }
-            .toc-item:last-child {
-              border-bottom: none;
-            }
-            .toc-number {
-              display: inline-block;
-              width: 30px;
-              font-weight: bold;
-              color: #666;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="cover">
-            ${logoBase64 ? `<img src="data:image/png;base64,${logoBase64}" class="logo" alt="Kamiwaza Logo" />` : ''}
-            <h1>${profile.cover.title}</h1>
-            <div class="subtitle">${profile.cover.subtitle}</div>
-            ${profile.cover.includeVersion ? `<div class="version">Version ${version}</div>` : ''}
-          </div>
-
-          <div class="toc-container">
-            <h2>Table of Contents</h2>
-            <ul class="toc-list">
-              ${profile.documents.map((doc, index) => `
-                <li class="toc-item">
-                  <span class="toc-number">${index + 1}.</span>
-                  ${doc.title}
-                </li>
-              `).join('')}
-            </ul>
-          </div>
-        </body>
-        </html>
-      `;
-
-      await page.setContent(tocHTML, { waitUntil: 'networkidle0' });
-
-      // Generate PDF
-      const pdfBuffer = await page.pdf({
-        format: this.config.settings.pdf.format as any,
-        margin: this.config.settings.pdf.margin,
-        printBackground: this.config.settings.pdf.printBackground,
-        preferCSSPageSize: this.config.settings.pdf.preferCSSPageSize
-      });
-
-      console.log(`     ✅ Generated TOC (${(pdfBuffer.length / 1024).toFixed(0)} KB)`);
-
-      return Buffer.from(pdfBuffer);
-
-    } catch (error) {
-      console.error(`     ❌ Failed to generate TOC: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      throw error;
-    } finally {
-      await page.close();
-    }
-  }
-
-  private async generateDocumentPDF(
-    doc: DocumentConfig,
-    version: string,
-    profile: ProfileConfig
-  ): Promise<Buffer> {
-    const page = await this.browser!.newPage();
-
-    try {
-      // Construct URL - handle SDK docs differently (version goes after /sdk/ prefix)
-      let url: string;
-      if (doc.id.startsWith('sdk/')) {
-        let sdkPath = doc.id.substring(4); // Remove 'sdk/' prefix
-        // Docusaurus strips /README from URLs, so remove it from the path
-        sdkPath = sdkPath.replace(/\/README$/, '');
-        const versionPath = version === 'current' ? '' : `${version}/`;
-        url = `${this.config.settings.server.baseUrl}/sdk/${versionPath}${sdkPath}`;
-      } else {
-        const versionPath = version === 'current' ? '' : `${version}/`;
-        url = `${this.config.settings.server.baseUrl}/${versionPath}${doc.id}`;
-      }
-
-      console.log(`  📄 ${doc.title}`);
-      console.log(`     ${url}`);
-
-      // Navigate to page
-      await page.goto(url, {
-        waitUntil: 'networkidle0',
-        timeout: 30000
-      });
-
-      // Wait for content to render
-      await page.waitForSelector('article', { timeout: 10000 }).catch(() => {
-        console.warn(`     ⚠️  Warning: Article selector not found for ${doc.id}`);
-      });
-
-      // Scroll through page to trigger lazy-loaded images
-      await page.evaluate(`(async () => {
-        await new Promise((resolve) => {
-          let totalHeight = 0;
-          const distance = 100;
-          const timer = setInterval(() => {
-            const scrollHeight = document.body.scrollHeight;
-            window.scrollBy(0, distance);
-            totalHeight += distance;
-
-            if(totalHeight >= scrollHeight){
-              clearInterval(timer);
-              resolve();
-            }
-          }, 100);
-        });
-      })()`);
-
-      // Wait for all images to finish loading
-      await page.evaluate(`(() => {
-        const images = Array.from(document.images);
-        return Promise.all(
-          images
-            .filter(img => !img.complete)
-            .map(img => new Promise(resolve => {
-              img.onload = img.onerror = resolve;
-            }))
-        );
-      })()`);
-
-      // Scroll back to top for proper PDF generation
-      await page.evaluate(`window.scrollTo(0, 0)`);
-
-      // Brief wait for scroll position to settle
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Inject custom PDF CSS if it exists
-      const customCSS = path.join(this.projectRoot, this.config.settings.css.customStylesheet);
-      if (await fs.pathExists(customCSS)) {
-        const cssContent = await fs.readFile(customCSS, 'utf8');
-        await page.addStyleTag({ content: cssContent });
-      }
-
-      // Add document title as header (if enabled)
-      // Note: Footer is added in mergePDFs for consistent positioning across all pages
-      if (profile.options.includeHeaders) {
-        const headerCSS = `
-          @page {
-            @top-center {
-              content: "${doc.title}";
-              font-size: 10pt;
-              color: #666;
-            }
-          }
-        `;
-
-        await page.addStyleTag({ content: headerCSS });
-      }
-
-      // Generate PDF
-      const pdfBuffer = await page.pdf({
-        format: this.config.settings.pdf.format as any,
-        margin: this.config.settings.pdf.margin,
-        printBackground: this.config.settings.pdf.printBackground,
-        preferCSSPageSize: this.config.settings.pdf.preferCSSPageSize
-      });
-
-      console.log(`     ✅ Generated (${(pdfBuffer.length / 1024).toFixed(0)} KB)`);
-
-      return Buffer.from(pdfBuffer);
-
-    } catch (error) {
-      console.error(`     ❌ Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      throw error;
-    } finally {
-      await page.close();
-    }
-  }
-
-  private async mergePDFs(pdfBuffers: Buffer[], profile: ProfileConfig): Promise<Buffer> {
-    const mergedPdf = await PDFDocument.create();
-
-    // Merge all PDFs
-    for (const pdfBuffer of pdfBuffers) {
-      const pdf = await PDFDocument.load(pdfBuffer);
-      const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-
-      for (const page of pages) {
-        mergedPdf.addPage(page);
-      }
-    }
-
-    // Add footer and page numbers if enabled
-    if (profile.options.includePageNumbers || profile.options.includeFooters) {
-      console.log('📄 Adding continuous page numbers and footers...');
-      const pages = mergedPdf.getPages();
-      const totalPages = pages.length;
-
-      for (let i = 0; i < totalPages; i++) {
-        const page = pages[i];
-        const { width, height } = page.getSize();
-
-        // Add documentation URL footer in bottom-center
-        if (profile.options.includeFooters) {
-          const footerText = 'Complete updated Kamiwaza documentation is available at https://docs.kamiwaza.ai';
-          const footerFontSize = 9;
-
-          // Calculate center position for footer text
-          const footerWidth = footerText.length * footerFontSize * 0.5; // Approximate width
-          const footerX = (width - footerWidth) / 2;
-
-          page.drawText(footerText, {
-            x: footerX,
-            y: 10 * 2.83465, // 10mm from bottom
-            size: footerFontSize,
-            color: rgb(0.53, 0.53, 0.53), // #888
-          });
-        }
-
-        // Add page number in bottom-left corner
-        if (profile.options.includePageNumbers) {
-          const pageNumber = i + 1;
-          const pageText = `Page ${pageNumber} of ${totalPages}`;
-
-          page.drawText(pageText, {
-            x: 15 * 2.83465, // 15mm in points (1mm = 2.83465 points)
-            y: 15 * 2.83465, // 15mm from bottom
-            size: 9,
-            color: rgb(0.4, 0.4, 0.4), // #666
-          });
-        }
-      }
-    }
-
-    const mergedPdfBytes = await mergedPdf.save();
-    return Buffer.from(mergedPdfBytes);
-  }
-
-  private async cleanup(): Promise<void> {
-    console.log('\n🧹 Cleaning up...');
-
-    if (this.browser) {
-      await this.browser.close();
-      console.log('✅ Browser closed');
-    }
-
-    if (this.server) {
-      this.server.kill();
-      console.log('✅ Server stopped');
-    }
+    console.log(`\n✅ PDF generated successfully!`);
+    console.log(`📍 Location: ${this.outputPath}\n`);
   }
 }
 
-// CLI Interface
+// CLI
 async function main() {
   const args = process.argv.slice(2);
+  const profileIndex = args.indexOf('--profile');
+  const versionIndex = args.indexOf('--version');
 
-  // Parse arguments
-  let profile: string | undefined;
-  let version: string | undefined;
+  const profile = profileIndex >= 0 ? args[profileIndex + 1] : 'offline-install';
+  const version = versionIndex >= 0 ? args[versionIndex + 1] : '0.9.2';
 
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--profile' && args[i + 1]) {
-      profile = args[i + 1];
-      i++;
-    } else if (args[i] === '--version' && args[i + 1]) {
-      version = args[i + 1];
-      i++;
-    }
-  }
+  const configPath = path.join(process.cwd(), 'pdf-config.yaml');
+  const docsPath = path.join(process.cwd(), 'docs', 'versioned_docs', `version-${version}`);
 
-  if (!profile) {
-    console.error(`
-❌ Error: --profile is required
-
-Usage:
-  npm run pdf -- --profile <profile-name> [--version <version>]
-
-Examples:
-  npm run pdf -- --profile offline-install --version 0.5.1
-  npm run pdf -- --profile full-docs
-
-Available profiles:
-  - offline-install: Essential docs for offline installations
-  - full-docs: Complete platform documentation
-`);
+  if (!fs.existsSync(docsPath)) {
+    console.error(`❌ Documentation not found for version ${version} at ${docsPath}`);
+    console.error(`   Make sure the version exists in docs/versioned_docs/`);
     process.exit(1);
   }
 
-  const configPath = path.join(__dirname, '..', 'pdf-config.yaml');
-
-  if (!fs.existsSync(configPath)) {
-    console.error(`❌ Error: pdf-config.yaml not found at ${configPath}`);
-    process.exit(1);
-  }
-
-  try {
-    const generator = new PDFGenerator(configPath);
-    await generator.generate(profile, version);
-    process.exit(0);
-  } catch (error) {
-    console.error(`\n❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    console.error(error);
-    process.exit(1);
-  }
+  const generator = new PDFGenerator(configPath, docsPath, profile, version);
+  await generator.generate(profile);
 }
 
-// Run if called directly
-if (require.main === module) {
-  main();
-}
-
-export { PDFGenerator };
+main().catch(error => {
+  console.error('❌ Error generating PDF:', error);
+  process.exit(1);
+});
