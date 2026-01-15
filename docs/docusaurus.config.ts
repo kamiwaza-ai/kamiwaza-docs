@@ -86,7 +86,7 @@ const config: Config = {
         lastVersion: 'current',
         versions: {
           current: {
-            label: '0.9.0 (Latest)',
+            label: '0.9.2 (Latest)',
           },
         },
         sidebarCollapsible: true,
@@ -104,7 +104,7 @@ const config: Config = {
         lastVersion: 'current',
         versions: {
           current: {
-            label: '0.9.0 (Latest)',
+            label: '0.9.2 (Latest)',
           },
         },
       },
@@ -119,7 +119,7 @@ const config: Config = {
         sidebarPath: require.resolve('./sidebars-research.ts'),
         versions: {
           current: {
-            label: '0.9.0 (Latest)',
+            label: '0.9.2 (Latest)',
           },
         },
       },
