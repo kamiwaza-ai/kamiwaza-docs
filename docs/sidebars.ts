@@ -37,6 +37,11 @@ const sidebars: SidebarsConfig = {
       ],
     },
     {
+      type: 'doc',
+      id: 'configuration',
+      label: 'Configuration',
+    },
+    {
       type: 'category',
       label: 'Security',
       items: [
