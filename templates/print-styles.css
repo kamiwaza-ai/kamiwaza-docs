@@ -1,0 +1,453 @@
+/* Kamiwaza PDF Styles - Optimized for Playwright */
+
+* {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    color: #000000;
+    line-height: 1.15;
+    margin: 0;
+    padding: 0;
+}
+
+/* Cover Page */
+.cover-page {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    text-align: center;
+    padding-top: 50mm;
+    padding-bottom: 20mm;
+    page-break-after: always;
+}
+
+.cover-content {
+    padding: 0;
+}
+
+.cover-logo {
+    display: none;
+}
+
+.cover-title {
+    font-family: Arial, sans-serif;
+    font-size: 24pt;
+    font-weight: bold;
+    color: #0ecc8a;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+.subtitle {
+    font-family: Arial, sans-serif;
+    font-size: 14pt;
+    color: #666;
+    text-align: center;
+    margin: 10pt 0 0 0;
+    padding: 0;
+}
+
+.version {
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    color: #888;
+    text-align: center;
+    margin: 10pt 0 0 0;
+    padding: 0;
+}
+
+/* Table of Contents Page */
+.toc-page {
+    padding-top: 0;
+    margin-top: 0;
+    page-break-after: always;
+}
+
+.toc-heading {
+    font-family: Arial, sans-serif;
+    font-size: 18pt;
+    font-weight: bold;
+    color: #0ecc8a;
+    margin: 0 0 20pt 0;
+    text-align: left;
+}
+
+.toc-content {
+    margin-top: 20pt;
+}
+
+.toc-item-h1,
+.toc-item-h2 {
+    margin: 6pt 0;
+    page-break-inside: avoid;
+}
+
+.toc-item-h1 {
+    font-weight: bold;
+    font-size: 11pt;
+}
+
+.toc-item-h2 {
+    padding-left: 0.25in;
+    font-size: 10pt;
+}
+
+.toc-item-h1 a,
+.toc-item-h2 a {
+    display: flex;
+    text-decoration: none;
+    color: #000000;
+    align-items: baseline;
+}
+
+.toc-text {
+    flex: 0 1 auto;
+    padding-right: 6pt;
+}
+
+.toc-leader {
+    flex: 1 1 auto;
+    border-bottom: 1px dotted #999;
+    margin: 0 4pt;
+    min-width: 20px;
+}
+
+.toc-page-num {
+    flex: 0 0 auto;
+    padding-left: 6pt;
+    font-weight: normal;
+}
+
+/* Document Content */
+.doc-content {
+    counter-reset: h1;
+}
+
+.doc-section {
+    page-break-before: always;
+    margin: 0;
+    padding: 0;
+}
+
+/* Paragraphs */
+.doc-content p {
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    color: #000000;
+    line-height: 1.15;
+    margin: 0 0 6pt 0;
+    text-align: left;
+}
+
+/* Reduce spacing between intro text and lists */
+.doc-content p+ul,
+.doc-content p+ol {
+    margin-top: 0;
+}
+
+/* Headings */
+.doc-content h1 {
+    font-family: Arial, sans-serif;
+    font-size: 14pt;
+    font-weight: bold;
+    color: #0ecc8a;
+    text-align: left;
+    margin: 0 0 6pt 0;
+    padding: 0;
+    counter-increment: h1;
+    counter-reset: h2 h3 h4;
+    page-break-after: avoid;
+}
+
+.doc-content h1::before {
+    content: counter(h1) ". ";
+    color: #0ecc8a;
+}
+
+.doc-content h2 {
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    font-weight: bold;
+    color: #000000;
+    text-align: left;
+    margin: 12pt 0 6pt 0;
+    padding: 0;
+    counter-increment: h2;
+    counter-reset: h3 h4;
+    page-break-after: avoid;
+}
+
+
+.doc-content h2::before {
+    content: counter(h1) "." counter(h2) " ";
+    color: #000000;
+}
+
+.doc-content h2.has-number::before {
+    content: "";
+}
+
+.doc-content h3 {
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    font-weight: bold;
+    color: #000000;
+    text-align: left;
+    margin: 12pt 0 6pt 0;
+    padding: 0;
+    counter-increment: h3;
+    counter-reset: h4;
+    page-break-after: avoid;
+}
+
+
+.doc-content h3::before {
+    content: counter(h1) "." counter(h2) "." counter(h3) " ";
+    color: #000000;
+}
+
+.doc-content h3.has-number::before {
+    content: "";
+}
+
+.doc-content h4 {
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    font-style: italic;
+    font-weight: normal;
+    color: #000000;
+    text-align: left;
+    margin: 12pt 0 6pt 0;
+    padding: 0;
+    counter-increment: h4;
+    page-break-after: avoid;
+}
+
+
+.doc-content h4::before {
+    content: counter(h1) "." counter(h2) "." counter(h3) "." counter(h4) " ";
+    color: #000000;
+}
+
+.doc-content h4.has-number::before {
+    content: "";
+}
+
+/* Keep intro paragraphs with code blocks - aggressive rules */
+.doc-content h1+p,
+.doc-content h2+p,
+.doc-content h3+p,
+.doc-content h4+p {
+    page-break-after: avoid;
+}
+
+.doc-content p+pre {
+    page-break-before: avoid;
+}
+
+.doc-content h1+pre,
+.doc-content h2+pre,
+.doc-content h3+pre,
+.doc-content h4+pre {
+    page-break-before: avoid;
+}
+
+/* Lists - Unordered */
+.doc-content ul {
+    margin: 6pt 0;
+    padding-left: 0.5in;
+    list-style-type: disc;
+    list-style-position: outside;
+}
+
+.doc-content ul li {
+    margin-bottom: 6pt;
+}
+
+.doc-content ul ul {
+    padding-left: 0.25in;
+    list-style-type: circle;
+}
+
+.doc-content ul ul li {
+    margin-bottom: 6pt;
+}
+
+.doc-content ul ul ul {
+    padding-left: 0.25in;
+    list-style-type: square;
+}
+
+.doc-content ul ul ul li {
+    margin-bottom: 6pt;
+}
+
+/* Lists - Ordered */
+.doc-content ol {
+    margin: 6pt 0;
+    padding-left: 0.5in;
+    list-style-type: decimal;
+    list-style-position: outside;
+}
+
+.doc-content ol li {
+    margin-bottom: 6pt;
+}
+
+.doc-content ol li::before {
+    content: none !important;
+}
+
+.doc-content ol ol {
+    padding-left: 0.25in;
+    list-style-type: lower-alpha;
+}
+
+.doc-content ol ol li {
+    margin-bottom: 6pt;
+}
+
+.doc-content ol ol ol {
+    padding-left: 0.25in;
+    list-style-type: lower-roman;
+}
+
+.doc-content ol ol ol li {
+    margin-bottom: 6pt;
+}
+
+.doc-content ol ol ol ol {
+    padding-left: 0.25in;
+    list-style-type: decimal;
+}
+
+.doc-content ol ol ol ol li {
+    margin-bottom: 6pt;
+}
+
+/* Tables */
+.doc-content table {
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    border-collapse: collapse;
+    width: 100%;
+    margin: 6pt 0 24pt 0;
+}
+
+.doc-content table caption {
+    font-family: Arial, sans-serif;
+    font-size: 10pt;
+    font-style: italic;
+    color: #000000;
+    text-align: left;
+    margin-top: 3pt;
+    margin-bottom: 24pt;
+    caption-side: bottom;
+}
+
+.doc-content th,
+.doc-content td {
+    border: 1pt solid #000000;
+    padding: 4pt 6pt;
+    text-align: left;
+}
+
+.doc-content th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+}
+
+/* Code Blocks */
+.doc-content pre {
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 9pt;
+    background-color: #f8f9fa;
+    border: 1pt solid #dee2e6;
+    border-radius: 3pt;
+    padding: 8pt;
+    margin: 0 0 12pt 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    page-break-inside: avoid;
+    page-break-before: avoid;
+    line-height: 1.3;
+}
+
+.doc-content code {
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 9pt;
+    background-color: #f8f9fa;
+    padding: 2pt 4pt;
+    border-radius: 2pt;
+}
+
+.doc-content pre code {
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+/* Enhance accessible-pygments highlighting for better visibility */
+/* Make function/variable names more visible */
+.doc-content .codehilite .n,
+.doc-content .codehilite .nf,
+.doc-content .codehilite .nc,
+.doc-content .codehilite .nv,
+.doc-content .codehilite .na {
+    color: #005cc5 !important;
+    /* Blue for better visibility */
+}
+
+/* Make operators more distinct from strings */
+.doc-content .codehilite .o {
+    color: #6a737d !important;
+    /* Gray for operators */
+    font-weight: bold;
+}
+
+/* Enhance keyword visibility */
+.doc-content .codehilite .k {
+    font-weight: bold;
+}
+
+/* Make built-in functions stand out */
+.doc-content .codehilite .nb,
+.doc-content .codehilite .bp {
+    color: #005cc5 !important;
+    font-style: italic;
+}
+
+/* Links */
+.doc-content a {
+    color: #0066cc;
+    text-decoration: underline;
+}
+
+.doc-content a:hover {
+    text-decoration: underline;
+}
+
+/* Figures */
+.doc-content figure {
+    margin: 6pt 0 24pt 0;
+}
+
+.doc-content figcaption {
+    font-family: Arial, sans-serif;
+    font-size: 10pt;
+    font-style: italic;
+    color: #000000;
+    text-align: left;
+    margin-top: 3pt;
+}
+
+/* Page breaks */
+.page-break {
+    page-break-after: always;
+}

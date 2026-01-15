@@ -90,6 +90,72 @@ GIT_USER=<username> npm run deploy
 set GIT_USER=<username> && npm run deploy
 ```
 
+### PDF Generation
+
+Generate professional PDF documentation packages with table of contents, page numbers, and enhanced headers/footers.
+
+**Prerequisites**: Documentation must be built first
+```bash
+# Build documentation
+npm run build
+```
+
+**Quick Commands**:
+```bash
+# Generate offline installation guide PDF
+npm run pdf:offline
+
+# Generate full documentation PDF
+npm run pdf:full
+
+# Generate federal documentation PDF (if INCLUDE_FEDERAL_DOCS is set)
+npm run pdf:federal
+
+# Generate with specific profile and version
+npm run pdf -- --profile offline-install --version 0.9.2
+```
+
+**Features**:
+- **Hierarchical Table of Contents**: Includes H1 and H2 sections with page numbers and dotted leaders
+- **Two-Pass Generation**: Automatically extracts accurate page numbers when TOC is enabled
+- **Markdown-Based Processing**: Reads markdown source files directly using markdown-it, converting to single HTML document
+- **Enhanced Headers**: Logo and date on every page with branding
+- **Enhanced Footers**: Page numbers with "kamiwaza.ai" branding
+- **Auto-Numbered Sections**: CSS counters for automatic section numbering (1., 1.1, 1.1.1)
+- **Docusaurus Syntax Handling**: Converts admonitions, removes frontmatter, replaces mermaid diagrams with placeholders
+- **Print-Optimized CSS**: Tight spacing (1.15 line height), Arial font, 11pt body, 9pt code
+- **Smart Page Number Extraction**: Uses pdfjs-dist to read PDF text, handles spaced text and HTML entities
+
+**Configuration**:
+Edit `pdf-config.yaml` to:
+- Create custom document profiles
+- Select specific documents to include
+- Configure cover page and styling options
+- Control TOC, headers, footers, and page numbers
+
+**Output Location**: `dist/pdf/`
+
+**Example PDF Profiles**:
+- `offline-install`: Essential docs for air-gapped installations (Admin Guide, System Requirements, Installation, GPU Setup, Quickstart)
+- `full-docs`: Complete platform documentation with auto-discovery of all documents
+
+**Technical Implementation**:
+The PDF generator (`scripts/generate-pdf.ts`) uses a markdown-first approach inspired by the github-docs-pdf-gen Python tool:
+1. **Collect**: Reads markdown files directly from `docs/versioned_docs/version-X.Y.Z/`
+2. **Process**: Converts markdown to HTML using markdown-it, handling Docusaurus syntax (frontmatter, admonitions, mermaid)
+3. **Generate**: Creates single HTML document with structure: `.cover-page` → `.toc-page` → `.doc-content` with `.doc-section` divs
+4. **Style**: Applies `templates/print-styles.css` with CSS counters for auto-numbering, tight spacing, and print-optimized typography
+5. **First Pass**: Generates PDF without page numbers using Puppeteer
+6. **Extract**: Uses pdfjs-dist to read PDF text from each page, searching for section titles with fuzzy matching (handles spaced text like "Con fi guration")
+7. **Second Pass**: Regenerates PDF with accurate page numbers in TOC
+
+**Dependencies**:
+- `markdown-it`: Markdown to HTML conversion
+- `gray-matter`: Frontmatter extraction
+- `puppeteer`: HTML to PDF rendering
+- `pdfjs-dist`: PDF text extraction for page numbers
+- `pdf-lib`: PDF manipulation (unused after refactor, can be removed)
+
 ## Repository Architecture
 
 ### Directory Structure

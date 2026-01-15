@@ -13,7 +13,7 @@
   /* Page Setup */
   @page {
     size: A4;
-    margin: 20mm 15mm;
+    margin: 25mm 20mm 25mm 20mm; /* top right bottom left - margins for header/footer spacing */
   }
 
   /* Hide Navigation Elements */
