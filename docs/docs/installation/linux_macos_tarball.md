@@ -53,7 +53,7 @@ sudo apt install -y python3-dev python3-venv python-is-python3 golang-cfssl etcd
 
 ### 2) Verify Docker
 
-Docker Engine with Compose v2 is required. If not installed, see the [Docker Install Guide](https://docs.docker.com/engine/install/ubuntu/).
+Docker Engine 24.0+ with Compose 2.23+ is required. If not installed, see the [Docker Install Guide](https://docs.docker.com/engine/install/ubuntu/).
 
 ```bash
 # Verify Docker is installed and accessible

@@ -121,7 +121,7 @@ Before running the Kamiwaza installer, ensure the following are installed:
 
 | Component | Requirement | Installation Guide |
 |-----------|-------------|-------------------|
-| **Docker** | Docker Engine 20.10+ with Compose v2 | [Docker Install Guide](https://docs.docker.com/engine/install/) |
+| **Docker** | Docker Engine 24.0+ with Compose 2.23+ | [Docker Install Guide](https://docs.docker.com/engine/install/) |
 | **Browser** | Chrome 141+ (tested and recommended) | [Download Chrome](https://www.google.com/chrome/) |
 
 ### GPU Drivers (Required for GPU Inference)
@@ -134,13 +134,13 @@ Install the appropriate driver for your GPU hardware:
 | NVIDIA Driver | 550-server or later | [NVIDIA Driver Downloads](https://www.nvidia.com/download/index.aspx) |
 | NVIDIA Container Toolkit | Required for GPU containers | [Container Toolkit Install](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) |
 
-**AMD GPUs (ROCm) - Preview:**
+**AMD GPUs (ROCm):**
 | Component | Requirement | Installation Guide |
 |-----------|-------------|-------------------|
-| ROCm | 7.10.0 preview (for Strix Halo gfx1151) | [ROCm 7.10.0 Preview](https://rocm.docs.amd.com/en/7.10.0-preview/) |
-| Docker ROCm support | `--device /dev/kfd --device /dev/dri` | [ROCm Docker Guide](https://rocm.docs.amd.com/en/7.10.0-preview/how-to/docker.html) |
+| ROCm | 7.1.1+ (see note for gfx1151) | [ROCm Installation](https://rocm.docs.amd.com/en/latest/deploy/linux/index.html) |
+| Docker ROCm support | `--device /dev/kfd --device /dev/dri` | [ROCm Docker Guide](https://rocm.docs.amd.com/en/latest/how-to/docker.html) |
 
-> **Note:** AMD ROCm support requires ROCm 7.10.0 preview release and is validated for AMD Strix Halo (gfx1151). This is a preview release and not intended for production use. Other AMD GPUs (RX 7900 series, MI300) support is planned.
+> **Note:** AMD Strix Halo (gfx1151) requires ROCm 7.10.0 preview or later. See [ROCm 7.10.0 Preview](https://rocm.docs.amd.com/en/7.10.0-preview/) - this is a preview release and not intended for production use.
 
 ### Linux Full Mode Only
 
@@ -182,12 +182,12 @@ Use these commands to verify your system meets the requirements before installat
 
 ```bash
 docker --version
-# Expected: Docker version 20.10.0 or later
+# Expected: Docker version 24.0.0 or later
 # Example output: Docker version 27.4.0, build bde2b89
 
 docker compose version
-# Expected: Docker Compose version v2.x
-# Example output: Docker Compose version v2.39.1
+# Expected: Docker Compose version v2.23.0 or later
+# Example output: Docker Compose version v2.31.0
 ```
 
 **If you get "permission denied" errors**, add your user to the docker group:
@@ -242,7 +242,7 @@ rocm-smi
 
 # Check ROCm version
 cat /opt/rocm/.info/version
-# Expected: 7.10.0 or later for Strix Halo support
+# Expected: 7.1.1 or later (7.10.0+ for Strix Halo gfx1151)
 
 # Verify GPU device access
 ls -la /dev/kfd /dev/dri
@@ -627,7 +627,7 @@ AMD's Strix Halo platform provides powerful AI inference in a compact form facto
 
 ## Version Compatibility
 
-- Docker Engine: 20.10 or later
+- Docker Engine: 24.0 or later with Compose 2.23+
 - NVIDIA Driver: 450.80.02 or later
 - ETCD: 3.5 or later
 
