@@ -2,213 +2,136 @@
 
 This guide covers installing Kamiwaza Community Edition on Linux and macOS using the pre-built tarball bundles.
 
-## Before you start
+## Before You Start
 
-- Review the [System Requirements](system_requirements.md)
-- Ensure you have administrator/sudo privileges
-- Recommended: Latest Docker Desktop (macOS) or Docker Engine (Linux)
+1. Review the [System Requirements](system_requirements.md) - especially the prerequisites
+2. Ensure you have administrator/sudo privileges
+3. Verify Docker is installed and working (see [Verifying System Requirements](system_requirements.md#verifying-system-requirements))
+
+---
 
 ## macOS (Sequoia 15+)
 
-### 1) Install Homebrew and core tools
+### 1) Install Homebrew
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew update
-brew install pyenv pyenv-virtualenv docker cairo gobject-introspection jq cfssl etcd cmake
-brew install cockroachdb/tap/cockroach
 ```
 
-### 2) Install Docker Desktop
+### 2) Install and start Docker Desktop
 
 ```bash
 brew install --cask docker
 open -a Docker
-# optional if Docker created files as root
-sudo chown -R "$(whoami)":staff ~/.docker || true
+# Wait for Docker to start, then verify:
+docker --version && docker compose version
 ```
 
-### 3) Configure Python 3.10 with pyenv
+### 3) Download and install Kamiwaza
 
-```bash
-echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> ~/.zshrc
-echo 'eval "$(pyenv init -)"' >> ~/.zshrc
-echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.zshrc
-source ~/.zshrc
-pyenv install 3.10
-pyenv local 3.10
-```
-
-### 4) Install Node.js 22 with NVM
-
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-export NVM_DIR="${XDG_CONFIG_HOME:-$HOME/.nvm}"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-nvm install 22
-```
-
-### 5) Download and install Kamiwaza (tarball)
+The installer automatically handles Python (via pyenv), Node.js (via nvm), and other dependencies.
 
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
-# Example for 0.5.1 (replace with the latest available version if needed)
-curl -L -O https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.5.1-OSX.tar.gz
-tar -xvf kamiwaza-community-0.5.1-OSX.tar.gz
+curl -L -O https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.9.2-OSX.tar.gz
+tar -xvf kamiwaza-community-0.9.2-OSX.tar.gz
 bash install.sh --community
 ```
+
+---
 
 ## Linux (Ubuntu 22.04 and 24.04 LTS)
 
-### 1) **[For Ubuntu 24.04 only]** Install Python 3.10
-Kamiwaza CE requires Python 3.10. These commands will install Python 3.10 on Ubuntu 24.04.
+### 1) System update and core packages
 
-```bash
-sudo apt update
-sudo apt install software-properties-common -y
-```
-```bash
-sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt update && sudo apt upgrade -y
-```
-```bash
-sudo apt install -y python3.10
-```
-```bash
-sudo ln -sf /usr/bin/python3.10 /usr/local/bin/python
-```
-
-### 2) System update and core packages
+Kamiwaza supports Python 3.10-3.12. Ubuntu 22.04 ships with Python 3.10 and Ubuntu 24.04 ships with Python 3.12 - both work out of the box.
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3.10 python3.10-dev libpython3.10-dev python3.10-venv golang-cfssl python-is-python3 etcd-client net-tools curl jq libcairo2-dev libgirepository1.0-dev cmake libcurl4-openssl-dev
+sudo apt install -y python3-dev python3-venv python-is-python3 golang-cfssl etcd-client net-tools curl jq libcairo2-dev libgirepository1.0-dev cmake libcurl4-openssl-dev
 ```
 
-### 3) Node.js 22 with NVM
+### 2) Verify Docker
+
+Docker Engine with Compose v2 is required. If not installed, see the [Docker Install Guide](https://docs.docker.com/engine/install/ubuntu/).
 
 ```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-export NVM_DIR="${XDG_CONFIG_HOME:-$HOME/.nvm}"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-nvm install 22
+# Verify Docker is installed and accessible
+docker --version && docker compose version
+
+# If you get "permission denied", add yourself to the docker group:
+# sudo usermod -aG docker $USER && newgrp docker
 ```
 
-### 4) Docker Engine + Compose v2
+### 3) (Optional) Verify CockroachDB - Full Mode Only
+
+Skip this section if you're using Lite mode (the default). CockroachDB is only required for Full mode (`--full` flag). See [System Requirements](system_requirements.md#linux-full-mode-only) for installation links.
 
 ```bash
-sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io
-sudo mkdir -p /usr/local/lib/docker/cli-plugins
-sudo curl -SL "https://github.com/docker/compose/releases/download/v2.39.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
-sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-sudo usermod -aG docker $USER
-sudo chown $USER:$USER /var/run/docker.sock
-# Log out and back in (or reboot) so the docker group membership takes effect
+cockroach version
+# Expected: Build Tag: v23.2.x
 ```
 
-### 5) Install CockroachDB and additional dependencies
+### 4) (Optional) Verify GPU Support
 
+Skip this section if you don't have a GPU or don't need GPU acceleration. See [System Requirements](system_requirements.md#gpu-drivers-required-for-gpu-inference) for installation guides.
+
+**NVIDIA:**
 ```bash
-wget -qO- https://binaries.cockroachdb.com/cockroach-v23.2.12.linux-amd64.tgz | tar xvz
-sudo cp cockroach-v23.2.12.linux-amd64/cockroach /usr/local/bin
-sudo apt install -y libcairo2-dev libgirepository1.0-dev
-```
+# Verify driver
+nvidia-smi
 
-### 6) (Optional) NVIDIA GPU support
-
-Use this section if all of the following are true:
-
-- You are on Ubuntu 22.04 or 24.04 (bare metal or a VM with GPU passthrough)
-- The host has an NVIDIA GPU and you want GPU acceleration
-- You are not on macOS (macOS does not support NVIDIA GPUs)
-
-If you are installing on an Ubuntu 22.04 or 24.04 instance with an NVIDIA GPU where `nvidia-smi` doesn't work, you likely need to do this. However, many cloud-provided images come with NVIDIA drivers pre-installed.
-
-Install the recommended NVIDIA driver, then the NVIDIA Container Toolkit, and configure Docker:
-
-```bash
-# 1) Install the recommended NVIDIA driver
-## If 'ubuntu-drivers' is missing, install it first:
-##   sudo apt update && sudo apt install -y ubuntu-drivers-common
-sudo apt update
-sudo ubuntu-drivers autoinstall
-```
-
-Perform system reboot:
-```
-sudo reboot
-```
-
-After the reboot, install the container toolkit and configure Docker:
-
-```bash
-# 2) Install NVIDIA Container Toolkit repository and package
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
-  sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list > /dev/null
-sudo apt update
-sudo apt install -y nvidia-container-toolkit
-
-# 3) Configure Docker to use the NVIDIA runtime and restart Docker
-sudo nvidia-ctk runtime configure --runtime=docker
-sudo systemctl restart docker
-
-# 4) Test GPU access from Docker (should print nvidia-smi output and exit)
+# Verify Container Toolkit
 docker run --rm --gpus all nvidia/cuda:12.4.1-runtime-ubuntu22.04 nvidia-smi
 ```
 
-Verify the driver is installed with:
+**AMD ROCm:**
+```bash
+# Verify ROCm installation
+rocm-smi
+
+# Verify Docker access
+docker run --rm --device /dev/kfd --device /dev/dri rocm/pytorch:latest rocm-smi
 ```
-nvidia-smi
-```
 
-Notes:
-
-- If Secure Boot is enabled, you may be prompted to enroll MOK during driver installation.
-- On some servers, you may prefer `nvidia-driver-550-server`. If you need a specific version: `sudo apt install -y nvidia-driver-550-server`.
-- The `nvidia-docker2` meta-package is no longer required; use `nvidia-container-toolkit` with `nvidia-ctk` instead.
-
-### 7) Download and install Kamiwaza (tarball)
+### 5) Download and install Kamiwaza
 
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
-# Example for 0.5.1 (replace with the latest available version if needed)
-wget https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.5.1-UbuntuLinux.tar.gz
-tar -xvf kamiwaza-community-0.5.1-UbuntuLinux.tar.gz
+wget https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.9.2-UbuntuLinux.tar.gz
+tar -xvf kamiwaza-community-0.9.2-UbuntuLinux.tar.gz
 bash install.sh --community
 ```
 
-## Start the platform
+---
+
+## Start the Platform
 
 After installation completes:
 
 ```bash
-# Community Edition
-cd [INSTALL_ROOT]
+cd ~/kamiwaza  # or your install directory
 source .venv/bin/activate
 bash startup/kamiwazad.sh start
 ```
 
 Access the web console at `https://localhost`
 
-- Default Username: `admin`
-- Default Password: `kamiwaza`
+- **Default Username:** `admin`
+- **Default Password:** `kamiwaza`
+
+---
 
 ## Troubleshooting
 
-- Docker permissions: ensure your user is in the `docker` group (Linux) and re-login/reboot.
-- Python version: Kamiwaza requires Python 3.10. If you used 3.11+, reinstall 3.10 and rerun the installer.
-- GPU: For Linux NVIDIA issues, validate `nvidia-smi` works inside Docker as shown above. For Windows GPU setup, see [Windows GPU Setup Guide](gpu_setup_guide.md).
+| Issue | Solution |
+|-------|----------|
+| Docker permission denied | `sudo usermod -aG docker $USER && newgrp docker` |
+| Python version errors | Kamiwaza supports Python 3.10-3.12. Python 3.13+ is not yet supported. |
+| NVIDIA GPU not detected | See [Verifying System Requirements](system_requirements.md#nvidia-gpu-if-applicable) |
+| Windows GPU setup | See [Windows GPU Setup Guide](gpu_setup_guide.md) |
 
 ## Notes
 
-- Replace example tarball URLs with the latest version as needed.
-- The installer sets up virtual environments, required packages, and initial configuration automatically.
-
-
+- Check the [Kamiwaza Community Edition releases](https://github.com/kamiwaza-ai/kamiwaza-community-edition) for the latest available version.
+- The installer automatically sets up Python virtual environments, Node.js, and required packages.
