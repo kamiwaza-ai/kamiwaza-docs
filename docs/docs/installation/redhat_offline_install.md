@@ -1,8 +1,10 @@
-# Kamiwaza Offline Installation Guide for Red Hat Enterprise Linux
+# Kamiwaza Installation Guide for Red Hat Enterprise Linux (Offline/Air-Gapped)
 
 ## Overview
 
-Kamiwaza supports offline installation for air-gapped RHEL environments where internet access is restricted or unavailable. The offline installer includes:
+This guide covers the offline installation of Kamiwaza for air-gapped RHEL environments where internet access is restricted or unavailable. For systems with internet access, see the [Online Installation Guide](./redhat_online_install.md).
+
+The offline installer includes:
 
 - **Pre-packaged NVM + Node.js** (version 22.11.0)
 - **Frontend node_modules** (if available during build)
@@ -112,37 +114,39 @@ Transfer them to a folder on your target system that is accessible by all users.
 - Secure file transfer (scp, rsync)
 - Physical media delivery
 
-### Step 2: Basic Installation
-
-#### 2a. Install docker images
+### Step 2: Install Docker Images
 
 ```bash
 sudo bash install_docker_images.sh <"path/to/images.tar.gz">
 ```
 
-#### 2b. Install RPM
-
-**IMPORTANT:** You must accept the Kamiwaza License Agreement to install Kamiwaza. By including `KAMIWAZA_ACCEPT_LICENSE=yes` in the installation command, you are agreeing to the Kamiwaza License Agreement
-
-To review the full license terms, visit: https://www.kamiwaza.ai/license
+### Step 3: Enable and Start Docker
 
 ```bash
 # Enable and start Docker
 sudo systemctl enable docker
-sudo systemctl start docker 
+sudo systemctl start docker
 sudo chmod 666 /var/run/docker.sock
 ```
 
+### Step 4: Install RPM Package
+
+**IMPORTANT:** You must accept the Kamiwaza License Agreement to install Kamiwaza. By including `KAMIWAZA_ACCEPT_LICENSE=yes` in the installation command, you are agreeing to the Kamiwaza License Agreement.
+
+To review the full license terms, visit: https://www.kamiwaza.ai/license
+
 ```bash
 # Install the RPM package. Add your Kamiwaza license key between the quotation marks.
-sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install kamiwaza_[version]_rhel9_x86_64.rpm
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="[LICENSE_KEY]" dnf install kamiwaza_[version]_rhel9_x86_64.rpm
 
 # The installer will automatically detect offline mode and use bundled resources
 ```
 
+**Note:** Don't include `-E KAMIWAZA_LICENSE_KEY` if you don't want to run an enterprise install.
+
 **Tip:** While the installer says "Running scriptlet", use `sudo tail -f /var/log/kamiwaza-postinst-debug.log` to monitor logs.
 
-#### 2c. Configure system environment variables
+### Step 5: Configure System Environment Variables
 
 Edit `/etc/kamiwaza/env.sh`, which requires sudo access, to set the following environment variables:
 
@@ -158,7 +162,7 @@ On non-production systems, where insecure TLS is acceptable, you may also set:
 export AUTH_GATEWAY_TLS_INSECURE=true
 ```
 
-### Step 3: Install Extensions
+### Step 6: Install Extensions
 
 1. Before starting Kamiwaza, install the extensions from the registry tarball:
 
@@ -168,12 +172,12 @@ kamiwaza extensions install kamiwaza-registry-[date].tar.gz
 
 Replace `kamiwaza-registry-[date].tar.gz` with the actual filename of the registry package you received.
 
-2. Import the extensions images using the provided shell script
+2. Import the extensions images using the provided shell script:
 ```bash
-bash /opt/kamiwaza/kamiwaza/scripts/import-extension-images.sh 
+bash /opt/kamiwaza/kamiwaza/scripts/import-extension-images.sh
 ```
 
-### Step 4: Verification
+### Step 7: Verification
 
 ```bash
 kamiwaza start
@@ -187,7 +191,7 @@ kamiwaza status
 
 Once are all services are confirmed to be running, Kamiwaza is started.
 
-### Step 5: Verify Extensions
+### Step 8: Verify Extensions
 
 Use the following checklist to confirm the bundled extensions are ready:
 
