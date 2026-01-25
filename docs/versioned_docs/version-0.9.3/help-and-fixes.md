@@ -60,6 +60,31 @@ This information helps us provide faster and more accurate solutions to your pro
 
 ### Model Deployment Issues
 
+#### Gated Model Downloads and Rate Limits
+**Problem**: Downloads fail for gated models (Llama, Mistral, etc.) or you encounter Hugging Face rate limit errors.
+
+**Symptoms**:
+- "Access denied" or "401 Unauthorized" when downloading certain models
+- "Rate limit exceeded" errors during model downloads
+- Gated models appear in search but fail to download
+
+**Solution**: Add your Hugging Face token to the Kamiwaza environment:
+
+1. Get a Hugging Face token from [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) (a **read** token is sufficient)
+2. For gated models, accept the license terms on the model's Hugging Face page
+3. Add the token to your Kamiwaza environment:
+   ```bash
+   # Edit the environment file
+   sudo vim /opt/kamiwaza/kamiwaza/env.sh
+
+   # Add this line:
+   export HF_TOKEN="hf_your_token_here"
+   ```
+4. Restart Kamiwaza:
+   ```bash
+   kamiwaza restart
+   ```
+
 #### Model Deployment Failures
 **Problem**: Models fail to deploy or become unavailable.
 
@@ -86,6 +111,27 @@ This information helps us provide faster and more accurate solutions to your pro
 ```bash
 !pip uninstall -y kamiwaza
 !pip install kamiwaza
+```
+
+### App Garden Issues
+
+#### App Not Showing Latest Version
+**Problem**: An app in App Garden isn't displaying the latest content or updates due to cache TTL.
+
+**Solution**: Force a cache refresh using the API:
+
+```bash
+# Using curl (replace with your Kamiwaza URL and app ID)
+curl -X POST "https://your-kamiwaza-instance/api/v1/apps/{app_id}/refresh" \
+  -H "Authorization: Bearer $KAMIWAZA_API_KEY"
+```
+
+Or using the Python SDK:
+```python
+from kamiwaza_client import KamiwazaClient
+
+client = KamiwazaClient(base_url="https://your-kamiwaza-instance/api/")
+client.apps.refresh_app(app_id="your-app-id")
 ```
 
 ### General Troubleshooting Steps

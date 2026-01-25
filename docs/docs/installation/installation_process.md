@@ -13,42 +13,56 @@
 
 ### Linux
 
-#### Ubuntu .deb Package Installation (for Ubuntu 24.04 Noble)
+#### Ubuntu .deb Package Installation
 
-1. Add Kamiwaza repository to APT sources
-   ```
-   echo "deb [signed-by=/usr/share/keyrings/kamiwaza-archive-keyring.gpg] https://packages.kamiwaza.ai/ubuntu/ noble main" | sudo tee /etc/apt/sources.list.d/kamiwaza.list
-   ```
-2. Import and install Kamiwaza GPG signing key
-   ```
-   curl -fsSL https://packages.kamiwaza.ai/gpg | sudo gpg --dearmor -o /usr/share/keyrings/kamiwaza-archive-keyring.gpg
-   ```
-2. Update package database and install Kamiwaza
-   ```
-   sudo apt update
-   sudo apt upgrade
-   sudo apt install kamiwaza
-   ```
-3. Verify service starts (see [Quickstart](quickstart.md))
+Download the appropriate package for your Ubuntu version and architecture:
+
+| Ubuntu Version | Architecture | Download |
+|---------------|--------------|----------|
+| 24.04 (Noble) | x86_64 | [kamiwaza_v0.9.3_noble_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_x86_64.deb) |
+| 24.04 (Noble) | ARM64 | [kamiwaza_v0.9.3_noble_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64.deb) |
+| 24.04 (Noble) | ARM64 (DGX Spark) | [kamiwaza_v0.9.3_noble_arm64_dgx.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64_dgx.deb) |
+| 22.04 (Jammy) | x86_64 | [kamiwaza_v0.9.3_jammy_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_x86_64.deb) |
+| 22.04 (Jammy) | ARM64 | [kamiwaza_v0.9.3_jammy_ARM64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_ARM64.deb) |
+
+**ARM64 Package Selection:**
+- **ARM64** - For generic ARM64 systems (AWS Graviton, Ampere Altra, etc.)
+- **ARM64 (DGX Spark)** - For NVIDIA DGX Spark with Grace Blackwell CPU (includes CUDA-ARM dependencies)
+
+Install using dpkg:
+```bash
+# Download the package (example for Ubuntu 24.04 x86_64)
+curl -LO https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_x86_64.deb
+
+# Install the package
+sudo dpkg -i kamiwaza_v0.9.3_noble_x86_64.deb
+
+# Install any missing dependencies
+sudo apt-get install -f
+```
+
+Verify service starts (see [Quickstart](quickstart.md))
 
 #### RHEL .rpm Package Installation (for RHEL 9)
 
-For offline/air-gapped RHEL installations, see the comprehensive [Red Hat Offline Installation Guide](redhat_offline_install.md).
+Download and install the RPM package:
 
-#### Other Linux Distros via Tarball
+```bash
+# Download the package
+curl -LO https://packages.kamiwaza.ai/rpm/kamiwaza_v0.9.3_rhel9_x86_64.rpm
 
-1. Follow the consolidated guide: [Linux/macOS tarball installation](linux_macos_tarball.md)
-2. Ensure Docker Engine (with Compose v2), Python 3.10, and Node.js 22 are available (installer may configure as needed)
-3. Run `install.sh --community`
-4. Access via browser at `https://localhost`
+# Install the package
+sudo dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
+```
 
+For air-gapped or offline RHEL environments, see the [Red Hat Offline Installation Guide](redhat_offline_install.md).
 
 ### Community Edition on macOS
 
 _Only Community Edition is supported on macOS._
 
-1. Follow the consolidated guide: [Linux/macOS tarball installation](linux_macos_tarball.md)
-2. Ensure Docker Engine (with Compose v2), Python 3.10, and Node.js 22 are available (installer may configure as needed)
+1. Follow the guide: [macOS tarball installation](macos_tarball.md)
+2. Ensure Docker Desktop is installed and running
 3. Run `install.sh --community`
 4. Access via browser at `https://localhost`
 
