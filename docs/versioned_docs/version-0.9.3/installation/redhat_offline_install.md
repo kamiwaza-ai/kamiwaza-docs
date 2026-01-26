@@ -87,15 +87,18 @@ sudo dnf install -y net-tools gcc-c++ nodejs npm jq pkgconfig fontconfig-devel f
 
 ## For Users: Installing Offline
 
-### Step 1: Transfer Files to Target System
+### Step 1: Download and Transfer Files to Target System
 
-You should receive these files from your builder:
+Download the offline installer package from a system with internet access:
+
+| Package | Download |
+|---------|----------|
+| Offline RPM | [kamiwaza_v0.9.3_rhel9_x86_64_offline.rpm](https://packages.kamiwaza.ai/rpm/kamiwaza_v0.9.3_rhel9_x86_64_offline.rpm) |
+
+The offline package includes bundled dependencies. You may also need these additional files from your Kamiwaza representative:
 ```
-# Main installer package
-kamiwaza_[version]_rhel9_x86_64.rpm
-
-# Docker images					
-kamiwaza_[version]_rhel9_x86_64_docker_images.tar.gz
+# Docker images (if not bundled)
+kamiwaza_v0.9.3_rhel9_x86_64_docker_images.tar.gz
 
 # Docker image installation script
 install_docker_images.sh
@@ -105,7 +108,6 @@ kamiwaza-registry-[date].tar.gz
 ```
 
 Transfer them to a folder on your target system that is accessible by all users.
-
 
 **Transfer Methods:**
 - USB drive/removable media
@@ -135,7 +137,7 @@ sudo chmod 666 /var/run/docker.sock
 
 ```bash
 # Install the RPM package. Add your Kamiwaza license key between the quotation marks.
-sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install kamiwaza_[version]_rhel9_x86_64.rpm
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64_offline.rpm
 
 # The installer will automatically detect offline mode and use bundled resources
 ```

@@ -1,0 +1,9 @@
+{
+  "syncedAt": "2026-01-25T20:31:52.644Z",
+  "sourceRepo": "/Users/jxstanford/devel/kz/work/platform/kamiwaza",
+  "sourceBranch": "fix/uv-sync-empty-array-and-ai-docs",
+  "originalApiVersion": "0.1.0",
+  "patchedApiVersion": "0.9.3",
+  "endpoints": 207,
+  "schemas": 165
+}
