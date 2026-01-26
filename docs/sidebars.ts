@@ -30,6 +30,7 @@ const sidebars: SidebarsConfig = {
 				"installation/system_requirements",
 				"installation/macos_tarball",
 				"installation/windows_installation_guide",
+				"installation/redhat_online_install",
 				"installation/redhat_offline_install",
 				"installation/gpu_setup_guide",
 			],

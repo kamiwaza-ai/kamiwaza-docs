@@ -45,17 +45,23 @@ Verify service starts (see [Quickstart](quickstart.md))
 
 #### RHEL .rpm Package Installation (for RHEL 9)
 
-Download and install the RPM package:
+**For standard online installation (recommended)**, see the [Red Hat Installation Guide](redhat_online_install.md) for complete step-by-step instructions including Docker setup and system dependencies.
+
+**For air-gapped or offline RHEL environments**, see the [Red Hat Offline Installation Guide](redhat_offline_install.md).
+
+**Quick install** (for users who already have Docker and dependencies installed):
 
 ```bash
 # Download the package
 curl -LO https://packages.kamiwaza.ai/rpm/kamiwaza_v0.9.3_rhel9_x86_64.rpm
 
 # Install the package
-sudo dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
-```
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 
-For air-gapped or offline RHEL environments, see the [Red Hat Offline Installation Guide](redhat_offline_install.md).
+
+# Alternatively, for Enterprise Mode, Install the package with Kamiwaza License Key
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
+```
 
 ### Community Edition on macOS
 

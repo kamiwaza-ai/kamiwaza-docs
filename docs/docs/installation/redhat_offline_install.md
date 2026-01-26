@@ -2,7 +2,11 @@
 
 ## Overview
 
-Kamiwaza supports offline installation for air-gapped RHEL environments where internet access is restricted or unavailable. The offline installer includes:
+This guide covers offline installation for air-gapped RHEL environments where internet access is restricted or unavailable.
+
+**For standard installations with internet access (recommended)**, see the [Red Hat Installation Guide](./redhat_online_install.md). Online installation is the primary and recommended method for most users as it is simpler and automatically downloads all required components.
+
+The offline installation is supported for restricted environments and requires additional preparation. The offline installer includes:
 
 - **Pre-packaged NVM + Node.js** (version 22.11.0)
 - **Frontend node_modules** (if available during build)
