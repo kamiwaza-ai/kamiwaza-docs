@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'papers/index',
+        'papers/riker',
         'papers/llm-agentic-failures',
         'papers/kami-v0-1',
         'papers/picard',

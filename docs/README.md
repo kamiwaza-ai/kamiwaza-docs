@@ -48,7 +48,7 @@ npm run start
    **Option A - Create new version** (for releases):
    ```bash
    # From repo root
-   npm run version-up -- 0.6.0
+   npm run version-up -- 0.9.0
    ```
 
    **Option B - Update existing version** (for fixes):
@@ -57,7 +57,7 @@ npm run start
    npm run version-update
 
    # Or specify a version
-   npm run version-update -- 0.8.0
+   npm run version-update -- 0.9.2
    ```
 
 4. **Verify build after versioning**

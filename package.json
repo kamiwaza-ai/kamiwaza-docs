@@ -1,6 +1,6 @@
 {
   "name": "kamiwaza-docs",
-  "version": "0.8.1",
+  "version": "0.9.3",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
@@ -15,6 +15,7 @@
     "write-heading-ids": "docusaurus write-heading-ids",
     "typecheck": "tsc",
     "sync-sdk": "node -r ts-node/register scripts/sync-sdk-docs.ts",
+    "sync-openapi": "node -r ts-node/register scripts/sync-openapi.ts",
     "version-docs": "node -r ts-node/register scripts/version.ts",
     "version-up": "node -r ts-node/register scripts/version-up.ts",
     "version-update": "bash scripts/update-version.sh",
@@ -30,9 +31,12 @@
     "@docusaurus/plugin-content-blog": "^3.9.2",
     "@docusaurus/preset-classic": "^3.9.2",
     "@docusaurus/theme-classic": "^3.9.2",
+    "@docusaurus/theme-common": "^3.9.2",
     "@docusaurus/theme-mermaid": "^3.9.2",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
+    "docusaurus-plugin-openapi-docs": "^4.6.0",
+    "docusaurus-theme-openapi-docs": "^4.6.0",
     "prism-react-renderer": "^2.3.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
