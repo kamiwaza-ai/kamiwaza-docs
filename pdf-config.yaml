@@ -1,0 +1,87 @@
+# PDF Documentation Generation Configuration
+# Defines profiles for generating PDF documentation packages
+
+profiles:
+  # Offline Installation Profile
+  # For customers doing air-gapped/offline installations
+  offline-install:
+    name: "Kamiwaza Offline Installation Guide"
+    description: "Essential documentation for offline installations"
+    filename: "kamiwaza-offline-install"
+    cover:
+      title: "Kamiwaza AI Platform"
+      subtitle: "Offline Installation Guide"
+      includeVersion: true
+      includeLogo: true
+    documents:
+      - id: "admin-guide"
+        title: "Administrator Guide"
+      - id: "installation/system_requirements"
+        title: "System Requirements"
+      - id: "installation/installation_process"
+        title: "Installation Process"
+      - id: "installation/gpu_setup_guide"
+        title: "GPU Setup Guide"
+      - id: "quickstart"
+        title: "Quickstart Guide"
+      - id: "release-notes"
+        title: "Release Notes"
+    options:
+      includeTOC: true
+      includePageNumbers: true
+      includeHeaders: true
+      includeFooters: true
+      pageNumberStart: 1
+
+  # Full Documentation Profile
+  # Platform documentation
+  full-docs:
+    name: "Kamiwaza AI Documentation"
+    description: "Platform documentation"
+    filename: "kamiwaza-docs"
+    cover:
+      title: "Kamiwaza AI Platform"
+      subtitle: "Platform Documentation"
+      includeVersion: true
+      includeLogo: true
+    # Use includeAll with excludeDocs for automatic document discovery
+    includeAll: true
+    excludeDocs:
+      # Exclude team/company pages from customer documentation
+      - "team/kamiwaza"
+      - "team/jobs"
+      - "team/mts"
+    options:
+      includeTOC: true
+      includePageNumbers: true
+      includeHeaders: true
+      includeFooters: true
+      pageNumberStart: 1
+
+# Global PDF Settings
+settings:
+  # Default version (can be overridden via CLI)
+  defaultVersion: "current"
+
+  # Output directory (relative to project root)
+  outputDir: "dist/pdf"
+
+  # PDF generation options
+  pdf:
+    format: "A4"
+    margin:
+      top: "20mm"
+      right: "15mm"
+      bottom: "20mm"
+      left: "15mm"
+    printBackground: true
+    preferCSSPageSize: false
+
+  # Server settings for local build
+  server:
+    port: 9003
+    baseUrl: "http://localhost:9003"
+
+  # Styling
+  css:
+    customStylesheet: "docs/src/css/pdf.css"

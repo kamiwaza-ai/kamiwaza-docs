@@ -48,23 +48,21 @@ npm run start
    **Option A - Create new version** (for releases):
    ```bash
    # From repo root
-   npm run version-up -- 0.6.0
+   npm run version-up -- 0.9.0
    ```
 
    **Option B - Update existing version** (for fixes):
    ```bash
-   # From docs/ directory
-   export DOCS_VERSION=0.5.1
-   rm -rf versioned_docs/version-$DOCS_VERSION versioned_sidebars/version-$DOCS_VERSION-sidebars.json
-   node -e "const fs=require('fs');const p='versions.json';const v=JSON.parse(fs.readFileSync(p));fs.writeFileSync(p, JSON.stringify(v.filter(x=>x!=='$DOCS_VERSION'), null, 2)+'\n');"
-   npm run clear
-   npm run docusaurus -- docs:version $DOCS_VERSION
-   npm run build
+   # From repo root - updates most recent version by default
+   npm run version-update
+
+   # Or specify a version
+   npm run version-update -- 0.9.2
    ```
 
 4. **Verify build after versioning**
    ```bash
-   # From repo root
+   # From `docs/` directory
    npm run build
 
    # Check for broken links or build errors
@@ -114,8 +112,62 @@ npm run clear         # Clear Docusaurus cache (from docs/)
 ### Versioning
 ```bash
 # From repo root only
-npm run version-up -- <version>   # Create new version (e.g., 0.6.0)
+npm run version-up -- <version>      # Create new version (e.g., 0.6.0)
+npm run version-update               # Update most recent version with current docs
+npm run version-update -- <version>  # Update specific version (e.g., 0.7.0)
 ```
+
+### PDF Generation
+Generate PDF documentation for offline installations:
+
+```bash
+# Generate offline installation PDF (essential docs only)
+npm run pdf:offline
+
+# Generate complete documentation PDF
+npm run pdf:full
+
+# Generate specific profile with version
+npm run pdf -- --profile full-docs --version 0.5.1
+
+# Output location: dist/pdf/
+```
+
+**PDF Profiles:**
+- **offline-install**: Installation guides, quickstart, admin guide, troubleshooting, release notes
+- **full-docs**: Complete platform documentation
+
+**Requirements:**
+After adding PDF dependencies, run:
+```bash
+npm install
+```
+
+**Customizing PDF Output:**
+Edit `pdf-config.yaml` in the repo root to:
+- Create custom profiles
+- Select which documents to include
+- Configure PDF styling options
+- Set output format and margins
+
+### Federal Documentation
+
+Federal-specific documentation (air-gapped deployments, GovCloud, IL levels) is **excluded by default** from builds. To include Federal docs:
+
+```bash
+# Development with Federal docs
+npm run start:federal
+
+# Production build with Federal docs
+npm run build:federal
+
+# Or set the environment variable directly
+INCLUDE_FEDERAL_DOCS=true npm run start
+```
+
+**Federal docs location:** `docs/docs/federal/`
+
+The Federal section appears in the sidebar after the Security category when enabled.
 
 ### Deployment
 Deployment is **automatic** via GitHub Actions when merging to `main`.
