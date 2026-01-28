@@ -118,20 +118,18 @@ This information helps us provide faster and more accurate solutions to your pro
 #### App Not Showing Latest Version
 **Problem**: An app in App Garden isn't displaying the latest content or updates due to cache TTL.
 
-**Solution**: Force a cache refresh using the API:
+**Solution**: Force a cache refresh by syncing remote templates:
 
 ```bash
-# Using curl (replace with your Kamiwaza URL and app ID)
-curl -X POST "https://your-kamiwaza-instance/api/v1/apps/{app_id}/refresh" \
-  -H "Authorization: Bearer $KAMIWAZA_API_KEY"
-```
+# Step 1: Get an auth token
+TOKEN=$(curl -sk -X POST "https://your-kamiwaza-instance/api/auth/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&password=your-password" \
+  | jq -r '.access_token')
 
-Or using the Python SDK:
-```python
-from kamiwaza_client import KamiwazaClient
-
-client = KamiwazaClient(base_url="https://your-kamiwaza-instance/api/")
-client.apps.refresh_app(app_id="your-app-id")
+# Step 2: Force a cache refresh
+curl -sk -X POST "https://your-kamiwaza-instance/api/v1/apps/{app_id}/refresh" \
+  -H "Authorization: Bearer ${TOKEN}"
 ```
 
 ### General Troubleshooting Steps
