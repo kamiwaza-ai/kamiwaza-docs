@@ -47,7 +47,7 @@ After installation completes:
 ```bash
 cd ~/kamiwaza  # or your install directory
 source .venv/bin/activate
-bash startup/kamiwazad.sh start
+bash startup/kamiwazad.sh restart
 ```
 
 Access the web console at `https://localhost`
