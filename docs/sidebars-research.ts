@@ -37,6 +37,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'blogs/index',
+        'blogs/qwen3-next-80b-long-context-champion',
       ],
     },
     {
