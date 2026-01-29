@@ -308,6 +308,11 @@ Roles gate entire endpoints, while ReBAC expresses *who* can act on a specific r
 
 Once a tuple exists, the UI/API automatically enforces it—no redeploy or restart required.
 
+#### API Access Control Highlights
+
+- **Embedding endpoints** require an authenticated user.
+- **Vector database endpoints** (create, search, manage collections) require admin access and return a clear error if no VectorDB is deployed.
+
 ### 3.3 Hot Reload (No Restart Required)
 
 The RBAC policy file is automatically reloaded when modified:
@@ -480,12 +485,7 @@ memberOf              → roles
 4. Enter **Client ID** and **Client Secret** from Google Console
 5. Save and enable
 
-**Environment Configuration:**
-```bash
-# Google SSO
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-```
+**Note:** Google (and other) IdP credentials are stored in Keycloak, not in Kamiwaza environment variables.
 
 **Microsoft Azure AD / Office 365:**
 
@@ -505,6 +505,15 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 3. Authenticate with external identity provider
 4. First-time users automatically create Keycloak account
 5. Subsequent logins use existing account
+
+**Runtime IdP Registration (Optional):**
+
+Administrators can register external IdPs at runtime via the Auth Gateway API (no Keycloak restart required).
+
+Example (Google or generic OIDC):
+
+- `POST /api/auth/idp/register`
+- Payload supports `provider: "google"` or `provider: "oidc"` with client credentials and issuer metadata.
 
 ---
 
@@ -554,7 +563,30 @@ AUTH_GATEWAY_JWKS_CACHE_TTL=300  # JWKS cache duration (5 minutes)
 - Implement token refresh in client applications
 - Use secure, HTTP-only cookies for browser sessions
 
-### 5.3 HTTPS Enforcement
+### 5.3 Personal Access Tokens (PATs)
+
+PATs are short-lived JWTs for automation and non-interactive clients. They inherit the caller’s roles and (optionally) tenant metadata.
+
+Common endpoints:
+
+- `POST /api/auth/pats` – create a PAT (token is returned once)
+- `GET /api/auth/pats` – list PATs for the current user
+- `DELETE /api/auth/pats/{jti}` – revoke a PAT
+
+Recommended practices:
+- Use minimal scopes and short TTLs for automation.
+- Store PATs in a secrets manager, not in source control.
+
+### 5.4 Session Revocation API (Admin)
+
+Administrators can revoke sessions to force logout or reset access:
+
+- `DELETE /api/auth/sessions/{session_id}` – revoke a specific session
+- `POST /api/auth/sessions/purge` – revoke all sessions for a subject
+
+The purge payload includes `tenant_id`, `subject_namespace` (default `user`), and `subject_id`.
+
+### 5.5 HTTPS Enforcement
 
 **Production HTTPS Requirements:**
 
@@ -585,7 +617,7 @@ AUTH_GATEWAY_KEYCLOAK_URL=https://auth.yourdomain.com
 KAMIWAZA_HTTPS=true
 ```
 
-### 5.4 Rate Limiting (Optional - Requires Redis)
+### 5.6 Rate Limiting (Optional - Requires Redis)
 
 Rate limiting requires Redis configuration:
 
@@ -610,7 +642,7 @@ rate_limits:
     per_ip: true
 ```
 
-### 5.5 Ephemeral Sessions for App Garden
+### 5.7 Ephemeral Sessions for App Garden
 
 Ephemeral sessions automatically clean up App Garden deployments when users log out or their session expires. This prevents orphaned containers and ensures sensitive workloads don't persist beyond the user's session.
 
@@ -891,10 +923,8 @@ Refer to the [Observability Guide](../observability.md) for end-to-end logging, 
    - Verify redirect URI in Google/Azure console matches Keycloak exactly
    - Format: `https://auth.yourdomain.com/realms/kamiwaza/broker/{provider}/endpoint`
 
-2. **Verify client secret is set:**
-   ```bash
-   echo $GOOGLE_CLIENT_SECRET  # Should not be empty
-   ```
+2. **Verify client secret is set in Keycloak:**
+   - Confirm the IdP client secret matches what is configured in the provider console.
 
 3. **Check Keycloak identity provider logs:**
    ```bash
@@ -1020,10 +1050,7 @@ The same curl commands can be scripted in CI to ensure future changes do not bre
 
 ### External Identity Providers
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | - | For Google SSO |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | - | For Google SSO |
+External IdP credentials are stored in Keycloak (or registered via the IdP admin API), not as Kamiwaza environment variables.
 
 ---
 

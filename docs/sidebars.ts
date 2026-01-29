@@ -33,6 +33,7 @@ const sidebars: SidebarsConfig = {
 				"installation/redhat_online_install",
 				"installation/redhat_offline_install",
 				"installation/gpu_setup_guide",
+				"installation/two-node-deployment",
 			],
 		},
 		{
@@ -40,6 +41,7 @@ const sidebars: SidebarsConfig = {
 			label: "Security",
 			items: [
 				"security/admin-guide",
+				"security/consent-and-classification",
 				"security/rebac-overview",
 				"security/rebac-deployment-guide",
 				"security/rebac-validation-checklist",
@@ -67,8 +69,28 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: "doc",
+			id: "tool-garden",
+			label: "Tool Garden",
+		},
+		{
+			type: "doc",
 			id: "data-engine",
 			label: "Distributed Data Engine",
+		},
+		{
+			type: "doc",
+			id: "data-catalog",
+			label: "Data Catalog",
+		},
+		{
+			type: "doc",
+			id: "retrieval-service",
+			label: "Retrieval Service",
+		},
+		{
+			type: "doc",
+			id: "routing-modes",
+			label: "Routing & URLs",
 		},
 		{
 			type: "doc",
