@@ -17,3 +17,9 @@ When you select a model to deploy, Kamiwaza handles the download process for you
 3.  **Local Caching**: All downloaded model files are stored in a local cache directory on the platform. This means that subsequent requests for the same model will not require a new download, making deployments faster.
 
 Once a model's files are downloaded and verified, they are registered within Kamiwaza and become available for deployment.
+
+## Access control and hub behavior
+
+- **ReBAC protection**: Model metadata and downloads are protected by relationship-based access control. The user who registers or downloads a model is automatically assigned ownership/viewer access.
+- **Public viewer for hub models**: When a model is pulled from the Hugging Face Hub, Kamiwaza ensures a public viewer tuple exists so authorized users can discover the model without manual tuple edits.
+- **Graceful hub rate limits**: If the Hugging Face Hub rate-limits requests, Kamiwaza returns partial results with an error indicator instead of failing the entire search.

@@ -84,4 +84,4 @@ The base layer that provides the compute resources and orchestration to run ever
 | **Backend**       | Python 3.10, FastAPI, Ray, SQLAlchemy, Pydantic  |
 | **Frontend**      | React 18, Material-UI, Tailwind CSS, Axios       |
 | **Databases**     | CockroachDB, Milvus, Qdrant, etcd                |
-| **Infrastructure**| Docker Swarm, Traefik, DataHub, JupyterHub       |
+| **Infrastructure**| Docker Swarm, Traefik, DataHub                   |

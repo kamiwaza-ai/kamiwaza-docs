@@ -73,9 +73,9 @@ not whitelisted.
 - User not found: Adjust X.509 mapper in the IdP (map Subject/SAN/EDIPI to username/email) or enable auto-link.
 - Check gateway/IdP logs for the specific rejection reason (issuer mismatch, revocation, header missing).
 
-## Minimal Lab Setup
+## Minimal Non-Prod Setup
 
-- Use a lab CA and client cert; trust the lab CA in gateway and IdP.
-- Set AUTH_GATEWAY_CAC_ALLOWED_ISSUERS to the lab CA.
+- Use a test CA and client cert; trust the test CA in gateway and IdP.
+- Set AUTH_GATEWAY_CAC_ALLOWED_ISSUERS to the test CA.
 - In strictly local/dev, you may temporarily set AUTH_GATEWAY_TLS_INSECURE=true and AUTH_GATEWAY_CAC_FAIL_OPEN=true; revert to secure
 settings for real testing.

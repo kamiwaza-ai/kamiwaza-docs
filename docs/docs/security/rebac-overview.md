@@ -30,7 +30,7 @@ flowchart LR
 
 | Component | Purpose | Notes |
 | --- | --- | --- |
-| Auth Gateway | Terminates OIDC sessions, issues personal access tokens (PAT), forwards signed headers. | Keycloak is supported today; SAML/card reader flows are roadmap items. |
+| Auth Gateway | Terminates OIDC sessions, issues personal access tokens (PAT), forwards signed headers. | Keycloak is the reference IdP; OIDC, SAML, and CAC flows are supported when configured. |
 | Access Decision Engine | Evaluates tuples stored in Postgres or SpiceDB and returns permit/deny with reasoning. | Targets &lt;100 ms latency for typical requests. |
 | Relationship Store | Persists tuple data and mirrors to SpiceDB when enabled. | Ships with default tuples for system tenants. |
 | Service Guards | Wrap API endpoints with `enforce_*` helpers to require specific relations. | Catalog dataset deletes and model deletes ship protected in this release. |
@@ -84,9 +84,8 @@ For a walkthrough that exercises authentication, tuple enforcement, and observab
 
 ## Limitations & Roadmap
 
-- SAML and CAC/token-based sign-in are roadmap items; OIDC (Keycloak) is supported today.
-- Ingestion job ownership remains coarse-grained (admin-only). Tuple-based ownership and list/delete APIs will follow in a future release.
-- ReBAC currently covers catalog/model APIs; ingestion write paths, retrieval, and custom connectors will be added in upcoming updates.
+- ReBAC guards cover catalog, models, DDE connectors/documents, and retrieval job access. Additional services will continue to adopt guard coverage over time.
+- Some ingestion workflows are still admin-scoped; expand tuple policies if you need finer-grained controls for your operators.
 
 Need help integrating ReBAC or exporting evidence for accreditation? Reach out to your Kamiwaza support representative for the latest runbooks and automation scripts.
 
