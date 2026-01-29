@@ -152,7 +152,7 @@ Edit `pdf-config.yaml` in the repo root to:
 
 ### Federal Documentation
 
-Federal-specific documentation (air-gapped deployments, GovCloud, IL levels) is **excluded by default** from builds. To include Federal docs:
+The "Federal" docs section is **excluded by default** from builds. To include Federal docs:
 
 ```bash
 # Development with Federal docs
