@@ -23,7 +23,17 @@ This guide covers installing Kamiwaza Community Edition on macOS using the pre-b
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-### 2) Install and start Docker Desktop
+### 2) Install uv
+
+Kamiwaza requires [uv](https://docs.astral.sh/uv/) for Python package management. Install via Homebrew:
+
+```bash
+brew install uv
+```
+
+For alternative installation methods, see the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+
+### 3) Install and start Docker Desktop
 
 ```bash
 brew install --cask docker
@@ -32,13 +42,13 @@ open -a Docker
 docker --version && docker compose version
 ```
 
-### 3) Download and install Kamiwaza
+### 4) Download and install Kamiwaza
 
 The installer automatically handles Python (via pyenv), Node.js (via nvm), and other dependencies.
 
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
-curl -L -O https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.9.3-OSX.tar.gz
+curl -L -O https://packages.kamiwaza.ai/macos/kamiwaza-community-0.9.3-OSX.tar.gz
 tar -xvf kamiwaza-community-0.9.3-OSX.tar.gz
 bash install.sh --community
 ```
