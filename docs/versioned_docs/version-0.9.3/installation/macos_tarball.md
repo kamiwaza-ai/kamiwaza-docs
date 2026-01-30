@@ -7,6 +7,11 @@ This guide covers installing Kamiwaza Community Edition on macOS using the pre-b
 1. Review the [System Requirements](system_requirements.md) - especially the prerequisites
 2. Ensure you have administrator/sudo privileges
 3. Verify Docker is installed and working (see [Verifying System Requirements](system_requirements.md#verifying-system-requirements))
+4. Deactivate any active Python virtual environments (the installer will create its own):
+   ```bash
+   deactivate 2>/dev/null || true  # Deactivate venv if active
+   conda deactivate 2>/dev/null || true  # Deactivate conda if active
+   ```
 
 ---
 

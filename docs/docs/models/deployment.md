@@ -63,4 +63,22 @@ If a deployment shows ERROR or FAILED, the UI may show a short error code and me
 
 ## How routing works
 
-Kamiwaza wires the public port to Ray Serve for model traffic. Routes can be created immediately after launch; Ray Serve handles readiness internally. This is why you may see INITIALIZING briefly before DEPLOYED.
+Kamiwaza supports port-based routing, path-based routing, or both. Routes can be created immediately after launch; Ray Serve handles readiness internally. This is why you may see INITIALIZING briefly before DEPLOYED.
+
+### Port-based routing
+
+Each deployment gets a dedicated load balancer port. OpenAI-compatible base URL:
+
+```
+https://<host>:<lb_port>/v1
+```
+
+### Path-based routing
+
+Deployments are exposed on a single host using path prefixes. OpenAI-compatible base URL:
+
+```
+https://<host>/runtime/models/<deployment_id>/v1
+```
+
+Routing mode and prefixes are configurable. See [Routing & URLs](../routing-modes) for details.
