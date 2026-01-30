@@ -23,7 +23,7 @@ Download the appropriate package for your Ubuntu version and architecture:
 | 24.04 (Noble) | ARM64 | [kamiwaza_v0.9.3_noble_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64.deb) |
 | 24.04 (Noble) | ARM64 (DGX Spark) | [kamiwaza_v0.9.3_noble_arm64_dgx.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64_dgx.deb) |
 | 22.04 (Jammy) | x86_64 | [kamiwaza_v0.9.3_jammy_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_x86_64.deb) |
-| 22.04 (Jammy) | ARM64 | [kamiwaza_v0.9.3_jammy_ARM64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_ARM64.deb) |
+| 22.04 (Jammy) | ARM64 | [kamiwaza_v0.9.3_jammy_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_arm64.deb) |
 
 **ARM64 Package Selection:**
 - **ARM64** - For generic ARM64 systems (AWS Graviton, Ampere Altra, etc.)
