@@ -52,7 +52,7 @@ Download from Microsoft Store or GitHub releases
 ### Step 1: Download Kamiwaza Installer
 
 Download the Windows MSI installer:
-- **Download**: [kamiwaza_installer_0.9.3_x86_64.msi](https://packages.kamiwaza.ai/win/kamiwaza_installer_0.9.3_x86_64.msi)
+- **Download**: [kamiwaza_installer_0.9.3_x86_64.msi](https://packages.kamiwaza.ai/msi/kamiwaza_installer_0.9.3_x86_64.msi)
 - **Size**: Approximately 30-40MB
 
 ### Step 2: Run the Installer
