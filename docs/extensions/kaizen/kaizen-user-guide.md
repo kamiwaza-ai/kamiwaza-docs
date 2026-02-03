@@ -29,12 +29,17 @@ Welcome to **Kaizen**, an AI agent platform built by Kamiwaza. Kaizen empowers y
 
 ### 3. Deploy Kaizen
 1. In the App Garden, locate the **Kaizen** app.
+
 2. Click **Deploy**.
+
 3. **Configuration Options**:
    - **Ephemeral Session**: Check this box if you want chat information to be purged on logout/timeout. Leave blank to save your chat history for future sessions.
    - Leave other defaults as they are unless you have specific requirements.
+![Ephemeral session configuration](/img/extensions/kaizen/page-04-image-02.png)
+
 4. Click **Deploy**.
 5. Once deployed, click **Open App**.
+![Open app](/img/extensions/kaizen/page-05-image-02.png)
 
 ---
 
@@ -44,31 +49,45 @@ The Agent Wizard guides you through configuring your specialized AI assistant.
 
 ### Step 1: Start the Wizard
 From the Kaizen home page, click **Create Your First Agent**.
+![Create agent](/img/extensions/kaizen/page-05-image-03.png)
 
 ### Step 2: Basic Configuration
 1. **Name**: Enter a name for your agent based on its task (e.g., "Code Assistant", "Data Analyst").
 2. **Model**: Select a chat model from the list.
+![Select model](/img/extensions/kaizen/page-06-image-02.png)
 3. Click **Continue**.
 
 ### Step 3: Skills & Bundles
 Skills give your agent domain knowledge.
 1. Click **Continue** on the Skills page.
+![Add Skills](/img/extensions/kaizen/page-07-image-02.png)
+
 2. Select any available **Bundles** you wish to use (or skip). Bundles group related skills for specific domains.
+
 3. Click **Continue**.
+![Add Bundles](/img/extensions/kaizen/page-07-image-03.png)
 
 ### Step 4: MCP Integrations
 Model Context Protocol (MCP) allows agents to connect to external tools and APIs.
 1. Review available integrations (functionality may vary by release).
+
+
 2. Click **Continue**.
+![MCP integrations](/img/extensions/kaizen/page-08-image-02.png)
 
 ### Step 5: Security Policy
 1. Select the appropriate **Security Policy** for your agent. This controls which actions (like file deletion or network requests) require your explicit approval.
+![security policy](/img/extensions/kaizen/page-09-image-02.png)
+
 2. Click **Continue**.
 
 ### Step 6: Review & Create
 1. Review your agent's settings on the summary page.
 2. Click **Create Agent**.
+![Review](/img/extensions/kaizen/page-10-image-02.png)
+
 3. Hover your cursor over your new agent card and click **Chat** to enter the workspace.
+![Chat initiation](/img/extensions/kaizen/page-10-image-03.png)
 
 ---
 
@@ -78,6 +97,7 @@ Model Context Protocol (MCP) allows agents to connect to external tools and APIs
 The chat interface is your command center. It features:
 - **Chat Box**: Communicate with your agent in plain English.
 - **Live Workspace**: A side panel showing the agent's real-time activities, files, and "thinking" process.
+![Chat](/img/extensions/kaizen/page-11-image-02.png)
 
 ### Interacting with Your Agent
 1. **Type a Request**: Enter your goal in the chat box (e.g., "Create a Python script to analyze this data").
@@ -86,10 +106,14 @@ The chat interface is your command center. It features:
 
 ### Working with Files
 - **Upload**: Click the **paperclip icon** in the chat box to upload files for the agent to investigate. These will appear in the `uploads` folder in the Live Workspace pane.
+![Select file](/img/extensions/kaizen/page-12-image-02.png)
+![Review files](/img/extensions/kaizen/page-12-image-03.png)
+
 - **Download**: Any files created by the agent (reports, code, charts) can be downloaded directly from the Workspace pane.
 
 ### Ending a Session
 Click **Logout** to exit the Kaizen app and return to the Kamiwaza Dashboard.
+![Logout](/img/extensions/kaizen/page-13-image-04.png)
 
 ---
 
