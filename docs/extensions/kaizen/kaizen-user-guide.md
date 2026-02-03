@@ -111,6 +111,14 @@ The chat interface is your command center. It features:
 
 - **Download**: Any files created by the agent (reports, code, charts) can be downloaded directly from the Workspace pane.
 
+### Connecting to Microsoft 365
+Kaizen allows you to connect directly to your Microsoft 365 account to import files from SharePoint and OneDrive.
+
+1. **Prerequisite**: A Microsoft 365 connection must be configured in the Kamiwaza platform. Refer to the [Data Connectors documentation](/data-connectors) for details.
+2. **Connect**: Click the **cloud icon** next to the paperclip in the chat interface.
+3. **Authenticate**: Follow the prompt to log in with your Microsoft credentials (device code flow).
+4. **Import**: Browse your available sites and drives, select the files you need, and import them directly into the agent's workspace.
+
 ### Ending a Session
 Click **Logout** to exit the Kaizen app and return to the Kamiwaza Dashboard.
 ![Logout](/img/extensions/kaizen/page-13-image-04.png)
