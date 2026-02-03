@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'papers/index',
+        'papers/riker',
         'papers/llm-agentic-failures',
         'papers/kami-v0-1',
         'papers/picard',
@@ -36,6 +37,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'blogs/index',
+        'blogs/qwen3-next-80b-long-context-champion',
       ],
     },
     {

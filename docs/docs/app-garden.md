@@ -13,11 +13,13 @@ App Garden is a catalog of ready-to-run apps (dashboards, demo UIs, tools) that 
 - **Cross‑platform**: Works on macOS, Windows, and Linux
 - **AI‑ready**: Apps can automatically connect to your deployed models (OpenAI‑compatible)
 - **Simple lifecycle**: Start, stop, and remove from the UI
+- **Remote catalog sync**: Pull templates from the remote catalog with version filtering
+- **Template variables**: Environment values can reference routing-aware variables
 
 ## Getting Started
 
 1. Open the App Garden page in the Kamiwaza UI.
-2. If the catalog is empty, click Import/Refresh (or ask your administrator to enable the default catalog).
+2. If the catalog is empty, click Import/Refresh (or ask your administrator to enable the remote catalog).
 3. Browse the list and select an app to view details.
 4. Click Deploy. App Garden will start the containers and assign a URL.
 5. Click Open to launch the app in your browser.
@@ -36,6 +38,21 @@ Many apps can use models you’ve deployed in Kamiwaza. App Garden provides stan
 Tips:
 - If your app has a model preference setting (e.g., fast, large, reasoning, vision), choose it in the app’s configuration panel before deploying.
 - Ensure at least one model is deployed if your app requires AI.
+
+## Remote template catalog
+
+App Garden templates can sync from a remote catalog. Administrators can choose the catalog stage (LOCAL, DEV, STAGE, PROD) and refresh the catalog. The PROD stage is the default; the LOCAL stage is also available for internal app distribution.
+
+## Template variable substitution
+
+Template environment variables can reference routing-aware values. Examples include:
+
+- `{openai_base_url}`: legacy port-based OpenAI base URL (no trailing `/v1`)
+- `{openai_path_base_url}`: path-based OpenAI base URL (no trailing `/v1`)
+- `{model_path_url}`: full HTTPS URL to the selected model (path-based)
+- `{app_path_url}`: full HTTPS URL to the app (path-based)
+
+Reserved `KAMIWAZA_*` and `FORWARDAUTH_SIGNATURE_SECRET` environment keys are protected and cannot be overridden by user input.
 
 ## When to Use App Garden
 
@@ -61,8 +78,18 @@ When deploying an app, you can enable **Ephemeral session** mode. This automatic
 This is useful for demo environments or when you want automatic cleanup of test deployments.
 
 :::tip Administrator Configuration
-Administrators can force all deployments to be ephemeral by setting `KAMIWAZA_EPHEMERAL_EXTENSIONS=true`. See the [Administrator Guide](/docs/security/admin-guide#55-ephemeral-sessions-for-app-garden) for details.
+Administrators can force all deployments to be ephemeral by setting `KAMIWAZA_EPHEMERAL_EXTENSIONS=true`. See the [Administrator Guide](/docs/security/admin-guide#57-ephemeral-sessions-for-app-garden) for details.
 :::
+
+## Session tokens for apps
+
+When an app is deployed in ephemeral mode, it receives a session token and endpoints it can call to keep the session alive or request cleanup:
+
+- `KAMIWAZA_APP_SESSION_TOKEN`
+- `KAMIWAZA_APP_SESSION_HEARTBEAT_ENDPOINT` (`/api/apps/sessions/heartbeat`)
+- `KAMIWAZA_APP_SESSION_ENDPOINT` (`/api/apps/sessions/end`)
+
+Apps should send periodic heartbeats when they remain active. Ending the session (or logging out) triggers cleanup of the associated deployment.
 
 ## Advanced Options
 

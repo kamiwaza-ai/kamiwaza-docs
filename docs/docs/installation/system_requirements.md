@@ -1,66 +1,276 @@
 # System Requirements
 
-## Base System Requirements
+## Hardware Requirements
 
-### Supported Operating Systems & Architecture
-- **Linux**: 
-  - Ubuntu 24.04 and 22.04 LTS via .deb package installation (x64/amd64 architecture only)
-  - Redhat Enterprise Linux (RHEL) 9
-- **Windows**: 11 (x64 architecture) via WSL with MSI installer
-- **macOS**: 12.0 or later, Apple Silicon (ARM64) only (community edition only)
+### CPU
 
-### CPU Requirements
-- **Architecture**:
-  - Linux: x64/amd64 (64-bit)
-  - macOS: ARM64 (Apple Silicon) only
-  - Windows: x64 (64-bit)
 - **Minimum Cores**: 8+ cores
 - **Recommended Cores**: 16+ cores for CPU-based inference workloads
+- **Architecture**:
+  - Linux: x64/amd64 (64-bit)
+  - Windows: x64 (64-bit)
+  - macOS: ARM64 (Apple Silicon) only
 
-### Core Software Requirements
-- **Python**: Python 3.10 for tarball installations; Python 3.12 for .deb/.msi installations
-- **Docker**: Docker Engine with Compose v2
-- **Node.js**: 22.x (installed via NVM during setup)
-- **Browser**: Chrome Version 141+ (tested and recommended)
-- **GPU Support**: NVIDIA GPU with compute capability 7.0+ (Linux only) or NVIDIA RTX/Intel Arc (Windows via WSL)
-
-### Memory Requirements
+### Memory
 
 #### System RAM
-- **Minimum**: 16GB RAM
-- **Recommended**: 32GB+ RAM for CPU-based inference workloads
-- **GPU Workloads**: 16GB+ system RAM (32GB+ recommended)
+
+| Mode | Minimum | Recommended | Notes |
+|------|---------|-------------|-------|
+| **Lite Mode** | 16GB | 32GB | SQLite database; limited capacity for apps/tools |
+| **Full Mode** | 32GB | 64GB+ | CockroachDB + DataHub; production workloads |
+| **GPU Workloads** | 32GB | 64GB+ | System RAM alongside GPU vRAM |
 
 #### GPU Memory (vRAM)
+
 - **GPU Inference**: 16GB+ vRAM required
 - **Recommended**: 32GB+ vRAM for optimal GPU inference performance
 
-#### Windows (WSL-based) Specific
-- **Minimum**: 16GB RAM
-- **Recommended**: 32GB+ RAM
-- **Memory Allocation**: 50-75% of system RAM dedicated to Kamiwaza during installation
+### GPU (Optional)
 
-### Storage Requirements
+Kamiwaza supports multiple GPU and accelerator platforms:
+
+**Discrete GPUs:**
+- NVIDIA GPUs with compute capability 7.0+ (Linux)
+- NVIDIA RTX / Intel Arc (Windows via WSL)
+
+**Unified Memory Systems:**
+- **NVIDIA DGX Spark** - GB10 Grace Blackwell, 128GB unified memory
+- **AMD Ryzen AI Max+ 395** - "Strix Halo" platform, up to 128GB unified memory
+- **Apple Silicon M-series** - Unified memory architecture (macOS only)
+
+See [Special Considerations](#special-considerations) for detailed unified memory platform specifications.
+
+### Storage
+
+Storage requirements are the same across all platforms.
 
 #### Storage Performance
+
 - **Required**: SSD (Solid State Drive)
 - **Preferred**: NVMe SSD for optimal performance
 - **Minimum**: SATA SSD
-- **Note**: Models weights can be on a separate HDD but loads time will increase
+- **Note**: Model weights can be on a separate HDD but load times will increase significantly
 
 #### Storage Capacity
 
-**Linux/macOS**
 - **Minimum**: 100GB free disk space
 - **Recommended**: 200GB+ free disk space
 - **Enterprise Edition**: Additional space for /opt/kamiwaza persistence
 
-**Windows**
-- **Minimum**: 100GB free disk space
-- **Recommended**: 200GB+ free space on SSD
-- **WSL**: Automatically manages Ubuntu 24.04 installation space
+#### Capacity Planning
 
-📋 **For detailed Windows storage and configuration requirements, see the [Windows Installation Guide](windows_installation_guide.md).**
+| Component | Minimum | Recommended | Notes |
+|-----------|---------|-------------|-------|
+| **Operating System** | 20GB | 50GB | Ubuntu/RHEL base + dependencies |
+| **Kamiwaza Platform** | 50GB | 50GB | Python environment, Ray, services |
+| **Model Storage** | 50GB | 500GB+ | Depends on number and size of models |
+| **Database** | 10GB | 50GB | CockroachDB for metadata |
+| **Vector Database** | 10GB | 100GB+ | For embeddings (if enabled) |
+| **Logs & Metrics** | 10GB | 50GB | Rotated logs, Ray dashboard data |
+| **Scratch Space** | 20GB | 100GB | Temporary files, downloads, builds |
+| **Total** | **170GB** | **900GB+** | |
+
+#### Storage Performance Requirements
+
+**Local Storage (Single Node):**
+- **Minimum:** SATA SSD (500 MB/s sequential read)
+- **Recommended:** NVMe SSD (2000+ MB/s sequential read)
+- **Note:** HDD is only recommended for non-dynamic model loads and low KV cache usage - model load times can be very long (15+ minutes); models are in memory after load
+
+**Performance Targets:**
+- **Sequential Read:** 2000+ MB/s (model loading)
+- **Sequential Write:** 1000+ MB/s (model downloads, checkpoints)
+- **4K Random Read IOPS:** 50,000+ (database, concurrent access)
+- **4K Random Write IOPS:** 20,000+ (database writes, logs)
+
+**Why It Matters:**
+- 7B model (14GB): Loads in ~7 seconds on NVMe vs ~28 seconds on SATA SSD
+- Concurrent model loads across Ray workers stress random read performance
+- Database query performance directly tied to IOPS
+
+---
+
+## Supported Operating Systems
+
+### Linux
+
+- **Ubuntu**: 24.04 and 22.04 LTS via .deb package installation (x64/amd64 architecture only)
+- **Red Hat Enterprise Linux (RHEL)**: 9
+
+### Windows
+
+- **Windows 11** (x64 architecture) via WSL with MSI installer
+- Requires Windows Subsystem for Linux (WSL) installed and enabled
+- Administrator access required for initial setup
+- Windows Terminal recommended for optimal WSL experience
+
+### macOS
+
+- **macOS 15.0 (Sequoia) or later**, Apple Silicon (ARM64) only
+- Community edition only
+- Single-node deployments only (Enterprise edition not available on macOS)
+
+---
+
+## Software Dependencies
+
+### Pre-requisites (User Must Install)
+
+Before running the Kamiwaza installer, ensure the following are installed:
+
+| Component | Requirement | Installation Guide |
+|-----------|-------------|-------------------|
+| **Docker** | Docker Engine 24.0+ with Compose 2.23+ | [Docker Install Guide](https://docs.docker.com/engine/install/) |
+| **Browser** | Chrome 141+ (tested and recommended) | [Download Chrome](https://www.google.com/chrome/) |
+
+### GPU Drivers (Required for GPU Inference)
+
+Install the appropriate driver for your GPU hardware:
+
+**NVIDIA GPUs:**
+| Component | Requirement | Installation Guide |
+|-----------|-------------|-------------------|
+| NVIDIA Driver | 550-server or later | [NVIDIA Driver Downloads](https://www.nvidia.com/download/index.aspx) |
+| NVIDIA Container Toolkit | Required for GPU containers | [Container Toolkit Install](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) |
+
+**AMD GPUs (ROCm):**
+| Component | Requirement | Installation Guide |
+|-----------|-------------|-------------------|
+| ROCm | 7.1.1+ (see note for gfx1151) | [ROCm Installation](https://rocm.docs.amd.com/en/latest/deploy/linux/index.html) |
+| Docker ROCm support | `--device /dev/kfd --device /dev/dri` | [ROCm Docker Guide](https://rocm.docs.amd.com/en/latest/how-to/docker.html) |
+
+> **Note:** AMD Strix Halo (gfx1151) requires ROCm 7.10.0 preview or later. See [ROCm 7.10.0 Preview](https://rocm.docs.amd.com/en/7.10.0-preview/) - this is a preview release and not intended for production use.
+
+### Linux Full Mode Only
+
+These dependencies are only required for Linux installations using Full mode (`--full` flag). Lite mode uses SQLite and does not require CockroachDB.
+
+| Component | Requirement | Notes |
+|-----------|-------------|-------|
+| **CockroachDB** | v23.2.x | Database for Full mode |
+
+**Install CockroachDB on Ubuntu/Debian:**
+
+```bash
+wget -qO- https://binaries.cockroachdb.com/cockroach-v23.2.12.linux-amd64.tgz | tar xvz
+sudo cp cockroach-v23.2.12.linux-amd64/cockroach /usr/local/bin
+rm -rf cockroach-v23.2.12.linux-amd64
+
+# Verify installation
+cockroach version
+```
+
+> **Note:** macOS installations automatically install CockroachDB via Homebrew when needed.
+
+### Auto-Installed by Kamiwaza
+
+The Kamiwaza installer automatically installs and configures the following - no manual installation required:
+
+- Python 3.12 (or 3.10 for tarball installations)
+- Node.js 22.x and NVM
+- uv (Python package manager)
+- Platform-specific dependencies
+
+---
+
+## Verifying System Requirements
+
+Use these commands to verify your system meets the requirements before installation.
+
+### Docker
+
+```bash
+docker --version
+# Expected: Docker version 24.0.0 or later
+# Example output: Docker version 27.4.0, build bde2b89
+
+docker compose version
+# Expected: Docker Compose version v2.23.0 or later
+# Example output: Docker Compose version v2.31.0
+```
+
+**If you get "permission denied" errors**, add your user to the docker group:
+
+```bash
+# Add current user to docker group
+sudo usermod -aG docker $USER
+
+# Apply group membership (choose one):
+newgrp docker          # Apply in current terminal session
+# OR log out and back in
+# OR reboot
+
+# Verify group membership
+groups | grep docker
+# Expected: "docker" should appear in the list
+```
+
+### Python
+
+```bash
+python3 --version
+# Expected: Python 3.10.x, 3.11.x, or 3.12.x
+# Example output: Python 3.12.3
+```
+
+### NVIDIA GPU (if applicable)
+
+```bash
+# Check NVIDIA driver
+nvidia-smi
+# Expected: Driver version 450.80.02 or later (550+ recommended)
+# Should display GPU name, driver version, and CUDA version
+
+# Check NVIDIA Container Toolkit
+nvidia-ctk --version
+# Expected: Any version indicates toolkit is installed
+# Example output: NVIDIA Container Toolkit CLI version 1.17.3
+
+# Test GPU access from Docker
+docker run --rm --gpus all nvidia/cuda:12.4.1-runtime-ubuntu22.04 nvidia-smi
+# Expected: Same output as nvidia-smi, confirming Docker can access GPU
+```
+
+### AMD ROCm (if applicable)
+
+```bash
+# Check ROCm installation
+rocm-smi
+# Expected: Should display AMD GPU information
+# Look for: GPU temperature, utilization, memory usage
+
+# Check ROCm version
+cat /opt/rocm/.info/version
+# Expected: 7.1.1 or later (7.10.0+ for Strix Halo gfx1151)
+
+# Verify GPU device access
+ls -la /dev/kfd /dev/dri
+# Expected: Both devices should exist and be accessible
+
+# Test ROCm from Docker
+docker run --rm --device /dev/kfd --device /dev/dri --group-add video rocm/pytorch:latest rocm-smi
+# Expected: Should display GPU information from within container
+```
+
+### System Resources
+
+```bash
+# Check available memory
+free -h
+# Expected: At least 16GB total (32GB+ recommended)
+# Look for "Mem:" row, "total" column
+
+# Check CPU cores
+nproc
+# Expected: 8 or more cores
+
+# Check available disk space
+df -h /
+# Expected: At least 100GB free (200GB+ recommended)
+```
+
+---
 
 ## Hardware Recommendation Tiers
 
@@ -94,7 +304,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 **Hardware Specifications:**
 - **CPU:** 8-16 cores / 16-32 threads
-- **RAM:** 32GB (16GB minimum)
+- **RAM:** 32GB (16GB minimum for lite mode only)
 - **Storage:** 200GB NVMe SSD (100GB minimum)
 - **GPU:** Optional - Single GPU with 16-24GB VRAM
   - NVIDIA RTX 4090 (24GB)
@@ -168,6 +378,8 @@ The table below provides real-world GPU memory requirement estimates for represe
 - Horizontal auto-scaling based on load
 - Production SLAs (99.9% uptime)
 
+---
+
 ## Cloud Provider Instance Mapping
 
 ### AWS EC2 Instance Types
@@ -227,63 +439,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 - NDm A100 v4 series offers InfiniBand networking for HPC workloads
 - Latest options: Blackwell/H200-based VM families are announced/rolling out; align Tier 2/3 to those SKUs where available.
 
-### Windows-Specific Prerequisites
-- Windows Subsystem for Linux (WSL) installed and enabled
-- Administrator access required for initial setup
-- Windows Terminal (recommended for optimal WSL experience)
-
-## Dependencies & Components
-
-### Required System Packages
-See platform-specific installation instructions
-
-### NVIDIA Components (Linux GPU Support)
-- NVIDIA Driver (550-server recommended)
-- NVIDIA Container Toolkit
-- nvidia-docker2
-
-### Windows Components (Automated via MSI Installer)
-- Windows Subsystem for Linux (WSL 2)
-- Ubuntu 24.04 LTS (automatically downloaded and configured)
-- Docker Engine (configured within WSL)
-- GPU drivers and runtime (automatically detected and configured)
-- Node.js 22 (via NVM within WSL environment)
-
-### Docker Configuration Requirements
-- Docker Engine with Compose v2
-- User must be in docker group
-- Swarm mode (Enterprise Edition)
-- Docker data root configuration (configurable)
-
-### Required Directory Structure
-
-#### Enterprise Edition
-
-Note this is created by the installer and present in cloud marketplace images.
-
-```
-/etc/kamiwaza/
-├── config/
-├── ssl/      # Cluster certificates
-└── swarm/    # Swarm tokens
-
-/opt/kamiwaza/
-├── containers/  # Docker root (configurable)
-├── logs/
-├── nvm/        # Node Version Manager
-└── runtime/    # Runtime files
-```
-
-#### Community Edition
-
-We recommend `${HOME}/kamiwaza` or something similar for `KAMIWAZA_ROOT`.
-
-```
-$KAMIWAZA_ROOT/
-├── env.sh
-├── runtime/
-└── logs/
-```
+---
 
 ## Network Configuration
 
@@ -312,7 +468,18 @@ $KAMIWAZA_ROOT/
 - Tensor parallelism transfers large model shards between GPUs
 - Shared storage access impacts model loading performance
 
+### Network Ports
+
+#### Linux/macOS Enterprise Edition
+- 443/tcp: HTTPS primary access
+- 51100-51199/tcp: Deployment ports for model instances (will also be used for 'App Garden' in the future)
+
+#### Windows Edition
+- 443/tcp: HTTPS primary access (via WSL)
+- 61100-61299/tcp: Reserved ports for Windows installation
+
 ### Required Kernel Modules (Enterprise Edition Linux Only)
+
 Required modules for Swarm container networking:
 - overlay
 - br_netfilter
@@ -333,43 +500,91 @@ net.ipv4.ip_forward                 = 1
 - No special kernel modules or sysctl settings required
 - Simplified single-node networking configuration
 
+---
 
-## Detailed Storage Requirements
+## Directory Structure
 
-### Capacity Planning
+### Enterprise Edition
 
-| Component | Minimum | Recommended | Notes |
-|-----------|---------|-------------|-------|
-| **Operating System** | 20GB | 50GB | Ubuntu/RHEL base + dependencies |
-| **Kamiwaza Platform** | 50GB | 50GB | Python environment, Ray, services |
-| **Model Storage** | 50GB | 500GB+ | Depends on number and size of models |
-| **Database** | 10GB | 50GB | CockroachDB for metadata |
-| **Vector Database** | 10GB | 100GB+ | For embeddings (if enabled) |
-| **Logs & Metrics** | 10GB | 50GB | Rotated logs, Ray dashboard data |
-| **Scratch Space** | 20GB | 100GB | Temporary files, downloads, builds |
-| **Total** | **170GB** | **900GB+** | |
+Note: This is created by the installer and present in cloud marketplace images.
 
-### Storage Performance Requirements
+```
+/etc/kamiwaza/
+├── config/
+├── ssl/      # Cluster certificates
+└── swarm/    # Swarm tokens
 
-#### Local Storage (Single Node)
+/opt/kamiwaza/
+├── containers/  # Docker root (configurable)
+├── logs/
+├── nvm/        # Node Version Manager
+└── runtime/    # Runtime files
+```
 
-**Storage Type:**
-- **Minimum:** SATA SSD (500 MB/s sequential read)
-- **Recommended:** NVMe SSD (2000+ MB/s sequential read)
-- **Note:** HDD: Only recommended for non-dynamic model loads and low KV cache usage - model load times can be very long (15+ minutes); models are in memory after load
+### Community Edition
 
-**Performance Targets:**
-- **Sequential Read:** 2000+ MB/s (model loading)
-- **Sequential Write:** 1000+ MB/s (model downloads, checkpoints)
-- **4K Random Read IOPS:** 50,000+ (database, concurrent access)
-- **4K Random Write IOPS:** 20,000+ (database writes, logs)
+We recommend `${HOME}/kamiwaza` or something similar for `KAMIWAZA_ROOT`.
 
-**Why It Matters:**
-- 7B model (14GB): Loads in ~7 seconds on NVMe vs ~28 seconds on SATA SSD
-- Concurrent model loads across Ray workers stress random read performance
-- Database query performance directly tied to IOPS
+```
+$KAMIWAZA_ROOT/
+├── env.sh
+├── runtime/
+└── logs/
+```
 
-#### Shared Storage (Multi-Node Clusters)
+---
+
+## Special Considerations
+
+### Apple Silicon (M-Series)
+
+**MLX Engine Support:**
+- Kamiwaza supports Apple Silicon via the MLX inference engine
+- Unified memory architecture (shared CPU/GPU RAM)
+- Excellent performance for models up to 13B parameters; reasonable performance for larger models when context is appropriately restricted and RAM is available.
+- All M-series chips work in approximately the same way, but newer chips (e.g., M4) offer substantially higher performance than older versions
+- Ultra chips (Mac Studio/Mac Pro models) typically offer 50-80% more performance than Pro versions
+
+**Notes:**
+- No tensor parallelism support (single chip only)
+- Not for production use; like-for-like API, UI, capabilities.
+- Community edition only; single node only (Enterprise edition not available on macOS)
+
+### NVIDIA DGX Spark
+
+The NVIDIA DGX Spark is a compact AI workstation powered by the GB10 Grace Blackwell Superchip:
+
+- **CPU:** 20-core ARM (10x Cortex-X925 + 10x Cortex-A725)
+- **GPU:** Blackwell architecture with 6,144 CUDA cores
+- **Memory:** 128GB LPDDR5x unified memory (273 GB/s bandwidth)
+- **AI Compute:** Up to 1 PFLOP FP4 AI performance
+- **Storage:** 4TB NVMe SSD
+- **Networking:** Dual QSFP ports (up to 200 Gbps aggregate)
+
+**Capabilities:**
+- Run models up to 200B parameters locally
+- Two interconnected units can handle models up to 405B parameters
+- Unified memory architecture eliminates GPU vRAM constraints
+
+### AMD Ryzen AI Max+ 395 "Strix Halo"
+
+AMD's Strix Halo platform provides powerful AI inference in a compact form factor:
+
+- **CPU:** 16-core Zen 5 (up to 5.1 GHz), 80MB cache
+- **GPU:** Radeon 8060S iGPU (40 CUs, RDNA 3.5 architecture)
+- **NPU:** 50 TOPS XDNA 2 neural engine
+- **Memory:** Up to 128GB LPDDR5x unified memory (up to 112GB GPU-allocatable)
+- **AI Performance:** 126 TOPS total
+- **TDP:** 55W (highly power efficient)
+
+**Capabilities:**
+- Run 70B+ parameter models locally
+- Available in mini PCs and high-end laptops
+- Unified memory architecture similar to Apple Silicon
+
+---
+
+## Shared Storage (Multi-Node Clusters)
 
 **Network Filesystem Requirements:**
 - **Protocol:** NFSv4, Lustre, CephFS, or S3-compatible object storage
@@ -408,21 +623,15 @@ net.ipv4.ip_forward                 = 1
 - Configurable paths via environment variables
 - Single-node storage only (no shared storage required)
 
-## Special Considerations
+---
 
-### Apple Silicon (M-Series)
+## Version Compatibility
 
-**MLX Engine Support:**
-- Kamiwaza supports Apple Silicon via the MLX inference engine
-- Unified memory architecture (shared CPU/GPU RAM)
-- Excellent performance for models up to 13B parameters; reasonable performance for larger models when context is appropriately restricted and RAM is available.
-- All M-series chips work in approximately the same way, but newer chips (e.g., M4) offer substantially higher performance than older versions
-- Ultra chips (Mac Studio/Mac Pro models) typically offer 50-80% more performance than Pro versions
+- Docker Engine: 24.0 or later with Compose 2.23+
+- NVIDIA Driver: 450.80.02 or later
+- ETCD: 3.5 or later
 
-**Notes:**
-- No tensor parallelism support (single chip only)
-- Not for production use; like-for-like API, UI, capabilities.
-- Community edition only; single node only (Enterprise edition not available on macOS)
+---
 
 ## Important Notes
 
@@ -434,21 +643,3 @@ net.ipv4.ip_forward                 = 1
 - **Docker**: Custom Docker root configuration may affect other containers
 - **Windows Edition**: Requires WSL 2 and will create a dedicated Ubuntu 24.04 instance
 - **Administrator Access**: Windows installation requires administrator privileges for initial setup
-
-## Additional Considerations
-
-### Network Ports
-
-#### Linux/macOS Enterprise Edition
-- 443/tcp: HTTPS primary access
-- 51100-51199/tcp: Deployment ports for model instances (will also be used for 'App Garden' in the future)
-
-#### Windows Edition
-- 443/tcp: HTTPS primary access (via WSL)
-- 61100-61299/tcp: Reserved ports for Windows installation
-
-### Version Compatibility
-- Docker Engine: 20.10 or later
-- NVIDIA Driver: 450.80.02 or later
-- ETCD: 3.5 or later
-- Node.js: 22.x (installed automatically)

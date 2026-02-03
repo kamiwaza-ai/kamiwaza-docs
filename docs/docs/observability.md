@@ -31,6 +31,25 @@ All logs are stored in the `$KAMIWAZA_ROOT/logs` directory by default.
 
 ---
 
+## Logger Service (Deployment Logs)
+
+Kamiwaza also exposes a logger service that powers the UI log viewer and automated pattern detection. This service centralizes logs for model deployments, App Garden deployments, and Tool Garden deployments.
+
+Common endpoints (via the API gateway):
+
+- `GET /api/logger/deployments/all` – list all deployment logs
+- `GET /api/logger/deployments/type/{type}` – filter by deployment type
+- `GET /api/logger/deployments/{type}/{id}` – fetch log content
+- `GET /api/logger/deployments/{type}/{id}/patterns` – error pattern analysis
+- `DELETE /api/logger/deployments/{type}/{id}?confirm=true` – delete a log file
+- `DELETE /api/logger/cleanup?days_old=30&dry_run=true` – cleanup old logs
+
+Use the log viewer in the UI for quick pattern detection (OOM, CUDA errors, startup failures) without manually tailing files.
+
+(Note: for the bold, this also makes engine deployment logs available to agentic processes.)
+
+---
+
 ## OpenTelemetry Integration
 
 Kamiwaza uses an OpenTelemetry Collector to route telemetry data. This allows you to integrate with any OTLP-compatible backend without modifying the application code.
