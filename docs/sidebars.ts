@@ -37,9 +37,12 @@ const sidebars: SidebarsConfig = {
 			],
 		},
 		{
-		  type: 'doc',
-		  id: 'configuration',
-		  label: 'Configuration',
+			type: "category",
+			label: "Configuration",
+			items: [
+				"configuration",
+				"routing-modes",
+			],
 		},
 		{
 			type: "category",
@@ -78,24 +81,18 @@ const sidebars: SidebarsConfig = {
 			label: "Tool Garden",
 		},
 		{
-			type: "doc",
-			id: "data-engine",
+			type: "category",
 			label: "Distributed Data Engine",
-		},
-		{
-			type: "doc",
-			id: "data-catalog",
-			label: "Data Catalog",
-		},
-		{
-			type: "doc",
-			id: "retrieval-service",
-			label: "Retrieval Service",
-		},
-		{
-			type: "doc",
-			id: "routing-modes",
-			label: "Routing & URLs",
+			items: [
+				{
+					type: "doc",
+					id: "data-engine",
+					label: "Overview",
+				},
+				"data-connectors",
+				"data-catalog",
+				"retrieval-service",
+			],
 		},
 		{
 			type: "doc",
