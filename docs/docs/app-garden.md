@@ -6,6 +6,8 @@ App Garden lets you browse, deploy, and manage containerized applications from a
 
 App Garden is a catalog of ready-to-run apps (dashboards, demo UIs, tools) that you can deploy to your Kamiwaza environment. It handles the container runtime, networking, and routing for you, so you focus on using the app, not wiring it up.
 
+For documentation on specific apps available in the App Garden, please check the [Extensions](/extensions/intro) section.
+
 ## Key Features
 
 - **One‑click deploy**: Launch apps directly from the catalog
