@@ -121,19 +121,13 @@ sudo tail -f /var/log/kamiwaza-postinst-debug.log
 
 After installation, configure Kamiwaza by editing `/etc/kamiwaza/env.sh` (requires sudo access):
 
-**Required:**
-```bash
-export KAMIWAZA_ORIGIN=<the-full-url-to-access-app>
-```
-
-Be sure to include the protocol (e.g., `https://kamiwaza.example.com` or `https://192.168.1.100`).
-
 **Optional (for non-production systems only):**
 
-On non-production systems where self-signed certificates or insecure TLS is acceptable:
+On non-production systems where self-signed certificates or insecure TLS is acceptable, ensure existing variables are set as:
 
 ```bash
 export AUTH_GATEWAY_TLS_INSECURE=true
+export AUTH_REBAC_SESSION_ALLOW_INSECURE=true
 ```
 
 > **Warning:** Do not use `AUTH_GATEWAY_TLS_INSECURE=true` in production environments.
