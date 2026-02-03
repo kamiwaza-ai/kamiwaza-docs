@@ -13,6 +13,11 @@ const sidebars: SidebarsConfig = {
 					id: "kaizen/kaizen-user-guide",
 					label: "User Guide",
 				},
+				{
+					type: "doc",
+					id: "kaizen/changelog",
+					label: "Changelog",
+				},
 			],
 		},
 	],
