@@ -35,7 +35,7 @@ If WSL is not already installed on your system:
 
 ### Step 2: Install Docker Desktop
 
-Docker is required for running Kamiwaza. If you do not already have Docker installed, download Docker Desktop from the official website [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/) and follow the instructions.
+Docker is required for running Kamiwaza. If you do not already have Docker installed, download [Docker Desktop](https://www.docker.com/products/docker-desktop/) from the official website and follow the instructions.
 
 Verify your Docker installation:
 ```
