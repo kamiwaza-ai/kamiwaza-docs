@@ -105,7 +105,9 @@ The chat interface is your command center. It features:
 3. **Refine**: Based on the output, ask follow-up questions or provide corrections.
 
 ### Working with Files
-- **Upload**: Click the **paperclip icon** in the chat box to upload files for the agent to investigate. These will appear in the `uploads` folder in the Live Workspace pane.
+- **Upload**: 
+  1. Click the **plus sign** on the left side of the chat box to reveal additional options.
+  2. Click the **paperclip icon** to upload files for the agent to investigate. These will appear in the `uploads` folder in the Live Workspace pane.
 ![Select file](/img/extensions/kaizen/page-12-image-02.png)
 ![Review files](/img/extensions/kaizen/page-12-image-03.png)
 
@@ -114,10 +116,11 @@ The chat interface is your command center. It features:
 ### Connecting to Microsoft 365
 Kaizen allows you to connect directly to your Microsoft 365 account to import files from SharePoint and OneDrive.
 
-1. **Prerequisite**: A Microsoft 365 connection must be configured in the Kamiwaza platform. Refer to the [Data Connectors documentation](/data-connectors) for details.
-2. **Connect**: Click the **cloud icon** next to the paperclip in the chat interface.
-3. **Authenticate**: Follow the prompt to log in with your Microsoft credentials (device code flow).
-4. **Import**: Browse your available sites and drives, select the files you need, and import them directly into the agent's workspace.
+> **Note**: This feature requires that a Microsoft 365 connector be configured by your Kamiwaza administrator. If you don't see the cloud icon or encounter issues, contact your administrator to ensure the Microsoft 365 connector is properly set up. Refer to the [Data Connectors documentation](/data-connectors) for details.
+
+1. **Connect**: Click the **plus sign** on the left side of the chat box, then click the **cloud icon** next to the paperclip in the chat interface.
+2. **Authenticate**: Follow the prompt to log in with your Microsoft credentials (device code flow).
+3. **Import**: Browse your available sites and drives, select the files you need, and import them directly into the agent's workspace.
 
 ### Ending a Session
 Click **Logout** to exit the Kaizen app and return to the Kamiwaza Dashboard.

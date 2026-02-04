@@ -42,8 +42,8 @@ This document tracks major changes, feature additions, and improvements in the K
 
 #### 6. UX Improvements
 - **ChatGPT-Style Sidebar**: Time-grouped conversation history (Today, Yesterday, Last 7 Days).
-- **Inline Confirmation**: Approve or reject actions directly within the chat stream.
-- **Stuck Detection**: Automated detection and recovery for looping agent states.
+- **Inline Confirmation**: Approve or reject agent actions directly within the chat stream.
+- **Stuck Detection**: If an agent gets stuck in a loop or repetitive behavior, Kaizen automatically detects this and can help recover, ensuring your agent continues making progress on your tasks.
 
 #### 7. Microsoft 365 Integration
 - **Cloud Connectors**: Connect directly to SharePoint and OneDrive to import documents into the workspace.
