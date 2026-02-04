@@ -97,12 +97,12 @@ Download the offline installer package from a system with internet access:
 
 | Package | Download |
 |---------|----------|
-| Offline RPM | [kamiwaza_v0.9.3_rhel9_x86_64_offline.rpm](https://packages.kamiwaza.ai/rpm/kamiwaza_v0.9.3_rhel9_x86_64_offline.rpm) |
+| Offline RPM | [kamiwaza_v0.10.0_rhel9_x86_64_offline.rpm](https://packages.kamiwaza.ai/rpm/kamiwaza_v0.10.0_rhel9_x86_64_offline.rpm) |
 
 The offline package includes bundled dependencies. You may also need these additional files from your Kamiwaza representative:
 ```
 # Docker images (if not bundled)
-kamiwaza_v0.9.3_rhel9_x86_64_docker_images.tar.gz
+kamiwaza_v0.10.0_rhel9_x86_64_docker_images.tar.gz
 
 # Docker image installation script
 install_docker_images.sh
@@ -141,7 +141,7 @@ sudo chmod 666 /var/run/docker.sock
 
 ```bash
 # Install the RPM package. Add your Kamiwaza license key between the quotation marks.
-sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64_offline.rpm
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install ./kamiwaza_v0.10.0_rhel9_x86_64_offline.rpm
 
 # The installer will automatically detect offline mode and use bundled resources
 ```
