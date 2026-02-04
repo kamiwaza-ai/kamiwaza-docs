@@ -119,7 +119,7 @@ sudo tail -f /var/log/kamiwaza-postinst-debug.log
 
 ## Step 4: Configure System Environment Variables
 
-After installation, configure Kamiwaza by editing `/etc/kamiwaza/env.sh` (requires sudo access):
+After installation, configure Kamiwaza by editing `/etc/kamiwaza/env.sh` (enterprise edition - requires sudo access) or `/opt/kamiwaza/kamiwaza/env.sh` (community edition):
 
 **Optional (for non-production systems only):**
 
@@ -159,6 +159,17 @@ Open your browser and navigate to the URL you configured in `KAMIWAZA_ORIGIN`:
 ```
 https://your-configured-domain-or-ip
 ```
+
+---
+
+## Step 6: Create Users
+
+After installation, you'll need to create user accounts to access Kamiwaza.
+```bash
+/opt/kamiwaza/kamiwaza/bin/kz-user add admin --email admin@company.com --roles admin --random --safe
+```
+
+**Note:** Passwords are displayed once and must be saved immediately. For bulk user creation and full documentation, see the [Security Admin Guide](../security/admin-guide#221-using-kz-user-cli-tool).
 
 ---
 

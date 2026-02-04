@@ -97,12 +97,12 @@ Download the offline installer package from a system with internet access:
 
 | Package | Download |
 |---------|----------|
-| Offline RPM | [kamiwaza_v0.9.3_rhel9_x86_64_offline.rpm](https://packages.kamiwaza.ai/rpm/kamiwaza_v0.9.3_rhel9_x86_64_offline.rpm) |
+| Offline RPM | [kamiwaza_v0.10.0_rhel9_x86_64_offline.rpm](https://packages.kamiwaza.ai/rpm/kamiwaza_v0.10.0_rhel9_x86_64_offline.rpm) |
 
 The offline package includes bundled dependencies. You may also need these additional files from your Kamiwaza representative:
 ```
 # Docker images (if not bundled)
-kamiwaza_v0.9.3_rhel9_x86_64_docker_images.tar.gz
+kamiwaza_v0.10.0_rhel9_x86_64_docker_images.tar.gz
 
 # Docker image installation script
 install_docker_images.sh
@@ -141,7 +141,7 @@ sudo chmod 666 /var/run/docker.sock
 
 ```bash
 # Install the RPM package. Add your Kamiwaza license key between the quotation marks.
-sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64_offline.rpm
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install ./kamiwaza_v0.10.0_rhel9_x86_64_offline.rpm
 
 # The installer will automatically detect offline mode and use bundled resources
 ```
@@ -150,19 +150,18 @@ sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install ./kam
 
 #### 2c. Configure system environment variables
 
-Edit `/etc/kamiwaza/env.sh`, which requires sudo access, to set the following environment variables:
-
-**Required:**
-```bash
-export KAMIWAZA_ORIGIN=<the-full-url-to-access-app>
-```
-Be sure to include `https://` in your env variable.
+After installation, configure Kamiwaza by editing `/etc/kamiwaza/env.sh` (requires sudo access):
 
 **Optional (for non-production systems only):**
-On non-production systems, where insecure TLS is acceptable, you may also set:
+
+On non-production systems where self-signed certificates or insecure TLS is acceptable, ensure existing variables are set as:
+
 ```bash
 export AUTH_GATEWAY_TLS_INSECURE=true
+export AUTH_REBAC_SESSION_ALLOW_INSECURE=true
 ```
+> **Warning:** Do not use `AUTH_GATEWAY_TLS_INSECURE=true` in production environments.
+
 
 ### Step 3: Install Extensions
 
@@ -193,7 +192,16 @@ kamiwaza status
 
 Once are all services are confirmed to be running, Kamiwaza is started.
 
-### Step 5: Verify Extensions
+### Step 5: Create Users
+
+After installation, you'll need to create user accounts to access Kamiwaza.
+```bash
+/opt/kamiwaza/kamiwaza/bin/kz-user add admin --email admin@company.com --roles admin --random --safe
+```
+
+**Note:** Passwords are displayed once and must be saved immediately. For bulk user creation and full documentation, see the [Security Admin Guide](../security/admin-guide#221-using-kz-user-cli-tool).
+
+### Step 6: Verify Extensions
 
 Use the following checklist to confirm the bundled extensions are ready:
 
@@ -227,7 +235,7 @@ Note: Extension logs get written to `/var/log/kamiwaza/extension-sync.log`.
 
 ### Troubleshooting: Extension Configuration (Offline builds)
 
-Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/opt/kamiwaza/kamiwaza/env.sh`—verify they match your environment:
+Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/etc/kamiwaza/env.sh`—verify they match your environment:
 
 | Variable | Typical offline value | Purpose |
 |----------|----------------------|---------|
@@ -235,10 +243,10 @@ Offline bundles include the Kamiwaza Extension Registry so App Garden extensions
 | `KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` | `file:///opt/kamiwaza/extensions/kamiwaza-extension-registry` | Points to the unpacked registry assets on disk |
 | `KAMIWAZA_EXTENSION_INSTALL_PATH` | `/opt/kamiwaza/kamiwaza/extensions` | Destination directory for the registry archive |
 
-If the builder omitted these entries (or they differ), edit `/opt/kamiwaza/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
+If the builder omitted these entries (or they differ), edit `/etc/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
 
 ```bash
-sudo vim /opt/kamiwaza/kamiwaza/env.sh
+sudo vim /etc/kamiwaza/env.sh
 ```
 
 Ensure the file contains exactly one copy of each export:
