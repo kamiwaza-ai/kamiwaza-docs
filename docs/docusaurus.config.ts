@@ -124,6 +124,21 @@ const config: Config = {
 				},
 			},
 		],
+		// Extensions docs plugin
+		[
+			"@docusaurus/plugin-content-docs",
+			{
+				id: "extensions",
+				path: "extensions",
+				routeBasePath: "extensions",
+				sidebarPath: require.resolve("./sidebars-extensions.ts"),
+				versions: {
+					current: {
+						label: "Latest",
+					},
+				},
+			},
+		],
 		// Research docs plugin
 		[
 			"@docusaurus/plugin-content-docs",
@@ -154,7 +169,7 @@ const config: Config = {
 				indexBlog: true,
 				indexDocs: true,
 				indexPages: false,
-				searchContextByPaths: ["docs", "sdk", "research"],
+				searchContextByPaths: ["docs", "sdk", "extensions", "research"],
 				searchBarShortcut: true,
 				searchBarShortcutHint: false,
 				// Exclude underscore-prefixed files; also exclude federal/ when not in federal mode
@@ -185,6 +200,12 @@ const config: Config = {
 					position: "left",
 					label: "SDK",
 					activeBasePath: "/sdk",
+				},
+				{
+					to: "/extensions/intro",
+					position: "left",
+					label: "Extensions",
+					activeBasePath: "/extensions",
 				},
 				{
 					to: "/blog",

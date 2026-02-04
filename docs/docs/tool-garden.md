@@ -9,6 +9,8 @@ Tool Shed lets you deploy and manage tool servers from container images or templ
 
 Kamiwaza typically leverages Model Context Protocol (MCP) servers to provide tools to agentic workflows via these.
 
+For documentation on specific tools available in the Tool Shed, please check the [Extensions](/extensions/intro) section.
+
 ## What you can do
 
 - Deploy a tool server from a Docker image
