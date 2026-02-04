@@ -35,12 +35,35 @@ If WSL is not already installed on your system:
 
 ### Step 2: Install Docker Desktop
 
-Docker is required for running Kamiwaza. If you do not already have Docker installed, download [Docker Desktop](https://www.docker.com/products/docker-desktop/) from the official website and follow the instructions.
+Docker is required for running Kamiwaza. If you do not already have Docker installed:
 
-Verify your Docker installation:
-```
+1. Download [Docker Desktop](https://www.docker.com/products/docker-desktop/) from the official website
+2. Run the installer and ensure **"Use WSL 2 instead of Hyper-V"** is checked during installation (this is typically the default)
+3. Complete the installation and restart your computer if prompted
+
+#### Configure WSL Integration
+
+After Docker Desktop is installed:
+
+1. Open Docker Desktop
+2. Go to **Settings** (gear icon) → **Resources** → **WSL Integration**
+3. Ensure **"Enable integration with my default WSL distro"** is enabled
+4. If you have existing WSL distributions, toggle on integration for any distributions you want to use with Docker
+5. Click **Apply & Restart**
+
+#### Verify Docker Installation
+
+From PowerShell or Command Prompt:
+```powershell
 docker --version
 ```
+
+Verify Docker works within WSL:
+```powershell
+wsl docker --version
+```
+
+Both commands should return the Docker version. If the WSL command fails, check that WSL integration is properly enabled in Docker Desktop settings.
 
 ### Step 3: Verify GPU Access (If Applicable)
 
