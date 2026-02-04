@@ -107,6 +107,374 @@ export KEYCLOAK_ADMIN_PASSWORD="<strong-random-password>"
 
 **⚠️ Important:** Remove or secure test users before production deployment.
 
+### 2.2.1 Using kz-user CLI Tool
+
+The `kz-user` command-line tool provides a streamlined way to manage Keycloak users without accessing the admin console. It's particularly useful for:
+- Automated user provisioning scripts
+- Bulk user creation
+- Integration with configuration management tools
+- Command-line administration workflows
+
+#### Initial Setup
+
+**1. Source the Kamiwaza environment:**
+
+```bash
+cd $KAMIWAZA_ROOT
+source env.sh
+```
+
+This automatically sets up:
+- `KAMIWAZA_ROOT` environment variable
+- `PATH` including the `bin/` directory
+- `MANPATH` for accessing the man page
+
+**2. Verify kz-user is accessible:**
+
+```bash
+kz-user --version
+```
+
+**3. View full documentation:**
+
+```bash
+man kz-user
+```
+
+**4. Configure Keycloak admin password:**
+
+The tool needs the Keycloak admin password, which can be provided via:
+
+```bash
+# Option 1: Environment variable (recommended)
+export KEYCLOAK_ADMIN_PASSWORD="your-admin-password"
+
+# Option 2: Set in env.sh (for permanent setup)
+echo 'export KEYCLOAK_ADMIN_PASSWORD="your-admin-password"' >> env.sh
+
+# Option 3: The tool will prompt interactively if not set
+```
+
+#### Creating Users with kz-user
+
+**Single User Creation:**
+
+```bash
+# Interactive password entry (validates security requirements)
+kz-user add alice --email alice@company.com --roles admin
+
+# Random password (full special characters)
+kz-user add bob --random --roles user,viewer
+
+# Random shell-safe password (no escaping needed)
+kz-user add charlie --random --safe --roles user
+
+# Random alphanumeric only (easiest to type)
+kz-user add david --random --simple --roles viewer
+
+# Custom password requirements and length
+kz-user add eve --random "U=3,L=3,N=3,S=2" --length 20 --roles admin
+```
+
+**Password Requirements:**
+
+When entering passwords manually, they must meet these requirements:
+- Minimum 12 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one digit
+- At least one special character
+
+**Important Security Note:** Generated passwords are displayed in the terminal output and must be copied immediately. No passwords are stored on disk for STIG compliance.
+
+#### Bulk User Creation
+
+For seeding multiple users post-installation, create a shell script:
+
+```bash
+#!/bin/bash
+# bulk-users.sh - Create multiple Kamiwaza users
+
+# Source environment
+source $KAMIWAZA_ROOT/env.sh
+
+# Define users (username:email:roles)
+USERS=(
+  "alice:alice@company.com:admin"
+  "bob:bob@company.com:user,viewer"
+  "charlie:charlie@company.com:user"
+  "david:david@company.com:viewer"
+  "admin2:admin2@company.com:admin"
+)
+
+# Create users with random passwords
+echo "Creating users..."
+for user_spec in "${USERS[@]}"; do
+  IFS=':' read -r username email roles <<< "$user_spec"
+
+  echo "Creating user: $username"
+  kz-user add "$username" \
+    --email "$email" \
+    --roles "$roles" \
+    --random \
+    --safe
+
+  echo "---"
+done
+
+echo "User creation complete!"
+```
+
+Make it executable and run:
+
+```bash
+chmod +x bulk-users.sh
+./bulk-users.sh
+```
+
+**Alternative: CSV-based bulk creation:**
+
+```bash
+#!/bin/bash
+# users.csv format: username,email,roles
+# alice,alice@company.com,admin
+# bob,bob@company.com,user
+
+source $KAMIWAZA_ROOT/env.sh
+
+while IFS=, read -r username email roles; do
+  # Skip header line
+  [[ "$username" == "username" ]] && continue
+
+  echo "Creating: $username ($email) with roles: $roles"
+  kz-user add "$username" \
+    --email "$email" \
+    --roles "$roles" \
+    --random --safe
+done < users.csv
+```
+
+#### Common Management Tasks
+
+**List all users:**
+
+```bash
+kz-user list
+```
+
+Output formats:
+```bash
+kz-user list --format table   # Default, human-readable
+kz-user list --format json    # JSON output
+kz-user list --format csv     # CSV export
+```
+
+**View user details:**
+
+```bash
+kz-user info alice
+```
+
+Shows: username, email, roles, enabled status, active sessions, creation date.
+
+**Change user password:**
+
+```bash
+# Interactive entry
+kz-user passwd alice
+
+# Random password
+kz-user passwd alice --random --safe
+```
+
+**Manage user roles:**
+
+```bash
+# View current roles
+kz-user roles alice
+
+# Add roles
+kz-user roles alice --add admin
+
+# Remove roles
+kz-user roles alice --remove viewer
+
+# Add and remove in one command
+kz-user roles alice --add editor --remove viewer
+```
+
+**Enable/disable users:**
+
+```bash
+# Disable (prevents login)
+kz-user disable alice
+
+# Re-enable
+kz-user enable alice
+```
+
+**Update user attributes:**
+
+```bash
+kz-user update alice \
+  --email alice.smith@company.com \
+  --first-name Alice \
+  --last-name Smith
+```
+
+**Session management:**
+
+```bash
+# View active sessions for user
+kz-user info alice  # Includes session info
+
+# Force logout (terminate all sessions)
+kz-user logout alice
+```
+
+**Security operations:**
+
+```bash
+# View users locked by brute force protection
+kz-user locked
+
+# Unlock a user
+kz-user unlock alice
+
+# View authentication events
+kz-user events --limit 50
+kz-user events --user alice --limit 20
+kz-user events --type LOGIN_ERROR --limit 100
+```
+
+**Delete user:**
+
+```bash
+# With confirmation prompt
+kz-user delete alice
+
+# Skip confirmation (for automation)
+kz-user delete alice --force
+```
+
+#### Troubleshooting kz-user
+
+**Error: "Cannot connect to Keycloak authentication service"**
+
+This means Keycloak is not running or authentication is disabled.
+
+Check Keycloak status:
+```bash
+docker ps | grep keycloak
+```
+
+If no container is found, authentication may be disabled in this installation. To enable:
+```bash
+export KAMIWAZA_USE_AUTH=true
+bash startup/kamiwazad.sh restart
+```
+
+Verify Keycloak is accessible:
+```bash
+curl http://localhost:8080/health/ready
+```
+
+**Error: "Missing required dependencies"**
+
+Ensure the virtual environment is activated:
+```bash
+source $KAMIWAZA_ROOT/.venv/bin/activate
+```
+
+Or let the script auto-activate by running it directly:
+```bash
+$KAMIWAZA_ROOT/bin/kz-user list
+```
+
+**Command not found**
+
+If `kz-user` is not in PATH:
+```bash
+# Option 1: Source env.sh
+source $KAMIWAZA_ROOT/env.sh
+
+# Option 2: Use full path
+$KAMIWAZA_ROOT/bin/kz-user list
+
+# Option 3: Add to ~/.bashrc permanently
+echo 'export PATH="$KAMIWAZA_ROOT/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+#### Integration Examples
+
+**Configuration Management (Ansible):**
+
+```yaml
+# playbook.yml
+- name: Create Kamiwaza users
+  hosts: kamiwaza_servers
+  tasks:
+    - name: Create admin user
+      shell: |
+        source {{ kamiwaza_root }}/env.sh
+        kz-user add {{ item.username }} \
+          --email {{ item.email }} \
+          --roles {{ item.roles }} \
+          --random --safe
+      loop:
+        - { username: "admin1", email: "admin1@company.com", roles: "admin" }
+        - { username: "user1", email: "user1@company.com", roles: "user,viewer" }
+      register: user_creation
+      failed_when: "'already exists' not in user_creation.stdout and user_creation.rc != 0"
+```
+
+**CI/CD Pipeline (GitHub Actions):**
+
+```yaml
+# .github/workflows/seed-users.yml
+name: Seed Kamiwaza Users
+
+on:
+  workflow_dispatch:
+
+jobs:
+  seed-users:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Seed default users
+        env:
+          KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+        run: |
+          source env.sh
+          ./scripts/bulk-users.sh
+```
+
+**Docker Entrypoint (Automated Setup):**
+
+```bash
+#!/bin/bash
+# docker-entrypoint.sh
+
+# Wait for Keycloak to be ready
+until curl -sf http://keycloak:8080/health/ready; do
+  echo "Waiting for Keycloak..."
+  sleep 5
+done
+
+# Source environment
+source /opt/kamiwaza/env.sh
+
+# Create default users if they don't exist
+kz-user add admin --random --roles admin || true
+kz-user add demo --random --roles user,viewer || true
+
+# Start main application
+exec "$@"
+```
+
 ### 2.3 User Roles and Permissions
 
 Kamiwaza defines three primary roles:
