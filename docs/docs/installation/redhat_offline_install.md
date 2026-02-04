@@ -150,19 +150,18 @@ sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install ./kam
 
 #### 2c. Configure system environment variables
 
-Edit `/etc/kamiwaza/env.sh`, which requires sudo access, to set the following environment variables:
-
-**Required:**
-```bash
-export KAMIWAZA_ORIGIN=<the-full-url-to-access-app>
-```
-Be sure to include `https://` in your env variable.
+After installation, configure Kamiwaza by editing `/etc/kamiwaza/env.sh` (requires sudo access):
 
 **Optional (for non-production systems only):**
-On non-production systems, where insecure TLS is acceptable, you may also set:
+
+On non-production systems where self-signed certificates or insecure TLS is acceptable, ensure existing variables are set as:
+
 ```bash
 export AUTH_GATEWAY_TLS_INSECURE=true
+export AUTH_REBAC_SESSION_ALLOW_INSECURE=true
 ```
+> **Warning:** Do not use `AUTH_GATEWAY_TLS_INSECURE=true` in production environments.
+
 
 ### Step 3: Install Extensions
 

@@ -119,7 +119,7 @@ sudo tail -f /var/log/kamiwaza-postinst-debug.log
 
 ## Step 4: Configure System Environment Variables
 
-After installation, configure Kamiwaza by editing `/etc/kamiwaza/env.sh` (requires sudo access):
+After installation, configure Kamiwaza by editing `/etc/kamiwaza/env.sh` (enterprise edition - requires sudo access) or `/opt/kamiwaza/kamiwaza/env.sh` (community edition):
 
 **Optional (for non-production systems only):**
 
