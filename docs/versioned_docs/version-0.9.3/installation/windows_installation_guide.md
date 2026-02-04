@@ -42,10 +42,12 @@ If you do not already have Docker installed, download [Docker Desktop](https://w
 After Docker Desktop is installed:
 
 1. Go to **Settings** → **General**
-2. Ensure **"Use the WSL 2 based engine"** is enabled
-3. Go to **Settings** → **Resources** → **WSL Integration**
-4. Ensure **"Enable integration with my default WSL distro"** is enabled
-5. Click **Apply & Restart**
+   - Enable **"Use the WSL 2 based engine"**
+
+2. Go to **Settings** → **Resources** → **WSL Integration**
+   - Enable **"Enable integration with my default WSL distro"**
+
+3. Click **Apply & Restart**
 
 #### Verify Docker Installation
 
