@@ -38,7 +38,7 @@ The installer automatically handles Python (via pyenv), Node.js (via nvm), and o
 
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
-curl -L -O https://github.com/kamiwaza-ai/kamiwaza-community-edition/raw/main/kamiwaza-community-0.9.3-OSX.tar.gz
+curl -L -O https://packages.kamiwaza.ai/macos/kamiwaza-community-0.9.3-OSX.tar.gz
 tar -xvf kamiwaza-community-0.9.3-OSX.tar.gz
 bash install.sh --community
 ```

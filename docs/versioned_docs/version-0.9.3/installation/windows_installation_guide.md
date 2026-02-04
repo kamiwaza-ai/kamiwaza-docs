@@ -33,7 +33,37 @@ If WSL is not already installed on your system:
    wsl --version
    ```
 
-### Step 2: Verify GPU Access (If Applicable)
+### Step 2: Install Docker Desktop
+
+If you do not already have Docker installed, download [Docker Desktop](https://www.docker.com/products/docker-desktop/) from the official website.
+
+#### Configure WSL Integration
+
+After Docker Desktop is installed:
+
+1. Go to **Settings** → **General**
+   - Enable **"Use the WSL 2 based engine"**
+
+2. Go to **Settings** → **Resources** → **WSL Integration**
+   - Enable **"Enable integration with my default WSL distro"**
+
+3. Click **Apply & Restart**
+
+#### Verify Docker Installation
+
+From PowerShell or Command Prompt:
+```powershell
+docker --version
+```
+
+Verify Docker works within WSL:
+```powershell
+wsl docker --version
+```
+
+Both commands should return the Docker version. If the WSL command fails, check that WSL integration is properly enabled in Docker Desktop settings.
+
+### Step 3: Verify GPU Access (If Applicable)
 
 **Note**: GPU verification will be performed automatically during installation. The installer will detect and configure GPU access for supported hardware.
 
@@ -43,7 +73,7 @@ If WSL is not already installed on your system:
 
 **Note**: Kamiwaza currently supports only NVIDIA GPUs and Intel Arc GPUs for hardware acceleration. For Intel Arc GPU setup instructions, please refer to the separate Intel Arc WSL [GPU virtualization documentation](gpu_setup_guide.md#intel-arc-gpu-setup).
 
-### Step 3: Install Windows Terminal (Optional but Recommended)
+### Step 4: Install Windows Terminal (Optional but Recommended)
 
 Download from Microsoft Store or GitHub releases
 
@@ -52,7 +82,7 @@ Download from Microsoft Store or GitHub releases
 ### Step 1: Download Kamiwaza Installer
 
 Download the Windows MSI installer:
-- **Download**: [kamiwaza_installer_0.9.3_x86_64.msi](https://packages.kamiwaza.ai/win/kamiwaza_installer_0.9.3_x86_64.msi)
+- **Download**: [kamiwaza_installer_0.9.3_x86_64.msi](https://packages.kamiwaza.ai/msi/kamiwaza_installer_0.9.3_x86_64.msi)
 - **Size**: Approximately 30-40MB
 
 ### Step 2: Run the Installer
