@@ -71,16 +71,21 @@ Kamiwaza uses **RS256 JWT tokens** with asymmetric cryptographic signatures.
 
 ### 2.1 Accessing Keycloak Admin Console
 
-**Default Credentials** (change immediately in production):
+**Admin Console Access:**
 - **URL:** http://localhost:8080 (or your configured Keycloak URL)
 - **Username:** `admin`
-- **Password:** Set via `KEYCLOAK_ADMIN_PASSWORD` environment variable
+- **Password:** Found in `KEYCLOAK_ADMIN_PASSWORD` environment variable
 
-**Production Setup:**
+**To retrieve the password:**
 ```bash
-# Set secure admin password in env.sh
-export KEYCLOAK_ADMIN_PASSWORD="<strong-random-password>"
+# Source env.sh if not already done
+source $KAMIWAZA_ROOT/env.sh
+
+# Display the password
+echo $KEYCLOAK_ADMIN_PASSWORD
 ```
+
+**Note:** The password is randomly generated during installation. For production deployments, consider changing it to a custom value in env.sh.
 
 ### 2.2 Creating User Accounts
 
@@ -106,6 +111,62 @@ export KEYCLOAK_ADMIN_PASSWORD="<strong-random-password>"
 | `testadmin` | `testpass` | admin | Administrative testing |
 
 **⚠️ Important:** Remove or secure test users before production deployment.
+
+### 2.2.1 Using kz-user CLI Tool
+
+The `kz-user` command-line tool provides a simple way to manage Keycloak users from the command line. It's useful for automated provisioning and bulk user creation.
+
+**Common usage:**
+
+```bash
+# Create a single user with random password
+kz-user add alice --email alice@company.com --roles admin --random --safe
+
+# List all users
+kz-user list
+
+# View user details
+kz-user info alice
+
+# Change password
+kz-user passwd alice --random --safe
+
+# Delete user
+kz-user delete alice
+```
+
+**Bulk user creation example:**
+
+```bash
+#!/bin/bash
+# bulk-users.sh - Create multiple users
+
+USERS=(
+  "alice:alice@company.com:admin"
+  "bob:bob@company.com:user"
+  "charlie:charlie@company.com:viewer"
+)
+
+for user_spec in "${USERS[@]}"; do
+  IFS=':' read -r username email roles <<< "$user_spec"
+  kz-user add "$username" --email "$email" --roles "$roles" --random --safe
+done
+```
+
+**For complete documentation:**
+
+```bash
+# View all commands and options
+kz-user help
+
+# Get help for a specific command
+kz-user help add
+
+# View detailed manual
+man kz-user
+```
+
+**Note:** kz-user automatically loads environment configuration - no setup required.
 
 ### 2.3 User Roles and Permissions
 
@@ -1036,7 +1097,7 @@ The same curl commands can be scripted in CI to ensure future changes do not bre
 | `AUTH_GATEWAY_KEYCLOAK_URL` | Keycloak base URL | `http://localhost:8080` | Yes |
 | `AUTH_GATEWAY_KEYCLOAK_REALM` | Keycloak realm name | `kamiwaza` | Yes |
 | `AUTH_GATEWAY_KEYCLOAK_CLIENT_ID` | OAuth client ID | `kamiwaza-platform` | Yes |
-| `KEYCLOAK_ADMIN_PASSWORD` | Keycloak admin password | `admin` | Yes |
+| `KEYCLOAK_ADMIN_PASSWORD` | Keycloak admin password | Generated during install | Yes |
 
 ### Security Hardening
 
