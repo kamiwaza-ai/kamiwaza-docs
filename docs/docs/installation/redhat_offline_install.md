@@ -193,7 +193,44 @@ kamiwaza status
 
 Once are all services are confirmed to be running, Kamiwaza is started.
 
-### Step 5: Verify Extensions
+### Step 5: Create Users
+
+After installation, you'll need to create user accounts to access Kamiwaza.
+
+**Add kz-user to your PATH:**
+
+```bash
+# Add to current shell session
+export PATH="/opt/kamiwaza/kamiwaza/bin:$PATH"
+
+# Add to your shell profile for permanent access
+echo 'export PATH="/opt/kamiwaza/kamiwaza/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**View kz-user documentation:**
+
+```bash
+# View all available commands
+kz-user help
+
+# Get help for specific commands
+kz-user help add
+```
+
+**Example: Create users**
+
+```bash
+# Create an admin user
+kz-user add admin --email admin@company.com --roles admin --random --safe
+
+# List all users
+kz-user list
+```
+
+**Note:** Passwords are displayed once and must be saved immediately. For bulk user creation and full documentation, see the [Security Admin Guide](../security/admin-guide#221-using-kz-user-cli-tool).
+
+### Step 6: Verify Extensions
 
 Use the following checklist to confirm the bundled extensions are ready:
 
