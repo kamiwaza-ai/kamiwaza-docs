@@ -71,16 +71,21 @@ Kamiwaza uses **RS256 JWT tokens** with asymmetric cryptographic signatures.
 
 ### 2.1 Accessing Keycloak Admin Console
 
-**Default Credentials** (change immediately in production):
+**Admin Console Access:**
 - **URL:** http://localhost:8080 (or your configured Keycloak URL)
 - **Username:** `admin`
-- **Password:** Set via `KEYCLOAK_ADMIN_PASSWORD` environment variable
+- **Password:** Found in `KEYCLOAK_ADMIN_PASSWORD` environment variable
 
-**Production Setup:**
+**To retrieve the password:**
 ```bash
-# Set secure admin password in env.sh
-export KEYCLOAK_ADMIN_PASSWORD="<strong-random-password>"
+# Source env.sh if not already done
+source $KAMIWAZA_ROOT/env.sh
+
+# Display the password
+echo $KEYCLOAK_ADMIN_PASSWORD
 ```
+
+**Note:** The password is randomly generated during installation. For production deployments, consider changing it to a custom value in env.sh.
 
 ### 2.2 Creating User Accounts
 
@@ -117,43 +122,40 @@ The `kz-user` command-line tool provides a streamlined way to manage Keycloak us
 
 #### Initial Setup
 
-**1. Source the Kamiwaza environment:**
+**kz-user automatically sources env.sh** - you can run commands directly without manual setup:
+
+```bash
+# kz-user automatically finds and loads env.sh from:
+# 1. $KAMIWAZA_ENV_FILE_PATH (if set)
+# 2. $KAMIWAZA_ROOT/env.sh (if KAMIWAZA_ROOT is set)
+# 3. /path/to/kamiwaza/env.sh (parent directory of kz-user)
+# 4. /etc/kamiwaza/env.sh (system-wide installation)
+
+# Verify kz-user is accessible
+kz-user --version
+```
+
+**Optional: For man page access and other tools**
+
+If you want to use `man kz-user` or other Kamiwaza tools, source the environment once per shell session:
 
 ```bash
 cd $KAMIWAZA_ROOT
 source env.sh
+
+# Now you can use:
+man kz-user              # View full documentation
+# Other Kamiwaza commands will also be in PATH
 ```
 
-This automatically sets up:
+This sets up:
 - `KAMIWAZA_ROOT` environment variable
 - `PATH` including the `bin/` directory
 - `MANPATH` for accessing the man page
 
-**2. Verify kz-user is accessible:**
+**Authentication:**
 
-```bash
-kz-user --version
-```
-
-**3. View full documentation:**
-
-```bash
-man kz-user
-```
-
-**4. Configure Keycloak admin password:**
-
-The tool needs the Keycloak admin password, which can be provided via:
-
-```bash
-# Option 1: Environment variable (recommended)
-export KEYCLOAK_ADMIN_PASSWORD="your-admin-password"
-
-# Option 2: Set in env.sh (for permanent setup)
-echo 'export KEYCLOAK_ADMIN_PASSWORD="your-admin-password"' >> env.sh
-
-# Option 3: The tool will prompt interactively if not set
-```
+kz-user automatically uses the `KEYCLOAK_ADMIN_PASSWORD` from env.sh - no additional configuration needed. The password is set during Kamiwaza installation and loaded automatically when kz-user runs.
 
 #### Creating Users with kz-user
 
@@ -195,7 +197,8 @@ For seeding multiple users post-installation, create a shell script:
 #!/bin/bash
 # bulk-users.sh - Create multiple Kamiwaza users
 
-# Source environment
+# Note: kz-user automatically sources env.sh, but we source it here
+# for access to $KAMIWAZA_ROOT and other environment variables
 source $KAMIWAZA_ROOT/env.sh
 
 # Define users (username:email:roles)
@@ -240,6 +243,8 @@ chmod +x bulk-users.sh
 # alice,alice@company.com,admin
 # bob,bob@company.com,user
 
+# Note: kz-user automatically sources env.sh, but we source it here
+# for access to $KAMIWAZA_ROOT and other environment variables
 source $KAMIWAZA_ROOT/env.sh
 
 while IFS=, read -r username email roles; do
@@ -417,6 +422,7 @@ source ~/.bashrc
   tasks:
     - name: Create admin user
       shell: |
+        # kz-user auto-sources env.sh, but we source for other tools/vars
         source {{ kamiwaza_root }}/env.sh
         kz-user add {{ item.username }} \
           --email {{ item.email }} \
@@ -433,6 +439,7 @@ source ~/.bashrc
 
 ```yaml
 # .github/workflows/seed-users.yml
+# Note: Requires self-hosted runner on Kamiwaza server
 name: Seed Kamiwaza Users
 
 on:
@@ -440,15 +447,14 @@ on:
 
 jobs:
   seed-users:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # Must run on Kamiwaza server
     steps:
       - uses: actions/checkout@v3
 
       - name: Seed default users
-        env:
-          KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
         run: |
-          source env.sh
+          # env.sh contains KEYCLOAK_ADMIN_PASSWORD - kz-user auto-loads it
+          source $KAMIWAZA_ROOT/env.sh
           ./scripts/bulk-users.sh
 ```
 
@@ -464,7 +470,8 @@ until curl -sf http://keycloak:8080/health/ready; do
   sleep 5
 done
 
-# Source environment
+# Note: kz-user automatically sources env.sh, but we source it here
+# for access to other Kamiwaza environment variables
 source /opt/kamiwaza/env.sh
 
 # Create default users if they don't exist
@@ -1404,7 +1411,7 @@ The same curl commands can be scripted in CI to ensure future changes do not bre
 | `AUTH_GATEWAY_KEYCLOAK_URL` | Keycloak base URL | `http://localhost:8080` | Yes |
 | `AUTH_GATEWAY_KEYCLOAK_REALM` | Keycloak realm name | `kamiwaza` | Yes |
 | `AUTH_GATEWAY_KEYCLOAK_CLIENT_ID` | OAuth client ID | `kamiwaza-platform` | Yes |
-| `KEYCLOAK_ADMIN_PASSWORD` | Keycloak admin password | `admin` | Yes |
+| `KEYCLOAK_ADMIN_PASSWORD` | Keycloak admin password | Generated during install | Yes |
 
 ### Security Hardening
 
