@@ -33,17 +33,26 @@ If WSL is not already installed on your system:
    wsl --version
    ```
 
-### Step 2: Verify GPU Access (If Applicable)
+### Step 2: Install Docker Desktop
+
+Docker is required for running Kamiwaza. If you do not already have Docker installed, download Docker Desktop from the official website [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/) and follow the instructions.
+
+Verify your Docker installation:
+```
+docker --version
+```
+
+### Step 3: Verify GPU Access (If Applicable)
 
 **Note**: GPU verification will be performed automatically during installation. The installer will detect and configure GPU access for supported hardware.
 
 **Supported GPUs:**
 - NVIDIA GeForce RTX series (30, 40 and 50 series)
-- Intel Arc GPUs 
+- Intel Arc GPUs
 
 **Note**: Kamiwaza currently supports only NVIDIA GPUs and Intel Arc GPUs for hardware acceleration. For Intel Arc GPU setup instructions, please refer to the separate Intel Arc WSL [GPU virtualization documentation](gpu_setup_guide.md#intel-arc-gpu-setup).
 
-### Step 3: Install Windows Terminal (Optional but Recommended)
+### Step 4: Install Windows Terminal (Optional but Recommended)
 
 Download from Microsoft Store or GitHub releases
 
