@@ -175,7 +175,7 @@ Replace `kamiwaza-registry-[date].tar.gz` with the actual filename of the regist
 
 2. Import the extensions images using the provided shell script
 ```bash
-bash /opt/kamiwaza/kamiwaza/scripts/import-extension-images.sh 
+sudo bash /opt/kamiwaza/kamiwaza/scripts/import-extension-images.sh 
 ```
 
 ### Step 4: Verification
