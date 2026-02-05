@@ -1,0 +1,128 @@
+{
+  "mainSidebar": [
+    {
+      "type": "doc",
+      "id": "intro",
+      "label": "Introduction"
+    },
+    {
+      "type": "doc",
+      "id": "quickstart",
+      "label": "Quickstart"
+    },
+    {
+      "type": "category",
+      "label": "Installation",
+      "items": [
+        "installation/installation_process",
+        "installation/system_requirements",
+        "installation/macos_tarball",
+        "installation/windows_installation_guide",
+        "installation/redhat_online_install",
+        "installation/redhat_offline_install",
+        "installation/gpu_setup_guide",
+        "installation/two-node-deployment"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Configuration",
+      "items": [
+        "configuration",
+        "routing-modes"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Security",
+      "items": [
+        "security/admin-guide",
+        "security/consent-and-classification",
+        "security/rebac-overview",
+        "security/rebac-deployment-guide",
+        "security/rebac-validation-checklist"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Models",
+      "items": [
+        "models/overview",
+        "models/novice-mode",
+        "models/gui-walkthrough",
+        "models/downloading-models",
+        "models/deployment",
+        "models/bedrock",
+        "models/troubleshooting"
+      ]
+    },
+    {
+      "type": "doc",
+      "id": "app-garden",
+      "label": "App Garden"
+    },
+    {
+      "type": "doc",
+      "id": "tool-garden",
+      "label": "Tool Garden"
+    },
+    {
+      "type": "category",
+      "label": "Distributed Data Engine",
+      "items": [
+        {
+          "type": "doc",
+          "id": "data-engine",
+          "label": "Overview"
+        },
+        "data-connectors",
+        "data-catalog",
+        "retrieval-service"
+      ]
+    },
+    {
+      "type": "doc",
+      "id": "observability",
+      "label": "Observability"
+    },
+    {
+      "type": "category",
+      "label": "Architecture",
+      "items": [
+        {
+          "type": "doc",
+          "id": "architecture/overview",
+          "label": "Platform Overview"
+        },
+        "architecture/components",
+        "architecture/core-services"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Use Cases",
+      "items": [
+        "use-cases/index",
+        "use-cases/building-a-rag-pipeline"
+      ]
+    },
+    {
+      "type": "doc",
+      "id": "help-and-fixes",
+      "label": "Help & Fixes"
+    },
+    {
+      "type": "category",
+      "label": "Our Team",
+      "items": [
+        {
+          "type": "doc",
+          "id": "team/kamiwaza",
+          "label": "About Kamiwaza"
+        },
+        "team/jobs",
+        "team/mts"
+      ]
+    }
+  ]
+}
