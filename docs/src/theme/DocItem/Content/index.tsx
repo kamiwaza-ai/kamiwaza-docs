@@ -2,6 +2,7 @@ import React from 'react';
 import Content from '@theme-original/DocItem/Content';
 import type ContentType from '@theme/DocItem/Content';
 import type {WrapperProps} from '@docusaurus/types';
+import {useLocation} from '@docusaurus/router';
 
 type Props = WrapperProps<typeof ContentType>;
 
@@ -95,7 +96,7 @@ const htmlToMarkdown = (element: Element): string => {
   return result.trim();
 };
 
-const CopyButton = () => {
+const CopyButton = ({ hasVersionBadge }: { hasVersionBadge: boolean }) => {
   const [windowWidth, setWindowWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   React.useEffect(() => {
@@ -105,13 +106,18 @@ const CopyButton = () => {
   }, []);
 
   const isVeryNarrow = windowWidth < 480; // Phone screens
-  const isNarrow = windowWidth < 768; // Tablet and smaller
+  const isNarrow = windowWidth < 996; // Tablet and smaller
 
   const getButtonPosition = () => {
+    // On desktop without version badge, position lower to stay visible
+    if (!hasVersionBadge && !isNarrow && !isVeryNarrow) {
+      return { top: '-36px', right: '0px' };
+    }
+
     if (isVeryNarrow) {
       return { top: '-100px', right: '8px' };
     } else if (isNarrow) {
-      return { top: '-90px', right: '8px' };
+      return { top: '-100px', right: '8px' };
     } else {
       return { top: '-86px', right: '0px' };
     }
@@ -226,10 +232,37 @@ const CopyButton = () => {
   );
 };
 
-export default function ContentWrapper(props: Props): JSX.Element {
+export default function ContentWrapper(props: Props): React.JSX.Element {
+  const location = useLocation();
+  const [windowWidth, setWindowWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  React.useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Check if we're in a section that shows version badges (only docs and sdk)
+  // Extensions and Research sections don't show version badges, so need extra padding at top
+  const hasVersionBadge = !location.pathname.startsWith('/extensions') && !location.pathname.startsWith('/research');
+
+  // Add extra padding when there's no version badge to create space for the button above TOC
+  // Different padding for mobile vs desktop (aligned with navbar breakpoint at 992px)
+  const getPaddingTop = () => {
+    if (hasVersionBadge) return '16px';
+
+    if (windowWidth < 480) {
+      return '60px'; // Mobile phones
+    } else if (windowWidth < 996) {
+      return '60px'; // Tablets and small laptops (navbar collapsed)
+    } else {
+      return '40px'; // Desktop (navbar expanded)
+    }
+  };
+
   return (
-    <div style={{ position: 'relative', paddingTop: '16px' }}>
-      <CopyButton />
+    <div style={{ position: 'relative', paddingTop: getPaddingTop() }}>
+      <CopyButton hasVersionBadge={hasVersionBadge} />
       <Content {...props} />
     </div>
   );
