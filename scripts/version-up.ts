@@ -24,8 +24,9 @@ function updateDocusaurusConfig(newVersion: string) {
   let configContent = fs.readFileSync(DOCUSAURUS_CONFIG_PATH, 'utf8');
 
   // Update the `label` for the `current` version to the new version with a "(Latest)" suffix
+  // This regex handles multi-line format with tabs/spaces and newlines
   configContent = configContent.replace(
-    /(versions:\s*{\s*current:\s*{\s*label: ')([^']+)(')/g,
+    /(versions:\s*\{[\s\S]*?current:\s*\{[\s\S]*?label:\s*["'])([^"']+)(["'])/g,
     `$1${newVersion} (Latest)$3`
   );
 
