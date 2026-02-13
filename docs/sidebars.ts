@@ -67,6 +67,7 @@ const sidebars: SidebarsConfig = {
 				"models/downloading-models",
 				"models/deployment",
 				"models/bedrock",
+				"models/aws-transcribe",
 				"models/troubleshooting",
 			],
 		},

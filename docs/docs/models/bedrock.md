@@ -5,11 +5,11 @@ sidebar_label: AWS Bedrock
 
 ## Overview
 
-Kamiwaza 0.7 adds first-class support for hosting models backed by [Amazon Bedrock](https://aws.amazon.com/bedrock/). Administrators can register a Bedrock model, deploy it through the existing model lifecycle, and expose the familiar `/v1/chat/completions` and `/v1/completions` APIs to application teams.
+Kamiwaza includes first-class support for hosting models backed by [Amazon Bedrock](https://aws.amazon.com/bedrock/). Administrators can register a Bedrock model, deploy it through the existing model lifecycle, and expose the familiar `/v1/chat/completions` and `/v1/completions` APIs to application teams.
 
 ## Platform assumptions
 
-- Kamiwaza 0.7 release (or newer) is installed and the control plane is reachable via HTTPS.
+- Kamiwaza is reachable via HTTPS.
 - The AWS account has Bedrock access enabled in `us-west-2` (or your chosen region) and provides an access key/secret with permission to invoke the target Bedrock model.
 - Outbound HTTPS traffic from the Kamiwaza control plane to the AWS Bedrock endpoint is allowed.
 
