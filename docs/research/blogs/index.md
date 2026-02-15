@@ -17,7 +17,7 @@ Shorter, more timely and frequent research insights and perspectives from the Ka
 
 [![Article cover](/img/research/blog_halluc-granite-riker-sft-ogcard.png)](/research/blogs/reducing-llm-hallucinations-enterprise-lora-finetuning)
 
-LoRA finetuning IBM Granite 4.0 Micro on just ~1,100 lease contract examples boosted accuracy from 32% to 80% — and the hallucination resistance transferred to document types the model never saw during training.
+Using RIKER + LoRA SFT on IBM Granite 4.0 Micro with just ~1,100 lease contract examples boosted accuracy from 32% to 80% — and the hallucination resistance transferred to document types the model never saw during training.
 
 ---
 
