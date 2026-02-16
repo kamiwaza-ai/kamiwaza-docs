@@ -11,6 +11,16 @@ Shorter, more timely and frequent research insights and perspectives from the Ka
 
 ## Latest Insights
 
+### [Can We Reduce LLM Hallucinations for Enterprise Use? RIKER+LoRA Says Yes](/research/blogs/reducing-llm-hallucinations-enterprise-lora-finetuning)
+
+*JV Roig · February 15, 2026*
+
+[![Article cover](/img/research/blog_halluc-granite-riker-sft-ogcard.png)](/research/blogs/reducing-llm-hallucinations-enterprise-lora-finetuning)
+
+Using RIKER + LoRA SFT on IBM Granite 4.0 Micro with just ~1,100 lease contract examples boosted accuracy from 32% to 80% — and the hallucination resistance transferred to document types the model never saw during training.
+
+---
+
 ### [Qwen3 Next 80B: The Long-Context Champion You Haven't Heard Of](/research/blogs/qwen3-next-80b-long-context-champion)
 
 *JV Roig · January 28, 2026*
