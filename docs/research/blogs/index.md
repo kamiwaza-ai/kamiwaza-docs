@@ -11,6 +11,16 @@ Shorter, more timely and frequent research insights and perspectives from the Ka
 
 ## Latest Insights
 
+### [Hallucination Resistance Holds at 64K and 128K Context](/research/blogs/hallucination-resistance-long-context)
+
+*JV Roig · February 18, 2026*
+
+[![Article cover](/img/research/blog_hallucination-resistance-long-context-ogcard.png)](/research/blogs/hallucination-resistance-long-context)
+
+We pushed our LoRA-finetuned Granite 4.0 Micro from 32K to 64K and 128K context — 4-16x longer than training. Hallucination resistance held (92% → 88% → 87%). Extraction didn't. The "don't fabricate" lesson is durable; finding needles in bigger haystacks is not.
+
+---
+
 ### [Can We Reduce LLM Hallucinations for Enterprise Use? RIKER+LoRA Says Yes](/research/blogs/reducing-llm-hallucinations-enterprise-lora-finetuning)
 
 *JV Roig · February 15, 2026*
