@@ -68,6 +68,7 @@
     "node": ">=18.0"
   },
   "overrides": {
-    "fast-xml-parser": "5.3.6"
+    "fast-xml-parser": "5.3.6",
+    "sitemap": "9.0.0"
   }
 }

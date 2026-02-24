@@ -144,10 +144,7 @@ class PDFGenerator {
 		}
 
 		// Ensure output directory exists
-		const outputDir = path.join(
-			this.projectRoot,
-			this.config.settings.outputDir,
-		);
+		const outputDir = this.safePath(this.config.settings.outputDir);
 		await fs.ensureDir(outputDir);
 
 		try {
