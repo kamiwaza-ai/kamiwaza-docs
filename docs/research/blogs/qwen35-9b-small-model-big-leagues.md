@@ -1,7 +1,7 @@
 ---
 title: "A 9B Model Just Crashed the Big Leagues"
 description: "Qwen3.5-9B scores 88.1% on our KAMI agentic benchmark — matching models 10-75x its size. The small model revolution isn't coming. It's here."
-image: /img/research/blog_qwen3-next-80b-ogcard.png
+image: /img/research/blog_qwen35-9b-small-model-big-leagues-ogcard.png
 ---
 
 # A 9B Model Just Crashed the Big Leagues

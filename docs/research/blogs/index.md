@@ -15,7 +15,7 @@ Shorter, more timely and frequent research insights and perspectives from the Ka
 
 *JV Roig · March 5, 2026*
 
-[![Article cover](/img/research/blog_qwen3-next-80b-ogcard.png)](/research/blogs/qwen35-9b-small-model-big-leagues)
+[![Article cover](/img/research/blog_qwen35-9b-small-model-big-leagues-ogcard.png)](/research/blogs/qwen35-9b-small-model-big-leagues)
 
 Qwen3.5-9B scores 88.1% on our KAMI agentic benchmark — a bracket previously reserved for 70B+ dense models, 200B+ MoEs, and flagship cloud APIs. The small model revolution isn't coming. It's here.
 
