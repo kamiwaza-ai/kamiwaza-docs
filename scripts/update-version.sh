@@ -27,13 +27,16 @@ fi
 
 echo "Updating version: $DOCS_VERSION"
 
+if [[ -n "${DEBUG:-}" ]]; then
+    echo "Unsetting DEBUG for Docusaurus commands."
+    unset DEBUG
+fi
+
 # Verify version exists in versions.json
 VERSION_EXISTS=$(node -e "const v=JSON.parse(require('fs').readFileSync('versions.json'));console.log(v.includes('$DOCS_VERSION'))")
 if [[ "$VERSION_EXISTS" != "true" ]]; then
-    echo "Error: Version $DOCS_VERSION not found in versions.json"
-    echo "Available versions:"
-    cat versions.json
-    exit 1
+    echo "Warning: Version $DOCS_VERSION not found in versions.json"
+    echo "Continuing in repair mode to recreate the snapshot and restore the version entry."
 fi
 
 # Remove existing version snapshot

@@ -109,7 +109,10 @@ class PDFGenerator {
 	constructor(configPath: string) {
 		this.projectRoot = path.resolve(__dirname, "..");
 		const resolvedConfigPath = path.resolve(configPath);
-		if (!resolvedConfigPath.startsWith(this.projectRoot)) {
+		if (
+			!resolvedConfigPath.startsWith(this.projectRoot + path.sep) &&
+			resolvedConfigPath !== this.projectRoot
+		) {
 			throw new Error(
 				`Config path must be within project root: ${this.projectRoot}`,
 			);
@@ -128,9 +131,10 @@ class PDFGenerator {
 			throw new Error(`Profile "${profileName}" not found in pdf-config.yaml`);
 		}
 
-		// Get version - if not specified, get latest from versions.json
+		// "current" means the unversioned docs; "latest" resolves to the
+		// newest version snapshot in versions.json.
 		let targetVersion = version || this.config.settings.defaultVersion;
-		if (targetVersion === "current") {
+		if (targetVersion === "latest") {
 			targetVersion = await this.getLatestVersion();
 		}
 		console.log(`📌 Version: ${targetVersion}`);
