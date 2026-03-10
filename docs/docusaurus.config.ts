@@ -159,21 +159,6 @@ const config: Config = {
 				},
 			},
 		],
-		// Extensions docs plugin
-		[
-			"@docusaurus/plugin-content-docs",
-			{
-				id: "extensions",
-				path: "extensions",
-				routeBasePath: "extensions",
-				sidebarPath: require.resolve("./sidebars-extensions.ts"),
-				versions: {
-					current: {
-						label: "Latest",
-					},
-				},
-			},
-		],
 		// Research docs plugin
 		[
 			"@docusaurus/plugin-content-docs",
