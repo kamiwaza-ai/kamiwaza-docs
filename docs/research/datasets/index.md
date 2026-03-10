@@ -13,7 +13,7 @@ Access datasets from Kamiwaza AIR research to support your agentic AI research a
 
 Generated ground truth, document corpora, test sets, and raw model outputs from the 172-billion-token hallucination study across 35 models, three context lengths, four temperatures, and three hardware platforms.
 
-📦 **Download coming soon**
+📦 **[Download RIKER2_March2026.zip](https://research.kamiwaza.ai/HowMuchDoLLMsHallucinateInDocQA/RIKER2_March2026.zip)** (4.34 GB)
 
 🔗 **[Read the paper](/research/papers/riker2)** | [arXiv](https://arxiv.org/abs/2603.08274)
 

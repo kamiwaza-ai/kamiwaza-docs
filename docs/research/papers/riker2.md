@@ -17,9 +17,9 @@ How much do large language models actually hallucinate when answering questions 
 
 ## Why This Matters
 
-This is the largest systematic study of LLM hallucination in document Q&A to date — 172 billion tokens across 4,264 runs. If you're deploying LLMs for document-grounded tasks, the findings have direct implications:
+This is our largest systematic study of LLM hallucination in document Q&A to date — 172 billion tokens across 4,264 runs. If you're deploying LLMs for document-grounded tasks, the findings have direct implications:
 
-- **No model is hallucination-free** - Even the best model (GLM 4.5) fabricates at 1.19% at 32K context; at 200K, no model stays under 10%
+- **No model is hallucination-free** - Even the best model at short context (GLM 4.5) fabricates at 1.19% at 32K; at 200K, even the best model at long context (Qwen3 Next 80B-A3B) hits 10%
 - **Model selection matters most** - A 72-percentage-point accuracy range means picking the right model dwarfs all other optimization efforts
 - **Temperature is not one-size-fits-all** - T=0.0 is best for accuracy ~60% of the time, but higher temperatures reduce fabrication in the majority of models and dramatically reduce coherence loss
 - **Grounding and fabrication resistance are distinct skills** - Some models excel at finding facts but still fabricate non-existent ones (e.g., Llama 3.1 70B: 90% grounding, 50% fabrication)
