@@ -103,6 +103,10 @@ const config: Config = {
 					current: {
 						label: "0.9.3 (Latest)",
 					},
+					"0.11.0": {
+						label: "0.11.0",
+						banner: "unreleased",
+					},
 				},
 				sidebarCollapsible: true,
 				sidebarCollapsed: true,

@@ -103,9 +103,10 @@ class PDFGenerator {
       throw new Error(`Profile "${profileName}" not found in pdf-config.yaml`);
     }
 
-    // Get version - if not specified, get latest from versions.json
+    // Get version - "current" means the unversioned docs, "latest" resolves
+    // to the newest version snapshot in versions.json.
     let targetVersion = version || this.config.settings.defaultVersion;
-    if (targetVersion === 'current') {
+    if (targetVersion === 'latest') {
       targetVersion = await this.getLatestVersion();
     }
     console.log(`📌 Version: ${targetVersion}`);

@@ -14,16 +14,22 @@ profiles:
       includeVersion: true
       includeLogo: true
     documents:
-      - id: "admin-guide"
-        title: "Administrator Guide"
-      - id: "installation/system_requirements"
-        title: "System Requirements"
       - id: "installation/installation_process"
         title: "Installation Process"
-      - id: "installation/gpu_setup_guide"
-        title: "GPU Setup Guide"
+      - id: "installation/system_requirements"
+        title: "System Requirements"
+      - id: "installation/redhat_online_install"
+        title: "Red Hat Online Installation"
+      - id: "installation/redhat_offline_install"
+        title: "Red Hat Offline Installation"
+      - id: "installation/redhat_uninstall"
+        title: "Red Hat Uninstall"
       - id: "quickstart"
         title: "Quickstart Guide"
+      - id: "security/admin-guide"
+        title: "Administrator Guide"
+      - id: "help-and-fixes"
+        title: "Help & Fixes"
       - id: "release-notes"
         title: "Release Notes"
     options:

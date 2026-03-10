@@ -134,7 +134,7 @@ npm run pdf -- --profile full-docs --version 0.5.1
 ```
 
 **PDF Profiles:**
-- **offline-install**: Installation guides, quickstart, admin guide, troubleshooting, release notes
+- **offline-install**: System requirements, RHEL installation and uninstall guides, quickstart, admin guide, help/fixes, release notes
 - **full-docs**: Complete platform documentation
 
 **Requirements:**
