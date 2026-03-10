@@ -6,11 +6,11 @@ sidebar_position: 1
 
 # Welcome to Kamiwaza AI Docs
 
-Welcome to the official documentation for the Kamiwaza AI Platform, an application platform for deploying, operating, and scaling AI workloads on a supported Kubernetes-based runtime.
+Welcome to the official documentation for the Kamiwaza AI Platform, the enterprise solution for building, deploying, and scaling production-grade AI applications.
 
 ## Kamiwaza Overview
 
-Kamiwaza gives operators, developers, and platform teams a consistent way to run models, manage applications, and expose AI-powered workflows through a single platform domain. The supported production install path packages Kubernetes, routing, identity, and core services into a deployable RHEL-based footprint.
+Kamiwaza is a comprehensive AI orchestration platform that provides developers and IT teams with the tools to manage the entire lifecycle of their AI models and applications. From data ingestion and vectorization to model serving and monitoring, Kamiwaza simplifies the complexity of the modern AI stack, allowing you to focus on building innovative features, not wrestling with infrastructure.
 
 ## Getting Started
 
@@ -41,7 +41,7 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
       <h3>🚀 Installation Guide</h3>
     </div>
     <div className="card__body">
-      <p>Install Kamiwaza on a supported RHEL host and bring the platform online.</p>
+      <p>Set up your local environment and get Kamiwaza running in minutes.</p>
     </div>
     <div className="card__footer">
       <a href="installation/installation_process" className="button button--primary button--block">Start the Installation →</a>
@@ -85,7 +85,7 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
       <h3>💾 Distributed Data Engine</h3>
     </div>
     <div className="card__body">
-      <p>Understand the data layer, from relational data in PostgreSQL to vectors in Milvus.</p>
+      <p>Understand the data layer, from relational data in CockroachDB to vectors in Milvus.</p>
     </div>
     <div className="card__footer">
       <a href="data-engine" className="button button--primary button--block">Learn About Data →</a>

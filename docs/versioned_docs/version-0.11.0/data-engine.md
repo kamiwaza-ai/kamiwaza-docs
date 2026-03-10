@@ -12,7 +12,7 @@ Kamiwaza’s Distributed Data Engine (DDE) aligns unstructured and tabular conte
 
 ## Connector workflow
 
-1. **Create a connector** – Choose the source system (S3, SharePoint, file upload, etc.) and supply the required fields. Connector forms mirror the parameters required by the source system.
+1. **Create a connector** – Choose the source system (S3, SharePoint, file upload, etc.) and supply the required fields. Connector forms mirror the parameters described in the internal knowledge base; public documentation lists only the high-level values.
 2. **Secure credentials** – Provide either inline credentials or reference an existing Kamiwaza secret. Secrets are encrypted at rest and can be rotated without recreating the connector.
 3. **Schedule ingestion** – Select one-time or recurring runs. DDE batches updates to minimize load on the source system.
 4. **Monitor jobs** – Each run emits status events and logging metadata that flow into the standard observability dashboards.
@@ -67,4 +67,4 @@ Default rate limits are controlled by `DDE_DOCUMENT_RATE_LIMIT` (requests per wi
 - Keep connector credentials scoped to read-only roles where possible.
 - Use the ReBAC validation checklist to ensure only authorized operators can create or run connectors.
 - Combine DDE jobs with Kamiwaza’s retrieval pipelines to expose fresh content in RAG applications.
-- For connector-specific tuning (chunking, file size limits), refer to the runbooks provided with your support agreement.
+- For connector-specific tuning (chunking, file size limits), refer your operators to the internal runbooks provided with your support agreement.

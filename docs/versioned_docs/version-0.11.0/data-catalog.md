@@ -7,6 +7,8 @@ sidebar_label: Data Catalog
 
 Kamiwaza provides a centralized catalog for datasets, containers, and secrets. The catalog stores metadata, supports DataHub URNs, and is protected by access controls so only authorized users can view or change assets.
 
+Kamiwaza Lite providers an internal homomorphic 
+
 ## Core entities
 
 ### Datasets

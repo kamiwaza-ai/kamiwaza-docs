@@ -5,110 +5,130 @@
 **Please review the [System Requirements](system_requirements.md) before proceeding with installation.** This document covers:
 - Supported operating systems and versions
 - Hardware requirements (CPU, RAM, storage)
-- Required tools and dependencies
+- Required system packages and dependencies
 - Network and storage configuration
 - GPU support requirements
 
-For customer installs, Kamiwaza assumes the target machine already exists. Provision a RHEL 9 server or cloud instance that meets the published requirements before starting the installer.
-
-## Platform Architecture
-
-Kamiwaza deploys as a Kubernetes application using:
-- **Podman** as the container runtime
-- **Kind** (Kubernetes in Docker/Podman) for single-node clusters
-- **Helm + Helmfile** for declarative application deployment
-- **Traefik** for ingress and TLS termination
-
-All services run as pods in a Kubernetes namespace, managed by Helm charts.
-
 ## Installation Workflows
 
-### Enterprise Edition — RHEL 9 (Recommended)
+### Linux
 
-The primary supported platform for production deployments is **Red Hat Enterprise Linux 9** (x86_64).
+#### Ubuntu .deb Package Installation
 
-For production installs, start with at least:
+Download the appropriate package for your Ubuntu version and architecture:
 
-- 8 CPU cores
-- 64 GB RAM
-- 200 GB SSD or NVMe storage
+| Ubuntu Version | Architecture | Download |
+|---------------|--------------|----------|
+| 24.04 (Noble) | x86_64 | [kamiwaza_v0.9.3_noble_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_x86_64.deb) |
+| 24.04 (Noble) | ARM64 | [kamiwaza_v0.9.3_noble_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64.deb) |
+| 24.04 (Noble) | ARM64 (DGX Spark) | [kamiwaza_v0.9.3_noble_arm64_dgx.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64_dgx.deb) |
+| 22.04 (Jammy) | x86_64 | [kamiwaza_v0.9.3_jammy_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_x86_64.deb) |
+| 22.04 (Jammy) | ARM64 | [kamiwaza_v0.9.3_jammy_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_arm64.deb) |
 
-#### Online Installation
+**ARM64 Package Selection:**
+- **ARM64** - For generic ARM64 systems (AWS Graviton, Ampere Altra, etc.)
+- **ARM64 (DGX Spark)** - For NVIDIA DGX Spark with Grace Blackwell CPU (includes CUDA-ARM dependencies)
 
-Online installation (pulling container images directly from public registries) is not yet available. It is planned for a future release.
-
-#### Offline Installation
-
-For restricted environments without internet access. Uses pre-built Helm wrap bundles containing all container images and charts.
-
-**[Red Hat Offline Installation Guide](redhat_offline_install.md)** — Complete step-by-step instructions.
-
-Quick overview:
+Install using dpkg:
 ```bash
-# Install the RPM
-sudo rpm -Uvh --replacepkgs ./kamiwaza-prod-*.x86_64.rpm
+# Download the package (example for Ubuntu 24.04 x86_64)
+curl -LO https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_x86_64.deb
 
-# Stage wrap bundle files
-sudo cp ./kamiwaza-helm.*.tar ./kamiwaza-helm.sha256 ./kamiwaza-helm.asc \
-  ./kamiwaza-tools-rpm.pub.gpg /opt/kamiwaza/prereqs/
+# Install the package
+sudo dpkg -i kamiwaza_v0.9.3_noble_x86_64.deb
 
-# Bootstrap prerequisites
-sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
-  --embedded-root /opt/kamiwaza/prereqs --os rhel
-
-# Run the offline installer
-sudo -E /opt/kamiwaza/scripts/install-prod.sh \
-  --offline \
-  --skip-prereq-bootstrap \
-  --domain "YOUR_DOMAIN_HERE" \
-  --admin-password "replace-me" \
-  --wrap-bundle '/opt/kamiwaza/prereqs/kamiwaza-helm.*.tar' \
-  --wrap-sha256 /opt/kamiwaza/prereqs/kamiwaza-helm.sha256 \
-  --wrap-signature /opt/kamiwaza/prereqs/kamiwaza-helm.asc \
-  --wrap-pubkey /opt/kamiwaza/prereqs/kamiwaza-tools-rpm.pub.gpg \
-  -y
+# Install any missing dependencies
+sudo apt-get install -f
 ```
 
-### Community Edition
+Verify service starts (see [Quickstart](quickstart.md))
 
-#### macOS (Apple Silicon)
+#### RHEL .rpm Package Installation (for RHEL 9)
 
-Community Edition only. Single-node deployments for local development and evaluation.
+**For standard online installation (recommended)**, see the [Red Hat Installation Guide](redhat_online_install.md) for complete step-by-step instructions including Docker setup and system dependencies.
 
-1. Follow the guide: [macOS Installation](macos_tarball.md)
-2. Uses Kind with Podman Desktop
-3. Access via browser at `https://kamiwaza.test`
+**For air-gapped or offline RHEL environments**, see the [Red Hat Offline Installation Guide](redhat_offline_install.md).
 
-#### Windows
-
-WSL2-based setup. See the [Windows Installation Guide](windows_installation_guide.md) for prerequisites, GPU support, and step-by-step instructions.
-
-### Multi-Node Deployment
-
-For production clusters spanning multiple hosts, see the [Two-Node Deployment Guide](two-node-deployment.md).
-
-## Verifying Installation
-
-After installation completes, verify the platform is running:
+**Quick install** (for users who already have Docker and dependencies installed):
 
 ```bash
-# Check all pods are healthy
-kubectl get pods -n kamiwaza
+# Download the package
+curl -LO https://packages.kamiwaza.ai/rpm/kamiwaza_v0.9.3_rhel9_x86_64.rpm
 
-# Verify external access
-curl -kI "https://YOUR_DOMAIN_HERE"
+# Install the package
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
+
+
+# Alternatively, for Enterprise Mode, Install the package with Kamiwaza License Key
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 ```
 
-Access the web interface at `https://YOUR_DOMAIN_HERE` and sign in with the admin credentials you configured.
+### Community Edition on macOS
+
+_Only Community Edition is supported on macOS._
+
+1. Follow the guide: [macOS tarball installation](macos_tarball.md)
+2. Ensure Docker Desktop is installed and running
+3. Run `install.sh --community`
+4. Access via browser at `https://localhost`
+
+### Community Edition on Windows
+
+Use the MSI installer for a streamlined WSL2-based setup. See the [Windows Installation Guide](windows_installation_guide.md) for prerequisites, GPU support, and step-by-step instructions.
+
+Steps:
+1. Download: `KamiwazaInstaller-[version]-[arch].msi`
+2. Install: Run the MSI (reboot when prompted)
+3. Launch: Start Menu → "Kamiwaza Start"
+
+
+### Enterprise Edition Deployment
+
+#### A. Terraform Deployment (Recommended)
+
+```mermaid
+flowchart LR
+    deploy[deploy with terraform] --> init[cloud-init]
+    init --> first[first-boot.sh]
+    first --> running[Service Running]
+```
+
+Key Points:
+- Terraform handles complete cluster setup
+- cloud-init automatically runs first-boot.sh
+- Service starts automatically via systemd
+
+#### B. Manual Cluster Deployment
+
+```mermaid
+flowchart LR
+    deploy[deploy image] --> prep["cluster-manual-prep.sh --head/--worker"]
+    prep --> first[first-boot.sh]
+    first --> running[Service Running]
+```
+
+Key Points:
+- Requires manual cluster setup via cluster-manual-prep.sh
+- Must specify correct role (`--head` or `--worker --head-ip=<IP>`)
+- Service starts automatically via systemd
+
 
 ## Updating Kamiwaza
 
-To update an existing installation:
+### Windows
+- Download new MSI installer and run to update existing installation
+- Restart if prompted for GPU changes
 
-1. Obtain the new release artifacts (RPM + wrap bundle)
-2. Install the updated RPM: `sudo rpm -Uvh --replacepkgs ./kamiwaza-prod-*.x86_64.rpm`
-3. Re-run the installer with the same flags used for the initial install
+### Linux/macOS
+- Download new package
+- Run installation script again
+- Service will restart automatically
 
 ## Uninstallation
 
-See the [RHEL Uninstall Guide](redhat_uninstall.md) for complete removal instructions including Kind cluster deletion, image cleanup, and file removal.
+### Windows
+- Windows Settings → Add or Remove Programs -> (three dots on side) Uninstall
+
+### Linux/macOS
+- Remove package via package manager
+- Clean up any remaining configuration files

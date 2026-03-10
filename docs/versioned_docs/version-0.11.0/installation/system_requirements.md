@@ -1,13 +1,5 @@
 # System Requirements
 
-For packaged customer installs, provision the target server or EC2 instance before starting the Kamiwaza installer. The installer configures the platform on an existing host; it does not create or destroy cloud infrastructure for you.
-
-For the supported RHEL production path, start with at least:
-
-- **8 CPU cores**
-- **64GB RAM**
-- **200GB SSD or NVMe storage**
-
 ## Hardware Requirements
 
 ### CPU
@@ -25,9 +17,9 @@ For the supported RHEL production path, start with at least:
 
 | Mode | Minimum | Recommended | Notes |
 |------|---------|-------------|-------|
-| **Development** | 32GB | 64GB | Local Kind cluster with reduced resource profile |
-| **Production** | 64GB | 128GB+ | Full Kubernetes stack with Keycloak, PostgreSQL, Ray |
-| **GPU Workloads** | 64GB | 128GB+ | System RAM alongside GPU vRAM |
+| **Lite Mode** | 16GB | 32GB | SQLite database; limited capacity for apps/tools |
+| **Full Mode** | 32GB | 64GB+ | CockroachDB + DataHub; production workloads |
+| **GPU Workloads** | 32GB | 64GB+ | System RAM alongside GPU vRAM |
 
 #### GPU Memory (vRAM)
 
@@ -62,7 +54,7 @@ Storage requirements are the same across all platforms.
 
 #### Storage Capacity
 
-- **Minimum**: 200GB free disk space
+- **Minimum**: 100GB free disk space
 - **Recommended**: 200GB+ free disk space
 - **Enterprise Edition**: Additional space for /opt/kamiwaza persistence
 
@@ -70,15 +62,14 @@ Storage requirements are the same across all platforms.
 
 | Component | Minimum | Recommended | Notes |
 |-----------|---------|-------------|-------|
-| **Operating System** | 20GB | 50GB | RHEL 9 base + dependencies |
-| **Container Images** | 30GB | 50GB | Podman storage for Kind/container images |
-| **Kamiwaza Platform** | 20GB | 30GB | Kubernetes pods, Helm charts, configs |
+| **Operating System** | 20GB | 50GB | Ubuntu/RHEL base + dependencies |
+| **Kamiwaza Platform** | 50GB | 50GB | Python environment, Ray, services |
 | **Model Storage** | 50GB | 500GB+ | Depends on number and size of models |
-| **Database** | 10GB | 50GB | PostgreSQL for application data |
+| **Database** | 10GB | 50GB | CockroachDB for metadata |
 | **Vector Database** | 10GB | 100GB+ | For embeddings (if enabled) |
 | **Logs & Metrics** | 10GB | 50GB | Rotated logs, Ray dashboard data |
 | **Scratch Space** | 20GB | 100GB | Temporary files, downloads, builds |
-| **Total** | **200GB+** | **930GB+** | |
+| **Total** | **170GB** | **900GB+** | |
 
 #### Storage Performance Requirements
 
@@ -124,30 +115,14 @@ Storage requirements are the same across all platforms.
 
 ## Software Dependencies
 
-### Platform Tools (Auto-Installed by Bootstrap)
+### Pre-requisites (User Must Install)
 
-The Kamiwaza production RPM includes an embedded prerequisite payload. The `bootstrap-prereqs.sh` script installs and configures all required platform tools automatically:
+Before running the Kamiwaza installer, ensure the following are installed:
 
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| **Podman** | 5.x | Container runtime (replaces Docker) |
-| **kubectl** | 1.28.x | Kubernetes CLI |
-| **Kind** | 0.20.x | Local Kubernetes cluster |
-| **Helm** | 3.13.x | Kubernetes package manager |
-| **Helmfile** | 1.2.x | Declarative Helm deployment |
-| **helm-dt** | Plugin | Helm Distribution Tooling (offline wrap bundles) |
-| **Ansible** | ansible-core | Deployment automation |
-
-These tools are installed from the embedded payload during the bootstrap step — no manual installation required.
-
-### Pre-requisites (User Must Provide)
-
-| Component | Requirement | Notes |
-|-----------|-------------|-------|
-| **RHEL 9** | x86_64 | Fresh installation recommended |
-| **sudo access** | Root or sudo | Required for installation |
-| **perl** | Any version | `sudo dnf install -y perl` before RPM install |
-| **Browser** | Chrome 141+ (recommended) | For accessing the web UI |
+| Component | Requirement | Installation Guide |
+|-----------|-------------|-------------------|
+| **Docker** | Docker Engine 24.0+ with Compose 2.23+ | [Docker Install Guide](https://docs.docker.com/engine/install/) |
+| **Browser** | Chrome 141+ (tested and recommended) | [Download Chrome](https://www.google.com/chrome/) |
 
 ### GPU Drivers (Required for GPU Inference)
 
@@ -163,8 +138,39 @@ Install the appropriate driver for your GPU hardware:
 | Component | Requirement | Installation Guide |
 |-----------|-------------|-------------------|
 | ROCm | 7.1.1+ (see note for gfx1151) | [ROCm Installation](https://rocm.docs.amd.com/en/latest/deploy/linux/index.html) |
+| Docker ROCm support | `--device /dev/kfd --device /dev/dri` | [ROCm Docker Guide](https://rocm.docs.amd.com/en/latest/how-to/docker.html) |
 
 > **Note:** AMD Strix Halo (gfx1151) requires ROCm 7.10.0 preview or later. See [ROCm 7.10.0 Preview](https://rocm.docs.amd.com/en/7.10.0-preview/) - this is a preview release and not intended for production use.
+
+### Linux Full Mode Only
+
+These dependencies are only required for Linux installations using Full mode (`--full` flag). Lite mode uses SQLite and does not require CockroachDB.
+
+| Component | Requirement | Notes |
+|-----------|-------------|-------|
+| **CockroachDB** | v23.2.x | Database for Full mode |
+
+**Install CockroachDB on Ubuntu/Debian:**
+
+```bash
+wget -qO- https://binaries.cockroachdb.com/cockroach-v23.2.12.linux-amd64.tgz | tar xvz
+sudo cp cockroach-v23.2.12.linux-amd64/cockroach /usr/local/bin
+rm -rf cockroach-v23.2.12.linux-amd64
+
+# Verify installation
+cockroach version
+```
+
+> **Note:** macOS installations automatically install CockroachDB via Homebrew when needed.
+
+### Auto-Installed by Kamiwaza
+
+The Kamiwaza installer automatically installs and configures the following - no manual installation required:
+
+- Python 3.12 (or 3.10 for tarball installations)
+- Node.js 22.x and NVM
+- uv (Python package manager)
+- Platform-specific dependencies
 
 ---
 
@@ -172,34 +178,40 @@ Install the appropriate driver for your GPU hardware:
 
 Use these commands to verify your system meets the requirements before installation.
 
-### Platform Tools (after bootstrap)
+### Docker
 
 ```bash
-# Verify Podman
-podman --version
-# Expected: podman version 5.x
+docker --version
+# Expected: Docker version 24.0.0 or later
+# Example output: Docker version 27.4.0, build bde2b89
 
-# Verify Kubernetes CLI
-kubectl version --client
-# Expected: Client Version v1.28.x
+docker compose version
+# Expected: Docker Compose version v2.23.0 or later
+# Example output: Docker Compose version v2.31.0
+```
 
-# Verify Kind
-kind version
-# Expected: kind v0.20.x
+**If you get "permission denied" errors**, add your user to the docker group:
 
-# Verify Helm
-helm version
-# Expected: version.BuildInfo{Version:"v3.13.0", ...}
+```bash
+# Add current user to docker group
+sudo usermod -aG docker $USER
 
-# Verify Helmfile
-helmfile version
+# Apply group membership (choose one):
+newgrp docker          # Apply in current terminal session
+# OR log out and back in
+# OR reboot
 
-# Verify helm-dt plugin
-export HELM_PLUGINS="/usr/local/share/helm/plugins"
-helm dt version
+# Verify group membership
+groups | grep docker
+# Expected: "docker" should appear in the list
+```
 
-# Verify Ansible
-ansible-playbook --version | head -n1
+### Python
+
+```bash
+python3 --version
+# Expected: Python 3.10.x, 3.11.x, or 3.12.x
+# Example output: Python 3.12.3
 ```
 
 ### NVIDIA GPU (if applicable)
@@ -207,12 +219,17 @@ ansible-playbook --version | head -n1
 ```bash
 # Check NVIDIA driver
 nvidia-smi
-# Expected: Driver version 550+ recommended
+# Expected: Driver version 450.80.02 or later (550+ recommended)
 # Should display GPU name, driver version, and CUDA version
 
 # Check NVIDIA Container Toolkit
 nvidia-ctk --version
 # Expected: Any version indicates toolkit is installed
+# Example output: NVIDIA Container Toolkit CLI version 1.17.3
+
+# Test GPU access from Docker
+docker run --rm --gpus all nvidia/cuda:12.4.1-runtime-ubuntu22.04 nvidia-smi
+# Expected: Same output as nvidia-smi, confirming Docker can access GPU
 ```
 
 ### AMD ROCm (if applicable)
@@ -221,6 +238,7 @@ nvidia-ctk --version
 # Check ROCm installation
 rocm-smi
 # Expected: Should display AMD GPU information
+# Look for: GPU temperature, utilization, memory usage
 
 # Check ROCm version
 cat /opt/rocm/.info/version
@@ -229,6 +247,10 @@ cat /opt/rocm/.info/version
 # Verify GPU device access
 ls -la /dev/kfd /dev/dri
 # Expected: Both devices should exist and be accessible
+
+# Test ROCm from Docker
+docker run --rm --device /dev/kfd --device /dev/dri --group-add video rocm/pytorch:latest rocm-smi
+# Expected: Should display GPU information from within container
 ```
 
 ### System Resources
@@ -236,7 +258,8 @@ ls -la /dev/kfd /dev/dri
 ```bash
 # Check available memory
 free -h
-# Expected: At least 64GB total (128GB+ recommended for production)
+# Expected: At least 16GB total (32GB+ recommended)
+# Look for "Mem:" row, "total" column
 
 # Check CPU cores
 nproc
@@ -244,20 +267,7 @@ nproc
 
 # Check available disk space
 df -h /
-# Expected: At least 200GB free
-```
-
-### Post-Installation Verification
-
-```bash
-# Check Kubernetes cluster is running
-kubectl get nodes
-
-# Check all Kamiwaza pods are healthy
-kubectl get pods -n kamiwaza
-
-# Verify external access
-curl -kI "https://your-domain"
+# Expected: At least 100GB free (200GB+ recommended)
 ```
 
 ---
@@ -460,45 +470,67 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 ### Network Ports
 
-#### Enterprise Edition (RHEL 9)
-- 443/tcp: HTTPS primary access (via Traefik ingress)
-- 80/tcp: HTTP (redirects to HTTPS)
-
-All services are accessed through the Traefik ingress controller on port 443. Internal service ports (API 7777, frontend 3000, Ray dashboard 9001) are proxied through Traefik and not directly exposed.
+#### Linux/macOS Enterprise Edition
+- 443/tcp: HTTPS primary access
+- 51100-51199/tcp: Deployment ports for model instances (will also be used for 'App Garden' in the future)
 
 #### Windows Edition
 - 443/tcp: HTTPS primary access (via WSL)
+- 61100-61299/tcp: Reserved ports for Windows installation
 
-### Network Parameters
+### Required Kernel Modules (Enterprise Edition Linux Only)
 
-The Kind cluster and Podman handle container networking automatically. No manual kernel module loading or sysctl configuration is required — the installer configures everything needed.
+Required modules for Swarm container networking:
+- overlay
+- br_netfilter
+
+### System Network Parameters (Enterprise Edition Linux Only)
+
+These will be set by the installer.
+
+```bash
+# Required sysctl settings for Swarm networking
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+```
+
+### Community Edition Networking
+- Uses standard Docker bridge networks
+- No special kernel modules or sysctl settings required
+- Simplified single-node networking configuration
 
 ---
 
 ## Directory Structure
 
-### Enterprise Edition (RHEL 9)
+### Enterprise Edition
 
-Created by the RPM installer:
+Note: This is created by the installer and present in cloud marketplace images.
 
 ```
+/etc/kamiwaza/
+├── config/
+├── ssl/      # Cluster certificates
+└── swarm/    # Swarm tokens
+
 /opt/kamiwaza/
-├── scripts/           # Install, bootstrap, and management scripts
-├── ansible/           # Ansible playbooks and roles
-├── charts/            # Helm chart definitions
-├── cluster/
-│   ├── values/        # Helm values files
-│   │   └── overrides.yaml  # Site-specific overrides (operator-managed)
-│   └── helmfile.yaml.gotmpl
-└── prereqs/           # Embedded tools, RPMs, and wrap bundle files
-
-/var/log/kamiwaza_install_prod.log   # Installation log
-/var/lib/kamiwaza/                   # Bootstrap state
+├── containers/  # Docker root (configurable)
+├── logs/
+├── nvm/        # Node Version Manager
+└── runtime/    # Runtime files
 ```
 
-### Community Edition (macOS)
+### Community Edition
 
-Uses a local Kubernetes environment managed by the community installer. The exact working directory depends on where you unpack the release bundle.
+We recommend `${HOME}/kamiwaza` or something similar for `KAMIWAZA_ROOT`.
+
+```
+$KAMIWAZA_ROOT/
+├── env.sh
+├── runtime/
+└── logs/
+```
 
 ---
 
@@ -595,21 +627,19 @@ AMD's Strix Halo platform provides powerful AI inference in a compact form facto
 
 ## Version Compatibility
 
-- Podman: 5.x
-- kubectl: 1.28.x
-- Helm: 3.13.x
-- Kind: 0.20.x
-- NVIDIA Driver: 550+ (for GPU inference)
+- Docker Engine: 24.0 or later with Compose 2.23+
+- NVIDIA Driver: 450.80.02 or later
+- ETCD: 3.5 or later
 
 ---
 
 ## Important Notes
 
-- **Container Runtime**: Kamiwaza uses Podman (not Docker) as the container runtime
-- **Kubernetes**: All services run as pods in a Kind-managed Kubernetes cluster
-- **Security**: TLS termination handled by Traefik ingress; Keycloak provides OIDC/JWT authentication
+- **System Impact**: Network and kernel configurations can affect other services
+- **Security**: Certificate generation and management for cluster communications
 - **GPU Support**: Available on Linux (NVIDIA GPUs) and Windows (NVIDIA RTX, Intel Arc via WSL)
-- **Storage**: Enterprise Edition requires NVMe SSD storage for production workloads
-- **Network**: All external access through Traefik on port 443
+- **Storage**: Enterprise Edition requires specific storage configuration
+- **Network**: Enterprise Edition requires specific network ports for cluster communication
+- **Docker**: Custom Docker root configuration may affect other containers
 - **Windows Edition**: Requires WSL 2 and will create a dedicated Ubuntu 24.04 instance
 - **Administrator Access**: Windows installation requires administrator privileges for initial setup

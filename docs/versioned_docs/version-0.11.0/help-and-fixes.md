@@ -23,10 +23,10 @@ We're committed to making your experience with Kamiwaza as smooth as possible.
 
 When reporting issues to our support team or community, please include:
 
-- **Environment Details**: OS version, Podman version, Kubernetes version, hardware specs
+- **Environment Details**: OS version, Docker version, hardware specs (`bash startup/kamiwazad.sh doctor` or `kamiwaza doctor` for .deb installs is helpful)
 - **Error Messages**: Complete error text and stack traces
 - **Steps to Reproduce**: Detailed steps that led to the issue
-- **Logs**: Relevant log files and Kubernetes pod output
+- **Logs**: Relevant log files and container output
 - **Configuration**: Any custom configuration or settings
 
 This information helps us provide faster and more accurate solutions to your problems.
@@ -35,28 +35,28 @@ This information helps us provide faster and more accurate solutions to your pro
 
 ### Installation Issues
 
-#### GPU Not Detected
-**Problem**: NVIDIA GPU not available to model serving pods.
+#### Docker GPU Error: Could Not Select Device Driver
+**Problem**: NVIDIA Container Runtime not found or misconfigured.
 
-**Solution**:
-- Ensure NVIDIA drivers are properly installed (`nvidia-smi`)
+**Solution**: 
+- Ensure NVIDIA drivers are properly installed
 - Install NVIDIA Container Toolkit
-- Verify GPU labeling: `kubectl get nodes --show-labels | grep gpu`
+- Verify Docker can access GPU devices
 
-#### Port 443 Already in Use
-**Problem**: Traefik fails to bind because port 443 is occupied.
+#### Port Already in Use
+**Problem**: Kamiwaza fails to start because required ports are occupied.
 
 **Solution**:
-- Check what's running on port 443: `sudo lsof -i :443`
-- Stop conflicting services (e.g., httpd, nginx)
+- Check what's running on ports 3000, 8000, 5432, 19530, 9090
+- Stop conflicting services or change Kamiwaza's port configuration
+- Use `lsof -i :PORT_NUMBER` to identify processes using specific ports
 
 #### Insufficient System Resources
-**Problem**: Installation fails or pods are stuck in `Pending` state due to low resources.
+**Problem**: Installation fails due to low disk space, RAM, or CPU cores.
 
 **Solution**:
-- Ensure at least 64GB RAM available (128GB+ recommended)
-- Check pod status: `kubectl describe pod <pod-name> -n kamiwaza`
-- Review resource requests: `kubectl get pods -n kamiwaza -o wide`
+- Ensure at least 16GB RAM available
+- Verify CPU supports required virtualization features
 
 ### Model Deployment Issues
 
@@ -72,18 +72,17 @@ This information helps us provide faster and more accurate solutions to your pro
 
 1. Get a Hugging Face token from [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) (a **read** token is sufficient)
 2. For gated models, accept the license terms on the model's Hugging Face page
-3. Create the HuggingFace token secret:
+3. Add the token to your Kamiwaza environment:
    ```bash
-   export HF_TOKEN="hf_your_token_here"
+   # Edit the environment file
+   sudo vim /opt/kamiwaza/kamiwaza/env.sh
 
-   kubectl create secret generic huggingface-token \
-     -n kamiwaza \
-     --from-literal=token="${HF_TOKEN}"
+   # Add this line:
+   export HF_TOKEN="hf_your_token_here"
    ```
-4. Restart the scheduler and Ray head to pick it up:
+4. Restart Kamiwaza:
    ```bash
-   kubectl rollout restart deployment/core-scheduler -n kamiwaza
-   kubectl delete pod -n kamiwaza -l ray.io/node-type=head
+   kamiwaza restart
    ```
 
 #### Model Deployment Failures
@@ -123,16 +122,13 @@ This information helps us provide faster and more accurate solutions to your pro
 
 ```bash
 # Step 1: Get an auth token
-export DOMAIN="YOUR_DOMAIN_HERE"
-export ADMIN_PASSWORD="replace-me"
-
-TOKEN=$(curl -sk -X POST "https://${DOMAIN}/api/auth/token" \
+TOKEN=$(curl -sk -X POST "https://your-kamiwaza-instance/api/auth/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin&password=${ADMIN_PASSWORD}" \
+  -d "username=admin&password=your-password" \
   | jq -r '.access_token')
 
 # Step 2: Force a cache refresh
-curl -sk -X POST "https://${DOMAIN}/api/v1/apps/{app_id}/refresh" \
+curl -sk -X POST "https://your-kamiwaza-instance/api/v1/apps/{app_id}/refresh" \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
@@ -140,10 +136,10 @@ curl -sk -X POST "https://${DOMAIN}/api/v1/apps/{app_id}/refresh" \
 
 When encountering issues, follow these diagnostic steps:
 
-1. **Check Pod Status**: `kubectl get pods -n kamiwaza`
-2. **Review Logs**: `kubectl logs <pod-name> -n kamiwaza`
-3. **Describe Pod**: `kubectl describe pod <pod-name> -n kamiwaza` for events and conditions
-4. **Verify Resources**: `free -h` and `df -h /` for system resources
-5. **Restart a Service**: `kubectl rollout restart deployment/<name> -n kamiwaza`
-6. **Check Installation Log**: `cat /var/log/kamiwaza_install_prod.log`
-7. **Check Configuration**: Review `/opt/kamiwaza/cluster/values/overrides.yaml`
+1. **Check Service Status**: Verify all Kamiwaza services are running
+2. **Review Logs**: Check container logs for specific error messages
+3. **Verify Resources**: Ensure sufficient CPU, RAM, and disk space
+4. **Test Connectivity**: Verify network connectivity between components
+5. **Restart Services**: Try stopping and restarting affected services
+6. **Check Configuration**: Verify configuration files and environment variables
+

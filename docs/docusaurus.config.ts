@@ -1,9 +1,27 @@
+import fs from "fs";
+import path from "path";
 import type * as Preset from "@docusaurus/preset-classic";
 import type { Config } from "@docusaurus/types";
 import { themes as prismThemes } from "prism-react-renderer";
 
 // Check if federal docs should be included (excluded by default)
 const includeFederal = process.env.INCLUDE_FEDERAL_DOCS === "true";
+const readLatestVersion = (versionsFile: string, fallback: string) => {
+	try {
+		const versions = JSON.parse(
+			fs.readFileSync(path.join(__dirname, versionsFile), "utf8")
+		);
+
+		return Array.isArray(versions) && versions[0] ? versions[0] : fallback;
+	} catch {
+		return fallback;
+	}
+};
+
+const latestMainVersion = readLatestVersion("versions.json", "current");
+const latestSdkVersion = readLatestVersion("sdk_versions.json", latestMainVersion);
+const latestMainLabel = `${latestMainVersion} (Latest)`;
+const latestSdkLabel = `${latestSdkVersion} (Latest)`;
 
 const config: Config = {
 	title: "Kamiwaza Docs",
@@ -16,6 +34,9 @@ const config: Config = {
 
 	markdown: {
 		mermaid: true,
+		hooks: {
+			onBrokenMarkdownLinks: "warn",
+		},
 	},
 
 	themes: ["@docusaurus/theme-mermaid"],
@@ -31,7 +52,6 @@ const config: Config = {
 	},
 
 	onBrokenLinks: "warn",
-	onBrokenMarkdownLinks: "warn",
 	onBrokenAnchors: "ignore",
 
 	i18n: {
@@ -101,11 +121,7 @@ const config: Config = {
 				lastVersion: "current",
 				versions: {
 					current: {
-						label: "0.9.3 (Latest)",
-					},
-					"0.11.0": {
-						label: "0.11.0",
-						banner: "unreleased",
+						label: latestMainLabel,
 					},
 				},
 				sidebarCollapsible: true,
@@ -123,7 +139,7 @@ const config: Config = {
 				lastVersion: "current",
 				versions: {
 					current: {
-						label: "0.9.3 (Latest)",
+						label: latestSdkLabel,
 					},
 				},
 			},
@@ -153,7 +169,7 @@ const config: Config = {
 				sidebarPath: require.resolve("./sidebars-research.ts"),
 				versions: {
 					current: {
-						label: "0.9.3 (Latest)",
+						label: latestMainLabel,
 					},
 				},
 			},

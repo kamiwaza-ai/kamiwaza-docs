@@ -6,77 +6,73 @@ sidebar_position: 3
 
 # Core Services
 
-Kamiwaza is built from several core services that work together inside the Kubernetes deployment created by the packaged installer.
+Kamiwaza's backend is built as a collection of specialized microservices, each handling a specific aspect of the AI platform's functionality. These services work together to provide a comprehensive AI orchestration platform that manages the entire lifecycle of AI models and applications.
 
-## Traffic and Access
+## Service Architecture
 
-### Traefik
+The backend follows a consistent pattern where each service is self-contained and follows the structure:
 
-Traefik is the ingress layer for the platform. It:
-
-- terminates inbound HTTP and HTTPS traffic
-- routes browser and API traffic to the right backend
-- exposes runtime paths for models, apps, and tools
-
-### Keycloak
-
-Keycloak handles:
-
-- user authentication
-- role assignment
-- identity-provider federation
-- OIDC token issuance for the platform
-
-## Platform Control Plane
-
-### Core scheduler and API services
-
-The scheduler and API layer provide:
-
-- platform API endpoints
-- model lifecycle operations
-- App Garden and tool deployment orchestration
-- security decision logging and runtime coordination
-
-### Ray
-
-Ray supports distributed execution and model-serving workloads. In the packaged single-node deployment, Ray still provides the execution framework used by the platform even though the cluster runs on one host.
-
-## Data and Coordination Services
-
-### PostgreSQL
-
-PostgreSQL stores core platform data, including:
-
-- user-facing application data
-- model and deployment metadata
-- operational records needed by the platform
-
-### etcd
-
-etcd provides distributed configuration and coordination used by internal platform services.
-
-## Runtime Application Services
-
-Kamiwaza also manages runtime applications and tools launched through the platform:
-
-- App Garden deployments are translated into Kubernetes resources
-- model runtimes are exposed on managed runtime routes
-- authorization and routing are handled consistently through the platform domain
-
-## Operational View
-
-For operators, the most useful service-level commands are:
-
-```bash
-kubectl get pods -n kamiwaza
-kubectl logs -n kamiwaza deploy/core-scheduler --tail 200
-kubectl logs -n kamiwaza deploy/traefik --tail 200
-kubectl logs -n kamiwaza deploy/keycloak --tail 200
+```text
+service/
+├── api.py      # FastAPI router
+├── models/     # SQLAlchemy ORM
+├── schemas/    # Pydantic DTOs
+└── services.py # Business logic
 ```
 
-## Related Guides
+This modular approach ensures:
+- **Separation of concerns** - Each service has a clear, focused responsibility
+- **Scalability** - Services can be scaled independently based on demand
+- **Maintainability** - Changes to one service don't affect others
+- **Testability** - Each service can be tested in isolation
 
-- [Platform Overview](overview.md)
-- [Administrator Guide](../security/admin-guide.md)
-- [Observability](../observability.md)
+## Core Services Overview
+
+### 🤖 Models Service
+Manages the complete lifecycle of AI models including deployment, versioning, and serving. This service handles everything from model downloads to runtime management, supporting multiple serving engines like llama.cpp, vLLM, and Transformers.
+
+### 🔍 Vector Database Service
+Provides an abstraction layer over vector databases like Milvus and Qdrant, enabling efficient storage and retrieval of high-dimensional embeddings. Supports hybrid search, metadata filtering, and performance optimization.
+
+### 📄 Retrieval Service
+Powers RAG (Retrieval-Augmented Generation) pipelines and document search capabilities. Combines vector similarity with keyword search, provides reranking, and supports advanced query processing for contextual AI applications.
+
+### 🧠 Embedding Service
+Handles text embedding generation and storage, converting text into numerical representations for vector similarity searches. Supports multiple embedding models, batch processing, and intelligent caching strategies.
+
+### 🔐 Authentication Service
+Manages JWT-based authentication and integrates with various identity providers to secure platform access. Supports OAuth, SAML, multi-factor authentication, and role-based access control.
+
+### 📊 Catalog Service
+Integrates with Acryl DataHub to provide data cataloging and metadata management capabilities. Enables data discovery, lineage tracking, and governance across the AI platform.
+
+### 📈 Activity Service
+Provides comprehensive audit logging and metrics collection for monitoring platform usage and performance. Tracks user actions, system events, and provides real-time dashboards and alerting.
+
+### 💬 Prompts Service
+Manages a centralized library of prompt templates for consistent AI interactions across applications. Supports versioning, A/B testing, and performance tracking for prompt optimization workflows.
+
+## Service Communication
+
+All services communicate through:
+- **FastAPI routers** for HTTP API endpoints
+- **Ray Serve** for distributed computing and scaling
+- **Shared databases** (CockroachDB, etcd) for state management
+- **Message queues** for asynchronous processing
+
+## Integration Patterns
+
+Services are designed to work together seamlessly:
+- **Models + Embedding** - Deploy embedding models for text vectorization
+- **Embedding + VectorDB** - Store and retrieve high-dimensional embeddings
+- **VectorDB + Retrieval** - Power semantic search and RAG pipelines
+- **Retrieval + Prompts** - Combine context retrieval with optimized prompts
+- **Activity + All Services** - Monitor and log all platform interactions
+
+## Next Steps
+
+To learn more about working with these services:
+- Explore the [Models](../models/overview.md) and [Distributed Data Engine](../data-engine) documentation
+- Build a complete [RAG pipeline](../use-cases/building-a-rag-pipeline) using multiple services
+- Review the [Platform Overview](overview) for architectural context
+- Check out [Use Cases](../use-cases/index.md) for practical implementation examples 

@@ -2,365 +2,264 @@
 
 ## Overview
 
-This guide covers offline installation of Kamiwaza on RHEL 9 in air-gapped environments where internet access is restricted or unavailable.
+This guide covers offline installation for air-gapped RHEL environments where internet access is restricted or unavailable.
 
-Kamiwaza deploys as a Kubernetes application on a single-node [Kind](https://kind.sigs.k8s.io/) cluster using [Podman](https://podman.io/) as the container runtime. The offline installer uses a signed Helm wrap bundle containing all container images and charts, eliminating the need for external registry access.
+**For standard installations with internet access (recommended)**, see the [Red Hat Installation Guide](./redhat_online_install.md). Online installation is the primary and recommended method for most users as it is simpler and automatically downloads all required components.
 
-### What Gets Installed
+The offline installation is supported for restricted environments and requires additional preparation. The offline installer includes:
 
-- **Kind** — Single-node Kubernetes cluster (using Podman)
-- **Helm + Helmfile** — Declarative Kubernetes deployment
-- **Traefik** — Ingress controller with TLS termination
-- **Keycloak** — Enterprise authentication (OIDC/JWT)
-- **PostgreSQL** — Application database
-- **Ray** — Distributed compute for model serving
-- **Kamiwaza Platform** — Core scheduler, frontend, and AI services
+- **Pre-packaged NVM + Node.js** (version 22.11.0)
+- **Frontend node_modules** (if available during build)
+- **Docker images** (containerized services)
+- **Python wheels** (pip dependencies)
+- **System dependencies** (RPM packages)
 
----
-
-## Prerequisites
-
-- **RHEL 9** (x86_64) — fresh installation recommended
-- **Root or sudo access**
-- **A pre-provisioned server or EC2 instance** that already exists before install
-- **64GB RAM minimum** (128GB+ recommended for production model serving)
-- **200GB+ free disk space** (NVMe SSD recommended)
-- **GPU** (optional) — NVIDIA with driver 550+ for GPU inference
-
-Review the full [System Requirements](system_requirements.md) for hardware details.
+These instructions have been tested for Kamiwaza Enterprise.
 
 ---
 
-## Required Artifacts
+## Dependencies
 
-Before starting, obtain these files from your release build or Kamiwaza representative:
+The following dependencies are required:
 
-| Artifact | Description |
-|----------|-------------|
-| `kamiwaza-prod-*.x86_64.rpm` | Production RPM with embedded tools and bootstrap payload |
-| `kamiwaza-helm.*.tar` | Helm wrap bundle chunks (container images + charts) |
-| `kamiwaza-helm.sha256` | SHA256 checksum for bundle integrity verification |
-| `kamiwaza-helm.asc` | GPG detached signature for bundle authenticity |
-| `kamiwaza-tools-rpm.pub.gpg` | GPG public key for signature verification |
+- net-tools
+- gcc-c++
+- nodejs
+- npm
+- jq
+- pkgconfig
+- fontconfig-devel
+- freetype-devel
+- libX11-devel
+- libXrender-devel
+- libXext-devel
+- libpng-devel
+- libSM-devel
+- pixman-devel
+- libxcb-devel
+- glib2-devel
+- python3-devel
+- libffi-devel
+- gtk3-devel
+- ca-certificates
+- curl
+- libcurl-devel
+- cmake
+- gnupg2
+- iptables
+- pciutils
+- dos2unix
+- unzip
+- coreutils
+- systemd
+- wget
+- make
+- gcc
+- openssl
+- sqlite
+- ncurses-libs
+- readline
+- libffi
+- xz-libs
+- expat
+- tk
+- zlib-devel
+- bzip2-devel
+- openssl-devel
+- ncurses-devel
+- sqlite-devel
+- readline-devel
+- tk-devel
+- xz-devel
+- expat-devel
+- libuuid-devel
+- yum-utils
+- device-mapper-persistent-data
+- lvm2
+- git
+- python3.12
+- python3.12-pip
+- python3.12-devel
+
+For systems that can temporarily connect to the internet, these dependencies can be installed via the command:
+
+```bash
+sudo dnf install -y net-tools gcc-c++ nodejs npm jq pkgconfig fontconfig-devel freetype-devel libX11-devel libXrender-devel libXext-devel libpng-devel libSM-devel pixman-devel libxcb-devel glib2-devel python3-devel libffi-devel gtk3-devel ca-certificates curl libcurl-devel cmake gnupg2 iptables pciutils dos2unix unzip coreutils systemd wget make gcc openssl sqlite ncurses-libs readline libffi xz-libs expat tk zlib-devel bzip2-devel openssl-devel ncurses-devel sqlite-devel readline-devel tk-devel xz-devel expat-devel libuuid-devel yum-utils device-mapper-persistent-data lvm2 git python3.12 python3.12-pip python3.12-devel vim
+```
+
+---
+
+## For Users: Installing Offline
+
+### Step 1: Download and Transfer Files to Target System
+
+Download the offline installer package from a system with internet access:
+
+| Package | Download |
+|---------|----------|
+| Offline RPM | [kamiwaza_v0.10.0_rhel9_x86_64_offline.rpm](https://packages.kamiwaza.ai/rpm/kamiwaza_v0.10.0_rhel9_x86_64_offline.rpm) |
+
+The offline package includes bundled dependencies. You may also need these additional files from your Kamiwaza representative:
+```
+# Docker images (if not bundled)
+kamiwaza_v0.10.0_rhel9_x86_64_docker_images.tar.gz
+
+# Docker image installation script
+install_docker_images.sh
+
+# Extension registry tarball (for installing extensions)
+kamiwaza-registry-[date].tar.gz
+```
+
+Transfer them to a folder on your target system that is accessible by all users.
 
 **Transfer Methods:**
-- USB drive / removable media
+- USB drive/removable media
 - Secure file transfer (scp, rsync)
-- S3 bucket (if the host has temporary internet access)
+- Physical media delivery
 
----
+### Step 2: Basic Installation
 
-## Step 1: Set Operator Variables
-
-Define the configuration for your installation:
+#### 2a. Install docker images
 
 ```bash
-export DOMAIN="YOUR_DOMAIN_HERE"           # External hostname for the install
-export ADMIN_PASSWORD="replace-me"          # Initial admin password
-export RELEASE_DIR="$HOME/kamiwaza-release"  # Directory containing release artifacts
-
-export APP_TAG="release-<release-tag>"
-export FRONTEND_TAG="${APP_TAG}"
-export CONTAINERS_TAG="${APP_TAG}"
+sudo bash install_docker_images.sh <"path/to/images.tar.gz">
 ```
 
-If your release uses different frontend or container tags, set them explicitly. Confirm the correct tags from the release metadata.
+#### 2b. Install RPM
 
----
+**IMPORTANT:** You must accept the Kamiwaza License Agreement to install Kamiwaza. By including `KAMIWAZA_ACCEPT_LICENSE=yes` in the installation command, you are agreeing to the Kamiwaza License Agreement
 
-## Step 2: Stage Release Artifacts
-
-Transfer the release artifacts to the target host and place them in `${RELEASE_DIR}`.
-
-**Transfer Methods:**
-- USB drive or removable media
-- Secure file transfer (`scp`, `rsync`)
-- Any internal artifact repository or file share your organization uses
+To review the full license terms, visit: https://www.kamiwaza.ai/license
 
 ```bash
-mkdir -p "${RELEASE_DIR}"
-cd "${RELEASE_DIR}"
-# Copy or transfer the release artifacts into this directory
+# Enable and start Docker
+sudo systemctl enable docker
+sudo systemctl start docker 
+sudo chmod 666 /var/run/docker.sock
 ```
-
----
-
-## Step 3: Verify Required Files
 
 ```bash
-cd "${RELEASE_DIR}"
+# Install the RPM package. Add your Kamiwaza license key between the quotation marks.
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="" dnf install ./kamiwaza_v0.10.0_rhel9_x86_64_offline.rpm
 
-ls -1 \
-  kamiwaza-prod-*.x86_64.rpm \
-  kamiwaza-helm.*.tar \
-  kamiwaza-helm.sha256 \
-  kamiwaza-helm.asc \
-  kamiwaza-tools-rpm.pub.gpg
+# The installer will automatically detect offline mode and use bundled resources
 ```
 
-All five artifact types must be present before proceeding.
+**Tip:** While the installer says "Running scriptlet", use `sudo tail -f /var/log/kamiwaza-postinst-debug.log` to monitor logs.
 
----
+#### 2c. Configure system environment variables
 
-## Step 4: Install the Production RPM
+After installation, configure Kamiwaza by editing `/etc/kamiwaza/env.sh` (requires sudo access):
+
+**Optional (for non-production systems only):**
+
+On non-production systems where self-signed certificates or insecure TLS is acceptable, ensure existing variables are set as:
 
 ```bash
-sudo dnf install -y perl
-sudo rpm -Uvh --replacepkgs ./kamiwaza-prod-*.x86_64.rpm
+export AUTH_GATEWAY_TLS_INSECURE=true
+export AUTH_REBAC_SESSION_ALLOW_INSECURE=true
 ```
+> **Warning:** Do not use `AUTH_GATEWAY_TLS_INSECURE=true` in production environments.
 
-This installs the Kamiwaza platform files to `/opt/kamiwaza/` including scripts, Ansible playbooks, Helm charts, and embedded prerequisite binaries.
 
----
+### Step 3: Install Extensions
 
-## Step 5: Stage the Wrap Bundle
-
-Copy the Helm wrap bundle and verification files to the expected location:
+1. Before starting Kamiwaza, install the extensions from the registry tarball:
 
 ```bash
-sudo mkdir -p /opt/kamiwaza/prereqs
-sudo cp ./kamiwaza-helm.*.tar ./kamiwaza-helm.sha256 ./kamiwaza-helm.asc \
-  ./kamiwaza-tools-rpm.pub.gpg /opt/kamiwaza/prereqs/
+kamiwaza extensions install kamiwaza-registry-[date].tar.gz
 ```
 
----
+Replace `kamiwaza-registry-[date].tar.gz` with the actual filename of the registry package you received.
 
-## Step 6: Bootstrap Host Prerequisites
+2. Import the extensions images using the provided shell script
+```bash
+bash /opt/kamiwaza/kamiwaza/scripts/import-extension-images.sh 
+```
 
-The RPM includes an embedded prerequisite payload. Run the bootstrap script to install Podman, Ansible, kubectl, Helm, Kind, Helmfile, and the helm-dt plugin:
+### Step 4: Verification
 
 ```bash
-sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
-  --embedded-root /opt/kamiwaza/prereqs \
-  --os rhel
-
-export HELM_PLUGINS="/usr/local/share/helm/plugins"
+kamiwaza start
 ```
 
-Verify the installed tools:
+The first time you run this command, it will take take longer to start Kamiwaza as it does initial setup. Once it is starting, you can monitor its progress by running:
 
 ```bash
-ansible-playbook --version | head -n1
-podman --version
-kubectl version --client
-helm version
-helmfile version
-helm dt version
+kamiwaza status
 ```
 
----
+Once are all services are confirmed to be running, Kamiwaza is started.
 
-## Step 7: Create Site Overrides (Optional)
+### Step 5: Create Users
 
-Most installs can skip this step. Create a site overrides file only if you need non-default settings such as security banners, consent gates, ReBAC authorization, or a license key.
-
+After installation, you'll need to create user accounts to access Kamiwaza.
 ```bash
-sudo tee /opt/kamiwaza/cluster/values/overrides.yaml > /dev/null <<'EOF'
-core:
-  security:
-    consent:
-      enabled: true
-    banner:
-      enabled: true
-      topText: "UNCLASSIFIED//TEST SYSTEM"
-      topColor: "#00A651"
-      bottomText: "UNCLASSIFIED//TEST SYSTEM"
-      bottomColor: "#00A651"
-
-  # Override only if this install should use a non-default template catalog stage.
-  # This does not control the image registry used by the installer.
-  # templates:
-  #   sync:
-  #     stage: "STAGE"
-
-  scheduler:
-    extraEnv:
-      - name: LICENSE_KEY
-        value: "your-license-key-here"
-      - name: AUTH_REBAC_ENABLED
-        value: "true"
-      - name: AUTH_REBAC_BACKEND
-        value: "postgres"
-      - name: AUTH_REBAC_ALLOW_COMMUNITY_FALLBACK
-        value: "true"
-
-      # ReBAC session tracking — keep disabled unless Redis URL is configured
-      # - name: AUTH_REBAC_SESSION_ENABLED
-      #   value: "true"
-      # - name: AUTH_REBAC_SESSION_REDIS_URL
-      #   value: "rediss://user:pass@redis.example.com:6379"
-EOF
+/opt/kamiwaza/kamiwaza/bin/kz-user add admin --email admin@company.com --roles admin --random --safe
 ```
 
-**Notes:**
-- Use `core.security`, not top-level `security`
-- Do **not** set `global.domain` here — use the `--domain` flag instead
-- Do **not** set `KAMIWAZA_EXTERNAL_URL`, Keycloak URLs, or JWT issuer here — the chart derives them from `--domain`
-- If you enable `AUTH_REBAC_SESSION_ENABLED`, you **must** also provide `AUTH_REBAC_SESSION_REDIS_URL`
+**Note:** Passwords are displayed once and must be saved immediately. For bulk user creation and full documentation, see the [Security Admin Guide](../security/admin-guide#221-using-kz-user-cli-tool).
+
+### Step 6: Verify Extensions
+
+Use the following checklist to confirm the bundled extensions are ready:
+
+Sign in to the Kamiwaza UI, open **App Garden → Extensions**, and confirm the extension catalog appears without network access.
+Note: Extension logs get written to `/var/log/kamiwaza/extension-sync.log`.
+
+
+### File Locations
+
+| Component | Installed Location | Purpose |
+|-----------|-------------------|---------|
+| Main Application | `/opt/kamiwaza/` | Core application files |
+| Configuration | `/opt/kamiwaza/kamiwaza/` | Runtime configuration |
+| Data Storage | `/var/lib/kamiwaza/` | Models, databases, logs |
+| Offline Resources | `/usr/share/kamiwaza/` | Bundled dependencies |
+| Service Scripts | `/usr/bin/kamiwaza*` | Command-line tools |
+| Log Files | `/var/log/kamiwaza/` | Application logs |
 
 ---
 
-## Step 8: Export Offline Image Tags
-
-Set the container image tags for the release you are installing:
-
-```bash
-export KAMIWAZA_VERSION="${APP_TAG}"
-export KAMIWAZA_IMAGE_TAG="${APP_TAG}"
-export KAMIWAZA_OFFLINE_APP_IMAGE_TAG="${APP_TAG}"
-export KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG="${APP_TAG}"
-export KAMIWAZA_OFFLINE_CORE_TAG="${APP_TAG}"
-export KAMIWAZA_OFFLINE_FRONTEND_TAG="${FRONTEND_TAG}"
-export KAMIWAZA_OFFLINE_CHAINGUARD_BASE_TAG="${CONTAINERS_TAG}"
-```
-
-If your release uses different tags for frontend or supporting container images, set them explicitly before running the installer.
-
----
-
-## Step 9: Run the Offline Install
-
-```bash
-sudo -E /opt/kamiwaza/scripts/install-prod.sh \
-  --offline \
-  --skip-prereq-bootstrap \
-  --domain "${DOMAIN}" \
-  --admin-password "${ADMIN_PASSWORD}" \
-  --wrap-bundle '/opt/kamiwaza/prereqs/kamiwaza-helm.*.tar' \
-  --wrap-sha256 /opt/kamiwaza/prereqs/kamiwaza-helm.sha256 \
-  --wrap-signature /opt/kamiwaza/prereqs/kamiwaza-helm.asc \
-  --wrap-pubkey /opt/kamiwaza/prereqs/kamiwaza-tools-rpm.pub.gpg \
-  -e helm_timeout=12m \
-  -y
-```
-
-**Important:** Keep the `--wrap-bundle` glob **quoted** exactly as shown. The script needs to expand the glob itself.
-
-The installer will:
-1. Create a `kamiwaza-prod` Kind cluster using Podman
-2. Start a local container registry
-3. Reassemble and verify the wrap bundle chunks (SHA256 + GPG)
-4. Unwrap all Helm charts and container images into the local registry
-5. Deploy the full platform via `helmfile sync`
-
-Installation typically takes 10–20 minutes depending on hardware.
-
----
-
-## Step 10: Verify the Installation
-
-```bash
-# Check all pods are Running or Completed
-kubectl get pods -n kamiwaza
-
-# Retrieve the admin password
-kubectl -n kamiwaza get secret kamiwaza-user-admin \
-  -o jsonpath="{.data.password}" | base64 -d; echo
-
-# Verify the domain is accessible
-curl -kI "https://${DOMAIN}"
-```
-
-**Access the Web Interface:**
-
-Open your browser and navigate to `https://<your-domain>`. Sign in with:
-- **Username:** `admin`
-- **Password:** The password you set via `--admin-password`
-
----
-
-## File Locations
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| Platform scripts | `/opt/kamiwaza/scripts/` | Install, bootstrap, and management scripts |
-| Ansible playbooks | `/opt/kamiwaza/ansible/` | Deployment automation |
-| Helm charts | `/opt/kamiwaza/charts/` | Kubernetes application definitions |
-| Cluster values | `/opt/kamiwaza/cluster/values/` | Helm values and overrides |
-| Prereq payload | `/opt/kamiwaza/prereqs/` | Embedded tools and wrap bundle |
-| Install log | `/var/log/kamiwaza_install_prod.log` | Installation log |
-
----
-
-## Network Ports
+### Network Ports
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| Traefik | 443/tcp | HTTPS ingress (primary access) |
-| Traefik | 80/tcp | HTTP (redirects to HTTPS) |
-| API Server | 7777 | Kamiwaza REST API (internal) |
-| Frontend | 3000 | Web UI (internal, proxied by Traefik) |
-| Ray Dashboard | 9001 | Ray cluster monitoring (internal) |
+| Web Interface | 3000 | Main UI |
+| API Server | 8000 | REST API |
+| Ray Dashboard | 8265 | Ray monitoring |
+| Ray Client | 10001 | Ray cluster comm |
+| Traefik | 80/443 | Reverse proxy |
 
-All external access is through the Traefik ingress on port 443.
 
----
+### Troubleshooting: Extension Configuration (Offline builds)
 
-## How Configuration Is Supplied
+Offline bundles include the Kamiwaza Extension Registry so App Garden extensions remain available without external connectivity. The installer appends the following defaults to `/etc/kamiwaza/env.sh`—verify they match your environment:
 
-Configuration for the offline install comes from three places:
+| Variable | Typical offline value | Purpose |
+|----------|----------------------|---------|
+| `KAMIWAZA_EXTENSION_STAGE` | `LOCAL` | Forces the platform to serve extensions from the bundled registry |
+| `KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` | `file:///opt/kamiwaza/extensions/kamiwaza-extension-registry` | Points to the unpacked registry assets on disk |
+| `KAMIWAZA_EXTENSION_INSTALL_PATH` | `/opt/kamiwaza/kamiwaza/extensions` | Destination directory for the registry archive |
 
-1. **`--domain`** — Sets the external domain. The chart derives `KAMIWAZA_EXTERNAL_URL`, Keycloak public URL, JWT issuer, CORS origins, and other URL-based fields automatically.
-
-2. **`--admin-password`** — Seeds the `kamiwaza-user-admin` Kubernetes secret and the Keycloak initial admin user.
-
-3. **Exported `KAMIWAZA_OFFLINE_*` tag vars + `/opt/kamiwaza/cluster/values/overrides.yaml`** — Image tags for the release and any site-specific settings (banners, consent, ReBAC, license key).
-
----
-
-## Troubleshooting
-
-### `no wrap chunk files matched glob`
-
-The `--wrap-bundle` argument must be **quoted** to prevent shell expansion:
+If the builder omitted these entries (or they differ), edit `/etc/kamiwaza/env.sh` and update the existing `export` lines rather than appending duplicates. One approach:
 
 ```bash
-# Correct:
---wrap-bundle '/opt/kamiwaza/prereqs/kamiwaza-helm.*.tar'
-
-# Wrong (shell expands before the script sees it):
---wrap-bundle /opt/kamiwaza/prereqs/kamiwaza-helm.*.tar
+sudo vim /etc/kamiwaza/env.sh
 ```
 
-### Embedded prereq payload missing
-
-If `/opt/kamiwaza/prereqs/rpms/` is missing after RPM install, verify that you installed the correct packaged prod RPM for the offline release.
-
-### ReBAC session startup failure
-
-If you enable `AUTH_REBAC_SESSION_ENABLED="true"`, you must also provide `AUTH_REBAC_SESSION_REDIS_URL`. Without it, `core-scheduler` will fail startup.
-
-### Stale unwrap marker from previous install
-
-If reinstalling with a different bundle, clear the cached state:
+Ensure the file contains exactly one copy of each export:
 
 ```bash
-sudo rm -f /tmp/kamiwaza-helm-reassembled.tar.sha256.ok
-sudo rm -rf /opt/kamiwaza/wrap/
+export KAMIWAZA_EXTENSION_STAGE=LOCAL
+export KAMIWAZA_EXTENSION_LOCAL_STAGE_URL="file:///opt/kamiwaza/extensions/kamiwaza-extension-registry"
+export KAMIWAZA_EXTENSION_INSTALL_PATH="/opt/kamiwaza/extensions"
 ```
 
-### Pod not starting
-
-Check pod events and logs:
+Restart Kamiwaza to load any environment edits:
 
 ```bash
-kubectl describe pod <pod-name> -n kamiwaza
-kubectl logs <pod-name> -n kamiwaza
+sudo systemctl restart kamiwaza
 ```
 
-### Installation log
-
-Review the full installation log:
-
-```bash
-cat /var/log/kamiwaza_install_prod.log
-```
-
----
-
-## Next Steps
-
-- **[GPU Setup Guide](gpu_setup_guide.md)** — Configure NVIDIA GPU support for model inference
-- **[System Requirements](system_requirements.md)** — Detailed hardware and software requirements
-- **[Admin Guide](../security/admin-guide.md)** — Authentication, user management, and security configuration
-- **[Uninstalling Kamiwaza](redhat_uninstall.md)** — Complete removal procedure
