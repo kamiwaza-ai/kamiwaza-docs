@@ -5,75 +5,91 @@ sidebar_label: ReBAC Overview
 
 # Relationship-Based Access Control Overview
 
-Kamiwaza uses relationship-based access control (ReBAC) to add resource-level authorization on top of normal user roles. Realm roles answer "what kind of user is this?", while ReBAC answers "what is this user allowed to do with this specific model, dataset, app, or other resource?"
+Kamiwaza uses relationship-based access control (ReBAC) to enforce tenant-scoped and role-aware policies across the platform. This page summarizes the capabilities delivered with the current release, how to integrate an identity provider, and the operational practices required to keep the system healthy.
 
-## What ReBAC Adds
+## What ReBAC Delivers
 
-- deny-by-default authorization for protected resources
-- resource-level access decisions in addition to role-based login
-- tenant-aware access controls for environments that need isolation between organizations or missions
-- decision logging that lets operators review allow and deny outcomes
-- automatic ownership behavior for common create-and-manage workflows
+- **Deny by default** – every protected API checks for an explicit `subject → relation → resource` tuple before permitting access.
+- **Context-aware policies** – relations cover ownership, editor/viewer roles, clearance tiers, and nested group membership.
+- **Runtime updates** – policy manifests and tenant bootstrap files can be replayed without restarting services.
+- **Auditable decisions** – each authorization call records the decision, reason, backend, and correlation ID.
+- **Shadow cutover** – Postgres and SpiceDB can run in parallel to verify parity before promoting SpiceDB to the primary backend.
+- **Automatic ownership tuples** – when `AUTH_REBAC_ENABLED=true`, catalog/model uploads seed owner/editor/viewer tuples automatically so creators can immediately list and download their assets.
 
-## Architecture
+## Architecture Snapshot
 
 ```mermaid
 flowchart LR
-    User[User or Service] --> Gateway[Auth Gateway]
-    Gateway --> IdP[Keycloak / External IdP]
-    Gateway --> ADE[Access Decision Engine]
-    ADE --> Store[(Relationship Store)]
-    Gateway --> Services[Models, Catalog, Apps, Tools]
+    Client[User / Service] -->|OIDC| Gateway[Auth Gateway]
+    Gateway -->|Signed headers| Services[Model & Catalog APIs]
+    Gateway -->|Tuple checks| ADE[Access Decision Engine]
+    ADE -->|Read tuples| Store[(Relationship Store)]
+    Store --> Spice["SpiceDB (shadow/primary)"]
+    Services -->|Allow / Deny response| Client
 ```
 
-### Main components
+| Component | Purpose | Notes |
+| --- | --- | --- |
+| Auth Gateway | Terminates OIDC sessions, issues personal access tokens (PAT), forwards signed headers. | Keycloak is the reference IdP; OIDC, SAML, and CAC flows are supported when configured. |
+| Access Decision Engine | Evaluates tuples stored in Postgres or SpiceDB and returns permit/deny with reasoning. | Targets &lt;100 ms latency for typical requests. |
+| Relationship Store | Persists tuple data and mirrors to SpiceDB when enabled. | Ships with default tuples for system tenants. |
+| Service Guards | Wrap API endpoints with `enforce_*` helpers to require specific relations. | Catalog dataset deletes and model deletes ship protected in this release. |
+| Policy Assets | `configs/rebac/policies/*.yaml` and tenant bootstraps under `configs/rebac/tenants/`. | Validate before applying changes. |
 
-- **Identity provider**: Keycloak is the reference identity provider in the packaged deployment.
-- **Auth gateway**: validates identity, applies route-level policy, and forwards identity context.
-- **Access decision engine**: evaluates relationship checks for protected resources.
-- **Relationship store**: persists the data used to answer resource-level authorization requests.
+## Identity Provider Integration
 
-## Roles vs ReBAC
+1. **Create a confidential client** in your identity provider (Keycloak in the reference deployment).
+   - Client ID must match `AUTH_GATEWAY_JWT_AUDIENCE` (default `kamiwaza-platform`).
+   - Allowed redirect URI: the external URL of the Kamiwaza deployment (`https://<gateway>/api/auth/callback`).
 
-Use both together:
+2. **Expose required claims** in the ID token or user info endpoint.
+   - Include `roles`, `tenant`, and any clearance attributes referenced in policies.
+   - Ensure the token carries `exp`, `iat`, `sub`, and `iss` claims; Kamiwaza validates them on every request.
 
-- **Realm roles** such as `admin`, `user`, and `viewer` define broad access patterns.
-- **ReBAC relationships** define ownership or allowed actions for a specific resource.
+3. **Configure the Auth Gateway** (environment variables or `env.sh`).
+   - Set the issuer and JWKS URL to match your Keycloak realm (`https://<keycloak>/realms/<realm>` and `/protocol/openid-connect/certs`).
+   - Align `AUTH_GATEWAY_JWT_AUDIENCE` with the confidential client you created (`kamiwaza-platform` by default).
+   - Enable ReBAC (`AUTH_REBAC_ENABLED=true`) and choose your primary backend (`postgres` or `spicedb`).
+   - Point the session store at your Redis deployment (`AUTH_REBAC_SESSION_REDIS_URL=rediss://<redis-host>:6380/0`).
+   - Define the default tenant fallback (`AUTH_REBAC_DEFAULT_TENANT_ID="__default__"` for single-tenant labs) and enable PAT tagging (`AUTH_PAT_TENANT_TAGGING_ENABLED=true`) so newly issued tokens include tenant metadata.
+   - See the [ReBAC Deployment Guide](./rebac-deployment-guide.md) for the full variable list and examples.
 
-Example:
+4. **Optional PAT workflow** – use the Auth gateway PAT endpoint to issue automation tokens that embed tenant metadata.
 
-- a `viewer` can browse data they are allowed to see
-- an `admin` can manage platform-wide settings
-- a user may still be denied access to a specific model or dataset if they do not hold the required relationship for that object
+## Policy Management
 
-## Packaged Deployment Model
+1. **Review the shipping manifest** (`configs/rebac/policies/default.yaml`) to understand default relations for models, datasets, and administrative roles.
+2. **Validate changes** with the provided helper:
+   ```bash
+   python scripts/rebac_policy.py validate configs/rebac/policies/default.yaml
+   ```
+3. **Apply tenant manifests** using:
+   ```bash
+   python scripts/rebac_tenant.py apply --manifest configs/rebac/tenants/__default__.yaml
+   ```
+   Manifests seed tuples for new tenants and can be re-run safely.
+4. **Promote across environments** by storing sanitized manifests in version control and replaying them through your change-management pipeline. Capture tuple plans and policy hashes for audit evidence.
 
-For the packaged RHEL install, operators enable and manage ReBAC through:
+## Operations Checklist
 
-- `/opt/kamiwaza/cluster/values/overrides.yaml`
-- `helmfile -e release sync`
-- Keycloak role and claim mapping
+- **Gateway policy** – enable `default_deny: true` and explicitly list the `/api/*` paths users require.
+- **Shadow validation** – run with `AUTH_REBAC_BACKEND=postgres` and `AUTH_REBAC_SHADOW_COMPARE=true` until SpiceDB decisions match Postgres, then cut over.
+- **Monitoring** – tail structured `rebac_decision` logs today; metrics endpoints will be documented when generally available.
+- **Session store** – ensure Redis is served over TLS (`rediss://`), authentication is enabled, and session TTLs match your security policy (default 8 hours).
+- **Audit artifacts** – capture policy validation output, tuple plans, and decision logs for the release record.
 
-The public deployment flow is covered in the [ReBAC Deployment Guide](./rebac-deployment-guide.md).
+## Demonstrating ReBAC
 
-## Operational Expectations
+For a walkthrough that exercises authentication, tuple enforcement, and observability dashboards, follow the [ReBAC Validation Checklist](./rebac-validation-checklist.md). It covers token capture, allow/deny checks, and the expected log output for accreditation reviews.
 
-- enable ReBAC only after the identity-provider roles and tenant behavior are understood
-- validate both read and write paths with real test accounts
-- review scheduler logs for `rebac` decision entries during rollout
-- document any tenant fallback used in pilot environments and remove it before strict production enforcement
+## Limitations & Roadmap
 
-## Where ReBAC Matters Most
+- ReBAC guards cover catalog, models, DDE connectors/documents, and retrieval job access. Additional services will continue to adopt guard coverage over time.
+- Some ingestion workflows are still admin-scoped; expand tuple policies if you need finer-grained controls for your operators.
 
-ReBAC is most useful when you need to:
+Need help integrating ReBAC or exporting evidence for accreditation? Reach out to your Kamiwaza support representative for the latest runbooks and automation scripts.
 
-- separate access between teams or tenants
-- allow read access but restrict modifications
-- enforce ownership of models, datasets, or runtime artifacts
-- produce auditable evidence that a denied action was blocked for the right reason
+## Next steps
 
-## Next Steps
-
-- [ReBAC Deployment Guide](./rebac-deployment-guide.md)
-- [ReBAC Validation Checklist](./rebac-validation-checklist.md)
-- [Administrator Guide](./admin-guide.md)
+- Follow the [ReBAC Deployment Guide](./rebac-deployment-guide.md) to configure the gateway.
+- Run the [ReBAC Validation Checklist](./rebac-validation-checklist.md) to validate tuple enforcement and logging.

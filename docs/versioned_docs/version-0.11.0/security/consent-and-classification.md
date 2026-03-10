@@ -5,74 +5,71 @@ sidebar_label: Consent & Banners
 
 # Consent Gate and Classification Banners
 
-Kamiwaza can require users to acknowledge a consent notice before login and can display persistent classification banners across the platform UI and runtime applications.
+Kamiwaza can enforce a pre-login consent gate and display classification banners across the UI and any embedded apps. This is designed for security and compliance programs that require a user acknowledgment before access, plus persistent system-high markings.
 
-## What This Feature Does
+## What this provides
 
-- shows a pre-login consent gate that users must acknowledge
-- displays top and bottom classification banners
-- exposes the same security presentation to runtime applications delivered through the platform
+- **Consent gate**: A modal overlay shown before login that requires explicit acceptance.
+- **Classification banners**: Top and bottom banners with configurable text and colors (for example "SECRET").
+- **Embeddable script**: A single JavaScript include that applies the same behavior in external apps.
 
-These controls are presentation and audit features. They do not replace authentication or authorization.
+## Public endpoints
 
-## Public Endpoints
-
-These endpoints are intentionally available before login:
+These endpoints are intentionally public (no auth required) so they can be used before login.
 
 - `GET /api/security/public/config`
+  - Returns the consent/banner configuration consumed by the UI and embed script.
 - `POST /api/security/consent/accept`
+  - Records consent acceptance for audit purposes (client IP + user agent).
 - `GET /api/security/embed.js`
+  - Returns the embeddable JavaScript bundle for banners and consent gate.
 
-Applications launched through Kamiwaza can use the same configuration through the embedded script:
+### Embedding the script
+
+Add the following tag to any app that should mirror Kamiwaza's consent and banner behavior:
 
 ```html
 <script src="https://<gateway-host>/api/security/embed.js"></script>
 ```
 
+The script:
+- Fetches `/api/security/public/config`
+- Renders banners at the top and bottom of the page
+- Enforces a consent gate until accepted
+- Fails closed (shows the gate with a retry option if config fetch fails)
+
+Consent is tracked in session storage for the browser session and is also recorded server-side for audit logs.
+
 ## Configuration
 
-For packaged RHEL installs, configure consent and banners in:
+### Environment variables
 
-```text
-/opt/kamiwaza/cluster/values/overrides.yaml
+Set these in `env.sh` (or your deployment environment) and restart the services:
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `KAMIWAZA_SECURITY_CONSENT_ENABLED` | Enable the consent gate | `false` |
+| `KAMIWAZA_SECURITY_CONSENT_BUTTON_LABEL` | Custom button label | `Accept` |
+| `KAMIWAZA_SECURITY_BANNER_ENABLED` | Enable classification banners | `false` |
+| `KAMIWAZA_SECURITY_BANNER_TOP_TEXT` | Text for the top banner | (none) |
+| `KAMIWAZA_SECURITY_BANNER_TOP_COLOR` | Hex color for top banner | (none) |
+| `KAMIWAZA_SECURITY_BANNER_BOTTOM_TEXT` | Text for the bottom banner | Defaults to top text |
+| `KAMIWAZA_SECURITY_BANNER_BOTTOM_COLOR` | Hex color for bottom banner | Defaults to top color |
+
+### Consent content file
+
+Consent HTML is loaded from:
+
+```
+$KAMIWAZA_ROOT/config/security/consent.html
 ```
 
-Example:
+If the file is missing, a default short message is used. You can start from the packaged example in
+`config/security/consent-long.html` in the platform repo and copy it to the path above.
 
-```yaml
-core:
-  security:
-    consent:
-      enabled: true
-      buttonLabel: "Accept"
-    banner:
-      enabled: true
-      topText: "UNCLASSIFIED//TEST SYSTEM"
-      topColor: "#00A651"
-      bottomText: "UNCLASSIFIED//TEST SYSTEM"
-      bottomColor: "#00A651"
-```
+## Operational notes
 
-Apply the change:
+- Consent and banners are purely UI-level controls. They do not replace API authentication or authorization.
+- For system-high or CAPCO-aligned deployments, keep banner text aligned with your site classification policy.
+- If you embed the script in external apps, make sure those apps are reachable through the same gateway so the script can resolve the correct API origin.
 
-```bash
-cd /opt/kamiwaza
-helmfile -e release sync
-```
-
-## Consent Content
-
-Kamiwaza loads the consent body from its configured runtime content. If the deployment does not provide custom content, the platform falls back to a default message.
-
-For most customer deployments, banner and consent enablement is handled through `overrides.yaml`, while any site-specific long-form consent text is packaged as part of the deployment workflow used for your environment.
-
-## Operational Notes
-
-- keep the banner text aligned with your site classification policy
-- validate the consent flow after every upgrade that changes UI branding or security configuration
-- if you embed the script in external apps, route those apps through the same public domain and gateway model used by Kamiwaza
-
-## Related Guides
-
-- [Administrator Guide](./admin-guide.md)
-- [ReBAC Overview](./rebac-overview.md)

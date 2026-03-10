@@ -1,32 +1,47 @@
 # Quickstart
 
-This guide walks through the first tasks after installation: verifying the platform, deploying a starter model, and launching an application from App Garden.
+Get up and running with Kamiwaza in just a few minutes! This guide will walk you through starting the platform, deploying your first AI model, and launching a real application from the App Garden.
 
 ## Prerequisites
 
 Before you begin, make sure you have:
 - Kamiwaza installed and configured (see our [Installation Guide](installation/installation_process))
-- At least 64GB of available RAM (128GB+ recommended)
-- A stable internet connection for downloading models (or pre-loaded models for offline installs)
+- At least 16GB of available RAM
+- A stable internet connection for downloading models
 
-## Step 1: Verify Kamiwaza is Running
+## Step 1: Start Kamiwaza
 
-After installation, verify all pods are healthy:
+First, let's get the Kamiwaza platform running on your system.
+
+### For Community Edition (Ubuntu .deb package)
+If you installed via the .deb package, Kamiwaza should start automatically as a system service. You can check the status with:
 
 ```bash
-kubectl get pods -n kamiwaza
+kamiwaza status
 ```
 
-All pods should show `Running` or `Completed` status.
+If it's not running, start it with:
+```bash
+kamiwaza start
+```
 
-### Access the Web Interface
+### For Manual Installations
+Navigate to your Kamiwaza installation directory and start the platform:
+
+```bash
+cd /path/to/kamiwaza
+bash startup/kamiwazad.sh start
+```
+
+### Verify Kamiwaza is Running
 
 Open your web browser and navigate to:
-- **Frontend**: `https://your-domain` (the domain you configured with `--domain`)
+- **Frontend**: [https://localhost](https://localhost)
+- **API Documentation**: [http://localhost/api/docs](http://localhost/api/docs)
 
-Sign in with:
+You should see the Kamiwaza interface load successfully. Use the following credentials in the Sign In screen:
 * **Username:** `admin`
-* **Password:** The password you set via `--admin-password` during installation
+* **Password:** `kamiwaza`
 
 ![Kamiwaza Login Screen](/img/quickstart/ss_login.png)
 
@@ -70,6 +85,8 @@ Now let's use your deployed model in a real application from the App Garden.
 2. Browse the available applications
 3. Look for the **"AI Chatbot"** app
 
+**[Screenshot placeholder: App Garden interface showing available apps]**
+
 ### Configure and Launch the Chatbot
 
 1. Click on the **AI Chatbot** app's "Deploy" button
@@ -101,7 +118,7 @@ Congratulations! You've successfully:
 
 Now that you have the basics down, here are some next steps to explore:
 
-- **[Try Different Models](models/overview)**: Deploy larger, more capable models
+- **[Try Different Models](models/overview.md)**: Deploy larger, more capable models
 - **[Explore More Apps](app-garden)**: Check out other applications in the App Garden
 - **[Learn the Architecture](architecture/overview)**: Understand how Kamiwaza works under the hood
 - **[Use the SDK](/sdk/intro)**: Build custom applications using the Kamiwaza Python SDK
@@ -110,7 +127,7 @@ Now that you have the basics down, here are some next steps to explore:
 ### Need Help?
 
 If you run into any issues:
-- Check the [Help & Fixes](help-and-fixes) page for common problems
+- Check the [troubleshooting section](other-topics) for common problems
 - Join our [Discord community](https://discord.gg/cVGBS5rD2U) for real-time help
 - Contact our [support team](https://portal.kamiwaza.ai/_hcms/mem/login?redirect_url=https%3A%2F%2Fportal.kamiwaza.ai%2Ftickets-view)
 

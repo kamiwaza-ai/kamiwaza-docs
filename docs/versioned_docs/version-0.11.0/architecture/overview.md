@@ -4,85 +4,84 @@ sidebar_position: 1
 
 # Platform Architecture Overview
 
-Kamiwaza is delivered as an application platform running on Kubernetes. The packaged RHEL deployment uses Kind and Podman for the single-node control plane, with Traefik providing ingress and Keycloak providing identity services.
+Kamiwaza is a modular, multi-layered platform designed for scalability, flexibility, and enterprise-grade performance. This document provides a high-level overview of its key architectural components and the technologies that power them.
 
-## Architecture Layers
+## System Architecture Diagram
+
+The diagram below illustrates the layered architecture of the Kamiwaza platform, from the underlying infrastructure to the user-facing applications. Each layer provides a distinct set of capabilities, creating a robust and maintainable system.
 
 ```mermaid
 flowchart BT
     subgraph AppLayer[Application Layer]
         direction LR
-        Frontend[Kamiwaza UI]
-        SDK[SDK and API Clients]
-        Apps[App Garden and Tools]
+        Frontend[Kamiwaza Frontend]
+        ClientSDK[Client SDK]
+        AppGarden[App Garden]
     end
 
-    subgraph PlatformLayer[Platform Services]
+    subgraph KamiwazaServices[Kamiwaza Services Layer]
         direction LR
-        Gateway[API Gateway and Scheduler]
-        Models[Model Management and Serving]
-        Catalog[Catalog and Data Services]
-        Security[Auth and ReBAC]
+        FastAPI[FastAPI Gateway]
+        subgraph Services[Microservices]
+            Auth[Authentication]
+            ModelRepo[Model Repository]
+            ModelServe[Model Serving]
+            VectorDB[Vector Databases]
+            Catalog[Data Catalog]
+            More[...]
+        end
+        FastAPI --> Services
     end
 
-    subgraph DataLayer[Core Data Services]
+    subgraph CoreServices[Core Infrastructure Services]
         direction LR
-        Postgres[(PostgreSQL)]
-        Etcd[(etcd)]
-        Keycloak[Keycloak]
+        Traefik[Traefik Router]
+        DB[(CockroachDB)]
+        ETCD[etcd Cluster]
     end
 
-    subgraph InfraLayer[Infrastructure]
+    subgraph Foundation[Orchestration & Compute Foundation]
         direction LR
-        Traefik[Traefik]
-        Ray[Ray]
-        K8s[Kubernetes / Kind]
-        Host[Host or Cloud Instance]
+        Ray[Ray Serve]
+        Swarm[Docker Swarm]
+        HW[Hardware / Cloud]
     end
 
-    AppLayer --> PlatformLayer
-    PlatformLayer --> DataLayer
-    PlatformLayer --> InfraLayer
-    DataLayer --> InfraLayer
+    AppLayer -- Consumes --> KamiwazaServices
+    KamiwazaServices -- Built On --> CoreServices
+    CoreServices -- Runs On --> Foundation
 ```
 
-## What Each Layer Does
+## Architecture Layers
 
-### Application layer
+#### 🌐 Application Layer
+This is where users and developers interact with Kamiwaza.
+-   **Kamiwaza Frontend**: The primary web-based user interface for managing the platform.
+-   **Client SDK**: A Python SDK for programmatically interacting with Kamiwaza's APIs.
+-   **App Garden**: A platform for discovering and deploying pre-packaged AI applications and services.
 
-- **Kamiwaza UI** for operators and end users
-- **SDK and API clients** for automation and integration
-- **App Garden and tools** for deploying runtime applications through the platform
+#### 🎯 Kamiwaza Services Layer
+The core business logic of the platform, exposed via a central API gateway.
+-   **FastAPI Gateway**: A high-performance API gateway that coordinates all requests.
+-   **Microservices**: A suite of specialized services handling concerns like Authentication, Model Management, Vector DB abstraction (Milvus, Qdrant), and more.
 
-### Platform services
+#### 🛠️ Core Infrastructure Services
+The essential backend services that support the entire platform.
+-   **Traefik Router**: A powerful reverse proxy and load balancer that manages all inbound network traffic and provides SSL termination.
+-   **CockroachDB**: The primary database—a distributed, resilient SQL database for all application data.
+-   **etcd**: A distributed key-value store used for service discovery and critical configuration management across the cluster.
 
-- **API gateway and scheduler** coordinate requests and platform workflows
-- **model services** manage downloads, deployment, and inference
-- **catalog and data services** support metadata, retrieval, and related workflows
-- **security services** enforce login, role mapping, and resource authorization
+#### 🔧 Orchestration & Compute Foundation
+The base layer that provides the compute resources and orchestration to run everything else.
+-   **Ray Serve**: A scalable model-serving framework used for deploying and managing AI models.
+-   **Docker Swarm**: The container orchestration engine that manages the lifecycle of all containerized services.
+-   **Hardware / Cloud**: The physical servers or cloud instances (e.g., AWS, GCP, Azure) that provide the underlying CPU and GPU resources.
 
-### Core data services
+## Technology Stack
 
-- **PostgreSQL** stores application and service data
-- **etcd** provides internal distributed configuration and coordination support
-- **Keycloak** manages identity, authentication, and federation
-
-### Infrastructure
-
-- **Traefik** publishes the platform and runtime routes
-- **Ray** powers distributed model-serving workflows
-- **Kubernetes / Kind** provides orchestration for the packaged single-node deployment
-- **host or cloud instance** supplies CPU, memory, storage, and optional GPU resources
-
-## Packaged Production Footprint
-
-For the supported RHEL install path, Kamiwaza expects:
-
-- a pre-provisioned RHEL 9 server or EC2 instance
-- the packaged RPM and, for offline installs, the signed wrap bundle
-- platform access through the domain supplied to `install-prod.sh --domain`
-
-## Related Guides
-
-- [System Requirements](../installation/system_requirements.md)
-- [Red Hat Offline Installation Guide](../installation/redhat_offline_install.md)
+| Category          | Technologies                                     |
+| ----------------- | ------------------------------------------------ |
+| **Backend**       | Python 3.10, FastAPI, Ray, SQLAlchemy, Pydantic  |
+| **Frontend**      | React 18, Material-UI, Tailwind CSS, Axios       |
+| **Databases**     | CockroachDB, Milvus, Qdrant, etcd                |
+| **Infrastructure**| Docker Swarm, Traefik, DataHub                   |

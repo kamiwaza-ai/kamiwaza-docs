@@ -50,7 +50,7 @@ The embedding model will be automatically loaded when you create an embedder - n
 ```python
 from kamiwaza_client import KamiwazaClient
 
-client = KamiwazaClient(base_url="https://YOUR_DOMAIN_HERE/api/")
+client = KamiwazaClient(base_url="http://localhost:7777/api/")
 
 # The embedding model will be automatically loaded when you create an embedder
 # This happens seamlessly in the background
@@ -69,7 +69,7 @@ Deploy a language model using Kamiwaza for response generation:
 ```python
 from kamiwaza_client import KamiwazaClient
 
-client = KamiwazaClient(base_url="https://YOUR_DOMAIN_HERE/api/")
+client = KamiwazaClient(base_url="http://localhost:7777/api/")
 
 # Search for a suitable language model
 model_repo = "Qwen/Qwen3-0.6B-GGUF"  # Small efficient model
@@ -114,7 +114,7 @@ from typing import List, Dict
 from kamiwaza_client import KamiwazaClient
 
 class RAGPipeline:
-    def __init__(self, base_url="https://YOUR_DOMAIN_HERE/api/"):
+    def __init__(self, base_url="http://localhost:7777/api/"):
         self.client = KamiwazaClient(base_url=base_url)
         self.embedding_model = "BAAI/bge-base-en-v1.5"  # Use a proven working model
         self.collection_name = "documents"
@@ -252,7 +252,7 @@ from typing import List, Dict
 from kamiwaza_client import KamiwazaClient
 
 class RAGQuery:
-    def __init__(self, base_url="https://YOUR_DOMAIN_HERE/api/", chat_model_repo="Qwen/Qwen3-0.6B-GGUF"):
+    def __init__(self, base_url="http://localhost:7777/api/", chat_model_repo="Qwen/Qwen3-0.6B-GGUF"):
         self.client = KamiwazaClient(base_url=base_url)
         self.embedding_model = "BAAI/bge-base-en-v1.5"
         self.chat_model_repo = chat_model_repo
@@ -407,7 +407,7 @@ When moving your RAG system to production, consider these key aspects:
 # Monitor system resources and manage deployments
 def monitor_system_health():
     """Monitor system health and resource usage."""
-    client = KamiwazaClient(base_url="https://YOUR_DOMAIN_HERE/api/")
+    client = KamiwazaClient(base_url="http://localhost:7777/api/")
     
     # Check active deployments
     deployments = client.serving.list_active_deployments()
@@ -431,7 +431,7 @@ When done, stop the model deployment to free resources
 ```python
 def cleanup_rag_system(chat_model_repo="Qwen/Qwen3-0.6B-GGUF"):
     """Stop model deployments to free up resources."""
-    client = KamiwazaClient(base_url="https://YOUR_DOMAIN_HERE/api/")
+    client = KamiwazaClient(base_url="http://localhost:7777/api/")
     
     try:
         success = client.serving.stop_deployment(repo_id=chat_model_repo)

@@ -70,7 +70,7 @@ npm run start
    npm run serve
    ```
 
-5. **Submit pull request to `main`**
+5. **Submit pull request to `develop` or to `main` depending on goal**
    - Ensure build passes
    - Include description of changes
 
