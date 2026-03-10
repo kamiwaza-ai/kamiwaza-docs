@@ -7,6 +7,47 @@ description: Version history and changes for Kaizen.
 
 This document tracks major changes, feature additions, and improvements in the Kaizen agent platform.
 
+## Version 1.4.0
+
+### Major Features
+
+#### 1. Skills-First Agent Workflows
+- **Reusable skills**: Expanded Kaizen's built-in skill system with richer prebuilt capabilities, including chart, map, PDF, PPTX, and skill-builder workflows.
+- **Skills over bundles**: Continued the shift away from older bundle-centric behavior toward reusable, agent-native skills and defaults.
+- **Skill visibility**: Improved agent creation and conversation UX so active skills and skill configuration are easier to inspect and manage.
+
+#### 2. Context-Aware Document Processing
+- **Context Service integration**: Added first-class support for collections, pipeline jobs, retrieval, and semantic search through Kamiwaza Context Service.
+- **Ingestion workflows**: Agents can submit files for processing, monitor progress, and use retrieved context in downstream work.
+- **Operational guardrails**: Automatic context-search tool injection was temporarily removed while internal authentication issues are stabilized.
+
+#### 3. Better Model, Tool, and Enterprise Integrations
+- **Kamiwaza model access**: Kaizen now centers on Kamiwaza-managed model deployments and custom endpoints instead of direct Anthropic or Claude-specific setup.
+- **Tool Garden and MCP improvements**: Improved Tool Garden MCP discovery, authentication, PAT fallback, host resolution, and error handling.
+- **Microsoft 365 and SharePoint**: Expanded M365 and SharePoint browsing, download handling, schemas, and timeout behavior for more reliable enterprise file access.
+
+#### 4. Workroom-Aware and App Garden-Ready Deployment
+- **Workroom preservation**: Kaizen now preserves workroom context across deployments and related API calls.
+- **App Garden compatibility**: Improved App Garden operator compatibility, runtime defaults, and route/base-path behavior in packaged deployments.
+- **Release metadata**: Updated extension metadata, preview image handling, and compatibility to target Kamiwaza `>=0.10.0`.
+
+#### 5. Sandbox and Runtime Controls
+- **LLM tuning controls**: Added configurable timeout, retry, and consumer-hardware defaults for agent model calls.
+- **Sandbox storage options**: Added configurable sandbox storage sizing and persistence controls for workspace durability.
+- **Runtime hardening**: Improved Kubernetes sandbox/runtime support, health checks, and container security context handling.
+
+#### 6. UX and Reliability Improvements
+- **Conversation experience**: Improved approval cards, error toasts, file previews, citations, and conversation reliability under failure conditions.
+- **File handling**: Added support for image attachments and larger uploads, with frontend middleware updates for bigger payloads.
+- **Workspace polish**: Improved agent creation wizard layout, workspace panels, and context-processing progress surfaces.
+
+### Technical Improvements
+- **Security**: Hardened error sanitization, upstream error handling, TLS/SSL behavior, and container/runtime defaults.
+- **Platform resilience**: Added platform event logging, HTTP pool improvements, better health endpoints, and more robust SSE/conversation handling.
+- **Dependency maintenance**: Upgraded vulnerable dependencies, refreshed SDK patches, and improved test coverage across context, MCP, runtime-default, and sandbox flows.
+
+---
+
 ## Version 1.3.2 vs 0.9.0
 
 ### 🚀 Major Features
@@ -61,6 +102,7 @@ This document tracks major changes, feature additions, and improvements in the K
 
 | Version | Status | Key Focus |
 | :--- | :--- | :--- |
+| **1.4.0** | Production | Skills-first workflows, context pipelines, runtime hardening. |
 | **1.3.2** | Production | App Garden deployment, SSE streaming, Polish. |
 | **1.2.0** | Feature Complete | Sandbox Controller, File Uploads. |
 | **1.1.0** | Security | Security Policies, MCP Integration. |
