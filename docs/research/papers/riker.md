@@ -30,6 +30,7 @@ The RIKER methodology also provides a replicable framework for creating your own
 📄 **[Download PDF](/papers/riker2025.pdf)**
 
 🔗 **Additional Links:**
+- arXiv: [arxiv.org/abs/2601.08847](https://arxiv.org/abs/2601.08847)
 - Data availability: [docs.kamiwaza.ai/research/datasets](/research/datasets)
 - [PICARD Framework](/research/papers/picard) - Related contamination-resistant evaluation methodology
 

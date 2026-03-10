@@ -1,9 +1,21 @@
 ---
 title: Highlights
-description: Peer-reviewed publications and technical reports from Kamiwaza AIR
+description: Research publications and technical reports from Kamiwaza AIR
 ---
 
 # Featured Publications
+
+### How Much Do LLMs Hallucinate in Document Q&A Scenarios?
+
+**JV Roig** | March 2026
+
+The largest systematic study of LLM hallucination in document Q&A to date — 172 billion tokens across 35 models, three context lengths (32K/128K/200K), four temperatures, and three hardware platforms (NVIDIA H200, AMD MI300X, Intel Gaudi 3). Uses the RIKER evaluation methodology for deterministic, ground-truth-based scoring.
+
+**Key Finding:** Even the best model fabricates at 1.19% at 32K, and no model stays under 10% at 200K. Model selection dominates all other factors (72pp accuracy range). Temperature effects are nuanced — T=0.0 is best ~60% of the time for accuracy, but higher temperatures reduce fabrication for most models and dramatically cut coherence loss (up to 48x).
+
+📄 [Read the paper](/research/papers/riker2) | [Download PDF](/papers/riker2_2026.pdf) | [arXiv](https://arxiv.org/abs/2603.08274)
+
+---
 
 ### RIKER: Scalable and Reliable Evaluation of AI Knowledge Retrieval Systems
 

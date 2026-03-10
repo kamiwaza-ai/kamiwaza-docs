@@ -40,6 +40,7 @@ Our analysis identifies recurring failure patterns that cut across model familie
 📄 **[Download PDF](/papers/How_do_LLMs_fail_in_agentic_scenarios.pdf)** (247 KB)
 
 🔗 **Additional Links:**
+- arXiv: [arxiv.org/abs/2512.07497](https://arxiv.org/abs/2512.07497)
 - [KAMI v0.1 Paper](/research/papers/kami-v0-1) - The benchmark used for this analysis
 - [PICARD Framework](/research/papers/picard) - Contamination-resistant evaluation methodology
 - Data availability: Execution traces to be released at [docs.kamiwaza.ai/research/datasets](/research/datasets)
