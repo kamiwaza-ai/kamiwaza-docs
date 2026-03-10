@@ -37,6 +37,8 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'blogs/index',
+        'blogs/hallucination-resistance-long-context',
+        'blogs/reducing-llm-hallucinations-enterprise-lora-finetuning',
         'blogs/qwen3-next-80b-long-context-champion',
       ],
     },

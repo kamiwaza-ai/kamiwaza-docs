@@ -11,6 +11,26 @@ Shorter, more timely and frequent research insights and perspectives from the Ka
 
 ## Latest Insights
 
+### [Hallucination Resistance Holds at 64K and 128K Context](/research/blogs/hallucination-resistance-long-context)
+
+*JV Roig · February 18, 2026*
+
+[![Article cover](/img/research/blog_hallucination-resistance-long-context-ogcard.png)](/research/blogs/hallucination-resistance-long-context)
+
+We pushed our LoRA-finetuned Granite 4.0 Micro from 32K to 64K and 128K context — 4-16x longer than training. Hallucination resistance held (92% → 88% → 87%). Extraction didn't. The "don't fabricate" lesson is durable; finding needles in bigger haystacks is not.
+
+---
+
+### [Can We Reduce LLM Hallucinations for Enterprise Use? RIKER+LoRA Says Yes](/research/blogs/reducing-llm-hallucinations-enterprise-lora-finetuning)
+
+*JV Roig · February 15, 2026*
+
+[![Article cover](/img/research/blog_halluc-granite-riker-sft-ogcard.png)](/research/blogs/reducing-llm-hallucinations-enterprise-lora-finetuning)
+
+Using RIKER + LoRA SFT on IBM Granite 4.0 Micro with just ~1,100 lease contract examples boosted accuracy from 32% to 80% — and the hallucination resistance transferred to document types the model never saw during training.
+
+---
+
 ### [Qwen3 Next 80B: The Long-Context Champion You Haven't Heard Of](/research/blogs/qwen3-next-80b-long-context-champion)
 
 *JV Roig · January 28, 2026*
