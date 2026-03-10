@@ -25,7 +25,7 @@ A ground-truth-first synthetic evaluation methodology for LLMs, RAG, and knowled
 
 **Key Finding:** Context length claims frequently exceed usable capacity (significant degradation beyond 32K tokens), cross-document aggregation is fundamentally harder than single-document extraction, and grounding ability and hallucination resistance are distinct capabilities.
 
-📄 [Read the paper](/research/papers/riker) | [Download PDF](/papers/riker2025.pdf)
+📄 [Read the paper](/research/papers/riker) | [Download PDF](/papers/riker2025.pdf) | [arXiv](https://arxiv.org/abs/2601.08847)
 
 ---
 
@@ -37,7 +37,7 @@ A qualitative analysis of 900 execution traces from three representative models 
 
 **Key Finding:** Recovery capability—not initial correctness—best predicts overall success. Four failure archetypes emerge across all models: premature action without grounding, over-helpfulness under uncertainty, context pollution vulnerability, and fragile execution under load.
 
-📄 [Read the paper](/research/papers/llm-agentic-failures) | [Download PDF](/papers/How_do_LLMs_fail_in_agentic_scenarios.pdf)
+📄 [Read the paper](/research/papers/llm-agentic-failures) | [Download PDF](/papers/How_do_LLMs_fail_in_agentic_scenarios.pdf) | [arXiv](https://arxiv.org/abs/2512.07497)
 
 ---
 
@@ -50,7 +50,7 @@ Lessons from 5.5 billion tokens' worth of agentic AI evaluations showing traditi
 **Key Finding:** Traditional benchmark rankings fail to predict enterprise task performance, even tool-calling benchmarks like BFCLv3 or TAU2-Bench, or even aggregated benchmarks. Benchmarking is not enough - **simulation** is what is needed.
 
 
-📄 [Read the paper](/research/papers/kami-v0-1) | [Download PDF](/papers/KAMI_v0_1.pdf)
+📄 [Read the paper](/research/papers/kami-v0-1) | [Download PDF](/papers/KAMI_v0_1.pdf) | [arXiv](https://arxiv.org/abs/2511.08042)
 
 ---
 
