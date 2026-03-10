@@ -31,7 +31,7 @@ This is our largest systematic study of LLM hallucination in document Q&A to dat
 
 🔗 **Additional Links:**
 - arXiv: [arxiv.org/abs/2603.08274](https://arxiv.org/abs/2603.08274)
-- Data availability: [docs.kamiwaza.ai/research/datasets](/research/datasets)
+- Dataset availability: [Research Datasets](/research/datasets#how-much-do-llms-hallucinate-in-document-qa-scenarios)
 - [RIKER Methodology](/research/papers/riker) - The evaluation methodology used in this study
 - [PICARD Framework](/research/papers/picard) - Related contamination-resistant evaluation methodology
 

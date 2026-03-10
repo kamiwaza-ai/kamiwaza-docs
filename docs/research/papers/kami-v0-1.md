@@ -29,7 +29,7 @@ If you're selecting AI models for production deployment, traditional benchmarks 
 
 🔗 **Additional Links:**
 - arXiv: [arxiv.org/abs/2511.08042](https://arxiv.org/abs/2511.08042)
-- Data availability: Test suite definitions and evaluation code to be released at [docs.kamiwaza.ai/research/datasets](/research/datasets)
+- Dataset availability: [Research Datasets](/research/datasets#towards-a-standard-enterprise-relevant-agentic-ai-benchmark-aka-kami-v01)
 - [PICARD Framework](/research/papers/picard) - Contamination-resistant evaluation methodology
 
 ## Citation
