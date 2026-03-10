@@ -59,6 +59,22 @@
       "label": "Tool Garden"
     },
     {
+      "type": "category",
+      "label": "Extensions",
+      "items": [
+        {
+          "type": "doc",
+          "id": "extensions/kaizen/kaizen-user-guide",
+          "label": "Kaizen User Guide"
+        },
+        {
+          "type": "doc",
+          "id": "extensions/kaizen/changelog",
+          "label": "Kaizen Changelog"
+        }
+      ]
+    },
+    {
       "type": "doc",
       "id": "data-engine",
       "label": "Distributed Data Engine"
