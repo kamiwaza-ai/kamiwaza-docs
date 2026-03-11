@@ -11,6 +11,16 @@ Shorter, more timely and frequent research insights and perspectives from the Ka
 
 ## Latest Insights
 
+### [A 9B Model Just Crashed the Big Leagues](/research/blogs/qwen35-9b-small-model-big-leagues)
+
+*JV Roig · March 5, 2026*
+
+[![Article cover](/img/research/blog_qwen35-9b-small-model-big-leagues-ogcard.png)](/research/blogs/qwen35-9b-small-model-big-leagues)
+
+Qwen3.5-9B scores 88.1% on our KAMI agentic benchmark — a bracket previously reserved for 70B+ dense models, 200B+ MoEs, and flagship cloud APIs. The small model revolution isn't coming. It's here.
+
+---
+
 ### [Hallucination Resistance Holds at 64K and 128K Context](/research/blogs/hallucination-resistance-long-context)
 
 *JV Roig · February 18, 2026*
