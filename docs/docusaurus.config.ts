@@ -192,7 +192,7 @@ const config: Config = {
 					position: "left",
 				},
 				{
-					to: "/research/intro",
+					to: "/research",
 					position: "left",
 					label: "Research",
 					activeBasePath: "/research",
