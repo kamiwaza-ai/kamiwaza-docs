@@ -70,7 +70,7 @@ npm run start
    npm run serve
    ```
 
-5. **Submit pull request to `main`**
+5. **Submit pull request to `develop` or to `main` depending on goal**
    - Ensure build passes
    - Include description of changes
 
@@ -134,7 +134,7 @@ npm run pdf -- --profile full-docs --version 0.5.1
 ```
 
 **PDF Profiles:**
-- **offline-install**: Installation guides, quickstart, admin guide, troubleshooting, release notes
+- **offline-install**: System requirements, RHEL installation and uninstall guides, quickstart, admin guide, help/fixes, release notes
 - **full-docs**: Complete platform documentation
 
 **Requirements:**
