@@ -63,18 +63,19 @@ sudo apt-get install -f
 
 For two-node DGX Spark deployments (tensor parallelism across a Spark pair), see the [Two-Node Deployment Guide](two-node-deployment.md).
 
-#### Post-Installation Configuration
+#### Post-Installation Steps
 
-After installation, Kamiwaza starts automatically. To apply custom configuration (e.g., two-node setup, external URLs, authentication):
+After installation, clean up and start Kamiwaza:
 
 ```bash
-# Stop services to apply configuration changes
+# Clean up containers from the installation process
 kamiwaza stop
 
-# Edit environment configuration
+# (Optional) Edit environment configuration for your deployment
+# e.g., two-node setup, external URLs, authentication
 sudo vi /opt/kamiwaza/kamiwaza/env.sh
 
-# Start services with new configuration
+# Start Kamiwaza
 kamiwaza start
 ```
 
