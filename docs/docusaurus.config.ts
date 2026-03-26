@@ -181,7 +181,7 @@ const config: Config = {
 					label: "Docs",
 				},
 				{
-					to: "/sdk/intro",
+					to: "/sdk",
 					position: "left",
 					label: "SDK",
 					activeBasePath: "/sdk",
