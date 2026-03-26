@@ -21,6 +21,9 @@
 | ARM64 | [kamiwaza_v0.9.3_noble_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64.deb) |
 
 ```bash
+# Update package index
+sudo apt-get update
+
 # Download the package (x86_64 example, replace with ARM64 variant as needed)
 curl -LO https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_x86_64.deb
 
@@ -37,6 +40,7 @@ sudo apt-get install -f
 | ARM64 | [kamiwaza_v0.9.3_jammy_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_arm64.deb) |
 
 ```bash
+sudo apt-get update
 curl -LO https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_x86_64.deb
 sudo dpkg -i kamiwaza_v0.9.3_jammy_x86_64.deb
 sudo apt-get install -f
@@ -51,12 +55,28 @@ A dedicated package for DGX Spark with Grace Blackwell CPU, including CUDA-ARM d
 | ARM64 | [kamiwaza_v0.9.5_noble_arm64_dgx.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.5_noble_arm64_dgx.deb) |
 
 ```bash
+sudo apt-get update
 curl -LO https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.5_noble_arm64_dgx.deb
 sudo dpkg -i kamiwaza_v0.9.5_noble_arm64_dgx.deb
 sudo apt-get install -f
 ```
 
 For two-node DGX Spark deployments (tensor parallelism across a Spark pair), see the [Two-Node Deployment Guide](two-node-deployment.md).
+
+#### Post-Installation Configuration
+
+After installation, Kamiwaza starts automatically. To apply custom configuration (e.g., two-node setup, external URLs, authentication):
+
+```bash
+# Stop services to apply configuration changes
+kamiwaza stop
+
+# Edit environment configuration
+sudo vi /opt/kamiwaza/kamiwaza/env.sh
+
+# Start services with new configuration
+kamiwaza start
+```
 
 Verify service starts (see [Quickstart](../quickstart.md))
 
