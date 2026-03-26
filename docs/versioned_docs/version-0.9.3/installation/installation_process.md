@@ -44,7 +44,7 @@ sudo apt-get install -f
 
 #### NVIDIA DGX Spark
 
-A dedicated package for DGX Spark with Grace Blackwell CPU, including CUDA-ARM dependencies.
+A dedicated package for DGX Spark with Grace Blackwell CPU, including CUDA-ARM dependencies. For two-node deployments, install Kamiwaza on the **head node only** — the worker node only requires Docker and SSH access.
 
 | Architecture | Download |
 |--------------|----------|
