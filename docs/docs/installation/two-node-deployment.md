@@ -19,14 +19,15 @@ This configuration is tested on NVIDIA DGX Spark pairs and AMD Strix Halo system
 ## Requirements
 
 - Two nodes with network connectivity (ideally a dedicated high-speed link)
+- Kamiwaza installed on the **head node only** — the worker node does not need Kamiwaza installed
 - SSH key-based access from the head node to the worker node
 - Docker installed on both nodes
 - Matching model storage paths on both nodes (`/opt/kamiwaza/models`)
-- The `kamiwaza` system user must be able to read the SSH private key
+- The `kamiwaza` system user on the head node must be able to read the SSH private key
 
 ## Configuration
 
-After installation, add the following environment variables to `env.sh` on the head node and restart services.
+After installing Kamiwaza on the head node, add the following environment variables to `env.sh` and restart services.
 
 ### Core Two-Node Variables
 
