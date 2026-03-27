@@ -20,6 +20,18 @@ const sidebars: SidebarsConfig = {
 				},
 			],
 		},
+		{
+			type: "category",
+			label: "Skills Library",
+			collapsed: true,
+			items: [
+				{
+					type: "doc",
+					id: "skills-library/skills-library-guide",
+					label: "User Guide",
+				},
+			],
+		},
 	],
 };
 
