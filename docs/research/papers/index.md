@@ -1,9 +1,21 @@
 ---
 title: Highlights
-description: Peer-reviewed publications and technical reports from Kamiwaza AIR
+description: Research publications and technical reports from Kamiwaza AIR
 ---
 
 # Featured Publications
+
+### How Much Do LLMs Hallucinate in Document Q&A Scenarios?
+
+**JV Roig** | March 2026
+
+The largest systematic study of LLM hallucination in document Q&A to date — 172 billion tokens across 35 models, three context lengths (32K/128K/200K), four temperatures, and three hardware platforms (NVIDIA H200, AMD MI300X, Intel Gaudi 3). Uses the RIKER evaluation methodology for deterministic, ground-truth-based scoring.
+
+**Key Finding:** Even the best model fabricates at 1.19% at 32K, and no model stays under 10% at 200K. Model selection dominates all other factors (72pp accuracy range). Temperature effects are nuanced — T=0.0 is best ~60% of the time for accuracy, but higher temperatures reduce fabrication for most models and dramatically cut coherence loss (up to 48x).
+
+📄 [Read the paper](/research/papers/riker2) | [Download PDF](/papers/riker2_2026.pdf) | [arXiv](https://arxiv.org/abs/2603.08274)
+
+---
 
 ### RIKER: Scalable and Reliable Evaluation of AI Knowledge Retrieval Systems
 
@@ -13,7 +25,7 @@ A ground-truth-first synthetic evaluation methodology for LLMs, RAG, and knowled
 
 **Key Finding:** Context length claims frequently exceed usable capacity (significant degradation beyond 32K tokens), cross-document aggregation is fundamentally harder than single-document extraction, and grounding ability and hallucination resistance are distinct capabilities.
 
-📄 [Read the paper](/research/papers/riker) | [Download PDF](/papers/riker2025.pdf)
+📄 [Read the paper](/research/papers/riker) | [Download PDF](/papers/riker2025.pdf) | [arXiv](https://arxiv.org/abs/2601.08847)
 
 ---
 
@@ -25,7 +37,7 @@ A qualitative analysis of 900 execution traces from three representative models 
 
 **Key Finding:** Recovery capability—not initial correctness—best predicts overall success. Four failure archetypes emerge across all models: premature action without grounding, over-helpfulness under uncertainty, context pollution vulnerability, and fragile execution under load.
 
-📄 [Read the paper](/research/papers/llm-agentic-failures) | [Download PDF](/papers/How_do_LLMs_fail_in_agentic_scenarios.pdf)
+📄 [Read the paper](/research/papers/llm-agentic-failures) | [Download PDF](/papers/How_do_LLMs_fail_in_agentic_scenarios.pdf) | [arXiv](https://arxiv.org/abs/2512.07497)
 
 ---
 
@@ -38,7 +50,7 @@ Lessons from 5.5 billion tokens' worth of agentic AI evaluations showing traditi
 **Key Finding:** Traditional benchmark rankings fail to predict enterprise task performance, even tool-calling benchmarks like BFCLv3 or TAU2-Bench, or even aggregated benchmarks. Benchmarking is not enough - **simulation** is what is needed.
 
 
-📄 [Read the paper](/research/papers/kami-v0-1) | [Download PDF](/papers/KAMI_v0_1.pdf)
+📄 [Read the paper](/research/papers/kami-v0-1) | [Download PDF](/papers/KAMI_v0_1.pdf) | [arXiv](https://arxiv.org/abs/2511.08042)
 
 ---
 

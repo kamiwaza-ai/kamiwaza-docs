@@ -13,32 +13,70 @@
 
 ### Linux
 
-#### Ubuntu .deb Package Installation
+#### Ubuntu 24.04 (Noble)
 
-Download the appropriate package for your Ubuntu version and architecture:
+| Architecture | Download |
+|--------------|----------|
+| x86_64 | [kamiwaza_v0.9.3_noble_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_x86_64.deb) |
+| ARM64 | [kamiwaza_v0.9.3_noble_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64.deb) |
 
-| Ubuntu Version | Architecture | Download |
-|---------------|--------------|----------|
-| 24.04 (Noble) | x86_64 | [kamiwaza_v0.9.3_noble_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_x86_64.deb) |
-| 24.04 (Noble) | ARM64 | [kamiwaza_v0.9.3_noble_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64.deb) |
-| 24.04 (Noble) | ARM64 (DGX Spark) | [kamiwaza_v0.9.3_noble_arm64_dgx.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64_dgx.deb) |
-| 22.04 (Jammy) | x86_64 | [kamiwaza_v0.9.3_jammy_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_x86_64.deb) |
-| 22.04 (Jammy) | ARM64 | [kamiwaza_v0.9.3_jammy_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_arm64.deb) |
-
-**ARM64 Package Selection:**
-- **ARM64** - For generic ARM64 systems (AWS Graviton, Ampere Altra, etc.)
-- **ARM64 (DGX Spark)** - For NVIDIA DGX Spark with Grace Blackwell CPU (includes CUDA-ARM dependencies)
-
-Install using dpkg:
 ```bash
-# Download the package (example for Ubuntu 24.04 x86_64)
+# Update package index
+sudo apt-get update
+
+# Download the package (x86_64 example, replace with ARM64 variant as needed)
 curl -LO https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_x86_64.deb
 
-# Install the package
+# Install
 sudo dpkg -i kamiwaza_v0.9.3_noble_x86_64.deb
-
-# Install any missing dependencies
 sudo apt-get install -f
+```
+
+#### Ubuntu 22.04 (Jammy)
+
+| Architecture | Download |
+|--------------|----------|
+| x86_64 | [kamiwaza_v0.9.3_jammy_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_x86_64.deb) |
+| ARM64 | [kamiwaza_v0.9.3_jammy_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_arm64.deb) |
+
+```bash
+sudo apt-get update
+curl -LO https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_x86_64.deb
+sudo dpkg -i kamiwaza_v0.9.3_jammy_x86_64.deb
+sudo apt-get install -f
+```
+
+#### NVIDIA DGX Spark
+
+A dedicated package for DGX Spark with Grace Blackwell CPU, including CUDA-ARM dependencies. For two-node deployments, install Kamiwaza on the **head node only** — the worker node only requires Docker and SSH access.
+
+| Architecture | Download |
+|--------------|----------|
+| ARM64 | [kamiwaza_v0.9.5_noble_arm64_dgx.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.5_noble_arm64_dgx.deb) |
+
+```bash
+sudo apt-get update
+curl -LO https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.5_noble_arm64_dgx.deb
+sudo dpkg -i kamiwaza_v0.9.5_noble_arm64_dgx.deb
+sudo apt-get install -f
+```
+
+For two-node DGX Spark deployments (tensor parallelism across a Spark pair), see the [Two-Node Deployment Guide](two-node-deployment.md).
+
+#### Post-Installation Steps
+
+After installation, clean up and start Kamiwaza:
+
+```bash
+# Clean up containers from the installation process
+kamiwaza stop
+
+# (Optional) Edit environment configuration for your deployment
+# e.g., two-node setup, external URLs, authentication
+sudo vi /opt/kamiwaza/kamiwaza/env.sh
+
+# Start Kamiwaza
+kamiwaza start
 ```
 
 Verify service starts (see [Quickstart](quickstart.md))

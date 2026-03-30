@@ -1,6 +1,6 @@
 {
   "sdk": [
-    "intro",
+    "index",
     "api-reference",
     {
       "type": "category",

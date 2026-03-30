@@ -57,28 +57,36 @@ The agent builder walks you through configuration in six steps.
 
 ### Step 2: Adding Skills
 
-Skills are modular knowledge components that inject domain expertise and business context into your agent. Create them through the in-app editor with a name, content, and trigger type.
+Kaizen uses the AgentSkills model. In practice, you can give an agent skills in two ways:
+
+- **From Skills Library**: Attach published, reusable skills from your shared library.
+- **Custom Skills**: Create agent-specific skills directly in Kaizen.
 
 ![Skills configuration](/img/extensions/kaizen/onboarding-03-skills.png)
 
-**Skill types:**
+Library skills are best for reusable capabilities your team wants to standardize across many agents. Custom skills are best for local instructions, business context, and lightweight workflows specific to one agent.
 
-- **Repository Skills** (always active): Business context, policies, and data source references that your agent always needs.
-- **Knowledge Skills** (keyword-triggered): Domain expertise that activates when relevant keywords appear in conversation.
-- **Task Skills** (workflow-oriented): Multi-step processes with inputs, triggered by commands like `/sales-report` or natural phrases.
+**Custom skill trigger options:**
 
-> **Pro tip:** Show Kaizen how to do something once, or just describe the process, and then ask it to create a skill for it. Kaizen can build reusable skills on the fly so the next time that workflow is needed, it is already packaged and ready to go.
+- **Always Active**: The skill is always available to the agent.
+- **Keyword Triggered**: The skill activates when matching keywords appear in the conversation.
+- **Task Triggered**: The skill activates from explicit commands or workflow phrases and can include structured inputs.
 
-### Step 3: Adding Bundles
+> **Tip:** Start with a few small custom skills for instructions and domain context, then attach shared library skills for heavier packaged capabilities your team wants to reuse.
 
-Bundles are prebuilt capability packages that give your agent specific output formats. Select from the available bundles or upload your own as a `.zip` file.
+### Step 3: Attaching Packaged Skills
 
-**Available bundles:**
+Many advanced capabilities are delivered as packaged skills from the Skills Library rather than a separate "bundle" system. You can browse the library and attach the skills your agent needs.
 
-- **chart-generator**: Bar, line, pie, and scatter charts from CSV or JSON data
-- **map-generator**: Interactive HTML maps with markers and coordinates
-- **pdf-generator**: Professional PDF documents from Markdown content
-- **pptx-exporter**: PowerPoint presentations from structured data
+Common examples include skills for:
+
+- **Charts and visualizations**
+- **Maps and geospatial outputs**
+- **PDF generation**
+- **PowerPoint export**
+- **Document ingestion and context processing**
+
+Some Kaizen environments also include built-in default skills automatically, so your agent may already have baseline capabilities without any extra setup.
 
 ### Step 4: Connecting Tools (MCP Integrations)
 
@@ -108,11 +116,11 @@ The **Risk Threshold** (`Low`, `Medium`, or `High`) determines the cutoff. With 
 
 ### Step 6: Review & Create
 
-Before creating your agent, review the full configuration summary. Verify your model, skills, connected tools, and security policy.
+Before creating your agent, review the full configuration summary. Verify your model, custom skills, attached library skills, connected tools, and security policy.
 
 ![Review & Create](/img/extensions/kaizen/onboarding-06-review.png)
 
-The summary badges give you an at-a-glance view of your skills count, MCP servers, and security policy. Once satisfied, click **Create Agent**.
+The summary badges give you an at-a-glance view of custom skills, library skills, MCP servers, and security policy. Once satisfied, click **Create Agent**.
 
 ---
 
@@ -188,7 +196,7 @@ The generated PDF is viewable and downloadable directly in the right panel.
 
 - **Start Simple**: Create your first agent without complex skills or tools, then add them as needed.
 - **Be Specific**: Clear, detailed prompts yield better results.
-- **Use Bundles**: Attach prebuilt bundles for common outputs like charts, PDFs, and presentations, and teach Kaizen to build new ones.
+- **Use the Skills Library**: Attach published skills for common outputs like charts, PDFs, presentations, and document processing.
 - **Check Connections**: If you use MCP tools, verify connections before saving.
 - **Monitor Status**: Watch for "Waiting for Confirmation" states if you have strict security policies.
 

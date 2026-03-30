@@ -9,6 +9,31 @@ Access datasets from Kamiwaza AIR research to support your agentic AI research a
 
 ---
 
+## How Much Do LLMs Hallucinate in Document Q&A Scenarios?
+
+Raw model outputs from the 172-billion-token hallucination study across 35 models, three context lengths, four temperatures, and three hardware platforms. Ground truth, document corpora, and test sets provided separately.
+
+📦 **[Download RIKER2_March2026.zip](https://research.kamiwaza.ai/HowMuchDoLLMsHallucinateInDocQA/RIKER2_March2026.zip)** (4.34 GB) — Raw model outputs
+
+📦 **[Download RIKER2_corpora_groundtruth_testsets.zip](https://research.kamiwaza.ai/HowMuchDoLLMsHallucinateInDocQA/RIKER2_corpora_groundtruth_testsets.zip)** (0.60 MB) — Ground truth, corpora, and test sets
+
+🔗 **[Read the paper](/research/papers/riker2)** | [arXiv](https://arxiv.org/abs/2603.08274)
+
+**Citation:**
+```bibtex
+@article{roig2026hallucinate,
+  title={How Much Do LLMs Hallucinate in Document Q\&A Scenarios? A 172-Billion-Token Study Across Temperatures, Context Lengths, and Hardware Platforms},
+  author={Roig, JV},
+  year={2026},
+  eprint={2603.08274},
+  archivePrefix={arXiv},
+  primaryClass={cs.CL},
+  url={https://arxiv.org/abs/2603.08274}
+}
+```
+
+---
+
 ## Scalable and Reliable Evaluation of AI Knowledge Retrieval Systems (aka "RIKER")
 
 Generated ground truth, document corpora, test sets, and the various model raw results.

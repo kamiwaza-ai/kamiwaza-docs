@@ -159,21 +159,6 @@ const config: Config = {
 				},
 			},
 		],
-		// Extensions docs plugin
-		[
-			"@docusaurus/plugin-content-docs",
-			{
-				id: "extensions",
-				path: "extensions",
-				routeBasePath: "extensions",
-				sidebarPath: require.resolve("./sidebars-extensions.ts"),
-				versions: {
-					current: {
-						label: "Latest",
-					},
-				},
-			},
-		],
 		// Research docs plugin
 		[
 			"@docusaurus/plugin-content-docs",
@@ -231,7 +216,7 @@ const config: Config = {
 					label: "Docs",
 				},
 				{
-					to: "/sdk/intro",
+					to: "/sdk",
 					position: "left",
 					label: "SDK",
 					activeBasePath: "/sdk",
@@ -248,7 +233,7 @@ const config: Config = {
 					position: "left",
 				},
 				{
-					to: "/research/intro",
+					to: "/research",
 					position: "left",
 					label: "Research",
 					activeBasePath: "/research",
