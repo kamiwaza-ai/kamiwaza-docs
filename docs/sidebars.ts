@@ -96,6 +96,21 @@ const sidebars: SidebarsConfig = {
 			],
 		},
 		{
+			type: "category",
+			label: "Context Service",
+			items: [
+				{
+					type: "doc",
+					id: "context-service/overview",
+					label: "Overview",
+				},
+				"context-service/ingestion-and-storage",
+				"context-service/search-and-knowledge",
+				"context-service/managed-backends-and-lifecycle",
+				"context-service/operations-and-api-reference",
+			],
+		},
+		{
 			type: "doc",
 			id: "observability",
 			label: "Observability",
