@@ -178,7 +178,7 @@ Kamiwaza defines three primary roles:
 | **user** | Standard access: read, write (no delete/admin) | Data scientists, developers, analysts |
 | **viewer** | Read-only access | Auditors, observers, stakeholders |
 
-There is also an `extension` role used as a service identity for platform extensions and automated tools. It is not assigned to human users.
+There is also an `extension` role used as a service identity for platform extensions and automated tools. It is assigned via Keycloak service accounts or client credentials, not to human users.
 
 > **Current state:** The gateway RBAC policy enforces different rules per role (e.g., `viewer` cannot access write endpoints). At the FastAPI endpoint level, most routes currently distinguish `admin` vs. any authenticated user.
 
@@ -871,7 +871,7 @@ If `KAMIWAZA_EPHEMERAL_EXTENSIONS=true` is set, this should return empty results
 
 ### 6.1 OpenAPI Spec Verification
 
-The platform's interactive API documentation at `/api/docs` shows the authentication requirements for every endpoint:
+The platform's interactive API documentation at `/api/docs` on a **running deployment** shows the authentication requirements for every endpoint:
 
 - Endpoints marked with a **lock icon** require authentication
 - The **`x-auth-role`** field in each endpoint's details shows the minimum role required (e.g., `admin` for destructive operations, `authenticated` for read operations)
@@ -879,18 +879,21 @@ The platform's interactive API documentation at `/api/docs` shows the authentica
 
 The same information is available in machine-readable form at `/api/openapi.json` for automated security scanning tools.
 
+> **Note:** These annotations are generated at runtime by the live API. Static OpenAPI exports in this documentation repository do not include them. Always query the live `/api/openapi.json` endpoint for the authoritative auth surface.
+
 ### 6.2 Intentionally Public Endpoints
 
-A small number of endpoints are accessible without authentication. These exist because they must function before a user has logged in (login flows, health probes, consent gates). Each one is documented in the OpenAPI spec with the reason it's public.
+A small number of endpoints are accessible without authentication because they serve pre-login flows, health probes, or token operations. These are marked with `x-auth-exempt` in the live OpenAPI spec at `/api/openapi.json`.
 
-Common examples (not all `/api/auth/` routes are public — many require authentication):
-- `/api/auth/login`, `/api/auth/logout` — Browser login/logout flows
-- `/api/auth/token`, `/api/auth/refresh` — Token acquisition and refresh
-- `/api/auth/callback`, `/api/auth/saml/acs` — OAuth/SAML callbacks from identity providers
-- `/api/auth/jwks` — Public key discovery for token verification
-- `/api/auth/validate` — Token validation service
-- `/api/security/public/config` — Pre-login consent gate and classification banner configuration
-- `/api/node/node_status` — Kubernetes liveness probe
+Note: not all `/api/auth/` routes are public — user management, tuple administration, and IdP configuration endpoints require authentication.
+
+Common public endpoints:
+- `/api/auth/login`, `/api/auth/token`, `/api/auth/refresh` — Login and token lifecycle
+- `/api/auth/callback`, `/api/auth/saml/acs` — Identity provider callbacks
+- `/api/auth/jwks`, `/api/auth/validate` — Token verification
+- `/api/auth/logout` — Session termination
+- `/api/security/public/config` — Pre-login consent gate and banner configuration
+- `/api/node/node_status` — Kubernetes health probe
 
 ### 6.3 Production Hardening Checklist
 
@@ -903,6 +906,7 @@ These settings must be reviewed before deploying to production:
 | `AUTH_FORWARD_HEADER_SECRET` | HMAC secret for signing identity headers between Traefik and the API | **Must be set** — in production, unsigned ForwardAuth headers are rejected; in dev mode, a warning is logged but requests proceed |
 | `AUTH_GATEWAY_ENABLE_DEV_ENDPOINTS` | Enables `/auth/mint` for minting arbitrary tokens | `false` — **never** enable in production |
 | `AUTH_REBAC_ENABLED` | Enable relationship-based access control | Your choice — `false` for RBAC-only, `true` for fine-grained resource control |
+| `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state parameter | `false` — recommended in production to prevent state tampering |
 
 In production-like environments, setting `KAMIWAZA_USE_AUTH=false` causes all authenticated API requests to return HTTP 503 rather than silently running without auth.
 
@@ -1180,7 +1184,7 @@ The same curl commands can be scripted in CI to ensure future changes do not bre
 | `AUTH_REBAC_ENABLED` | Enable relationship-based access control | `false` | No |
 | `AUTH_REQUIRE_SUB` | Require 'sub' claim in tokens | `false` | No |
 | `AUTH_EXPOSE_TOKEN_HEADER` | Expose token in response headers | `true` | No |
-| `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state | `true` (dev only) | No |
+| `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state | `true` (dev only) | Recommended `false` in production |
 | `AUTH_GATEWAY_TOKEN_LEEWAY` | Clock skew tolerance (seconds) | `30` | No |
 | `AUTH_GATEWAY_JWKS_CACHE_TTL` | JWKS cache duration (seconds) | `300` | No |
 
