@@ -178,6 +178,10 @@ Kamiwaza defines three primary roles:
 | **user** | Standard access: read, write (no delete/admin) | Data scientists, developers, analysts |
 | **viewer** | Read-only access | Auditors, observers, stakeholders |
 
+There is also an `extension` role used as a service identity for platform extensions and automated tools. It is not assigned to human users.
+
+> **Current state:** Today, the platform enforces two effective access tiers: `admin` (full access) and everyone else (`user`/`viewer`). Finer-grained role distinctions are planned but not yet enforced at the endpoint level.
+
 **Assigning Roles:**
 
 1. Navigate to **Users** → Select user
@@ -374,7 +378,19 @@ Once a tuple exists, the UI/API automatically enforces it—no redeploy or resta
 - **Embedding endpoints** require an authenticated user.
 - **Vector database endpoints** (create, search, manage collections) require admin access and return a clear error if no VectorDB is deployed.
 
-### 3.3 Hot Reload (No Restart Required)
+### 3.4 Workrooms
+
+Workrooms are collaborative workspaces that group resources and control team access. Each workroom has its own membership model:
+
+| Workroom Role | Access |
+|---------------|--------|
+| **owner** | Full control — manage members, archive, delete the workroom |
+| **contributor** | Create and modify resources within the workroom |
+| **viewer** | Read-only access to workroom resources |
+
+Workroom access is enforced via ReBAC tuples when ReBAC is enabled, or via the workroom service's built-in membership checks in RBAC-only mode.
+
+### 3.5 Hot Reload (No Restart Required)
 
 The RBAC policy file is automatically reloaded when modified:
 
@@ -849,9 +865,58 @@ If `KAMIWAZA_EPHEMERAL_EXTENSIONS=true` is set, this should return empty results
 
 ---
 
-## 6. Monitoring & Troubleshooting
+## 6. Verifying Security Posture
 
-### 6.1 Health Checks
+### 6.1 OpenAPI Spec Verification
+
+The platform's interactive API documentation at `/api/docs` shows the authentication requirements for every endpoint:
+
+- Endpoints marked with a **lock icon** require authentication
+- The **`x-auth-role`** field in each endpoint's details shows the minimum role required (e.g., `admin` for destructive operations, `authenticated` for read operations)
+- Endpoints marked **`x-auth-exempt`** are intentionally public, with a documented reason (e.g., "Pre-login consent gate" or "Kubernetes health probe")
+
+The same information is available in machine-readable form at `/api/openapi.json` for automated security scanning tools.
+
+### 6.2 Intentionally Public Endpoints
+
+A small number of endpoints are accessible without authentication. These exist because they must function before a user has logged in (login flows, health probes, consent gates). Each one is documented in the OpenAPI spec with the reason it's public.
+
+Common examples:
+- `/api/auth/*` — Login, logout, OAuth callbacks, SAML flows, token refresh
+- `/api/security/public/config` — Pre-login consent gate and classification banner configuration
+- `/api/node/node_status` — Kubernetes liveness probe
+
+### 6.3 Production Hardening Checklist
+
+These settings must be reviewed before deploying to production:
+
+| Setting | What It Does | Production Value |
+|---------|-------------|-----------------|
+| `KAMIWAZA_USE_AUTH` | Master switch for authentication enforcement | `true` — **must** be enabled |
+| `AUTH_GATEWAY_DEFAULT_DENY` | Reject requests that don't match any policy rule | `true` — prevents unintended access |
+| `AUTH_FORWARD_HEADER_SECRET` | HMAC secret for signing identity headers between Traefik and the API | **Must be set** — without this, identity headers can be spoofed |
+| `AUTH_GATEWAY_ENABLE_DEV_ENDPOINTS` | Enables `/auth/mint` for minting arbitrary tokens | `false` — **never** enable in production |
+| `AUTH_REBAC_ENABLED` | Enable relationship-based access control | Your choice — `false` for RBAC-only, `true` for fine-grained resource control |
+
+The platform refuses to start with `KAMIWAZA_USE_AUTH=false` in production-like environments (returns HTTP 503 instead of silently running without auth).
+
+### 6.4 ReBAC Verification
+
+If ReBAC is enabled, you can check for authorization tuple drift using the tenant management tool:
+
+```bash
+# Check if actual tuples match the expected baseline
+python scripts/rebac_tenant.py diff
+
+# Export current tuples for review
+python scripts/rebac_tenant.py export
+```
+
+---
+
+## 7. Monitoring & Troubleshooting
+
+### 7.1 Health Checks
 
 **Auth Service Health Endpoint:**
 
@@ -880,11 +945,11 @@ curl http://localhost:8080/health/ready
 {"status":"UP"}
 ```
 
-### 6.2 Log Monitoring
+### 7.2 Log Monitoring
 
 Refer to the [Observability Guide](../observability.md) for end-to-end logging, OTEL, and SIEM integration. It covers how to tail auth logs, forward them to your enterprise collectors, and verify that allow/deny events appear in the standard dashboards.
 
-### 6.3 Common Issues and Solutions
+### 7.3 Common Issues and Solutions
 
 #### Issue: 401 Unauthorized on All Requests
 
@@ -997,7 +1062,7 @@ Refer to the [Observability Guide](../observability.md) for end-to-end logging, 
 - Ensure client secret is configured in Keycloak
 - Enable identity provider in Keycloak authentication flow
 
-### 6.4 Diagnostic Commands
+### 7.4 Diagnostic Commands
 
 **Test Token Generation:**
 
@@ -1103,6 +1168,10 @@ The same curl commands can be scripted in CI to ensure future changes do not bre
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
+| `AUTH_GATEWAY_DEFAULT_DENY` | Reject requests not matching any policy rule | `true` | Yes (production) |
+| `AUTH_FORWARD_HEADER_SECRET` | HMAC secret for ForwardAuth header signing | - | Yes (production) |
+| `AUTH_GATEWAY_ENABLE_DEV_ENDPOINTS` | Enable `/auth/mint` token minting | `false` | No (must be `false` in production) |
+| `AUTH_REBAC_ENABLED` | Enable relationship-based access control | `false` | No |
 | `AUTH_REQUIRE_SUB` | Require 'sub' claim in tokens | `false` | No |
 | `AUTH_EXPOSE_TOKEN_HEADER` | Expose token in response headers | `true` | No |
 | `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state | `true` (dev only) | No |
