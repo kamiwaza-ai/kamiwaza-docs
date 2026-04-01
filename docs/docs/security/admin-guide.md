@@ -26,6 +26,8 @@ User → Keycloak (IdP) → JWT Token → Traefik → ForwardAuth → API Servic
 - **Traefik**: Reverse proxy routing requests through ForwardAuth middleware
 - **RBAC Policy Engine**: YAML-based endpoint access control
 
+> **Note:** Most API endpoints authenticate via the ForwardAuth flow described above. A small number of endpoints use specialized authentication: App Garden sessions use short-lived session tokens issued at app launch, and cluster federation endpoints use HMAC-signed requests with pre-shared keys exchanged during pairing. These endpoints still require valid credentials and show lock icons in the live API documentation (`/api/docs`) — they just don't go through Keycloak.
+
 ### 1.2 Authentication Modes
 
 Kamiwaza supports two operational modes:
@@ -611,7 +613,7 @@ AUTH_GATEWAY_JWKS_URL=https://auth.yourdomain.com/realms/kamiwaza/protocol/openi
 # Security Hardening
 AUTH_REQUIRE_SUB=true  # Require 'sub' claim (user ID) in tokens
 AUTH_EXPOSE_TOKEN_HEADER=false  # Don't expose tokens in response headers (production)
-AUTH_ALLOW_UNSIGNED_STATE=false  # Require signed OIDC state parameter (production)
+AUTH_ALLOW_UNSIGNED_STATE=false  # Require signed OIDC state parameter
 ```
 
 **Token Algorithms:**
@@ -895,6 +897,8 @@ Common public endpoints:
 - `/api/security/public/config` — Pre-login consent gate and banner configuration
 - `/api/node/node_status` — Kubernetes health probe
 
+Additionally, some endpoints bypass ForwardAuth but use their own authentication (e.g., cluster federation uses HMAC-signed requests, App Garden uses session tokens). These are not public — see [section 1.1](#11-authentication-architecture) for details.
+
 ### 6.3 Production Hardening Checklist
 
 These settings must be reviewed before deploying to production:
@@ -906,7 +910,7 @@ These settings must be reviewed before deploying to production:
 | `AUTH_FORWARD_HEADER_SECRET` | HMAC secret for signing identity headers between Traefik and the API | **Must be set** — in production, unsigned ForwardAuth headers are rejected; in dev mode, a warning is logged but requests proceed |
 | `AUTH_GATEWAY_ENABLE_DEV_ENDPOINTS` | Enables `/auth/mint` for minting arbitrary tokens | `false` — **never** enable in production |
 | `AUTH_REBAC_ENABLED` | Enable relationship-based access control | Your choice — `false` for RBAC-only, `true` for fine-grained resource control |
-| `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state parameter | `false` — recommended in production to prevent state tampering |
+| `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state parameter | `false` (secure by default) |
 
 In production-like environments, setting `KAMIWAZA_USE_AUTH=false` causes all authenticated API requests to return HTTP 503 rather than silently running without auth.
 
@@ -1184,7 +1188,7 @@ The same curl commands can be scripted in CI to ensure future changes do not bre
 | `AUTH_REBAC_ENABLED` | Enable relationship-based access control | `false` | No |
 | `AUTH_REQUIRE_SUB` | Require 'sub' claim in tokens | `false` | No |
 | `AUTH_EXPOSE_TOKEN_HEADER` | Expose token in response headers | `true` | No |
-| `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state | `true` (dev only) | Recommended `false` in production |
+| `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state | `false` | No |
 | `AUTH_GATEWAY_TOKEN_LEEWAY` | Clock skew tolerance (seconds) | `30` | No |
 | `AUTH_GATEWAY_JWKS_CACHE_TTL` | JWKS cache duration (seconds) | `300` | No |
 
