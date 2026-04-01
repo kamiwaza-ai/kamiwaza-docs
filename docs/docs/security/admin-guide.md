@@ -180,7 +180,7 @@ Kamiwaza defines three primary roles:
 
 There is also an `extension` role used as a service identity for platform extensions and automated tools. It is not assigned to human users.
 
-> **Current state:** Today, the platform enforces two effective access tiers: `admin` (full access) and everyone else (`user`/`viewer`). Finer-grained role distinctions are planned but not yet enforced at the endpoint level.
+> **Current state:** The gateway RBAC policy enforces different rules per role (e.g., `viewer` cannot access write endpoints). At the FastAPI endpoint level, most routes currently distinguish `admin` vs. any authenticated user.
 
 **Assigning Roles:**
 
@@ -388,6 +388,8 @@ Workrooms are collaborative workspaces that group resources and control team acc
 | **contributor** | Create and modify resources within the workroom |
 | **viewer** | Read-only access to workroom resources |
 
+Workroom roles are separate from platform RBAC roles. The workroom `contributor` role maps to the ReBAC `editor` relation — the product uses "contributor" to distinguish workroom-level write access from any future platform-level `editor` role.
+
 Workroom access is enforced via ReBAC tuples when ReBAC is enabled, or via the workroom service's built-in membership checks in RBAC-only mode.
 
 ### 3.5 Hot Reload (No Restart Required)
@@ -404,7 +406,7 @@ The RBAC policy file is automatically reloaded when modified:
 
 **⚠️ Important:** Invalid YAML syntax will prevent reload and retain the previous valid configuration.
 
-### 3.4 Adding Custom Endpoints
+### 3.6 Adding Custom Endpoints
 
 **Example: Protecting a new analytics endpoint**
 
@@ -881,8 +883,12 @@ The same information is available in machine-readable form at `/api/openapi.json
 
 A small number of endpoints are accessible without authentication. These exist because they must function before a user has logged in (login flows, health probes, consent gates). Each one is documented in the OpenAPI spec with the reason it's public.
 
-Common examples:
-- `/api/auth/*` — Login, logout, OAuth callbacks, SAML flows, token refresh
+Common examples (not all `/api/auth/` routes are public — many require authentication):
+- `/api/auth/login`, `/api/auth/logout` — Browser login/logout flows
+- `/api/auth/token`, `/api/auth/refresh` — Token acquisition and refresh
+- `/api/auth/callback`, `/api/auth/saml/acs` — OAuth/SAML callbacks from identity providers
+- `/api/auth/jwks` — Public key discovery for token verification
+- `/api/auth/validate` — Token validation service
 - `/api/security/public/config` — Pre-login consent gate and classification banner configuration
 - `/api/node/node_status` — Kubernetes liveness probe
 
@@ -894,15 +900,15 @@ These settings must be reviewed before deploying to production:
 |---------|-------------|-----------------|
 | `KAMIWAZA_USE_AUTH` | Master switch for authentication enforcement | `true` — **must** be enabled |
 | `AUTH_GATEWAY_DEFAULT_DENY` | Reject requests that don't match any policy rule | `true` — prevents unintended access |
-| `AUTH_FORWARD_HEADER_SECRET` | HMAC secret for signing identity headers between Traefik and the API | **Must be set** — without this, identity headers can be spoofed |
+| `AUTH_FORWARD_HEADER_SECRET` | HMAC secret for signing identity headers between Traefik and the API | **Must be set** — in production, unsigned ForwardAuth headers are rejected; in dev mode, a warning is logged but requests proceed |
 | `AUTH_GATEWAY_ENABLE_DEV_ENDPOINTS` | Enables `/auth/mint` for minting arbitrary tokens | `false` — **never** enable in production |
 | `AUTH_REBAC_ENABLED` | Enable relationship-based access control | Your choice — `false` for RBAC-only, `true` for fine-grained resource control |
 
-The platform refuses to start with `KAMIWAZA_USE_AUTH=false` in production-like environments (returns HTTP 503 instead of silently running without auth).
+In production-like environments, setting `KAMIWAZA_USE_AUTH=false` causes all authenticated API requests to return HTTP 503 rather than silently running without auth.
 
 ### 6.4 ReBAC Verification
 
-If ReBAC is enabled, you can check for authorization tuple drift using the tenant management tool:
+If ReBAC is enabled, you can check for authorization tuple drift using the tenant management tool (`scripts/rebac_tenant.py` in the platform installation directory, requires Python 3.12+):
 
 ```bash
 # Check if actual tuples match the expected baseline
