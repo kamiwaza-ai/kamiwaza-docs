@@ -7,6 +7,11 @@ sidebar_label: Quickstart
 
 Use this guide after installing Kamiwaza. It is intended for single-user deployments and administrators who are preparing for a broader rollout.
 
+If you are still preparing the environment, start with:
+
+- [System Requirements](installation/system_requirements)
+- [Installing Kamiwaza](installation/installation_process)
+
 ## Before You Start
 
 Make sure you have:
@@ -19,6 +24,8 @@ Make sure you have:
 - network access to fetch models, or staged artifacts if your environment is air-gapped
 
 This guide assumes the cluster is already installed. Current Kamiwaza deployments are Kubernetes-based in both full and lite modes.
+
+Use [System Requirements](installation/system_requirements) to confirm hardware sizing, storage expectations, and platform prerequisites before installation. Use [Installing Kamiwaza](installation/installation_process) for the supported installation workflow for your platform.
 
 ## 1. Confirm the Kubernetes Deployment Is Healthy
 
