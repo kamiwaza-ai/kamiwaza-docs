@@ -8,9 +8,10 @@
 .docusaurus
 .cache-loader
 
-# SDK docs (copied from kamiwaza-sdk)
-/docs/sdk/current/services
-/docs/sdk/current/api
+# SDK docs (synced from kamiwaza-sdk repo)
+/docs/sdk/services/
+/docs/sdk/index.md
+/docs/sdk-services.generated.json
 
 # Misc
 .DS_Store

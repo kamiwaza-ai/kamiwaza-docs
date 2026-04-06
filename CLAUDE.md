@@ -96,7 +96,7 @@ set GIT_USER=<username> && npm run deploy
 - **Root level**: Contains main `package.json`, scripts, and configuration
 - **`docs/`**: Contains the Docusaurus site with its own `package.json` and dependencies
 - **`docs/docs/`**: Main platform documentation content (current version)
-- **`docs/sdk/`**: SDK documentation (auto-generated from external kamiwaza-sdk repo, current version)
+- **`docs/sdk/`**: SDK documentation (synced from external kamiwaza-sdk repo at build time; `services/` and `index.md` are gitignored)
 - **`docs/versioned_docs/`**: Archived versions of main platform documentation
 - **`docs/sdk_versioned_docs/`**: Archived versions of SDK documentation
 - **`docs/versions.json`**: List of main docs versions
@@ -118,11 +118,24 @@ The site has multiple documentation sections configured as separate Docusaurus p
 Both main docs and SDK docs are fully versioned and synchronized via the `version-up` script.
 
 ### SDK Documentation Sync
-The `sync-sdk-docs` script automatically pulls documentation from the kamiwaza-sdk repository. It looks for the SDK in these locations:
+The kamiwaza-sdk repo is the **source of truth** for SDK docs. The `sync-sdk-docs` script copies service docs and the SDK README into the docs site at build time. Synced files (`docs/sdk/services/`, `docs/sdk/index.md`, `docs/sdk-services.generated.json`) are gitignored — do not edit them directly.
+
+**Running the sync:**
+```bash
+# If kamiwaza-sdk is a sibling directory, it's auto-detected:
+npm run sync-sdk
+
+# Or specify the path explicitly:
+KW_SDK_DOCS=/path/to/kamiwaza-sdk npm run sync-sdk
+```
+
+The script looks for the SDK repo in these locations:
 1. Environment variable: `KW_SDK_DOCS` or `KAMIWAZA_SDK_DOCS`
-2. Sibling directory: `../kamiwaza-sdk/docs`
-3. Alternate sibling: `../../kamiwaza-sdk/docs`
-4. Monorepo layout: `../../kamiwaza/kamiwaza-sdk/docs`
+2. Sibling directory: `../kamiwaza-sdk`
+3. Alternate sibling: `../../kamiwaza-sdk`
+4. Monorepo layout: `../../kamiwaza/kamiwaza-sdk`
+
+The sync copies each `{SDK}/docs/services/{name}/README.md` into `docs/sdk/services/{name}/README.md` (adding Docusaurus frontmatter), syncs `{SDK}/README.md` as `docs/sdk/index.md` (rewriting links), and generates `docs/sdk-services.generated.json` for the sidebar. If the SDK repo is not found, the sync exits cleanly and existing docs are used as-is.
 
 ## Development Workflow
 
