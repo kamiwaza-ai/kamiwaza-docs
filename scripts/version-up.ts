@@ -6,7 +6,8 @@ import { execSync } from 'child_process';
 const DOCS_DIR = path.join(__dirname, '../docs');
 const ROOT_PACKAGE_JSON_PATH = path.join(__dirname, '../package.json');
 const DOCS_PACKAGE_JSON_PATH = path.join(DOCS_DIR, 'package.json');
-const DOCUSAURUS_CONFIG_PATH = path.join(DOCS_DIR, 'docusaurus.config.ts');
+const MAIN_VERSIONS_PATH = path.join(DOCS_DIR, 'versions.json');
+const SDK_VERSIONS_PATH = path.join(DOCS_DIR, 'sdk_versions.json');
 
 // --- Helper Functions ---
 
@@ -19,18 +20,19 @@ function writeJsonFile(filePath: string, data: any) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n');
 }
 
-function updateDocusaurusConfig(newVersion: string) {
-  console.log(`Updating ${DOCUSAURUS_CONFIG_PATH}...`);
-  let configContent = fs.readFileSync(DOCUSAURUS_CONFIG_PATH, 'utf8');
+function getDocusaurusEnv() {
+  const env = { ...process.env };
+  delete env.DEBUG;
+  return env;
+}
 
-  // Update the `label` for the `current` version to the new version with a "(Latest)" suffix
-  configContent = configContent.replace(
-    /(versions:\s*{\s*current:\s*{\s*label: ')([^']+)(')/g,
-    `$1${newVersion} (Latest)$3`
-  );
+function versionExists(filePath: string, version: string) {
+  if (!fs.existsSync(filePath)) {
+    return false;
+  }
 
-  fs.writeFileSync(DOCUSAURUS_CONFIG_PATH, configContent);
-  console.log('Docusaurus config updated.');
+  const versions = readJsonFile(filePath);
+  return Array.isArray(versions) && versions.includes(version);
 }
 
 function updatePackageJsonVersion(filePath: string, newVersion: string) {
@@ -44,10 +46,9 @@ function updatePackageJsonVersion(filePath: string, newVersion: string) {
 function runDocusaurusVersioning(newVersion: string) {
   console.log(`Running Docusaurus versioning for main docs (${newVersion})...`);
   try {
-    // We run `npm install` in docs first to ensure docusaurus is installed,
-    // then run the versioning command.
-    execSync(`npm run clear && npm install && npm run docusaurus -- docs:version ${newVersion}`, {
+    execSync(`npm run clear && npm run docusaurus -- docs:version ${newVersion}`, {
       cwd: DOCS_DIR,
+      env: getDocusaurusEnv(),
       stdio: 'inherit',
     });
     console.log('Docusaurus main docs versioning complete.');
@@ -62,6 +63,7 @@ function runSdkDocusaurusVersioning(newVersion: string) {
   try {
     execSync(`npm run docusaurus -- docs:version:sdk ${newVersion}`, {
       cwd: DOCS_DIR,
+      env: getDocusaurusEnv(),
       stdio: 'inherit',
     });
     console.log('Docusaurus SDK docs versioning complete.');
@@ -94,6 +96,18 @@ function main() {
 
   console.log(`ℹ️ Preparing to version docs as: ${newVersion}`);
 
+  if (versionExists(MAIN_VERSIONS_PATH, newVersion)) {
+    console.error(`❌ Error: Main docs version "${newVersion}" already exists.`);
+    console.error(`Use "npm run version-update -- ${newVersion}" to refresh an existing docs snapshot.`);
+    process.exit(1);
+  }
+
+  if (versionExists(SDK_VERSIONS_PATH, newVersion)) {
+    console.error(`❌ Error: SDK docs version "${newVersion}" already exists.`);
+    console.error('Remove the existing SDK snapshot first or use a new version tag.');
+    process.exit(1);
+  }
+
   // 2. Run the Docusaurus versioning command FIRST.
   // This is important because it stages the new version directory. If other files
   // are changed first, they might get snapshotted into the *previous* version.
@@ -106,11 +120,8 @@ function main() {
   updatePackageJsonVersion(ROOT_PACKAGE_JSON_PATH, newVersion);
   updatePackageJsonVersion(DOCS_PACKAGE_JSON_PATH, newVersion);
 
-  // 5. Update docusaurus.config.ts (updates both main and SDK version labels)
-  updateDocusaurusConfig(newVersion);
-
   console.log(`\n✅ Successfully created version ${newVersion} for both main and SDK docs.`);
-  console.log("Configuration files updated. Don't forget to review and commit the changes!");
+  console.log("Package versions updated. Don't forget to review and commit the changes!");
 }
 
 main(); 

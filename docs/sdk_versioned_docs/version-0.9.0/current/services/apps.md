@@ -205,5 +205,4 @@ except Exception as e:
 
 ## See Also
 
-- [Example Notebook](../../../examples/08_app_garden_and_tools.ipynb) - Complete examples of App Garden usage
-- [Tool Service](../tools/README.md) - Deploy MCP Tool servers
+- [Tool Service](./tools.md) - Deploy MCP Tool servers
