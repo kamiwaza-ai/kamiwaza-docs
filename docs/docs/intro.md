@@ -30,10 +30,10 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
       <h3>⚡ Quickstart</h3>
     </div>
     <div className="card__body">
-      <p>Get up and running with a real application from the App Garden.</p>
+      <p>Validate your platform, storage, security, and key user workflows before rollout.</p>
     </div>
     <div className="card__footer">
-      <a href="quickstart" className="button button--primary button--block">Launch an App →</a>
+      <a href="quickstart" className="button button--primary button--block">Open the Quickstart →</a>
     </div>
   </div>
   <div className="doc-card">

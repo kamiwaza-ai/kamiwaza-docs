@@ -183,5 +183,5 @@ The Microsoft 365 connector allows users to connect their Microsoft accounts to 
 
 - [Distributed Data Engine](./data-engine.md) - Overview of the DDE ingestion framework
 - [Data Catalog](./data-catalog.md) - Managing ingested datasets
-- [Security](./security/) - Security and access control documentation
+- [Security](./security/admin-guide.md) - Security and access control documentation
 - [Observability](./observability.md) - Monitoring and logging

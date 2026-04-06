@@ -41,6 +41,7 @@ const sidebars: SidebarsConfig = {
 			label: "Configuration",
 			items: [
 				"configuration",
+				"workroom-storage-s3",
 				"routing-modes",
 			],
 		},

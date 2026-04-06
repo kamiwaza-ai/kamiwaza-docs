@@ -155,6 +155,18 @@ Click the **+** button in the message input to attach files. You can upload from
 
 > **Note:** The Microsoft 365 connector must be configured by an administrator in the Kamiwaza UI before it is available to users. Once configured, you can browse and attach OneDrive and SharePoint files directly in your conversations.
 
+### Grounded Answers and Citations
+
+Depending on your deployment and the tools attached to your agent, Kaizen can produce grounded answers that include citations back to source material such as uploaded files, connected document stores, or web results.
+
+To get the best results:
+
+- attach the files or tools your agent should use before asking the question
+- ask explicitly for citations when you need traceable answers
+- verify that the cited sources actually support the claim before sharing the output
+
+If a response should be grounded but comes back without citations, check whether the relevant data source, skill, or retrieval path is configured in your environment.
+
 ### Downloading Results
 
 Any files created by the agent, including reports, charts, code, and presentations, appear in the workspace panel on the right side of the chat. You can preview and download them directly.
@@ -209,7 +221,28 @@ The generated PDF is viewable and downloadable directly in the right panel.
 
 ---
 
+## Troubleshooting Kaizen
+
+### The agent is waiting for confirmation
+
+Your agent's security policy may require approval before it can run tools or commands. Approve the pending step, or update the policy in the agent configuration if the current threshold is too strict for the workflow.
+
+### I cannot access Microsoft 365 files
+
+The Microsoft 365 connector must be configured by an administrator before it appears to end users. If the option is missing or authentication fails, confirm the platform configuration with your administrator.
+
+### I expected citations, but none appeared
+
+Make sure the agent has access to the documents or tools it needs, and ask for citations explicitly when traceability matters. If the issue persists, verify the data source or retrieval configuration in your deployment.
+
+### I need logs for a failed deployment or broken conversation
+
+Start with the Kaizen deployment logs in the Kamiwaza log viewer, then review the platform-level guidance in [Observability](/observability). That is the fastest path for diagnosing extension startup failures, connector issues, or model-side errors.
+
+---
+
 ## Learn More
 
 - [Models Overview](/models/overview)
 - [Tool Garden](/tool-garden)
+- [Observability](/observability)
