@@ -14,7 +14,7 @@ sidebar_position: 1
 
 ## Required Gateway/Auth Configuration
 
-Set these environment variables:
+Set the equivalent deployment values, ConfigMap entries, or environment variables required by your release workflow:
 
 - KAMIWAZA_USE_AUTH=true
 - AUTH_GATEWAY_CAC_ENABLED=true
@@ -57,7 +57,7 @@ The ingress (e.g., Traefik) must:
 
 ## Test Flow
 
-1. Apply the configuration above and restart services.
+1. Apply the configuration above through your normal deployment workflow.
 2. If no CRL/OCSP data in non-prod, either load a CRL cache or set AUTH_GATEWAY_CAC_FAIL_OPEN=true temporarily.
 3. From a client with a CAC (or test client cert), call:
     - POST `https://<gateway>/api/auth/cac/login` via the ingress (not localhost).

@@ -46,29 +46,22 @@ flowchart LR
    - Include `roles`, `tenant`, and any clearance attributes referenced in policies.
    - Ensure the token carries `exp`, `iat`, `sub`, and `iss` claims; Kamiwaza validates them on every request.
 
-3. **Configure the Auth Gateway** (environment variables or `env.sh`).
+3. **Configure the Auth Gateway** through your deployment values, Kubernetes ConfigMaps, and Secrets.
    - Set the issuer and JWKS URL to match your Keycloak realm (`https://<keycloak>/realms/<realm>` and `/protocol/openid-connect/certs`).
    - Align `AUTH_GATEWAY_JWT_AUDIENCE` with the confidential client you created (`kamiwaza-platform` by default).
    - Enable ReBAC (`AUTH_REBAC_ENABLED=true`) and choose your primary backend (`postgres` or `spicedb`).
    - Point the session store at your Redis deployment (`AUTH_REBAC_SESSION_REDIS_URL=rediss://<redis-host>:6380/0`).
    - Define the default tenant fallback (`AUTH_REBAC_DEFAULT_TENANT_ID="__default__"` for single-tenant labs) and enable PAT tagging (`AUTH_PAT_TENANT_TAGGING_ENABLED=true`) so newly issued tokens include tenant metadata.
-   - See the [ReBAC Deployment Guide](./rebac-deployment-guide.md) for the full variable list and examples.
+   - See the [ReBAC Deployment Guide](./rebac-deployment-guide.md) for the customer-facing rollout sequence and validation guidance.
 
 4. **Optional PAT workflow** – use the Auth gateway PAT endpoint to issue automation tokens that embed tenant metadata.
 
 ## Policy Management
 
-1. **Review the shipping manifest** (`configs/rebac/policies/default.yaml`) to understand default relations for models, datasets, and administrative roles.
-2. **Validate changes** with the provided helper:
-   ```bash
-   python scripts/rebac_policy.py validate configs/rebac/policies/default.yaml
-   ```
-3. **Apply tenant manifests** using:
-   ```bash
-   python scripts/rebac_tenant.py apply --manifest configs/rebac/tenants/__default__.yaml
-   ```
-   Manifests seed tuples for new tenants and can be re-run safely.
-4. **Promote across environments** by storing sanitized manifests in version control and replaying them through your change-management pipeline. Capture tuple plans and policy hashes for audit evidence.
+1. **Review your deployment's policy and tenant artifacts** to understand the default relations for models, datasets, and administrative roles.
+2. **Validate changes before rollout** using the supported administrative or deployment workflow for your environment.
+3. **Promote tenant and policy data through change management** rather than editing live pods directly.
+4. **Capture evidence** such as policy revisions, release records, and validation results for auditability.
 
 ## Operations Checklist
 
@@ -80,7 +73,7 @@ flowchart LR
 
 ## Demonstrating ReBAC
 
-For a walkthrough that exercises authentication, tuple enforcement, and observability dashboards, follow the [ReBAC Validation Checklist](./rebac-validation-checklist.md). It covers token capture, allow/deny checks, and the expected log output for accreditation reviews.
+For a walkthrough that exercises authentication, tuple enforcement, and observability expectations, follow the [ReBAC Validation Checklist](./rebac-validation-checklist.md). It covers customer-facing sign-in, allow/deny checks, and log verification.
 
 ## Limitations & Roadmap
 
@@ -91,5 +84,5 @@ Need help integrating ReBAC or exporting evidence for accreditation? Reach out t
 
 ## Next steps
 
-- Follow the [ReBAC Deployment Guide](./rebac-deployment-guide.md) to configure the gateway.
+- Follow the [ReBAC Deployment Guide](./rebac-deployment-guide.md) to configure the deployment.
 - Run the [ReBAC Validation Checklist](./rebac-validation-checklist.md) to validate tuple enforcement and logging.
