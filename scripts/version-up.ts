@@ -4,6 +4,7 @@ import { execSync } from 'child_process';
 
 // --- Configuration ---
 const DOCS_DIR = path.join(__dirname, '../docs');
+const REPO_ROOT = path.join(__dirname, '..');
 const ROOT_PACKAGE_JSON_PATH = path.join(__dirname, '../package.json');
 const DOCS_PACKAGE_JSON_PATH = path.join(DOCS_DIR, 'package.json');
 const MAIN_VERSIONS_PATH = path.join(DOCS_DIR, 'versions.json');
@@ -73,6 +74,21 @@ function runSdkDocusaurusVersioning(newVersion: string) {
   }
 }
 
+function runOpenApiSync() {
+  console.log('Syncing OpenAPI spec for docs...');
+  try {
+    execSync('npm run sync-openapi', {
+      cwd: REPO_ROOT,
+      env: getDocusaurusEnv(),
+      stdio: 'inherit',
+    });
+    console.log('OpenAPI sync complete.');
+  } catch (error) {
+    console.error('Failed to sync OpenAPI spec. Sync output should be above.');
+    process.exit(1);
+  }
+}
+
 // --- Main Execution ---
 
 function main() {
@@ -119,6 +135,10 @@ function main() {
   // 4. Update package.json files
   updatePackageJsonVersion(ROOT_PACKAGE_JSON_PATH, newVersion);
   updatePackageJsonVersion(DOCS_PACKAGE_JSON_PATH, newVersion);
+
+  // 5. Refresh OpenAPI docs metadata after the package version bump so the
+  // published REST API reference shows the new release version.
+  runOpenApiSync();
 
   console.log(`\n✅ Successfully created version ${newVersion} for both main and SDK docs.`);
   console.log("Package versions updated. Don't forget to review and commit the changes!");

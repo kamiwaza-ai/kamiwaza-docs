@@ -117,6 +117,13 @@ function getDocsVersion(): string {
 }
 
 function patchSpecForDocs(spec: any): void {
+	// Use Kamiwaza branding/versioning in the published API docs rather than the
+	// generic FastAPI defaults emitted by the backend generator.
+	if (!spec.info) {
+		spec.info = {};
+	}
+	spec.info.title = "Kamiwaza REST API";
+
 	// ReDoc's sampler struggles with the union response on /embedding/chunk and
 	// emits noisy "allOf with array type" warnings during docs builds. Prefer the
 	// structured response shape in docs so the API reference renders cleanly.

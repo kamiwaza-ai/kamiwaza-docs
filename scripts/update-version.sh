@@ -61,6 +61,13 @@ npm run clear
 echo "Creating new version snapshot..."
 npm run docusaurus -- docs:version "$DOCS_VERSION"
 
+# Refresh the OpenAPI spec metadata so the published REST API reference stays in
+# sync with the current docs release/version.
+echo "Syncing OpenAPI spec..."
+cd "$REPO_ROOT"
+npm run sync-openapi
+cd "$DOCS_DIR"
+
 # Build to verify
 echo "Building to verify..."
 npm run build
