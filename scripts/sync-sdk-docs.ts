@@ -28,8 +28,9 @@ function resolveSdkRepoPath(): string | null {
     return null;
 }
 
-const TARGET_SERVICES = path.resolve(__dirname, '../docs/sdk/services');
-const TARGET_INDEX = path.resolve(__dirname, '../docs/sdk/index.md');
+const TARGET_CURRENT = path.resolve(__dirname, '../docs/sdk/current');
+const TARGET_SERVICES = path.join(TARGET_CURRENT, 'services');
+const TARGET_API_REFERENCE = path.join(TARGET_CURRENT, 'api', 'reference.md');
 const TARGET_SIDEBAR_JSON = path.resolve(__dirname, '../docs/sdk-services.generated.json');
 
 function titleCase(name: string): string {
@@ -54,21 +55,6 @@ function addFrontmatter(content: string, position: number, title: string): strin
     return frontmatter + content;
 }
 
-function rewriteIndexLinks(content: string): string {
-    // Rewrite docs/services/{name}/README.md → ./services/{name}/README.md
-    // Keep .md extension so Docusaurus resolves via file paths (not URL paths)
-    let result = content.replace(
-        /\]\(docs\/services\/([^)]+\/README\.md)\)/g,
-        '](./services/$1)'
-    );
-    // Rewrite examples/*.ipynb → GitHub links
-    result = result.replace(
-        /\]\(examples\/([^)]+)\)/g,
-        `](${GITHUB_SDK_BASE}/examples/$1)`
-    );
-    return result;
-}
-
 function rewriteServiceLinks(content: string): string {
     // Rewrite examples/ links (relative paths from service docs) → GitHub links
     // Match any number of ../ prefixes before examples/
@@ -76,8 +62,47 @@ function rewriteServiceLinks(content: string): string {
         /\]\((?:\.\.\/)*examples\/([^)]+)\)/g,
         `](${GITHUB_SDK_BASE}/examples/$1)`
     );
-    // Keep .md extension on cross-service links so Docusaurus resolves via file paths
+    // Rewrite old README-style cross-service links to the generated flat docs layout.
+    result = result.replace(
+        /\]\(\.\.\/([a-z0-9-]+)\/README\.md\)/gi,
+        '](./$1)'
+    );
     return result;
+}
+
+async function generateApiReference(sdkRepoPath: string): Promise<void> {
+    const todoPath = path.join(sdkRepoPath, 'docs', 'todo.txt');
+    await fs.ensureDir(path.dirname(TARGET_API_REFERENCE));
+
+    if (!await fs.pathExists(todoPath)) {
+        await fs.writeFile(TARGET_API_REFERENCE, '# API Reference\n');
+        return;
+    }
+
+    const todoContent = await fs.readFile(todoPath, 'utf8');
+    const sections = todoContent.split('\n## ');
+    let mdContent = '# API Reference\n\n';
+
+    for (const section of sections) {
+        if (!section.trim()) continue;
+
+        const [title, ...items] = section.split('\n');
+        mdContent += `## ${title.replace(/^#+\s*/, '')}\n\n`;
+
+        for (const item of items) {
+            const trimmed = item.trim();
+            if (!trimmed.startsWith('- [x]')) continue;
+
+            const [methodName, description] = trimmed.replace('- [x] ', '').split(' - ', 2);
+            mdContent += `### \`${methodName}\`\n\n`;
+            if (description) {
+                mdContent += `${description}\n\n`;
+            }
+        }
+    }
+
+    await fs.writeFile(TARGET_API_REFERENCE, mdContent);
+    console.log('  Synced: current/api/reference.md');
 }
 
 async function syncServiceDocs(sdkRepoPath: string): Promise<string[]> {
@@ -107,29 +132,14 @@ async function syncServiceDocs(sdkRepoPath: string): Promise<string[]> {
         const title = `${titleCase(service)} Service`;
         const withFrontmatter = addFrontmatter(content, i + 1, title);
 
-        const targetDir = path.join(TARGET_SERVICES, service);
-        await fs.ensureDir(targetDir);
-        await fs.writeFile(path.join(targetDir, 'README.md'), withFrontmatter);
+        await fs.ensureDir(TARGET_SERVICES);
+        await fs.writeFile(path.join(TARGET_SERVICES, `${service}.md`), withFrontmatter);
 
-        sidebarItems.push(`services/${service}/README`);
+        sidebarItems.push(`current/services/${service}`);
         console.log(`  Synced: ${service}`);
     }
 
     return sidebarItems;
-}
-
-async function syncIndex(sdkRepoPath: string): Promise<void> {
-    const readmePath = path.join(sdkRepoPath, 'README.md');
-    if (!await fs.pathExists(readmePath)) {
-        console.warn('  SDK README.md not found, skipping index sync');
-        return;
-    }
-
-    let content = await fs.readFile(readmePath, 'utf8');
-    content = rewriteIndexLinks(content);
-    content = addFrontmatter(content, 1, 'Kamiwaza SDK');
-    await fs.writeFile(TARGET_INDEX, content);
-    console.log('  Synced: index.md (from SDK README)');
 }
 
 async function writeSidebarJson(items: string[]): Promise<void> {
@@ -152,7 +162,7 @@ async function main() {
     console.log(`  SDK repo: ${sdkRepoPath}`);
 
     const sidebarItems = await syncServiceDocs(sdkRepoPath);
-    await syncIndex(sdkRepoPath);
+    await generateApiReference(sdkRepoPath);
     await writeSidebarJson(sidebarItems);
 
     console.log(`SDK docs sync complete: ${sidebarItems.length} services synced.`);
