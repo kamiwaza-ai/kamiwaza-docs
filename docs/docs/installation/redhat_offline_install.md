@@ -3,7 +3,7 @@
 This guide covers a fresh Kamiwaza production install on a RHEL9 host using the
 packaged prod RPM, offline wrap bundle, and `install-prod.sh`.
 
-It is the operator-facing install path for current offline release artifacts.
+It is the administrator-facing install path for current offline release artifacts.
 For field-by-field analysis and internal background, see
 `docs/install-config_final.md`.
 
@@ -42,7 +42,7 @@ confirm from release metadata for the build you are installing.
 Historical site config blocks often include many values that are now derived
 from `--domain`, carried by chart defaults, or no longer used in the packaged
 Kubernetes install path. This guide only carries forward the fields that still
-need operator input.
+need administrator input.
 
 ## Required Artifacts
 
@@ -152,7 +152,7 @@ Most installs can skip this step. Create the file only if you need non-default
 settings such as security banners, consent, ReBAC, or a non-prod template
 catalog stage.
 
-Use this operator-facing path:
+Use this administrator-facing path:
 
 ```bash
 /opt/kamiwaza/cluster/values/overrides.yaml
@@ -181,7 +181,7 @@ core:
 
   scheduler:
     extraEnv:
-      # Keep only the env vars that still need explicit operator input.
+      # Keep only the env vars that still need explicit administrator input.
       # Most historical URL/auth fields are now chart-derived from --domain.
       - name: LICENSE_KEY
         value: "replace-with-license-key"

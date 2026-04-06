@@ -85,7 +85,7 @@ For a walkthrough that exercises authentication, tuple enforcement, and observab
 ## Limitations & Roadmap
 
 - ReBAC guards cover catalog, models, DDE connectors/documents, and retrieval job access. Additional services will continue to adopt guard coverage over time.
-- Some ingestion workflows are still admin-scoped; expand tuple policies if you need finer-grained controls for your operators.
+- Some ingestion workflows are still admin-scoped; expand tuple policies if you need finer-grained controls for your administrators.
 
 Need help integrating ReBAC or exporting evidence for accreditation? Reach out to your Kamiwaza support representative for the latest runbooks and automation scripts.
 

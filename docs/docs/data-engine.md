@@ -65,6 +65,6 @@ Default rate limits are controlled by `DDE_DOCUMENT_RATE_LIMIT` (requests per wi
 ## Operational guidance
 
 - Keep connector credentials scoped to read-only roles where possible.
-- Use the ReBAC validation checklist to ensure only authorized operators can create or run connectors.
+- Use the ReBAC validation checklist to ensure only authorized administrators can create or run connectors.
 - Combine DDE jobs with Kamiwaza’s retrieval pipelines to expose fresh content in RAG applications.
-- For connector-specific tuning (chunking, file size limits), refer your operators to the internal runbooks provided with your support agreement.
+- For connector-specific tuning (chunking, file size limits), refer your administrators to the internal runbooks provided with your support agreement.

@@ -1,6 +1,6 @@
 # Skills Library User Guide
 
-The Skills Library lets Kamiwaza operators manage a shared catalog of reusable agent skills. From this app you can import skill packages, curate their metadata, control their lifecycle, and export bundles for sharing.
+The Skills Library lets Kamiwaza administrators manage a shared catalog of reusable agent skills. From this app you can import skill packages, curate their metadata, control their lifecycle, and export bundles for sharing.
 
 ## Layout
 

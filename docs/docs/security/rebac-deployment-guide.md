@@ -140,7 +140,7 @@ Only use these flags in local or UAT environments. As soon as tokens carry real 
     
 ### Seed ReBAC tuples
 
-Before operators can download or deploy a model they must be granted the appropriate tuples in the target tenant.
+Before administrators can download or deploy a model they must be granted the appropriate tuples in the target tenant.
 
 1. **Bootstrap the tenant manifest (recommended).**
    ```bash

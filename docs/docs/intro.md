@@ -6,7 +6,7 @@ sidebar_position: 1
 
 # Welcome to Kamiwaza AI Docs
 
-Welcome to the official documentation for the Kamiwaza AI Platform, the enterprise solution for building, deploying, and scaling production-grade AI applications.
+Welcome to the official documentation for the Kamiwaza AI Platform, the solution for building, deploying, and scaling production-grade AI applications.
 
 ## Kamiwaza Overview
 
@@ -41,7 +41,7 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
       <h3>🚀 Installation Guide</h3>
     </div>
     <div className="card__body">
-      <p>Set up your local environment and get Kamiwaza running in minutes.</p>
+      <p>Review supported installation paths, prerequisites, and system requirements.</p>
     </div>
     <div className="card__footer">
       <a href="installation/installation_process" className="button button--primary button--block">Start the Installation →</a>
