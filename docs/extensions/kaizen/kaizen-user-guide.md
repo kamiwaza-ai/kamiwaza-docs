@@ -9,6 +9,8 @@ Welcome to **Kaizen**, an AI agent platform built by Kamiwaza. Kaizen lets you c
 
 Instead of writing code to configure agents, you get a visual interface. Instead of terminal output, you get a real-time chat where you can watch your agent work and download what it produces.
 
+If you launch Kaizen from **Workroom Manager**, the conversation runs inside that workroom context. That lets analysts keep their agent activity aligned to a specific mission or case while still using the same Kaizen workflows described here.
+
 ---
 
 ## Launch Kaizen
@@ -154,6 +156,8 @@ Click the **+** button in the message input to attach files. You can upload from
 ![File upload options](/img/extensions/kaizen/onboarding-08-file-upload.png)
 
 > **Note:** The Microsoft 365 connector must be configured by an administrator in the Kamiwaza UI before it is available to users. Once configured, you can browse and attach OneDrive and SharePoint files directly in your conversations.
+
+When Kaizen is opened from a workroom, use these uploads and connected sources to support that workroom's analysis workflow.
 
 ### Grounded Answers and Citations
 

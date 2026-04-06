@@ -63,14 +63,16 @@ Before inviting broader users, confirm the environment matches your security pos
 - in full mode, Keycloak and any configured OIDC, SAML, or LDAP integration behave as expected
 - in lite mode, local JWT authentication and sign-in flows work as expected
 - consent, banner, and handling-marking requirements are configured as intended
+- administrator access to deployment and audit logs matches your environment requirements
 - App Garden session defaults, including ephemeral-session policy, match your environment
 
 Use these references while validating the environment:
 
 - [Administrator Guide](security/admin-guide)
 - [Consent and Classification](security/consent-and-classification)
+- [Observability](observability)
 
-Use the [Administrator Guide](security/admin-guide) for detailed authentication setup, external identity integration such as LDAP or Keycloak, and secrets-management guidance.
+Use the [Administrator Guide](security/admin-guide) for detailed authentication setup, external identity integration such as LDAP or Keycloak, and secrets-management guidance. Use [Observability](observability) for log configuration and validation of your deployment logging path.
 
 If you are validating a federal deployment that uses CAC, use the [CAC Overview](federal/cac-overview) alongside this quickstart.
 

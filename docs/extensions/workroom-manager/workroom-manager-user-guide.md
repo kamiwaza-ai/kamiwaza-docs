@@ -124,9 +124,19 @@ Some deployments may limit full roster visibility for non-owners. In those envir
 
 ## Troubleshooting
 
+When you investigate a failure, capture:
+
+- the workroom name
+- the app name that failed, such as Workroom Manager or Kaizen
+- the approximate time of failure
+- the deployment status shown in the UI
+- the visible error message, if one appears
+
+Start with the Kamiwaza log viewer for extension deployment logs. If you need deeper platform logs, use the Kubernetes pod and deployment logs described in [Observability](/observability).
+
 ### I cannot launch Kaizen
 
-Check the deployment status shown in the workroom detail panel. If the app does not become ready, review platform deployment logs and telemetry in [Observability](/observability).
+Check the deployment status shown in the workroom detail panel. If the app does not become ready, capture the deployment status, then review the Workroom Manager or Kaizen deployment logs in the UI log viewer. If the failure is still unclear, review platform deployment logs and telemetry in [Observability](/observability).
 
 ### I cannot add or remove members
 
@@ -140,7 +150,7 @@ Some environments only expose full roster details to owners. If you are not the 
 
 ### A workroom delete or edit failed
 
-Retry the operation once, then check deployment logs for the Workroom Manager app and any related platform errors. Include the workroom name, approximate time of failure, and any visible error message if you escalate the issue.
+Retry the operation once, then check deployment logs for the Workroom Manager app and any related platform errors. Look for errors near the time of the action, especially permission failures, lifecycle-state conflicts, or storage-related errors. Include the workroom name, approximate time of failure, and any visible error message if you escalate the issue.
 
 ## Learn More
 
