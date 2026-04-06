@@ -7,7 +7,7 @@ sidebar_label: Data Catalog
 
 Kamiwaza provides a centralized catalog for datasets, containers, and secrets. The catalog stores metadata, supports DataHub URNs, and is protected by access controls so only authorized users can view or change assets.
 
-Kamiwaza Lite providers an internal homomorphic 
+In current deployments, the catalog is the standard place to reference shared data assets and secret metadata across models, connectors, applications, and tools.
 
 ## Core entities
 
@@ -20,7 +20,7 @@ Containers are logical groupings of datasets (for example, a project or domain).
 ### Secrets
 Secrets are stored as catalog entities with encrypted values. Secret *metadata* is accessible via the API, but secret *values are never returned* through HTTP endpoints.
 
-Secrets are encrypted with a dual DEK/KEK scheme, with support for secret rotation. 
+Secrets are encrypted with a dual DEK/KEK scheme, with support for secret rotation.
 
 ## URN handling (DataHub)
 
@@ -87,6 +87,5 @@ DELETE /api/catalog/secrets/by-urn?urn={full_urn}
 ## Best practices
 
 - Prefer `/v2/{urn}` or `/by-urn` endpoints for any URN that might contain `/` characters.
-- Use secrets for credentials instead of embedding them in connector definitions or templates.
+- Use secrets for credentials instead of embedding them in connector definitions, templates, or external endpoint payloads.
 - Align dataset URNs with your DataHub naming conventions so discovery, lineage, and governance are consistent across tools.
-

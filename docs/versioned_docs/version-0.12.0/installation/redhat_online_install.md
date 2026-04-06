@@ -164,12 +164,9 @@ https://your-configured-domain-or-ip
 
 ## Step 6: Create Users
 
-After installation, you'll need to create user accounts to access Kamiwaza.
-```bash
-/opt/kamiwaza/kamiwaza/bin/kz-user add admin --email admin@company.com --roles admin --random --safe
-```
+After installation, create administrator and standard-user accounts through the identity provider or supported administrative workflow used by your deployment.
 
-**Note:** Passwords are displayed once and must be saved immediately. For bulk user creation and full documentation, see the [Security Admin Guide](../security/admin-guide#221-using-kz-user-cli-tool).
+Use the [Security Admin Guide](../security/admin-guide.md) for the recommended public-facing user-management model.
 
 ---
 

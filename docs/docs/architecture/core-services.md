@@ -6,7 +6,7 @@ sidebar_position: 3
 
 # Core Services
 
-Kamiwaza's backend is built as a collection of specialized microservices, each handling a specific aspect of the AI platform's functionality. These services work together to provide a comprehensive AI orchestration platform that manages the entire lifecycle of AI models and applications.
+Kamiwaza's backend is built as a collection of specialized services, each handling a specific aspect of platform behavior. Together they support model serving, governed data access, application deployment, workrooms, and security controls.
 
 ## Service Architecture
 
@@ -20,7 +20,7 @@ service/
 └── services.py # Business logic
 ```
 
-This modular approach ensures:
+This modular approach helps with:
 - **Separation of concerns** - Each service has a clear, focused responsibility
 - **Scalability** - Services can be scaled independently based on demand
 - **Maintainability** - Changes to one service don't affect others
@@ -29,45 +29,48 @@ This modular approach ensures:
 ## Core Services Overview
 
 ### 🤖 Models Service
-Manages the complete lifecycle of AI models including deployment, versioning, and serving. This service handles everything from model downloads to runtime management, supporting multiple serving engines like llama.cpp, vLLM, and Transformers.
+Manages the lifecycle of AI models including registration, download, deployment, and serving. It coordinates runtime selection and exposes model APIs through the platform routing layer.
 
-### 🔍 Vector Database Service
-Provides an abstraction layer over vector databases like Milvus and Qdrant, enabling efficient storage and retrieval of high-dimensional embeddings. Supports hybrid search, metadata filtering, and performance optimization.
+### 📄 Catalog Service
+Provides metadata-backed management for datasets, containers, and secrets. It enables shared references across models, connectors, apps, tools, and retrieval workflows.
 
-### 📄 Retrieval Service
-Powers RAG (Retrieval-Augmented Generation) pipelines and document search capabilities. Combines vector similarity with keyword search, provides reranking, and supports advanced query processing for contextual AI applications.
+### 📥 Ingestion and DDE Services
+Handle connector configuration, scheduled ingestion, and document indexing flows. These services are the bridge between external data sources and retrieval-ready content inside the platform.
 
-### 🧠 Embedding Service
-Handles text embedding generation and storage, converting text into numerical representations for vector similarity searches. Supports multiple embedding models, batch processing, and intelligent caching strategies.
+### 🔎 Retrieval Service
+Provides job-based access to dataset content for downstream search, analysis, and RAG workflows. It supports inline, streaming, and gRPC-style retrieval patterns where available.
+
+### 🧠 Embedding and Vector Services
+Handle embedding generation and vector-backed retrieval infrastructure used by semantic search and retrieval workflows.
 
 ### 🔐 Authentication Service
-Manages JWT-based authentication and integrates with various identity providers to secure platform access. Supports OAuth, SAML, multi-factor authentication, and role-based access control.
+Manages authenticated sessions, identity-provider integration, and access control enforcement for platform APIs.
 
-### 📊 Catalog Service
-Integrates with Acryl DataHub to provide data cataloging and metadata management capabilities. Enables data discovery, lineage tracking, and governance across the AI platform.
+### 🧱 Workroom Services
+Support collaborative workspaces, presence information, shared context, and workroom-specific access behavior.
 
-### 📈 Activity Service
-Provides comprehensive audit logging and metrics collection for monitoring platform usage and performance. Tracks user actions, system events, and provides real-time dashboards and alerting.
+### 📈 Logger and Audit Services
+Provide deployment logs, operational events, and audit evidence used for troubleshooting and security review.
 
-### 💬 Prompts Service
-Manages a centralized library of prompt templates for consistent AI interactions across applications. Supports versioning, A/B testing, and performance tracking for prompt optimization workflows.
+### 🌱 Garden Services
+Power App Garden and Tool Shed deployment workflows, including template resolution, managed runtime configuration, and routed access to launched workloads.
 
 ## Service Communication
 
 All services communicate through:
 - **FastAPI routers** for HTTP API endpoints
-- **Ray Serve** for distributed computing and scaling
-- **Shared databases** (CockroachDB, etcd) for state management
-- **Message queues** for asynchronous processing
+- **Ray and serving runtimes** for distributed model execution
+- **Shared platform stores** such as Postgres, SQLite in lite mode, and etcd
+- **Ingress and routing layers** for user-facing access to models, apps, and tools
 
 ## Integration Patterns
 
 Services are designed to work together seamlessly:
-- **Models + Embedding** - Deploy embedding models for text vectorization
-- **Embedding + VectorDB** - Store and retrieve high-dimensional embeddings
-- **VectorDB + Retrieval** - Power semantic search and RAG pipelines
-- **Retrieval + Prompts** - Combine context retrieval with optimized prompts
-- **Activity + All Services** - Monitor and log all platform interactions
+- **Models + Gardens** - Expose deployed models to applications and tools through managed template variables
+- **Ingestion + Catalog + Retrieval** - Bring external data into the platform and make it queryable
+- **Catalog + Secrets + External Endpoints** - Reuse governed secret references across integrations
+- **Auth + ReBAC + Service APIs** - Enforce the correct user and tenant boundaries across platform workflows
+- **Logger + All Services** - Monitor and troubleshoot platform interactions
 
 ## Next Steps
 

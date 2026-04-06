@@ -1,6 +1,6 @@
 # App Garden
 
-App Garden lets you browse, deploy, and manage containerized applications from a curated catalog—all from the Kamiwaza UI. Apps are packaged with Docker Compose and deploy in a few clicks with sensible defaults.
+App Garden lets you browse, deploy, and manage curated applications from the Kamiwaza UI. Applications are launched through the platform's managed deployment flow and exposed through the same authenticated routing model used elsewhere in Kamiwaza.
 
 ## What is App Garden?
 
@@ -11,8 +11,8 @@ For documentation on specific apps available in the App Garden, please check the
 ## Key Features
 
 - **One‑click deploy**: Launch apps directly from the catalog
-- **Automatic routing**: Each app gets a stable URL via the built‑in load balancer
-- **Cross‑platform**: Works on macOS, Windows, and Linux
+- **Automatic routing**: Each app gets a stable HTTPS URL through the platform gateway
+- **Browser-based access**: Users can open deployed apps directly from the Kamiwaza UI
 - **AI‑ready**: Apps can automatically connect to your deployed models (OpenAI‑compatible)
 - **Simple lifecycle**: Start, stop, and remove from the UI
 - **Remote catalog sync**: Pull templates from the remote catalog with version filtering
@@ -43,14 +43,14 @@ Tips:
 
 ## Remote template catalog
 
-App Garden templates can sync from a remote catalog. Administrators can choose the catalog stage (LOCAL, DEV, STAGE, PROD) and refresh the catalog. The PROD stage is the default; the LOCAL stage is also available for internal app distribution.
+App Garden templates can sync from a remote catalog. Administrators can choose the approved catalog source for their environment and refresh the catalog when new templates are published.
 
 ## Template variable substitution
 
 Template environment variables can reference routing-aware values. Examples include:
 
-- `{openai_base_url}`: legacy port-based OpenAI base URL (no trailing `/v1`)
-- `{openai_path_base_url}`: path-based OpenAI base URL (no trailing `/v1`)
+- `{openai_base_url}`: the OpenAI-compatible base URL selected by the platform for the model, typically path-based in current deployments (no trailing `/v1`)
+- `{openai_path_base_url}`: the explicit path-based OpenAI base URL (no trailing `/v1`)
 - `{model_path_url}`: full HTTPS URL to the selected model (path-based)
 - `{app_path_url}`: full HTTPS URL to the app (path-based)
 
@@ -80,7 +80,7 @@ When deploying an app, you can enable **Ephemeral session** mode. This automatic
 This is useful for demo environments or when you want automatic cleanup of test deployments.
 
 :::tip Administrator Configuration
-Administrators can force all deployments to be ephemeral by setting `KAMIWAZA_EPHEMERAL_EXTENSIONS=true`. See the [Administrator Guide](security/admin-guide#57-ephemeral-sessions-for-app-garden) for details.
+Administrators can force all deployments to be ephemeral by setting `KAMIWAZA_EPHEMERAL_EXTENSIONS=true`. See the [Administrator Guide](security/admin-guide) for details.
 :::
 
 ## Session tokens for apps

@@ -5,7 +5,7 @@ sidebar_label: Tool Shed
 
 # Tool Shed
 
-Tool Shed lets you deploy and manage tool servers from container images or templates. It is designed for tool-enabled apps and agent workflows that need dedicated endpoints.
+Tool Shed lets you deploy and manage tool servers from supported container images or curated templates. It is designed for tool-enabled applications and agent workflows that need dedicated, platform-managed endpoints.
 
 Kamiwaza typically leverages Model Context Protocol (MCP) servers to provide tools to agentic workflows via these.
 
@@ -13,7 +13,7 @@ For documentation on specific tools available in the Tool Shed, please check the
 
 ## What you can do
 
-- Deploy a tool server from a Docker image
+- Deploy a tool server from a container image
 - Deploy from a template in the remote catalog
 - List, inspect, and stop tool deployments
 - Reuse the same remote template catalog used by App Garden
@@ -46,6 +46,5 @@ These endpoints are available behind the standard API gateway:
 
 ## Notes
 
-- Tool deployments get stable URLs and integrate with the same routing system as models and apps.
+- Tool deployments get stable HTTPS URLs and integrate with the same routing system as models and apps.
 - Use secrets from the Data Catalog for any sensitive configuration values.
-

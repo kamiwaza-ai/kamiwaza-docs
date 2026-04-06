@@ -4,84 +4,101 @@ sidebar_position: 1
 
 # Platform Architecture Overview
 
-Kamiwaza is a modular, multi-layered platform designed for scalability, flexibility, and enterprise-grade performance. This document provides a high-level overview of its key architectural components and the technologies that power them.
+Kamiwaza is a Kubernetes-based AI platform that combines model serving, governed data access, application deployment, and security controls behind a single customer-facing domain. This page provides a high-level view of the current architecture used in supported deployments.
 
 ## System Architecture Diagram
 
-The diagram below illustrates the layered architecture of the Kamiwaza platform, from the underlying infrastructure to the user-facing applications. Each layer provides a distinct set of capabilities, creating a robust and maintainable system.
-
 ```mermaid
 flowchart BT
-    subgraph AppLayer[Application Layer]
-        direction LR
-        Frontend[Kamiwaza Frontend]
-        ClientSDK[Client SDK]
-        AppGarden[App Garden]
+    subgraph Experience[User Experience]
+        Frontend[Kamiwaza Web UI]
+        SDK[SDK and API Clients]
+        Gardens[App Garden and Tool Shed]
     end
 
-    subgraph KamiwazaServices[Kamiwaza Services Layer]
-        direction LR
-        FastAPI[FastAPI Gateway]
-        subgraph Services[Microservices]
-            Auth[Authentication]
-            ModelRepo[Model Repository]
-            ModelServe[Model Serving]
-            VectorDB[Vector Databases]
-            Catalog[Data Catalog]
-            More[...]
-        end
-        FastAPI --> Services
+    subgraph Services[Platform Services]
+        Gateway[API and Auth Gateway]
+        Models[Model and Serving Services]
+        Data[DDE, Retrieval, and Catalog]
+        Workrooms[Workrooms and Collaboration]
+        Logger[Logger and Audit Services]
     end
 
-    subgraph CoreServices[Core Infrastructure Services]
-        direction LR
-        Traefik[Traefik Router]
-        DB[(CockroachDB)]
-        ETCD[etcd Cluster]
+    subgraph Platform[Shared Platform Layer]
+        Routing[Traefik or Istio Ingress]
+        IdP[Identity Provider]
+        Postgres[(Postgres or SQLite in lite mode)]
+        Etcd[(etcd)]
+        DataHub[DataHub and Catalog Services]
+        Storage[Object Storage]
     end
 
-    subgraph Foundation[Orchestration & Compute Foundation]
-        direction LR
-        Ray[Ray Serve]
-        Swarm[Docker Swarm]
-        HW[Hardware / Cloud]
+    subgraph Compute[Compute and Orchestration]
+        Kubernetes[Kubernetes]
+        Ray[Ray and Serving Runtimes]
+        Extensions[Extension Operator]
+        Nodes[CPU and GPU Nodes]
     end
 
-    AppLayer -- Consumes --> KamiwazaServices
-    KamiwazaServices -- Built On --> CoreServices
-    CoreServices -- Runs On --> Foundation
+    Experience --> Services
+    Services --> Platform
+    Platform --> Compute
 ```
 
 ## Architecture Layers
 
-#### 🌐 Application Layer
-This is where users and developers interact with Kamiwaza.
--   **Kamiwaza Frontend**: The primary web-based user interface for managing the platform.
--   **Client SDK**: A Python SDK for programmatically interacting with Kamiwaza's APIs.
--   **App Garden**: A platform for discovering and deploying pre-packaged AI applications and services.
+### Experience layer
 
-#### 🎯 Kamiwaza Services Layer
-The core business logic of the platform, exposed via a central API gateway.
--   **FastAPI Gateway**: A high-performance API gateway that coordinates all requests.
--   **Microservices**: A suite of specialized services handling concerns like Authentication, Model Management, Vector DB abstraction (Milvus, Qdrant), and more.
+This is how users and client applications interact with Kamiwaza.
 
-#### 🛠️ Core Infrastructure Services
-The essential backend services that support the entire platform.
--   **Traefik Router**: A powerful reverse proxy and load balancer that manages all inbound network traffic and provides SSL termination.
--   **CockroachDB**: The primary database—a distributed, resilient SQL database for all application data.
--   **etcd**: A distributed key-value store used for service discovery and critical configuration management across the cluster.
+- **Kamiwaza Web UI** for administration, models, workrooms, apps, tools, and logs
+- **SDK and API clients** for programmatic access
+- **App Garden and Tool Shed** for launching applications and tool servers behind managed routes
 
-#### 🔧 Orchestration & Compute Foundation
-The base layer that provides the compute resources and orchestration to run everything else.
--   **Ray Serve**: A scalable model-serving framework used for deploying and managing AI models.
--   **Docker Swarm**: The container orchestration engine that manages the lifecycle of all containerized services.
--   **Hardware / Cloud**: The physical servers or cloud instances (e.g., AWS, GCP, Azure) that provide the underlying CPU and GPU resources.
+### Services layer
+
+This layer contains the platform APIs and business logic.
+
+- **API and Auth Gateway** for authenticated access, routing, and policy enforcement
+- **Model and Serving Services** for model lifecycle and inference
+- **DDE, Retrieval, and Catalog** for ingestion, discovery, secret references, and retrieval flows
+- **Workrooms and Collaboration** for shared workspace functionality
+- **Logger and Audit Services** for runtime troubleshooting and security evidence
+
+### Shared platform layer
+
+This layer provides the shared services the platform depends on.
+
+- **Traefik or Istio** for ingress and routing, depending on environment
+- **Identity provider integration** for authenticated deployments
+- **Postgres** as the standard persistent database in auth-enabled deployments
+- **SQLite** as a reduced-scope database option in lite mode
+- **etcd** for cluster coordination and runtime configuration
+- **DataHub and related catalog services** for metadata-backed catalog workflows
+- **Object storage** for uploaded files, workroom context, and related assets
+
+### Compute and orchestration layer
+
+This layer runs the workloads that power the platform.
+
+- **Kubernetes** as the primary deployment target
+- **Ray and serving runtimes** for model execution and distributed work
+- **Extension Operator** for managed application and tool deployment workflows
+- **CPU and GPU nodes** that host inference and platform workloads
 
 ## Technology Stack
 
-| Category          | Technologies                                     |
-| ----------------- | ------------------------------------------------ |
-| **Backend**       | Python 3.10, FastAPI, Ray, SQLAlchemy, Pydantic  |
-| **Frontend**      | React 18, Material-UI, Tailwind CSS, Axios       |
-| **Databases**     | CockroachDB, Milvus, Qdrant, etcd                |
-| **Infrastructure**| Docker Swarm, Traefik, DataHub                   |
+| Category | Technologies |
+| --- | --- |
+| Backend | Python, FastAPI, Ray |
+| Frontend | React |
+| Data and metadata | Postgres, SQLite in lite mode, etcd, DataHub |
+| Routing and ingress | Traefik, optional Istio |
+| Deployment | Kubernetes, Helm |
+
+## Design Principles
+
+- **Single customer-facing domain** with path-based runtime routing as the standard deployment model
+- **Security by configuration** through identity integration, access controls, consent, and auditability
+- **Composable services** so model serving, retrieval, catalog, apps, and tools can evolve independently
+- **Operational visibility** through deployment logs, cluster logs, and OTEL-compatible export paths

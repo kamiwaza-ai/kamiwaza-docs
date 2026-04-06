@@ -6,22 +6,22 @@ Kamiwaza’s Distributed Data Engine (DDE) aligns unstructured and tabular conte
 
 ## Platform assumptions
 
-- The current Kamiwaza platform build is installed with the control plane available over HTTPS.
+- The current Kamiwaza platform is deployed and available over HTTPS.
 - You have administrative access to configure connectors and manage secrets.
 - Target storage (Kamiwaza vector database or an external store) is reachable from the ingestion workers.
 
 ## Connector workflow
 
-1. **Create a connector** – Choose the source system (S3, SharePoint, file upload, etc.) and supply the required fields. Connector forms mirror the parameters described in the internal knowledge base; public documentation lists only the high-level values.
-2. **Secure credentials** – Provide either inline credentials or reference an existing Kamiwaza secret. Secrets are encrypted at rest and can be rotated without recreating the connector.
+1. **Create a connector** – Choose the source system (S3, SharePoint, file upload, and so on) and supply the required fields through the UI or supported API.
+2. **Secure credentials** – Prefer referencing an existing Kamiwaza secret. Secrets are encrypted at rest and can be rotated without recreating the connector.
 3. **Schedule ingestion** – Select one-time or recurring runs. DDE batches updates to minimize load on the source system.
-4. **Monitor jobs** – Each run emits status events and logging metadata that flow into the standard observability dashboards.
+4. **Monitor jobs** – Each run emits status events and logging metadata that flow into the standard Kamiwaza logging and observability paths.
 
 ## Supported sources
 
 | Source | Notes |
 |--------|-------|
-| File | Local or network-accessible files. |
+| File | Files accessible to the deployment through supported upload or storage paths. |
 | Amazon S3 | Uses access key/secret with read permission on the target bucket/prefix. |
 | Kafka | Streams and batch pulls for topic-backed ingestion. |
 | Postgres | Reads structured data for catalog and retrieval. |
@@ -67,4 +67,4 @@ Default rate limits are controlled by `DDE_DOCUMENT_RATE_LIMIT` (requests per wi
 - Keep connector credentials scoped to read-only roles where possible.
 - Use the ReBAC validation checklist to ensure only authorized administrators can create or run connectors.
 - Combine DDE jobs with Kamiwaza’s retrieval pipelines to expose fresh content in RAG applications.
-- For connector-specific tuning (chunking, file size limits), refer your administrators to the internal runbooks provided with your support agreement.
+- For connector-specific tuning such as chunking and file-size limits, use the supported product configuration options and deployment guidance available for your environment.

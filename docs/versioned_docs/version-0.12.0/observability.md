@@ -1,225 +1,179 @@
 # Observability Guide
 
-Kamiwaza provides a comprehensive observability stack designed to give administrators visibility into the system's health, performance, and security. This guide covers how to access logs, monitor system health, and integrate Kamiwaza with your existing enterprise observability platforms.
+Kamiwaza provides several ways to inspect deployment health, runtime errors, and security-relevant activity. In current customer deployments, the primary observability paths are the UI log viewer, Kubernetes-native logs, and optional OpenTelemetry forwarding into your existing monitoring platform.
 
 ## Overview
 
-Kamiwaza's observability architecture is built on open standards:
-- **Structured Logging**: All services emit JSON-structured logs.
-- **OpenTelemetry (OTEL)**: Telemetry data is collected and routed via a standard OTEL Collector (In preview).
-- **Trace Correlation**: Requests are traced across distributed services (API → Model Serving → Engine).
+Kamiwaza observability is built around three layers:
 
-By default, Kamiwaza stores logs locally and can optionally aggregate them into a local Grafana/Loki stack or forward them to external systems like Splunk, Datadog, or Dynatrace.
+- **Deployment logs** surfaced through the Kamiwaza UI for models, apps, and tools
+- **Platform logs** available through Kubernetes and your cluster logging workflow
+- **OpenTelemetry (OTEL)** for exporting telemetry to external systems
 
----
+Current public guidance assumes a Kubernetes deployment and does not rely on host-local log directories or bundled Grafana/Loki services.
 
-## Quick Access to Logs
+## Start Here
 
-For immediate troubleshooting, logs are available in the local filesystem.
+For most troubleshooting:
 
-### Local Log Files
-All logs are stored in the `$KAMIWAZA_ROOT/logs` directory by default.
+1. use the Kamiwaza UI log viewer first
+2. check Kubernetes pod health and container logs if the issue is platform-wide
+3. review any external OTEL destination if your environment forwards logs or traces out of cluster
 
-| File | Content | Format | Use For |
-|------|---------|--------|---------|
-| `application.jsonl` | All application events, errors, and business logic | JSON Lines | Programmatic analysis, OTEL ingestion |
-| `application.log` | Human-readable version of application events | Text | Quick manual reading |
-| `audit-events.jsonl` | Security and compliance events | JSON Lines | Security auditing |
-| `kamiwazad.log` | Service orchestration and startup logs | Text | Troubleshooting startup failures |
-| `kamiwazad-core.log` | Stdout/Stderr from core services | Text | Debugging crashes or unhandled errors |
-| `kamiwazad-containers.log` | Container orchestration logs | Text | Troubleshooting container lifecycle issues |
+## UI Log Viewer
 
----
+Kamiwaza includes a logger service that powers the UI log viewer and deployment log APIs.
 
-## Logger Service (Deployment Logs)
+Common endpoints behind the standard API gateway include:
 
-Kamiwaza also exposes a logger service that powers the UI log viewer and automated pattern detection. This service centralizes logs for model deployments, App Garden deployments, and Tool Garden deployments.
+- `GET /api/logger/deployments/all` - list deployment logs
+- `GET /api/logger/deployments/type/{type}` - filter by deployment type
+- `GET /api/logger/deployments/{type}/{id}` - fetch log content
+- `GET /api/logger/deployments/{type}/{id}/patterns` - view detected error patterns
+- `DELETE /api/logger/deployments/{type}/{id}?confirm=true` - delete a deployment log file
+- `DELETE /api/logger/cleanup?days_old=30&dry_run=true` - preview or remove older logs
 
-Common endpoints (via the API gateway):
+Use the log viewer in the UI when you want to:
 
-- `GET /api/logger/deployments/all` – list all deployment logs
-- `GET /api/logger/deployments/type/{type}` – filter by deployment type
-- `GET /api/logger/deployments/{type}/{id}` – fetch log content
-- `GET /api/logger/deployments/{type}/{id}/patterns` – error pattern analysis
-- `DELETE /api/logger/deployments/{type}/{id}?confirm=true` – delete a log file
-- `DELETE /api/logger/cleanup?days_old=30&dry_run=true` – cleanup old logs
+- inspect model startup failures
+- review app or tool launch problems
+- check for common error signatures such as out-of-memory or runtime crashes
 
-Use the log viewer in the UI for quick pattern detection (OOM, CUDA errors, startup failures) without manually tailing files.
+## Kubernetes-Level Troubleshooting
 
-(Note: for the bold, this also makes engine deployment logs available to agentic processes.)
+For cluster administrators, platform issues are usually easiest to diagnose through Kubernetes.
 
----
+Typical checks include:
+
+- pod status in the Kamiwaza namespace
+- container restart counts
+- recent pod logs for the affected service
+- ingress or routing behavior for the public domain
+
+Use your environment's standard Kubernetes and platform tooling to inspect those signals. If your organization centralizes Kubernetes logs in another system, treat that system as the source of truth for cluster-level troubleshooting.
 
 ## OpenTelemetry Integration
 
-Kamiwaza uses an OpenTelemetry Collector to route telemetry data. This allows you to integrate with any OTLP-compatible backend without modifying the application code.
+Kamiwaza supports OpenTelemetry-based export so customer environments can forward telemetry to existing monitoring systems.
 
-:::note Preview
-OTEL support is in preview. Trace context propagation across Ray Serve calls and inference engine instrumentation are still in development. Configuration and behavior may change in future releases.
-:::
+Typical uses include:
 
-### Enabling OpenTelemetry
-OTEL is disabled by default. You can enable it via environment variables in your `env.sh` or runtime configuration:
+- forwarding logs and traces to a central observability platform
+- correlating platform events with the rest of your cluster telemetry
+- retaining security and troubleshooting data outside the application UI
 
-```bash
-export KAMIWAZA_OTEL_ENABLED=true
-```
+OTEL is controlled through deployment configuration rather than manual edits inside running containers.
 
-### TLS Configuration
+Common settings include:
 
-By default, Kamiwaza's OTEL exporter uses secure (TLS) connections to communicate with the OTEL Collector. For local development or deployments where the collector runs on the same host without TLS configured, you may need to disable TLS.
+- `KAMIWAZA_OTEL_ENABLED`
+- `CUSTOMER_OTLP_ENDPOINT`
+- `CUSTOMER_OTLP_AUTH`
+- `OTEL_EXPORTER_INSECURE`
 
-The `OTEL_EXPORTER_INSECURE` environment variable controls this behavior:
+Best practice:
 
-| Value | Behavior | Use Case |
-|-------|----------|----------|
-| `false` (default) | TLS-encrypted gRPC | Production, collector with TLS enabled |
-| `true` | Plain gRPC without TLS | Local/same-host collector, development |
+- enable OTEL through deployment values or ConfigMaps
+- keep OTLP credentials in Kubernetes Secrets or your approved secret manager
+- use TLS-enabled collectors for production environments whenever possible
 
-**To disable TLS for local development:**
-```bash
-export OTEL_EXPORTER_INSECURE=true
-```
+## External Observability Platforms
 
-:::warning
-When using `OTEL_EXPORTER_INSECURE=true`, telemetry data is transmitted unencrypted. Only use this setting when the collector is on the same host or within a trusted network.
-:::
+Kamiwaza can be integrated with OTLP-compatible platforms such as Splunk, Datadog, Dynatrace, or another OpenTelemetry pipeline managed by your organization.
 
-### Connecting to External Systems
-To forward logs and traces to your enterprise observability platform (e.g., Splunk, Datadog, New Relic), configure the `CUSTOMER_OTLP_ENDPOINT` variable.
+When using an external destination, validate:
 
-**Example Configuration:**
-```bash
-# In your env.sh or deployment config
-export CUSTOMER_OTLP_ENDPOINT="https://otel-gateway.your-company.com:4317"
-export CUSTOMER_OTLP_AUTH="Bearer your-auth-token"
-```
+- the endpoint is reachable from the cluster
+- credentials are present and current
+- exported telemetry appears in the expected tenant, index, or project
 
-Once configured, the internal OTEL Collector will duplicate the telemetry stream and send it to your specified endpoint while maintaining local logs.
+## Log Types
 
----
+The platform emits several categories of logs:
 
-## Grafana & Loki (Built-in)
+### Application logs
 
-:::note Prerequisite
-Grafana and Loki require OpenTelemetry to be enabled. Ensure you have set `KAMIWAZA_OTEL_ENABLED=true` before enabling the Loki stack.
-:::
+Used for API operations, business logic, and service errors.
 
-If enabled (via `KAMIWAZA_LOKI_ENABLED=true`), you can query logs using the bundled Grafana interface.
+Typical examples:
 
-- **URL**: `http://localhost:3030`
-- **Default User**: `admin`
-- **Default Password**: `kamiwaza` (or set via `GRAFANA_ADMIN_PASSWORD`)
+- model deployment failures
+- connector execution errors
+- service exceptions
 
-To view logs:
-1. Log in to Grafana.
-2. Click **Explore** (compass icon).
-3. Select **Loki** as the data source.
-4. Run a query, e.g., `{service_name=~"kamiwaza.*"}`.
+### Audit and security logs
 
----
+Used for security-sensitive operations and administrative actions.
 
-## Syslog Integration
+Typical examples:
 
-For legacy system integration, Kamiwaza can send structured logs to the system's local syslog daemon.
+- authentication events
+- access denials
+- privileged operations
 
-- **Facility**: `local5` (default)
-- **Configuration**: Controlled via `KAMIWAZA_DISABLE_SYSLOG`.
+### Deployment logs
 
-To enable syslog forwarding:
-```bash
-export KAMIWAZA_DISABLE_SYSLOG=false
-```
+Used for model, app, and tool runtime troubleshooting.
 
-To disable it (often default in development environments to avoid noise):
-```bash
-export KAMIWAZA_DISABLE_SYSLOG=true
-```
+Typical examples:
 
----
+- engine startup output
+- container stderr or stdout
+- launch-time readiness failures
 
-## Log Structure & Types
+### Ingress and access logs
 
-Kamiwaza generates two primary types of logs:
+Used for request-level routing and gateway debugging.
 
-### 1. Application Logs
-Contains business logic, API operations, and errors.
-- **Location**: `application.jsonl`
-- **Key Fields**:
-  - `level`: INFO, WARNING, ERROR
-  - `service`: The microservice name (e.g., `kamiwaza.serving`)
-  - `trace_id`: Correlation ID for distributed tracing
-  - `message`: Human-readable description
+Typical examples:
 
-**Example:**
-```json
-{
-  "timestamp": "2025-01-09T10:00:00Z",
-  "level": "INFO",
-  "service": "serving",
-  "message": "Model deployed successfully",
-  "model_id": "llama-3.1-8b",
-  "trace_id": "abc123xyz"
-}
-```
-
-### 2. Access Logs
-Contains HTTP request/response details from the API gateway.
-- **Location**: `kamiwaza/traefik/access.log`
-- **Key Fields**: Method, Path, Status Code, Duration, User Agent.
-
----
+- upstream routing errors
+- unexpected status codes
+- repeated auth or callback failures
 
 ## Troubleshooting Common Issues
 
-### Service Won't Start
-Check the process management logs first:
-```bash
-tail -f $KAMIWAZA_ROOT/logs/kamiwazad.log
-```
+### A model, app, or tool fails to start
 
-### API Errors
-Check the application logs for stack traces and error details:
-```bash
-grep "ERROR" $KAMIWAZA_ROOT/logs/application.log
-```
+- start with the UI log viewer for that deployment
+- look for detected patterns such as out-of-memory, startup timeout, or container exit
+- if the problem affects multiple deployments, check Kubernetes pod status and cluster logs
 
-### Missing Logs in External System
-1. Verify `KAMIWAZA_OTEL_ENABLED=true`.
-2. Check the OTEL Collector logs for connection errors:
-   ```bash
-   docker logs kamiwaza-otel-collector
-   ```
-3. Ensure your `CUSTOMER_OTLP_ENDPOINT` is reachable from the Kamiwaza host.
+### A service is reachable but behaving incorrectly
 
-### OTEL Export Failures (StatusCode.UNAVAILABLE)
-If you see errors like `Failed to export metrics to localhost:4317, error code: StatusCode.UNAVAILABLE`:
+- inspect application logs for the affected service
+- compare the failing request path against the expected routed URL
+- verify the deployment still matches the intended configuration
 
-1. **Check TLS settings**: Ensure `OTEL_EXPORTER_INSECURE` matches your collector configuration.
-   - If collector has no TLS: `export OTEL_EXPORTER_INSECURE=true`
-   - If collector has TLS: `export OTEL_EXPORTER_INSECURE=false`
-2. **Verify the collector is running**:
-   ```bash
-   docker ps | grep otel-collector
-   ```
-3. **Check collector health**:
-   ```bash
-   curl http://localhost:13133/health
-   ```
+### External OTEL destination is missing data
 
----
+- confirm OTEL is enabled in the deployment
+- verify the configured OTLP endpoint and auth settings
+- inspect collector or exporter logs in the cluster
+- confirm the destination platform is receiving data for the correct environment
 
-## Environment Variables Reference
+### Authentication or access issues need correlation
 
-Key variables for configuring observability:
+- review security and audit logs
+- confirm the request path, user context, and deny behavior
+- use the security validation docs when the issue is tied to ReBAC or identity setup
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `KAMIWAZA_OTEL_ENABLED` | `false` | Master switch for OpenTelemetry. |
-| `OTEL_EXPORTER_INSECURE` | `false` | Set to `true` to disable TLS for local/development collectors. |
-| `KAMIWAZA_LOKI_ENABLED` | `false` | Enables the local Loki/Grafana stack. Requires OTEL to be enabled. |
-| `KAMIWAZA_LOG_LEVEL` | `INFO` | Logging verbosity (DEBUG, INFO, WARNING, ERROR). |
-| `KAMIWAZA_LOG_DIR` | `$KAMIWAZA_ROOT/logs` | Directory where local log files are written. |
-| `KAMIWAZA_DISABLE_SYSLOG` | Profile-driven | Controls forwarding to system syslog. |
-| `CUSTOMER_OTLP_ENDPOINT` | - | External OTLP endpoint for exporting telemetry. |
-| `CUSTOMER_OTLP_AUTH` | - | Authentication header for the external endpoint. |
+## Configuration Reference
+
+Common observability-related settings include:
+
+| Variable | Purpose |
+| --- | --- |
+| `KAMIWAZA_OTEL_ENABLED` | Enables OTEL export paths |
+| `CUSTOMER_OTLP_ENDPOINT` | External OTLP destination |
+| `CUSTOMER_OTLP_AUTH` | Auth header or token for the external OTLP destination |
+| `OTEL_EXPORTER_INSECURE` | Allows insecure OTLP transport for narrowly scoped non-production cases |
+| `KAMIWAZA_DISABLE_SYSLOG` | Controls syslog forwarding where that compatibility mode is still in use |
+
+Manage these through deployment values, ConfigMaps, and Secrets, not through ad hoc edits on running containers.
+
+## Related Docs
+
+- [Quickstart](quickstart.md)
+- [Configuration Reference](configuration.md)
+- [Administrator Guide](security/admin-guide.md)

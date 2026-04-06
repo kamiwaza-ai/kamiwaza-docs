@@ -125,18 +125,20 @@ Deploy the model using engine name `aws_transcribe`:
 
 ```bash
 # Via API
-curl -X POST https://localhost/api/v1/serving/deploy_model \
+curl -X POST https://<your-domain>/api/v1/serving/deploy_model \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model_id": "<model-uuid>", "engine_name": "aws_transcribe"}'
 ```
+
+Use the customer-facing HTTPS hostname for your deployment rather than `localhost`.
 
 ## API Usage
 
 ### Transcribe Audio (Batch)
 
 ```bash
-curl -X POST "https://localhost/runtime/models/<deployment-id>/v1/audio/transcriptions" \
+curl -X POST "https://<your-domain>/runtime/models/<deployment-id>/v1/audio/transcriptions" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@recording.wav" \
   -F "response_format=json"
@@ -145,7 +147,7 @@ curl -X POST "https://localhost/runtime/models/<deployment-id>/v1/audio/transcri
 ### Transcribe Audio (Streaming)
 
 ```bash
-curl -X POST "https://localhost/runtime/models/<deployment-id>/v1/audio/transcriptions" \
+curl -X POST "https://<your-domain>/runtime/models/<deployment-id>/v1/audio/transcriptions" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@recording.pcm" \
   -F "stream=true" \
