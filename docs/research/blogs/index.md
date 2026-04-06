@@ -21,6 +21,7 @@ Qwen3.5-9B scores 88.1% on our KAMI agentic benchmark — a bracket previously r
 
 ---
 
+
 ### [Hallucination Resistance Holds at 64K and 128K Context](/research/blogs/hallucination-resistance-long-context)
 
 *JV Roig · February 18, 2026*
