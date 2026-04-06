@@ -91,6 +91,22 @@ You can edit:
 
 Owners can also delete a workroom from the same settings area. Deletion is permanent, so use it carefully.
 
+## Lifecycle Management
+
+The current Workroom Manager app exposes a limited set of lifecycle controls in the standard user workflow.
+
+Owners can currently:
+
+- review whether a workroom is temporary or persistent
+- see whether a workroom is active or in a read-only lifecycle state
+- delete a workroom from the settings panel
+
+The app also surfaces some usage-related signals during normal workroom management, including member counts, active-member counts, and active-session warnings when removing members.
+
+Archived, purging, deleting, and deleted states are recognized by the app and can disable editing or membership changes while the workroom is read-only.
+
+Archive, restore, lifecycle-summary, and export-bundle capabilities exist in the underlying Kamiwaza workroom APIs, but they are not currently exposed as a standard end-user workflow in the Workroom Manager app.
+
 ## Share a Workroom
 
 Open the workroom detail panel and choose **Manage Members** to control sharing.
