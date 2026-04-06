@@ -5,7 +5,7 @@ sidebar_position: 1
 # Serving Service
 
 ## Overview
-The Serving Service (`ServingService`) provides comprehensive model deployment and serving capabilities for the Kamiwaza AI Platform. Located in `kamiwaza_client/services/serving.py`, this service manages Ray cluster operations, model deployment, and inference requests.
+The Serving Service (`ServingService`) provides comprehensive model deployment and serving capabilities for the Kamiwaza AI Platform. Located in `kamiwaza_sdk/services/serving.py`, this service manages Ray cluster operations, model deployment, and inference requests.
 
 ## Key Features
 - Ray Service Management
@@ -33,24 +33,30 @@ ray_status = client.serving.get_status()
 
 ### Available Methods
 - `estimate_model_vram(model_id: UUID) -> int`: Estimate model VRAM requirements
-- `deploy_model(deployment: CreateModelDeployment) -> ModelDeployment`: Deploy a model
+- `deploy_model(model_id=None, repo_id=None, m_config_id=None, m_file_id=None, **kwargs) -> UUID | bool`: Deploy a model by model ID or repo ID
 - `list_deployments() -> List[ModelDeployment]`: List all deployments
 - `list_active_deployments() -> List[UIModelDeployment]`: List only active deployments with running instances
 - `get_deployment(deployment_id: UUID) -> ModelDeployment`: Get deployment details
-- `stop_deployment(deployment_id: UUID)`: Stop a deployment
+- `wait_for_deployment(deployment_id, ...) -> ModelDeployment`: Wait for a deployment to reach a desired state
+- `stop_deployment(deployment_id=None, repo_id=None, force=False)`: Stop a deployment by deployment ID or repo ID
 - `get_deployment_status(deployment_id: UUID) -> DeploymentStatus`: Get deployment status
 
 ```python
+from kamiwaza_sdk import KamiwazaClient
+
+client = KamiwazaClient("https://your-kamiwaza.example/api")
+
 # Estimate VRAM requirements
 vram_needed = client.serving.estimate_model_vram(model_id)
 
-# Deploy a model
-deployment = client.serving.deploy_model(CreateModelDeployment(
-    model_id=model_id,
-    name="my-deployment",
-    replicas=1,
-    max_concurrent_requests=4
-))
+# Deploy a model by repo ID
+deployment_id = client.serving.deploy_model(
+    repo_id="Qwen/Qwen3-0.6B-GGUF",
+    min_copies=1,
+)
+
+# Wait for the deployment to become ready
+deployment = client.serving.wait_for_deployment(deployment_id)
 
 # List all deployments
 deployments = client.serving.list_deployments()
@@ -70,7 +76,7 @@ active_deployments = client.serving.list_active_deployments()
 status = client.serving.get_deployment_status(deployment_id)
 
 # Stop deployment
-client.serving.stop_deployment(deployment_id)
+client.serving.stop_deployment(repo_id="Qwen/Qwen3-0.6B-GGUF")
 ```
 
 ## Model Instance Management
@@ -101,7 +107,7 @@ client.serving.load_model(deployment_id)
 The service includes built-in error handling for common scenarios:
 ```python
 try:
-    deployment = client.serving.deploy_model(deployment_config)
+    deployment_id = client.serving.deploy_model(repo_id="Qwen/Qwen3-0.6B-GGUF")
 except DeploymentError as e:
     print(f"Deployment failed: {e}")
 except ResourceError as e:

@@ -9,16 +9,18 @@ The Kamiwaza SDK provides a Python interface to interact with the Kamiwaza AI Pl
 ## Installation
 
 ```bash
-pip install kamiwaza-client
+pip install kamiwaza-sdk
 ```
+
+Install the package as `kamiwaza-sdk` and import it in Python as `kamiwaza_sdk`.
 
 ## Quick Start
 
 ```python
-from kamiwaza_client import KamiwazaClient
+from kamiwaza_sdk import KamiwazaClient
 
-# Initialize the client for local development
-client = KamiwazaClient("http://localhost:7777/api/")
+# Initialize the client for your Kamiwaza environment
+client = KamiwazaClient("https://your-kamiwaza.example/api")
 
 # List deployments
 deployments = client.serving.list_deployments()

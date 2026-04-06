@@ -6,29 +6,29 @@ try {
 } catch {
 	// Fallback when sync hasn't run (e.g., fresh clone without SDK repo)
 	serviceItems = [
-		"services/activity/README",
-		"services/apps/README",
-		"services/auth/README",
-		"services/authz/README",
-		"services/catalog/README",
-		"services/cluster/README",
-		"services/embedding/README",
-		"services/extensions/README",
-		"services/ingestion/README",
-		"services/lab/README",
-		"services/models/README",
-		"services/openai/README",
-		"services/retrieval/README",
-		"services/serving/README",
-		"services/skills/README",
-		"services/tools/README",
-		"services/vectordb/README",
+		"current/services/activity",
+		"current/services/apps",
+		"current/services/auth",
+		"current/services/authz",
+		"current/services/catalog",
+		"current/services/cluster",
+		"current/services/embedding",
+		"current/services/extensions",
+		"current/services/ingestion",
+		"current/services/lab",
+		"current/services/models",
+		"current/services/openai",
+		"current/services/retrieval",
+		"current/services/serving",
+		"current/services/skills",
+		"current/services/tools",
+		"current/services/vectordb",
 	];
 }
 
 const sidebars: SidebarsConfig = {
 	sdk: [
-		"index",
+		"intro",
 		{
 			type: "link",
 			label: "REST API Reference",

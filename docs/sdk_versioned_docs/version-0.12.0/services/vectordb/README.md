@@ -5,24 +5,29 @@ sidebar_position: 1
 # VectorDB Service
 
 ## Overview
-The VectorDB Service (`VectorDBService`) provides comprehensive vector database management functionality for the Kamiwaza AI Platform. Located in `kamiwaza_client/services/vectordb.py`, this service handles vector storage, retrieval, and similarity search operations.
+The VectorDB documentation covers the Kamiwaza SDK vector storage and retrieval workflows used by RAG applications. In the 0.12.0 SDK snapshot, vector operations are collection-oriented: you insert vectors and metadata into a named collection, then query that collection for similar content.
 
 ## Key Features
 - Vector Database Management
-- Vector Storage and Retrieval
+- Collection-based Vector Storage and Retrieval
 - Similarity Search
-- Simplified Vector Operations
+- Metadata-aware Vector Operations
 - Database Lifecycle Management
 
 ## Vector Database Management
 
 ### Available Methods
-- `create_vectordb(config: CreateVectorDB) -> VectorDB`: Create new vector database
-- `get_vectordbs() -> List[VectorDB]`: List all vector databases
+- `create_vectordb(...) -> VectorDB`: Create a vector database backend
+- `get_vectordbs() -> List[VectorDB]`: List registered vector databases
 - `get_vectordb(vectordb_id: UUID) -> VectorDB`: Get database details
-- `remove_vectordb(vectordb_id: UUID)`: Remove vector database
+- `remove_vectordb(vectordb_id: UUID)`: Remove a vector database
 
 ```python
+from kamiwaza_sdk import KamiwazaClient
+from kamiwaza_sdk.schemas.vectordb import CreateVectorDB
+
+client = KamiwazaClient("https://your-kamiwaza.example/api")
+
 # Create vector database
 vectordb = client.vectordb.create_vectordb(CreateVectorDB(
     name="my-vectors",
@@ -43,39 +48,35 @@ client.vectordb.remove_vectordb(vectordb_id)
 ## Vector Operations
 
 ### Available Methods
-- `insert_vectors(vectordb_id: UUID, vectors: List[Vector]) -> InsertResponse`: Insert vectors
-- `search_vectors(vectordb_id: UUID, query: List[float], k: int = 10) -> List[SearchResult]`: Search vectors
-- `insert(vectordb_id: UUID, data: Dict[str, Any]) -> InsertResponse`: Simplified vector insertion
-- `search(vectordb_id: UUID, query: str, k: int = 10) -> List[SearchResult]`: Simplified vector search
+- `insert(vectors, metadata, collection_name, field_list=None) -> InsertResponse`: Insert vectors into a collection
+- `search(query_vector, collection_name, limit=10, output_fields=None) -> List[SearchResult]`: Search a collection by vector similarity
+- `list_collections() -> List[str]`: List available collections
+- `drop_collection(collection_name) -> None`: Remove a collection
 
 ```python
-# Insert vectors
-response = client.vectordb.insert_vectors(
-    vectordb_id=db_id,
-    vectors=[
-        Vector(id="vec1", vector=[0.1, 0.2, 0.3], metadata={"text": "example"})
-    ]
-)
+vectors = [
+    [0.1, 0.2, 0.3],
+    [0.4, 0.5, 0.6],
+]
+metadata = [
+    {"source": "doc1.md", "offset": 0, "filename": "doc1.md"},
+    {"source": "doc2.md", "offset": 512, "filename": "doc2.md"},
+]
 
-# Search vectors
-results = client.vectordb.search_vectors(
-    vectordb_id=db_id,
-    query=[0.1, 0.2, 0.3],
-    k=5
-)
-
-# Simplified operations
-# Insert with automatic vector generation
+# Insert vectors into a collection
 response = client.vectordb.insert(
-    vectordb_id=db_id,
-    data={"text": "example text", "metadata": {"source": "doc1"}}
+    vectors=vectors,
+    metadata=metadata,
+    collection_name="documents",
+    field_list=[("filename", "str")]
 )
 
-# Search with automatic query vector generation
+# Search a collection by query vector
 results = client.vectordb.search(
-    vectordb_id=db_id,
-    query="example query",
-    k=5
+    query_vector=[0.1, 0.2, 0.3],
+    collection_name="documents",
+    limit=5,
+    output_fields=["source", "offset", "filename"]
 )
 ```
 
@@ -96,8 +97,8 @@ except APIError as e:
 1. Choose appropriate vector dimensions based on your embedding model
 2. Select the right similarity metric for your use case
 3. Use batch operations for better performance
-4. Include relevant metadata with vectors
-5. Clean up unused databases
-6. Use simplified operations when working with text data
+4. Include relevant metadata with vectors so retrieval results can be cited clearly
+5. Reuse stable collection names for each corpus or application
+6. Clean up unused collections and databases
 7. Monitor database size and performance
 8. Implement proper error handling for vector operations

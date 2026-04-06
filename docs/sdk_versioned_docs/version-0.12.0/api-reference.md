@@ -4,8 +4,6 @@ sidebar_position: 2
 
 # API Reference
 
-## # Documentation Todo List
-
 ## Authentication Service
 
 ### login_for_access_token
@@ -378,4 +376,3 @@ Create new secret
 
 ### flush_catalog
 Clear catalog data
-
