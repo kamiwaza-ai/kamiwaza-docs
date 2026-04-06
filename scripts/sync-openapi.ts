@@ -116,6 +116,24 @@ function getDocsVersion(): string {
 	}
 }
 
+function patchSpecForDocs(spec: any): void {
+	// ReDoc's sampler struggles with the union response on /embedding/chunk and
+	// emits noisy "allOf with array type" warnings during docs builds. Prefer the
+	// structured response shape in docs so the API reference renders cleanly.
+	const chunkResponseSchema =
+		spec?.paths?.["/embedding/chunk"]?.post?.responses?.["200"]?.content?.[
+			"application/json"
+		]?.schema;
+
+	if (chunkResponseSchema) {
+		spec.paths["/embedding/chunk"].post.responses["200"].content[
+			"application/json"
+		].schema = {
+			$ref: "#/components/schemas/ChunkResponse",
+		};
+	}
+}
+
 async function main() {
 	const args = process.argv.slice(2);
 	const generateFromPlatform = args.includes("--generate");
@@ -152,6 +170,8 @@ async function main() {
 	if (spec.info) {
 		spec.info.version = docsVersion;
 	}
+
+	patchSpecForDocs(spec);
 
 	const pathCount = Object.keys(spec.paths).length;
 	const schemaCount = Object.keys(spec.components?.schemas || {}).length;

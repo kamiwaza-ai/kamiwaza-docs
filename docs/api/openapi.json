@@ -7767,18 +7767,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    {
-                      "$ref": "#/components/schemas/ChunkResponse"
-                    }
-                  ],
-                  "title": "Response Chunk Text Embedding Chunk Post"
+                  "$ref": "#/components/schemas/ChunkResponse"
                 }
               }
             }
