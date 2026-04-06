@@ -10,7 +10,7 @@ We are seeking an experienced Senior Software Engineer to architect and develop 
 
 - **Architect & Build**: Design and develop reliable, high-performance systems for GenAI model deployment, data handling, and distributed computing.
 - **Integrate GenAI**: Implement cutting-edge GenAI solutions within our platform, including embeddings, data catalogs, and retrieval systems.
-- **Develop APIs**: Create and maintain APIs with a focus on developer experience, security, and scalability. Example: [API Reference](/sdk/api-reference)
+- **Develop APIs**: Create and maintain APIs with a focus on developer experience, security, and scalability. Example: [API Reference](/sdk/api/)
 - **Optimize Operations**: Collaborate on ops-related tooling (enhance deployment pipelines, monitoring, security best practices) to ensure stability and resilience.
 - **Collaborate & Innovate**: Work closely with cross-functional teams to explore new GenAI research, evaluate the latest GenAI papers/benchmarks, and bring emerging techniques into production.
 
