@@ -5,7 +5,7 @@ sidebar_position: 1
 # Ingestion Service
 
 ## Overview
-The Ingestion Service (`IngestionService`) provides comprehensive data ingestion functionality for the Kamiwaza AI Platform. Located in `kamiwaza_client/services/ingestion.py`, this service handles data ingestion workflows, dataset processing, and document handling with embedding capabilities.
+The Ingestion Service (`IngestionService`) provides comprehensive data ingestion functionality for the Kamiwaza AI Platform. Located in `kamiwaza_sdk/services/ingestion.py`, this service handles data ingestion workflows, dataset processing, and document handling with embedding capabilities.
 
 ## Key Features
 - Data Ingestion

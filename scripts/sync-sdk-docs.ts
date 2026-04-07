@@ -67,7 +67,26 @@ function rewriteServiceLinks(content: string): string {
         /\]\(\.\.\/([a-z0-9-]+)\/README\.md\)/gi,
         '](./$1)'
     );
+    // Normalize package/module references from the old client name used in
+    // earlier SDK docs snapshots.
+    result = result.replace(/kamiwaza_client\/services\//g, 'kamiwaza_sdk/services/');
+    result = result.replace(/\bkamiwaza_client\b/g, 'kamiwaza_sdk');
+    // Normalize a couple of known stale examples while the source docs catch up.
+    result = result.replace(/Owen2\.5-72B-Instruct-GPTQ-Int4/g, 'Qwen2.5-72B-Instruct-GPTQ-Int4');
+    result = result.replace(
+        /http:\/\/hostname:port\/v1/g,
+        'https://your-kamiwaza.example/runtime/models/<deployment-id>/v1'
+    );
     return result;
+}
+
+async function hasExistingSyncedDocs(): Promise<boolean> {
+    if (!await fs.pathExists(TARGET_SERVICES) || !await fs.pathExists(TARGET_SIDEBAR_JSON)) {
+        return false;
+    }
+
+    const entries = await fs.readdir(TARGET_SERVICES);
+    return entries.some(entry => entry.endsWith('.md'));
 }
 
 async function generateApiReference(sdkRepoPath: string): Promise<void> {
@@ -152,11 +171,19 @@ async function main() {
 
     const sdkRepoPath = resolveSdkRepoPath();
     if (!sdkRepoPath) {
-        console.warn(
-            'SDK repo not found. Set KW_SDK_DOCS or place kamiwaza-sdk as a sibling directory.\n' +
-            'Skipping SDK docs sync (existing docs will be used as-is).'
+        if (await hasExistingSyncedDocs()) {
+            console.warn(
+                'SDK repo not found. Set KW_SDK_DOCS or place kamiwaza-sdk as a sibling directory.\n' +
+                'Using existing synced SDK docs from docs/sdk/current.'
+            );
+            process.exit(0);
+        }
+
+        console.error(
+            'SDK repo not found and no synced SDK docs are available. ' +
+            'Set KW_SDK_DOCS or place kamiwaza-sdk as a sibling directory before building or versioning docs.'
         );
-        process.exit(0);
+        process.exit(1);
     }
 
     console.log(`  SDK repo: ${sdkRepoPath}`);

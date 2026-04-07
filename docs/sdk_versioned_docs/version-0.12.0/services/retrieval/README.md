@@ -5,7 +5,7 @@ sidebar_position: 1
 # Retrieval Service
 
 ## Overview
-The Retrieval Service (`RetrievalService`) provides text chunk retrieval functionality for the Kamiwaza AI Platform. Located in `kamiwaza_client/services/retrieval.py`, this service handles the retrieval of relevant text chunks based on queries, enabling efficient information retrieval.
+The Retrieval Service (`RetrievalService`) provides text chunk retrieval functionality for the Kamiwaza AI Platform. Located in `kamiwaza_sdk/services/retrieval.py`, this service handles the retrieval of relevant text chunks based on queries, enabling efficient information retrieval.
 
 ## Key Features
 - Relevant Text Chunk Retrieval

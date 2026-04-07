@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
- # OpenAI Service
+# OpenAI Service
 
 ## Overview
 The OpenAI Service (`OpenAIService`) provides OpenAI API compatibility for Kamiwaza model deployments. This service allows you to use your Kamiwaza-deployed models with the familiar OpenAI Python SDK interface.

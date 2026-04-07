@@ -136,18 +136,13 @@ function patchSpecForDocs(spec: any): void {
 	}
 	spec.info.title = "Kamiwaza REST API";
 
-	// ReDoc's sampler struggles with the union response on /embedding/chunk and
-	// emits noisy "allOf with array type" warnings during docs builds. Prefer the
-	// structured response shape in docs so the API reference renders cleanly.
-	const chunkResponseSchema =
-		spec?.paths?.["/embedding/chunk"]?.post?.responses?.["200"]?.content?.[
-			"application/json"
-		]?.schema;
+	const chunkResponse =
+		spec?.paths?.["/embedding/chunk"]?.post?.responses?.["200"];
 
-	if (chunkResponseSchema) {
-		spec.paths["/embedding/chunk"].post.responses["200"].content[
-			"application/json"
-		].schema = {
+	if (chunkResponse) {
+		chunkResponse.description =
+			"Successful Response. Returns an array of chunk strings by default, or a ChunkResponse object when return_metadata=true.";
+		chunkResponse.content["application/json"].schema = {
 			$ref: "#/components/schemas/ChunkResponse",
 		};
 	}

@@ -105,7 +105,7 @@ This information helps us provide faster and more accurate solutions to your pro
 ### SDK and API Issues
 
 #### Module Import Error
-**Problem**: `ModuleNotFoundError: No module named 'kamiwaza_client'` when using notebooks and Kamiwaza SDK.
+**Problem**: `ModuleNotFoundError: No module named 'kamiwaza_sdk'` when using notebooks and Kamiwaza SDK.
 
 **Solution**:
 ```bash
@@ -142,4 +142,3 @@ When encountering issues, follow these diagnostic steps:
 4. **Test Connectivity**: Verify network connectivity between components
 5. **Restart Services**: Try stopping and restarting affected services
 6. **Check Configuration**: Verify configuration files and environment variables
-

@@ -13,8 +13,6 @@
 /docs/sdk-services.generated.json
 
 # Misc
-.DS_Store
-.venv
 .env.local
 .env.development.local
 .env.test.local
@@ -28,6 +26,6 @@ package-lock.json
 
 # PDF generation output - only save numbered versions
 dist/pdf/*vcurrent.pdf
+.DS_Store
 *.DS_Store
-
 .venv/

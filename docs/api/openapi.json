@@ -7763,7 +7763,7 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Successful Response. Returns an array of chunk strings by default, or a ChunkResponse object when return_metadata=true.",
             "content": {
               "application/json": {
                 "schema": {

@@ -5,7 +5,7 @@ sidebar_position: 1
 # Activity Service
 
 ## Overview
-The Activity Service (`ActivityService`) provides comprehensive activity tracking and monitoring functionality for the Kamiwaza AI Platform. Located in `kamiwaza_client/services/activity.py`, this service handles the tracking and retrieval of user and system activities across the platform.
+The Activity Service (`ActivityService`) provides comprehensive activity tracking and monitoring functionality for the Kamiwaza AI Platform. Located in `kamiwaza_sdk/services/activity.py`, this service handles the tracking and retrieval of user and system activities across the platform.
 
 ## Key Features
 - Activity Tracking

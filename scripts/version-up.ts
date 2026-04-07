@@ -74,6 +74,21 @@ function runSdkDocusaurusVersioning(newVersion: string) {
   }
 }
 
+function runSdkSync() {
+  console.log('Syncing SDK docs before versioning...');
+  try {
+    execSync('npm run sync-sdk', {
+      cwd: REPO_ROOT,
+      env: getDocusaurusEnv(),
+      stdio: 'inherit',
+    });
+    console.log('SDK docs sync complete.');
+  } catch (error) {
+    console.error('Failed to sync SDK docs. Sync output should be above.');
+    process.exit(1);
+  }
+}
+
 function runOpenApiSync() {
   console.log('Syncing OpenAPI spec for docs...');
   try {
@@ -124,19 +139,23 @@ function main() {
     process.exit(1);
   }
 
-  // 2. Run the Docusaurus versioning command FIRST.
+  // 2. Sync generated SDK docs before snapshotting either docs tree so the
+  // current release snapshot always includes the service pages.
+  runSdkSync();
+
+  // 3. Run the Docusaurus versioning command FIRST.
   // This is important because it stages the new version directory. If other files
   // are changed first, they might get snapshotted into the *previous* version.
   runDocusaurusVersioning(newVersion);
 
-  // 3. Run SDK Docusaurus versioning
+  // 4. Run SDK Docusaurus versioning
   runSdkDocusaurusVersioning(newVersion);
 
-  // 4. Update package.json files
+  // 5. Update package.json files
   updatePackageJsonVersion(ROOT_PACKAGE_JSON_PATH, newVersion);
   updatePackageJsonVersion(DOCS_PACKAGE_JSON_PATH, newVersion);
 
-  // 5. Refresh OpenAPI docs metadata after the package version bump so the
+  // 6. Refresh OpenAPI docs metadata after the package version bump so the
   // published REST API reference shows the new release version.
   runOpenApiSync();
 
