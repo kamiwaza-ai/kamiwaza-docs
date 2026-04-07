@@ -139,11 +139,26 @@ function patchSpecForDocs(spec: any): void {
 	const chunkResponse =
 		spec?.paths?.["/embedding/chunk"]?.post?.responses?.["200"];
 
-	if (chunkResponse) {
+	if (chunkResponse?.content?.["application/json"]?.schema && spec.components?.schemas) {
+		spec.components.schemas.ChunkTextListResponse = {
+			type: "array",
+			items: {
+				type: "string",
+			},
+			title: "ChunkTextListResponse",
+		};
 		chunkResponse.description =
 			"Successful Response. Returns an array of chunk strings by default, or a ChunkResponse object when return_metadata=true.";
 		chunkResponse.content["application/json"].schema = {
-			$ref: "#/components/schemas/ChunkResponse",
+			title: "ChunkTextResponse",
+			anyOf: [
+				{
+					$ref: "#/components/schemas/ChunkTextListResponse",
+				},
+				{
+					$ref: "#/components/schemas/ChunkResponse",
+				},
+			],
 		};
 	}
 }

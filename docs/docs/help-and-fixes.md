@@ -23,10 +23,10 @@ We're committed to making your experience with Kamiwaza as smooth as possible.
 
 When reporting issues to our support team or community, please include:
 
-- **Environment Details**: OS version, Docker version, hardware specs (`bash startup/kamiwazad.sh doctor` or `kamiwaza doctor` for .deb installs is helpful)
+- **Environment Details**: OS version, Kubernetes distribution and version, hardware specs, and the Kamiwaza release version
 - **Error Messages**: Complete error text and stack traces
 - **Steps to Reproduce**: Detailed steps that led to the issue
-- **Logs**: Relevant log files and container output
+- **Logs**: Relevant Kubernetes pod logs, platform logs, and UI error details
 - **Configuration**: Any custom configuration or settings
 
 This information helps us provide faster and more accurate solutions to your problems.
@@ -68,22 +68,16 @@ This information helps us provide faster and more accurate solutions to your pro
 - "Rate limit exceeded" errors during model downloads
 - Gated models appear in search but fail to download
 
-**Solution**: Add your Hugging Face token to the Kamiwaza environment:
+**Solution**: Add your Hugging Face token to your Kamiwaza deployment configuration:
 
 1. Get a Hugging Face token from [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) (a **read** token is sufficient)
 2. For gated models, accept the license terms on the model's Hugging Face page
-3. Add the token to your Kamiwaza environment:
+3. Add the token to the Secret or deployment values used for your Kamiwaza environment:
    ```bash
-   # Edit the environment file
-   sudo vim /opt/kamiwaza/kamiwaza/env.sh
-
-   # Add this line:
-   export HF_TOKEN="hf_your_token_here"
+   HF_TOKEN="hf_your_token_here"
    ```
-4. Restart Kamiwaza:
-   ```bash
-   kamiwaza restart
-   ```
+4. Apply the updated configuration using your standard cluster release workflow and confirm the model-serving pods restart successfully.
+5. If you need setup details for secrets or deployment values, refer to the [Configuration Reference](./configuration) and the [Administrator Guide](./security/admin-guide).
 
 #### Model Deployment Failures
 **Problem**: Models fail to deploy or become unavailable.
@@ -109,9 +103,11 @@ This information helps us provide faster and more accurate solutions to your pro
 
 **Solution**:
 ```bash
-!pip uninstall -y kamiwaza
-!pip install kamiwaza
+!pip uninstall -y kamiwaza kamiwaza-sdk
+!pip install kamiwaza-sdk
 ```
+
+Then restart the notebook kernel or Python session before importing `kamiwaza_sdk` again.
 
 ### App Garden Issues
 

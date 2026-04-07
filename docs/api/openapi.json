@@ -7767,7 +7767,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChunkResponse"
+                  "title": "ChunkTextResponse",
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ChunkTextListResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ChunkResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -13592,6 +13600,13 @@
           "chunks"
         ],
         "title": "ChunkResponse"
+      },
+      "ChunkTextListResponse": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array",
+        "title": "ChunkTextListResponse"
       },
       "ChunkTextRequest": {
         "properties": {

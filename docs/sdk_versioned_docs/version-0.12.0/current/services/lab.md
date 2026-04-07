@@ -1,7 +1,7 @@
 ---
-sidebar_position: 1
+sidebar_position: 10
+title: "Lab Service"
 ---
-
 # Lab Service
 
 ## Overview

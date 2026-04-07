@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
+title: "Activity Service"
 ---
-
 # Activity Service
 
 ## Overview
