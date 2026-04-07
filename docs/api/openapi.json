@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "FastAPI",
-    "version": "0.9.3"
+    "title": "Kamiwaza REST API",
+    "version": "0.12.0"
   },
   "servers": [
     {
@@ -7763,22 +7763,19 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Successful Response. Returns an array of chunk strings by default, or a ChunkResponse object when return_metadata=true.",
             "content": {
               "application/json": {
                 "schema": {
+                  "title": "ChunkTextResponse",
                   "anyOf": [
                     {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
+                      "$ref": "#/components/schemas/ChunkTextListResponse"
                     },
                     {
                       "$ref": "#/components/schemas/ChunkResponse"
                     }
-                  ],
-                  "title": "Response Chunk Text Embedding Chunk Post"
+                  ]
                 }
               }
             }
@@ -13603,6 +13600,13 @@
           "chunks"
         ],
         "title": "ChunkResponse"
+      },
+      "ChunkTextListResponse": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array",
+        "title": "ChunkTextListResponse"
       },
       "ChunkTextRequest": {
         "properties": {
