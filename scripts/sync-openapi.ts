@@ -106,14 +106,26 @@ function getOpenAPIFromLocalRepo(repoPath: string): string {
 }
 
 function getDocsVersion(): string {
-	// Read version from package.json
-	const packageJsonPath = path.resolve(__dirname, "../package.json");
-	try {
-		const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-		return packageJson.version || "0.9.3";
-	} catch {
-		return "0.9.2";
+	const packageJsonPaths = [
+		path.resolve(__dirname, "../package.json"),
+		path.resolve(__dirname, "../docs/package.json"),
+	];
+
+	for (const packageJsonPath of packageJsonPaths) {
+		try {
+			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+			if (packageJson.version) {
+				return packageJson.version;
+			}
+		} catch {
+			// Try the next known package manifest.
+		}
 	}
+
+	console.warn(
+		"Unable to determine docs version from package.json; defaulting API docs version to 0.0.0.",
+	);
+	return "0.0.0";
 }
 
 function patchSpecForDocs(spec: any): void {
@@ -203,8 +215,6 @@ async function main() {
 	// Create a metadata file for tracking
 	const metadata = {
 		syncedAt: new Date().toISOString(),
-		sourceRepo: repoPath,
-		sourceBranch: generateFromPlatform ? "running-platform" : sourceBranch,
 		originalApiVersion: originalVersion,
 		patchedApiVersion: docsVersion,
 		endpoints: pathCount,

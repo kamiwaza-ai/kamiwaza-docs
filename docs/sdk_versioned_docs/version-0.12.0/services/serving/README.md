@@ -70,7 +70,8 @@ active_deployments = client.serving.list_active_deployments()
 # - status: The deployment status
 # - instances: List of running instances
 # - lb_port: The load balancer port
-# - endpoint: The HTTP endpoint for the deployment (e.g. http://hostname:port/v1)
+# - endpoint: The HTTPS runtime endpoint for the deployment (for example
+#   https://your-kamiwaza.example/runtime/models/<deployment-id>/v1)
 
 # Get deployment status
 status = client.serving.get_deployment_status(deployment_id)

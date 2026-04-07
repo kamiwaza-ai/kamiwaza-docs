@@ -26,7 +26,7 @@ from kamiwaza_sdk import KamiwazaClient
 client = KamiwazaClient("https://your-kamiwaza.example/api")
 
 # Get client by model name
-openai_client = client.openai.get_client(model="Owen2.5-72B-Instruct-GPTQ-Int4")
+openai_client = client.openai.get_client(model="Qwen2.5-72B-Instruct-GPTQ-Int4")
 
 # Get client by deployment ID
 openai_client = client.openai.get_client(deployment_id="your-deployment-uuid")
