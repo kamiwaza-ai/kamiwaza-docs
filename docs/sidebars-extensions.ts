@@ -3,6 +3,7 @@ import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 const sidebars: SidebarsConfig = {
 	extensions: [
 		"intro",
+		"developer-guide",
 		{
 			type: "category",
 			label: "Kaizen",
