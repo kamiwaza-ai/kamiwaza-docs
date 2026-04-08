@@ -35,8 +35,7 @@ NC := \033[0m
 container-build: ## Build docs container and push to local Kind registry
 	@echo "$(YELLOW)Building docs container...$(NC)"
 	@echo "$(CYAN)Registry: $(CONTAINER_REGISTRY) | Tag: $(CONTAINER_TAG)$(NC)"
-	docker build -t $(IMAGE_REF) .
-	docker push $(IMAGE_REF)
+	docker buildx build --push -t $(IMAGE_REF) .
 	@echo "$(GREEN)Docs container built and pushed: $(IMAGE_REF)$(NC)"
 
 .PHONY: container-build-local
@@ -45,7 +44,7 @@ container-build-local: container-build ## Alias for container-build
 .PHONY: container-run
 container-run: ## Build and run locally on port 3000 (no K8s needed)
 	@echo "$(YELLOW)Building docs container for local run...$(NC)"
-	docker build -t $(IMAGE_NAME):local .
+	docker buildx build --load -t $(IMAGE_NAME):local .
 	@echo "$(GREEN)Starting docs on http://localhost:3000$(NC)"
 	docker run --rm -p 3000:3000 $(IMAGE_NAME):local
 
