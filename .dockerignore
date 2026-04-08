@@ -6,3 +6,4 @@ docs/.docusaurus
 dist
 *.log
 .DS_Store
+.env*

@@ -32,16 +32,16 @@ COPY package.json package-lock.json ./
 # Install root dependencies (includes sync scripts)
 RUN npm ci --ignore-scripts
 
-# Copy the docs/ directory (contains the Docusaurus site)
-COPY docs/ docs/
-
-# Copy scripts needed by the build
-COPY scripts/ scripts/
-COPY tsconfig.json ./
+# Copy docs package files first for cache efficiency
+COPY docs/package.json docs/package-lock.json docs/
 
 # Install docs-level dependencies
 WORKDIR /build/docs
-RUN npm ci
+RUN npm ci --ignore-scripts
+
+# Copy the rest of the docs/ directory (Docusaurus site content)
+WORKDIR /build
+COPY docs/ docs/
 
 # Build the Docusaurus site with baseUrl="/docs/" so internal links
 # include the /docs prefix expected by the reverse proxy.
