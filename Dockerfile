@@ -12,6 +12,11 @@
 # Usage:
 #   docker build -t kamiwaza-docs .
 #   docker run -p 3000:3000 kamiwaza-docs
+#
+# The reverse proxy strips the /docs prefix before forwarding, so the
+# container sees requests at /.  Docusaurus is built with baseUrl="/docs/"
+# so all internal links include the prefix.
+
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -38,10 +43,11 @@ COPY tsconfig.json ./
 WORKDIR /build/docs
 RUN npm ci
 
-# Build the Docusaurus site
-# Use build:docs (not build) to skip SDK sync — SDK docs are already
-# versioned in the repo.  This avoids needing the kamiwaza-sdk repo
-# at build time.
+# Build the Docusaurus site with baseUrl="/docs/" so internal links
+# include the /docs prefix expected by the reverse proxy.
+ARG DOCS_BASE_URL="/docs/"
+ENV DOCS_BASE_URL=${DOCS_BASE_URL}
+
 WORKDIR /build
 RUN npm run build:docs
 
