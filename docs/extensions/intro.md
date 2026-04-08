@@ -10,3 +10,5 @@ Welcome to the Kamiwaza Extensions documentation. This section contains detailed
 ## Available Extensions
 
 Select an extension from the sidebar to view its documentation.
+
+If you want to build your own extension, start with the [Developer Guide](/extensions/developer-guide).

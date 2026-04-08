@@ -73,14 +73,25 @@ const sidebars: SidebarsConfig = {
 			],
 		},
 		{
-			type: "doc",
-			id: "app-garden",
-			label: "App Garden",
-		},
-		{
-			type: "doc",
-			id: "tool-garden",
-			label: "Tool Garden",
+			type: "category",
+			label: "Extensions",
+			items: [
+				{
+					type: "doc",
+					id: "app-garden",
+					label: "App Garden",
+				},
+				{
+					type: "doc",
+					id: "tool-garden",
+					label: "Tool Garden",
+				},
+				{
+					type: "link",
+					label: "Developer Guide",
+					href: "/extensions/developer-guide",
+				},
+			],
 		},
 		{
 			type: "category",
