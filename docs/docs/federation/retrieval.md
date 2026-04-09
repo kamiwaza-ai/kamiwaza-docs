@@ -93,13 +93,13 @@ On Istio clusters with the `extauthz` trust model, admin users bypass per-resour
 
 ### Non-Admin Users
 
-Non-admin users require explicit per-dataset ReBAC grants on the target cluster. The admin bypass is suppressed for mesh-originated requests in the retrieval service — federated callers must have explicit `viewer` access to each dataset they query.
+Non-admin users require explicit per-dataset ReBAC grants on the target cluster. The admin bypass is suppressed for mesh-originated requests — federated callers must have explicit `viewer` access to each dataset they query or browse. The catalog listing endpoint filters results so federated users only see datasets they have grants for.
 
 To grant access:
 
 ```bash
 # On the TARGET cluster, seed a relation for the remote user
-curl -sk -X PUT "https://<TARGET_IP>/api/auth/tuples" \
+curl -sk -X POST "https://<TARGET_IP>/api/auth/tuples" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
