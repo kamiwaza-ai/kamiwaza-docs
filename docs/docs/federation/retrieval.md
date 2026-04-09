@@ -50,7 +50,7 @@ JOB_ID=$(curl -sk -X POST "https://kamiwaza.test/api/mesh/<remote-cluster>/api/r
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"dataset_urn": "...", "transport": "sse"}' \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
+  | python3 -c 'import sys,json; print(json.load(sys.stdin)["job_id"])')
 
 # Stream results via SSE
 curl -sk "https://kamiwaza.test/api/mesh/<remote-cluster>/api/retrieval/jobs/$JOB_ID/stream" \
