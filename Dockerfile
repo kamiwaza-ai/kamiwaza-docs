@@ -13,10 +13,8 @@
 #   docker build -t kamiwaza-docs .
 #   docker run -p 3000:3000 kamiwaza-docs
 #
-# The reverse proxy strips the /docs prefix before forwarding, so the
-# container sees requests at /.  Docusaurus is built with baseUrl="/docs/"
-# so all internal links include the prefix.
-
+# Served behind host-based routing at docs.<domain> with baseUrl=/.
+# Matches the public deployment at docs.kamiwaza.ai.
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -43,11 +41,7 @@ RUN npm ci --ignore-scripts
 WORKDIR /build
 COPY docs/ docs/
 
-# Build the Docusaurus site with baseUrl="/docs/" so internal links
-# include the /docs prefix expected by the reverse proxy.
-ARG DOCS_BASE_URL="/docs/"
-ENV DOCS_BASE_URL=${DOCS_BASE_URL}
-
+# Build the Docusaurus site (baseUrl defaults to / in docusaurus.config.ts)
 WORKDIR /build
 RUN npm run build:docs
 
