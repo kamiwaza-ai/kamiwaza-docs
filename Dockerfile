@@ -67,6 +67,10 @@ WORKDIR /app
 # Copy the built static site
 COPY --from=builder --chown=65532:65532 /build/docs/build/ /app/build/
 
+# Disable clean URLs so serve doesn't 301-redirect .html requests
+# (Docusaurus SPA router can't resolve the stripped paths)
+COPY --chown=65532:65532 serve.json /app/build/
+
 # Copy serve and its dependencies (clean install, no Docusaurus deps)
 COPY --from=serve-install --chown=65532:65532 /srv/node_modules/ /app/node_modules/
 
