@@ -17,12 +17,16 @@ const sidebars: SidebarsConfig = {
 			label: "REST API Reference",
 			href: "/sdk/api/",
 		},
-		{
-			type: "category",
-			label: "Python SDK Services",
-			collapsed: true,
-			items: serviceItems,
-		},
+		...(serviceItems.length > 0
+			? [
+					{
+						type: "category" as const,
+						label: "Python SDK Services",
+						collapsed: true,
+						items: serviceItems,
+					},
+				]
+			: []),
 	],
 };
 
