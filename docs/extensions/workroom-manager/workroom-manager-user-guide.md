@@ -81,15 +81,15 @@ Shows the current owner, total member count, and quick-access buttons:
 
 ### Lifecycle and Retention
 
-An at-a-glance summary of workroom resource usage:
+An at-a-glance summary of workroom resource usage and platform signals. These values are intended as operational cues, not as a full accounting report. Exact availability and meaning can vary by deployment and enabled services.
 
 | Metric | Description |
 | :--- | :--- |
-| **Storage** | Total storage consumed by workroom data |
+| **Storage** | Indexed data footprint currently associated with the workroom. This is not a full accounting of every backing volume or runtime artifact. |
 | **Compute resources** | Number of compute resources allocated |
 | **Active members** | Members currently using the workroom |
-| **Active sessions** | Open sessions in this workroom |
-| **Resources** | Breakdown of app deployments, extensions, data sources, and catalog entries |
+| **Active sessions** | Sessions currently bound to this workroom |
+| **Resources** | Breakdown of app deployments, extensions, data sources, and catalog entries currently attributed to this workroom |
 | **Retention policy** | The workroom's retention policy as configured by the platform. |
 | **Retention detail** | Describes when workroom content is retained or removed. |
 | **Ingestion history** | When data was last ingested into this workroom. Ingestion errors are highlighted if any occurred. |
@@ -130,17 +130,17 @@ Click **Members** from the workroom detail panel to view the current roster.
 
 The members table shows each member's name, email, status, and role.
 
-Owners can use this panel to change non-owner roles, remove members, and transfer primary ownership to another member when responsibility for the workroom needs to change hands.
+Owners can use this panel to change non-owner roles and remove members. Some environments may expose additional ownership-transfer workflows elsewhere in the platform, but that is not a standard Workroom Manager control in every deployed build.
 
 ### Workroom roles
 
 | Role | Capabilities |
 | :--- | :--- |
-| **Owner** | Full control — update settings, manage members, transfer ownership, share the workroom, delete the workroom. In Kaizen, Owners can also continue shared workroom conversations and create or update shared agents. Assigned to the workroom creator. |
+| **Owner** | Full control — update settings, manage members, share the workroom, and delete the workroom. In Kaizen, Owners can also continue shared workroom conversations and create or update shared agents. Assigned to the workroom creator. |
 | **Contributor** | Participate in the workroom, use deployed applications, and collaborate with other members. In Kaizen, Contributors can create shared agents and conversations visible to other workroom members. |
 | **Viewer** | Read-only access to the workroom and its contents, including shared Kaizen history and generated outputs. |
 
-Owners can change a member's role between Contributor and Viewer, remove a member entirely, or transfer ownership from the Members panel. If you remove a member who has an active session, the app may ask for confirmation before proceeding.
+Owners can change a member's role between Contributor and Viewer or remove a member entirely from the Members panel. If you remove a member who has an active session, the app may ask for confirmation before proceeding.
 
 In shared non-global workrooms, membership is the sharing boundary — you do not need to configure per-conversation or per-agent sharing inside Kaizen for another authorized member to see shared workroom history. Credential sharing remains separate from content sharing; workroom membership does not automatically grant reuse of another member's personal credentials unless explicitly shared through a supported credential path.
 
