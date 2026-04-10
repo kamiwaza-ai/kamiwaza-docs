@@ -141,13 +141,15 @@ Reference: [Kaizen User Guide](/extensions/kaizen/kaizen-user-guide)
 
 ### Validate Workroom Manager
 
+> **Version note:** The `0.12.0` baseline supports launching Kaizen inside a workroom context and enforcing basic role-aware writes, but the full non-global shared-workroom Kaizen contract described elsewhere in the docs may depend on a later patch or feature build. Validate the exact behavior present in your deployed Kaizen build before treating the checks below as release gates.
+
 1. Deploy **Workroom Manager** from **App Garden**.
 2. Create a workroom with a title, classification banner, and optional labels.
 3. Decide whether the workroom should be persistent or temporary.
 4. Launch Kaizen from inside the workroom and confirm the app opens successfully.
 5. If sharing is enabled in your environment, add at least one Contributor and one Viewer.
-6. Verify the Contributor can see the same non-global workroom agents and conversation history, add a later turn, and retain acting-user attribution on that turn.
-7. Verify the Viewer can see the same shared history but cannot create, send, upload, or edit.
+6. If your deployed Kaizen build includes shared non-global workroom conversations, verify the Contributor can see the same workroom agents and conversation history, add a later turn, and retain acting-user attribution on that turn.
+7. If your deployed Kaizen build includes shared non-global workroom conversations, verify the Viewer can see the same shared history but cannot create, send, upload, or edit.
 8. Verify the Global Workroom still preserves personal Kaizen visibility instead of cross-user sharing.
 
 Reference: [Workroom Manager User Guide](/extensions/workroom-manager/workroom-manager-user-guide)
