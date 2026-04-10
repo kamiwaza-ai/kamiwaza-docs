@@ -40,6 +40,13 @@ Each agent you create is a persistent configuration. Choose its AI model, attach
 
 Click **Create Your First Agent** to get started.
 
+The top navigation bar provides access to all sections of Kaizen:
+
+- **Agents** — create and manage your AI agents (home view)
+- **Conversations** — browse and filter past conversations across all agents
+- **Search** — search across conversation messages, tool calls, and results
+- **Metrics** — pipeline dashboard for ingestion and model health
+
 ---
 
 ## Creating Your First Agent
@@ -192,6 +199,102 @@ The generated PDF is viewable and downloadable directly in the right panel.
 
 ---
 
+## Conversations
+
+The **Conversations** tab gives you a dedicated view of all your past conversations across every agent.
+
+Use the filters at the top of the page to narrow down what you're looking for:
+
+- **Filter by Agent** — select a specific agent to see only its conversations, or choose All Agents.
+- **Sort By** — order conversations by most recent or other criteria.
+
+Click any conversation to resume where you left off. This is useful when you have many agents and need to find a specific past interaction without remembering which agent you used.
+
+---
+
+## Search
+
+The **Search** tab lets you search across all your past conversations to find specific messages, tool calls, and results.
+
+### Searching Conversations
+
+Enter a search term to find matching content across all conversations. You can refine results with filters:
+
+- **Tool Name** — filter by a specific tool (e.g., web search, code execution, file access).
+- **Event Type** — filter by the type of event (messages, tool calls, results).
+- **Date Range** — narrow results to a specific time window using the From and To date fields.
+
+Click **Search** to run your query. Results show matching content with context so you can quickly locate what you need.
+
+### Recipes
+
+The **Recipes** tab (next to Search) lets you save useful tool call patterns that you discover while searching. Recipes capture a reusable pattern so you can reference it later without having to search for it again.
+
+To create a recipe, find a tool call pattern in your search results and save it. Your saved recipes appear in the left sidebar for quick access.
+
+Recipes are useful for:
+
+- Capturing effective tool call sequences that produced good results
+- Building a personal library of proven patterns for common tasks
+- Sharing approaches across sessions without recreating them from scratch
+
+---
+
+## Metrics
+
+The **Metrics** tab provides a **Pipeline Dashboard** for monitoring Kaizen activity.
+
+The dashboard includes two views:
+
+- **Ingestion** — tracks data ingestion activity, including volume and timing.
+- **Model Health** — monitors inference performance and model availability.
+
+Use the time range selector (**24h**, **7d**, **30d**) to adjust the reporting window.
+
+The Metrics dashboard is most useful once you have active agents running conversations and processing data.
+
+---
+
+## Workroom Collaboration
+
+When Kaizen is launched from a workroom, a **workroom info bar** appears at the top of the page showing the workroom name and classification banner. Click it to expand the workroom status summary.
+
+![Workroom Collaboration panel](/img/extensions/kaizen/kaizen-workroom-collaboration.png)
+
+The expanded bar shows:
+
+| Field | Description |
+| :--- | :--- |
+| **Workroom** | The name of the workroom this Kaizen session belongs to. |
+| **Role** | Your role in the workroom (Owner, Contributor, or Viewer). |
+| **Members** | Total number of members with access to this workroom. |
+| **Live Now** | How many members are currently active in the workroom. |
+
+Click **Collaboration** to open the full collaboration panel on the right side. The panel includes:
+
+### Active Now
+
+Shows which members are currently active or idle in the workroom. This is a live view from the collaboration stream — use it to see who else is working in the same workroom at the same time.
+
+### Member Roster
+
+Lists all workroom members with their roles and online status. Owners can click **Manage members** to open the full membership management panel directly from within Kaizen.
+
+![Workroom Members management panel](/img/extensions/kaizen/kaizen-workroom-members.png)
+
+The **Workroom Members** panel lets owners:
+
+- **Invite a member** — enter an email address, select a role (Viewer or Contributor), and confirm a need-to-know attestation before the invitation is sent.
+- **Change a member's role** — use the role dropdown on any non-owner member and click **Save role**.
+- **Remove a member** — click **Remove** to revoke access. If the member has an active session, you may be asked to confirm.
+- **Transfer ownership** — click **Transfer ownership** to make another member the primary owner of the workroom.
+
+### Audit Log
+
+Tracks recent lifecycle, membership, credential, and access activity for the workroom. Click **Open log** to view the audit timeline. Use the audit log to verify who changed membership, delegated credentials, or modified workroom lifecycle state during the current collaboration window.
+
+---
+
 ## Agent Capabilities
 
 | Capability | Description |
@@ -248,5 +351,5 @@ Start with the Kaizen deployment logs in the Kamiwaza log viewer, then review th
 ## Learn More
 
 - [Models Overview](/models/overview)
-- [Tool Garden](/tool-garden)
+- [ToolShed](/tool-garden)
 - [Observability](/observability)
