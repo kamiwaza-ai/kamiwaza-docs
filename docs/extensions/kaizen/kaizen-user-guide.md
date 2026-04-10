@@ -255,7 +255,7 @@ The Metrics dashboard is most useful once you have active agents running convers
 
 When Kaizen is launched from a workroom, a **workroom info bar** appears at the top of the page showing the workroom name and classification banner. Click it to expand the workroom status summary.
 
-![Workroom Collaboration panel](/img/extensions/kaizen/kaizen-workroom-collaboration.png)
+[Screenshot Coming Soon] Workroom Collaboration panel showing the workroom info bar, role, member count, and live-presence summary for a shared non-global workroom.
 
 The expanded bar shows:
 
@@ -284,7 +284,7 @@ Kaizen attributes each human or agent-triggering turn to the acting user who ini
 
 Lists all workroom members with their roles and online status. Owners can click **Manage members** to open the full membership management panel directly from within Kaizen.
 
-![Workroom Members management panel](/img/extensions/kaizen/kaizen-workroom-members.png)
+[Screenshot Coming Soon] Workroom Members management panel showing invite, role change, removal, and ownership transfer controls available to workroom owners.
 
 The **Workroom Members** panel lets owners:
 
