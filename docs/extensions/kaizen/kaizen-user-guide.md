@@ -245,16 +245,11 @@ Recipes are useful for:
 
 ## Metrics
 
-The **Metrics** tab provides a **Pipeline Dashboard** for monitoring Kaizen activity.
+The **Metrics** tab shows model health information for your Kaizen environment.
 
-The dashboard includes two views:
+The view displays inference performance and model availability metrics. Use the time range selector (**24h**, **7d**, **30d**) to adjust the reporting window.
 
-- **Ingestion** — tracks data ingestion activity, including volume and timing.
-- **Model Health** — monitors inference performance and model availability.
-
-Use the time range selector (**24h**, **7d**, **30d**) to adjust the reporting window.
-
-The Metrics dashboard is most useful once you have active agents running conversations and processing data.
+The Metrics view is most useful once you have active agents running conversations and processing data.
 
 ---
 
