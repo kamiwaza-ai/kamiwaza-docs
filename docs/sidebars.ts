@@ -39,10 +39,7 @@ const sidebars: SidebarsConfig = {
 		{
 			type: "category",
 			label: "Configuration",
-			items: [
-				"configuration",
-				"routing-modes",
-			],
+			items: ["configuration", "routing-modes"],
 		},
 		{
 			type: "category",
@@ -57,6 +54,17 @@ const sidebars: SidebarsConfig = {
 		},
 		// Conditionally include Federal category
 		...(includeFederal ? [federalCategory] : []),
+		{
+			type: "category",
+			label: "Federation",
+			items: [
+				"federation/overview",
+				"federation/setup",
+				"federation/retrieval",
+				"federation/job-submission",
+				"federation/operations",
+			],
+		},
 		{
 			type: "category",
 			label: "Models",
