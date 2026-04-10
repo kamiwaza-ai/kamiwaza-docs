@@ -76,6 +76,10 @@ Each workroom can open Kaizen in its own context.
 
 If your Kaizen deployment is already active, Workroom Manager shows the current deployment state in the detail panel.
 
+For Kaizen specifically, launching the app from a shared non-global workroom means authorized members see the same workroom-scoped agents, conversations, uploaded data, and generated outputs according to role. The **Global Workroom** remains a special system workspace and does not automatically expose personal Kaizen history across users.
+
+Shared visibility does not automatically share a creator's private credentials. If a Kaizen agent or workflow depends on personal secrets, OAuth connections, or other user-bound auth material, another member can see the shared agent or conversation without silently inheriting that credential path. Use the platform's shared-credential flow where your deployment exposes it.
+
 Reference: [Kaizen User Guide](/extensions/kaizen/kaizen-user-guide)
 
 ## Update Workroom Settings
@@ -113,9 +117,9 @@ Open the workroom detail panel and choose **Manage Members** to control sharing.
 
 Workroom roles are:
 
-- **Owner**: Can update settings, manage members, and transfer ownership.
-- **Contributor**: Can participate in the workroom but does not control ownership-level settings.
-- **Viewer**: Read-only participant for the workroom.
+- **Owner**: Can update settings, manage members, and transfer ownership. In Kaizen, Owners can also continue shared workroom conversations and create or update shared agents.
+- **Contributor**: Can participate in the workroom, use deployed applications, create shared Kaizen agents and conversations, and collaborate with other members.
+- **Viewer**: Read-only participant for the workroom, including shared Kaizen history and generated outputs.
 
 Owners can:
 
@@ -127,6 +131,10 @@ Owners can:
 If you remove a user who still has active sessions, the app may ask for confirmation before forcing the removal.
 
 The membership view can also show which members currently have active workroom sessions. Use that status as a quick operational check before changing access during a live collaboration session.
+
+In shared non-global workrooms, membership is the sharing boundary. You do not need to configure per-conversation or per-agent sharing inside Kaizen for another authorized member to see the same shared workroom history.
+
+Credential sharing remains separate from content sharing. Workroom membership controls visibility of shared Kaizen history and agents, but it does not automatically grant reuse of another member's personal credentials unless those credentials are explicitly shared through a supported workroom credential path.
 
 ## Lifecycle Notes
 
