@@ -141,7 +141,7 @@ Reference: [Kaizen User Guide](/extensions/kaizen/kaizen-user-guide)
 
 ### Validate Workroom Manager
 
-> **Version note:** The `0.12.0` baseline supports launching Kaizen inside a workroom context and enforcing basic role-aware writes, but the full non-global shared-workroom Kaizen contract described elsewhere in the docs may depend on a later patch or feature build. Validate the exact behavior present in your deployed Kaizen build before treating the checks below as release gates.
+> **Version note:** This version supports launching Kaizen inside a workroom context and enforcing basic role-aware writes, but the full non-global shared-workroom Kaizen contract described elsewhere in the docs may depend on a later patch or feature build. Validate the exact behavior present in your deployed Kaizen build before treating the checks below as release gates.
 
 1. Deploy **Workroom Manager** from **App Garden**.
 2. Create a workroom with a title, classification banner, and optional labels.

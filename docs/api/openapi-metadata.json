@@ -1,7 +1,7 @@
 {
-  "syncedAt": "2026-01-25T20:31:52.644Z",
+  "syncedAt": "2026-04-10T23:21:48.651Z",
   "originalApiVersion": "0.1.0",
   "patchedApiVersion": "0.12.0",
-  "endpoints": 207,
-  "schemas": 165
+  "endpoints": 320,
+  "schemas": 358
 }
