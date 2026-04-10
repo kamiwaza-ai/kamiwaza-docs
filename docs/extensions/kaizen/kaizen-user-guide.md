@@ -103,7 +103,7 @@ MCP (Model Context Protocol) integrations give your agent access to external too
 
 ![MCP Integrations](/img/extensions/kaizen/onboarding-04-mcp.png)
 
-Tools deployed through the Kamiwaza Tool Garden are automatically available for selection here. Your admin deploys tools to the platform, and they appear ready to attach to your agents.
+Tools deployed through the Kamiwaza ToolShed are automatically available for selection here. Your admin deploys tools to the platform, and they appear ready to attach to your agents.
 
 You can also connect custom MCP servers for proprietary or third-party APIs using **+ Add Custom Server**.
 
@@ -284,7 +284,7 @@ Lists all workroom members with their roles and online status. Owners can click 
 
 The **Workroom Members** panel lets owners:
 
-- **Invite a member** — enter an email address, select a role (Viewer or Contributor), and confirm a need-to-know attestation before the invitation is sent.
+- **Invite a member** — enter an email address, select a role (Viewer or Contributor), and confirm the attestation: *"I confirm the invited user has need-to-know for this workroom's content."*
 - **Change a member's role** — use the role dropdown on any non-owner member and click **Save role**.
 - **Remove a member** — click **Remove** to revoke access. If the member has an active session, you may be asked to confirm.
 - **Transfer ownership** — click **Transfer ownership** to make another member the primary owner of the workroom.

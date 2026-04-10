@@ -46,7 +46,7 @@ Click **+ Create Workroom** to open the two-step creation wizard.
 | **Labels** | No | Freeform tags to help organize and search workrooms. Press Enter, comma, or space to add each label. |
 | **Classification / Handling Banner** | Yes | The handling marking displayed on the workroom (e.g., `UNCLASSIFIED`, `SECRET//NOFORN`). |
 | **Description** | No | Brief description of the objective or context (up to 500 characters). |
-| **Temporary workroom** | No | Toggle on for short-lived or field-use sessions. Temporary workrooms are destroyed on logout. Leave off for persistent workrooms that remain until explicitly deleted. |
+| **Temporary workroom** | No | Toggle on for short-lived sessions or field/denied-area use. Temporary workrooms are destroyed on logout. Leave off for persistent workrooms that remain until explicitly deleted. |
 
 ### Step 2: Review
 
@@ -66,11 +66,15 @@ Click any workroom card to open the detail panel.
 
 ![Workroom detail panel](/img/extensions/workroom-manager/doc-workroom-detail.png)
 
-The detail panel has four sections:
+The detail panel has up to five sections:
 
 ### Description
 
 The workroom title, classification banner, and description you provided at creation.
+
+### Labels
+
+If the workroom has labels, they appear here as tags. This section is only visible when labels have been added. Labels help you organize and search for workrooms as your library grows.
 
 ### Sharing
 
@@ -90,8 +94,9 @@ An at-a-glance summary of workroom resource usage:
 | **Active members** | Members currently using the workroom |
 | **Active sessions** | Open sessions in this workroom |
 | **Resources** | Breakdown of app deployments, extensions, data sources, and catalog entries |
-| **Retention policy** | Manual (persistent) or automatic (temporary) |
-| **Ingestion history** | When data was last ingested into this workroom |
+| **Retention policy** | The workroom's retention policy as configured by the platform. |
+| **Retention detail** | Describes when workroom content is retained or removed. |
+| **Ingestion history** | When data was last ingested into this workroom. Ingestion errors are highlighted if any occurred. |
 
 ### Apps
 
@@ -252,5 +257,6 @@ Retry the operation once. If the failure persists, check the Workroom Manager de
 
 - [Kaizen User Guide](/extensions/kaizen/kaizen-user-guide)
 - [Skills Library Guide](/extensions/skills-library/skills-library-guide)
+- [Quickstart](/quickstart)
 - [Administrator Guide](/security/admin-guide)
 - [Observability](/observability)
