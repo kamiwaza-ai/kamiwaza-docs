@@ -11,6 +11,8 @@ Instead of writing code to configure agents, you get a visual interface. Instead
 
 If you launch Kaizen from **Workroom Manager**, the conversation runs inside that workroom context. That lets analysts keep their agent activity aligned to a specific mission or case while still using the same Kaizen workflows described here.
 
+In a shared non-global workroom, Kaizen agents, conversations, uploads, and generated outputs are visible to authorized workroom members according to role. Owners and Contributors can continue shared conversations, while Viewers can open them read-only. The **Global Workroom** keeps legacy personal visibility behavior and is not treated as a shared Kaizen workspace.
+
 ---
 
 ## Launch Kaizen
@@ -140,11 +142,13 @@ After creation, your agent appears in the library. Each agent card shows its nam
 ![Agent Library](/img/extensions/kaizen/onboarding-07-agent-library.png)
 
 - **Chat**: Start a new conversation with this agent.
-- **Private Session**: Start an ephemeral conversation that is automatically deleted when you leave. This is useful for sensitive or one-off tasks.
+- **Private Session**: Start an ephemeral conversation that is automatically deleted when you leave. This is available in personal/global scope and is intended for sensitive or one-off tasks.
 - **Configure**: Edit the agent's model, skills, bundles, tools, or security policy.
 - **Delete**: Remove the agent and its conversations.
 
-Create as many agents as you need, such as a research agent, a data analyst, or a report writer. Each agent keeps its own configuration and conversation history.
+Create as many agents as you need, such as a research agent, a data analyst, or a report writer. Each agent keeps its own configuration. In a shared non-global workroom, that agent and its conversations are visible to other authorized workroom members, while the creator remains recorded for attribution and auditing. Shared visibility does not automatically grant reuse of the creator's private credentials; collaborator runs continue to use the acting user's own credentials or an explicitly shared workroom credential path.
+
+The left sidebar shows recent conversations across all visible agents. In a shared non-global workroom, that means shared workroom history by default, with a list-level filter for items created by you. Click any conversation to resume where work left off.
 
 ---
 
@@ -199,14 +203,15 @@ The generated PDF is viewable and downloadable directly in the right panel.
 
 ## Conversations
 
-The **Conversations** tab gives you a dedicated view of all your past conversations across every agent.
+The **Conversations** tab gives you a dedicated view of all visible conversations across every agent.
 
 Use the filters at the top of the page to narrow down what you're looking for:
 
 - **Filter by Agent** — select a specific agent to see only its conversations, or choose All Agents.
+- **Visibility** — switch between all workroom-visible conversations and only the ones you created.
 - **Sort By** — order conversations by most recent or other criteria.
 
-Click any conversation to resume where you left off. This is useful when you have many agents and need to find a specific past interaction without remembering which agent you used.
+In a shared non-global workroom, this view is designed for handoff as well as recall. Click any conversation to resume where work left off, even if another Owner or Contributor created the earlier turns.
 
 ---
 
@@ -274,6 +279,14 @@ Click **Collaboration** to open the full collaboration panel on the right side. 
 
 Shows which members are currently active or idle in the workroom. This is a live view from the collaboration stream — use it to see who else is working in the same workroom at the same time.
 
+### Shared History
+
+In a shared non-global workroom, Kaizen keeps conversation history as shared workroom history. Later Owners and Contributors can open the same thread and continue it without losing prior context. Viewers can read that history but cannot add turns, upload files, or mutate agent settings.
+
+### Turn Attribution
+
+Kaizen attributes each human or agent-triggering turn to the acting user who initiated it. That attribution stays with the turn for later handoff and review; it is not inferred from the original conversation creator.
+
 ### Member Roster
 
 Lists all workroom members with their roles and online status. Owners can click **Manage members** to open the full membership management panel directly from within Kaizen.
@@ -290,6 +303,10 @@ The **Workroom Members** panel lets owners:
 ### Audit Log
 
 Tracks recent lifecycle, membership, credential, and access activity for the workroom. Click **Open log** to view the audit timeline. Use the audit log to verify who changed membership, delegated credentials, or modified workroom lifecycle state during the current collaboration window.
+
+### Shared Credentials
+
+Shared visibility does not automatically grant access to another member's private credentials. If a shared agent depends on a connector, API key, or OAuth session, the acting user must use their own credentials or an explicitly workroom-shared credential binding when that capability is enabled in your environment.
 
 ---
 

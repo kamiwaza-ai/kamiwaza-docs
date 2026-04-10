@@ -145,7 +145,10 @@ Reference: [Kaizen User Guide](/extensions/kaizen/kaizen-user-guide)
 2. Create a workroom with a title, classification banner, and optional labels.
 3. Decide whether the workroom should be persistent or temporary.
 4. Launch Kaizen from inside the workroom and confirm the app opens successfully.
-5. If sharing is enabled in your environment, add at least one collaborator and verify role-based behavior.
+5. If sharing is enabled in your environment, add at least one Contributor and one Viewer.
+6. Verify the Contributor can see the same non-global workroom agents and conversation history, add a later turn, and retain acting-user attribution on that turn.
+7. Verify the Viewer can see the same shared history but cannot create, send, upload, or edit.
+8. Verify the Global Workroom still preserves personal Kaizen visibility instead of cross-user sharing.
 
 Reference: [Workroom Manager User Guide](/extensions/workroom-manager/workroom-manager-user-guide)
 
