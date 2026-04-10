@@ -47,7 +47,7 @@ The top navigation bar provides access to all sections of Kaizen:
 - **Agents** — create and manage your AI agents (home view)
 - **Conversations** — browse and filter past conversations across all agents
 - **Search** — search across conversation messages, tool calls, and results
-- **Metrics** — pipeline dashboard for ingestion and model health
+- **Metrics** — model health and inference metrics for your Kaizen environment
 
 ---
 
@@ -284,7 +284,7 @@ Kaizen attributes each human or agent-triggering turn to the acting user who ini
 
 ### Member Roster
 
-Lists all workroom members with their roles and online status. Owners can click **Manage members** to open the membership management panel from within Kaizen. Workroom Manager also provides the standard share, role-change, and member-removal flows, but advanced ownership-transfer workflows may be surfaced differently depending on the deployed build.
+Lists all workroom members with their roles and online status. Owners can click **Manage members** to open the membership management panel from within Kaizen. Workroom Manager remains the standard place for workroom administration, including sharing, role changes, member removal, and ownership transfer.
 
 ![Workroom Members management panel](/img/extensions/kaizen/kaizen-workroom-members.png)
 

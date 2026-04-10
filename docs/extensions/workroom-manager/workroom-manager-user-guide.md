@@ -130,17 +130,17 @@ Click **Members** from the workroom detail panel to view the current roster.
 
 The members table shows each member's name, email, status, and role.
 
-Owners can use this panel to change non-owner roles and remove members. Some environments may expose additional ownership-transfer workflows elsewhere in the platform, but that is not a standard Workroom Manager control in every deployed build.
+Owners can use this panel to change non-owner roles, remove members, and transfer primary ownership to another member when responsibility for the workroom needs to change hands.
 
 ### Workroom roles
 
 | Role | Capabilities |
 | :--- | :--- |
-| **Owner** | Full control — update settings, manage members, share the workroom, and delete the workroom. In Kaizen, Owners can also continue shared workroom conversations and create or update shared agents. Assigned to the workroom creator. |
+| **Owner** | Full control — update settings, manage members, transfer ownership, share the workroom, and delete the workroom. In Kaizen, Owners can also continue shared workroom conversations and create or update shared agents. Assigned to the workroom creator. |
 | **Contributor** | Participate in the workroom, use deployed applications, and collaborate with other members. In Kaizen, Contributors can create shared agents and conversations visible to other workroom members. |
 | **Viewer** | Read-only access to the workroom and its contents, including shared Kaizen history and generated outputs. |
 
-Owners can change a member's role between Contributor and Viewer or remove a member entirely from the Members panel. If you remove a member who has an active session, the app may ask for confirmation before proceeding.
+Owners can change a member's role between Contributor and Viewer, remove a member entirely, or transfer ownership from the Members panel. If you remove a member who has an active session, the app may ask for confirmation before proceeding.
 
 In shared non-global workrooms, membership is the sharing boundary — you do not need to configure per-conversation or per-agent sharing inside Kaizen for another authorized member to see shared workroom history. Credential sharing remains separate from content sharing; workroom membership does not automatically grant reuse of another member's personal credentials unless explicitly shared through a supported credential path.
 
