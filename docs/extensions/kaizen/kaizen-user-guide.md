@@ -103,7 +103,7 @@ MCP (Model Context Protocol) integrations give your agent access to external too
 
 ![MCP Integrations](/img/extensions/kaizen/onboarding-04-mcp.png)
 
-Tools deployed through the Kamiwaza ToolShed are automatically available for selection here. Your admin deploys tools to the platform, and they appear ready to attach to your agents.
+Tools deployed through the Kamiwaza Tool Garden are automatically available for selection here. Your admin deploys tools to the platform, and they appear ready to attach to your agents.
 
 You can also connect custom MCP servers for proprietary or third-party APIs using **+ Add Custom Server**.
 
@@ -145,8 +145,6 @@ After creation, your agent appears in the library. Each agent card shows its nam
 - **Delete**: Remove the agent and its conversations.
 
 Create as many agents as you need, such as a research agent, a data analyst, or a report writer. Each agent keeps its own configuration and conversation history.
-
-The left sidebar shows your recent conversations across all agents. Click any conversation to resume where you left off.
 
 ---
 
@@ -351,5 +349,5 @@ Start with the Kaizen deployment logs in the Kamiwaza log viewer, then review th
 ## Learn More
 
 - [Models Overview](/models/overview)
-- [ToolShed](/tool-garden)
+- [Tool Garden](/tool-garden)
 - [Observability](/observability)

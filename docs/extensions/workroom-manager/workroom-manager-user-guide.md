@@ -11,11 +11,7 @@ Workroom Manager lets you create focused collaboration spaces inside Kamiwaza. E
 
 ## Getting Started
 
-Workroom Manager is available as an extension in your Kamiwaza deployment. Navigate to:
-
-```
-https://<your-instance>/runtime/apps/workroom-manager
-```
+Workroom Manager is available as an extension in your Kamiwaza deployment. Open it from **App Garden** or navigate directly if your administrator has provided a URL.
 
 When you first open Workroom Manager, you see the **Your Workrooms** library. This is your home view — it lists every workroom you own or have been invited to.
 
@@ -216,7 +212,7 @@ Platform administrators see an **Admin View** button on the main library page. T
 - **All workrooms** across all users, not just your own
 - **Owner** information for each workroom
 - The **Global Workroom** (the default system workroom for unscoped resources)
-- **Delete** capability for any workroom
+- **Delete** capability for any workroom except the Global Workroom, which cannot be deleted
 
 Click **Exit Admin View** to return to your personal workroom library.
 
@@ -245,7 +241,7 @@ Only workroom owners can change membership. If the workroom is in a read-only li
 
 ### I cannot see the full member roster
 
-Some environments only expose full roster details to owners. If you are not the owner, confirm whether your deployment has owner-only roster visibility.
+Non-owners can view the member roster but cannot change roles or remove members. If the roster is not loading, check your network connection and ensure the workroom is in an active state.
 
 ### A workroom delete or edit failed
 
