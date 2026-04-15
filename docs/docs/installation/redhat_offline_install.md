@@ -9,7 +9,7 @@ For field-by-field analysis and internal background, see
 
 For the exact smoke-tested install flow used on `rhel-install`, see
 `docs/rhel9-offline-prod-install-smoke.sh`. It defaults to a direct host-side
-S3 pull from `builds/offline/2026-03-05_0615`, the tested `release-0.11.0`
+S3 pull from the latest `release-0.12.1` builds, the tested `release-0.12.1`
 tags, and `AUTH_REBAC_SESSION_ENABLED=false`, but you can override those via
 env vars.
 
@@ -76,7 +76,7 @@ DOMAIN="kamiwaza.example.com"
 ADMIN_PASSWORD="replace-me"
 RELEASE_DIR="$HOME/kajiya-release"
 
-APP_TAG="release-0.11.0"
+APP_TAG="release-0.12.1"
 FRONTEND_TAG="${APP_TAG}"
 CONTAINERS_TAG="${APP_TAG}"
 ```
