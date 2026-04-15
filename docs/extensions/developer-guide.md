@@ -676,7 +676,7 @@ Clients that need to flip a single field no longer have to `PUT` the full record
 
 0.12.1 also bridges legacy app deployments into the extensions API, so deployments created before the unified surface appear in list/status responses alongside native extensions. They are read-only from the extensions API where the legacy contract cannot express a mutation.
 
-### Runtime launch tokens (0.12.1+) \{#runtime-launch-tokens}
+### Runtime launch tokens (0.12.1+) {#runtime-launch-tokens}
 
 Extensions that launch a scoped runtime session — for example, per-workroom app runtimes — now receive a short-lived **runtime launch token** rather than a full-auth passthrough. The token is issued by the platform for a specific runtime + user + workroom tuple and is accepted in place of a bearer token by downstream Kamiwaza APIs that honor the runtime scope.
 
