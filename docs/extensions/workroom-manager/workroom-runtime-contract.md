@@ -43,15 +43,15 @@ If the target has no active sessions, the initial `DELETE` succeeds without the 
 Clients can subscribe to a per-workroom SSE stream for presence and collaboration signals:
 
 ```
-GET /api/workrooms/{id}/events/
+GET /api/workrooms/{workroom_id}/events/stream
 Accept: text/event-stream
 Authorization: Bearer <token>
 ```
 
 **Accepted bearer types.** The `Authorization` header accepts any of the following, in order of preference:
 
-- A **user JWT** issued by the deployment's IdP. Use this for interactive browser/SPA clients subscribed on behalf of a signed-in user.
-- A **runtime launch token** issued for an extension runtime bound to this workroom. Use this when the subscriber is an extension runtime — see [Runtime launch tokens](../developer-guide.md#runtime-launch-tokens). The token's runtime + user + workroom tuple must match the `{id}` in the path.
+- A **user JWT** issued by the deployment's IdP. Use this for interactive browser/SPA clients subscribed on behalf of a signed-in user. The current platform validator expects a signed `RS256` token with `exp`; include `kid` so it can resolve the JWK. The deployment validates `iss` and, when configured, `aud`.
+- A **runtime launch token** issued for an extension runtime bound to this workroom. Use this when the subscriber is an extension runtime — see [Runtime launch tokens](../developer-guide.md#runtime-launch-tokens). The token's runtime + user + workroom tuple must match the `{workroom_id}` in the path.
 - A **personal access token (PAT)** scoped to the caller. Use this for service-to-service or CLI subscribers that cannot complete an interactive IdP flow. The caller still must be a current workroom member.
 
 Tokens that do not resolve to a current member of the workroom receive `403`. Expired tokens receive `401`; reconnect with a freshly issued token and the `Last-Event-ID` header for resumable delivery.
