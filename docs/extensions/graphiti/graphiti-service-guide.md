@@ -117,13 +117,33 @@ Neo4j only seeds credentials on first initialization. If you change `NEO4J_PASSW
 database already exists, either recreate the volume or rotate the password in place inside Neo4j and
 update the deployment secret/env to match.
 
-For an already-initialized database, rotate it with `cypher-shell`, for example:
+For an already-initialized database, rotate it with `cypher-shell` using stdin for the statement
+body instead of placing both passwords directly on the command line.
+
+Local Docker Compose example:
 
 ```bash
-docker compose exec neo4j \
-  cypher-shell -u neo4j -p "$OLD_NEO4J_PASSWORD" \
-  "ALTER CURRENT USER SET PASSWORD FROM '$OLD_NEO4J_PASSWORD' TO '$NEW_NEO4J_PASSWORD'"
+printf 'ALTER CURRENT USER SET PASSWORD FROM "%s" TO "%s";\n' \
+  "$OLD_NEO4J_PASSWORD" "$NEW_NEO4J_PASSWORD" \
+  | docker compose exec -T \
+      -e NEO4J_USERNAME=neo4j \
+      -e NEO4J_PASSWORD="$OLD_NEO4J_PASSWORD" \
+      neo4j \
+      cypher-shell -a bolt://localhost:7687
 ```
+
+Kubernetes/App Garden example:
+
+```bash
+printf 'ALTER CURRENT USER SET PASSWORD FROM "%s" TO "%s";\n' \
+  "$OLD_NEO4J_PASSWORD" "$NEW_NEO4J_PASSWORD" \
+  | kubectl exec -i -n <namespace> <neo4j-pod> -- \
+      env NEO4J_USERNAME=neo4j NEO4J_PASSWORD="$OLD_NEO4J_PASSWORD" \
+      cypher-shell -a bolt://localhost:7687
+```
+
+This env-driven pattern matches the shipped Graphiti Neo4j health check, which already invokes
+`cypher-shell` with `NEO4J_USERNAME` and `NEO4J_PASSWORD` on the pinned Neo4j `v5.26.21` runtime.
 
 If you are seeding a fresh volume before first startup, `neo4j-admin dbms set-initial-password` is
 the one-time alternative, but it does not replace the in-place rotation flow above for existing
