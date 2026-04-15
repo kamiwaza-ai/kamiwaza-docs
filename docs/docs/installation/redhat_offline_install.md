@@ -330,3 +330,10 @@ installed the correct packaged prod RPM for the offline release.
 
 - `docs/install-config_final.md`: field-by-field analysis and admin notes
 - `infra/smoke-rhel9/OFFLINE-E2E.md`: automated two-host offline smoke flow
+
+## Packaging Flow (For Maintainers)
+
+The offline release artifacts (RPM and the `helm-dt` chart bundle) are generated
+using `build-wrap-bundle.sh`. This process pulls all necessary Docker images,
+Helm charts, and RPM dependencies, and packages them into the `kamiwaza-helm.*.tar`
+chunks and the `kamiwaza` RPM for distribution.
