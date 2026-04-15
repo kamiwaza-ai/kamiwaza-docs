@@ -44,6 +44,21 @@ Your local `docker-compose.yml` can and should use host port mappings, bind moun
 * Tool names start with `tool-` or `mcp-`
 * Service names start with `service-`
 
+### Per-service `healthCheck` (0.12.1+)
+
+An extension service can declare a per-service health probe in its service spec via a `healthCheck` block. When present, the platform uses it to gate readiness for that service independently of the app-level `/health` endpoint. Useful for tools or services that expose readiness on a non-default path or need custom timing.
+
+```yaml
+# inside your service spec
+healthCheck:
+  path: /healthz
+  intervalSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+```
+
+If `healthCheck` is omitted, the platform keeps the previous app-level `/health` probe behavior.
+
 ## Getting Started
 
 ### Install the CLI
@@ -645,6 +660,29 @@ Example:
   }
 }
 ```
+
+### Extensions API: PATCH and status (0.12.1+)
+
+The platform's extensions API now supports partial updates and a dedicated deployment-status endpoint:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `PATCH` | `/api/extensions/{id}/` | Apply a partial update to an extension record (env overrides, risk_tier, visibility, etc.). Only supplied fields are changed. |
+| `GET`   | `/api/extensions/{id}/status/` | Return the current deployment/runtime status for an extension, including per-service readiness. |
+
+Clients that need to flip a single field no longer have to `PUT` the full record. The status endpoint is the preferred surface for dashboards and CI health checks — it is cheaper than polling the full list and is safe to poll on short intervals.
+
+0.12.1 also bridges legacy app deployments into the extensions API, so deployments created before the unified surface appear in list/status responses alongside native extensions. They are read-only from the extensions API where the legacy contract cannot express a mutation.
+
+### Runtime launch tokens (0.12.1+)
+
+Extensions that launch a scoped runtime session — for example, per-workroom app runtimes — now receive a short-lived **runtime launch token** rather than a full-auth passthrough. The token is issued by the platform for a specific runtime + user + workroom tuple and is accepted in place of a bearer token by downstream Kamiwaza APIs that honor the runtime scope.
+
+Operational notes:
+
+- Treat the launch token as opaque and short-lived. Re-fetch on session expiry; do not persist it.
+- When calling core APIs, forward the token via `Authorization: Bearer` or the shared auth-bridge helpers.
+- Full-auth passthrough is no longer the default for runtime sessions — code that relied on seeing a user's raw JWT should move to the launch-token path.
 
 ### Writing portable code
 

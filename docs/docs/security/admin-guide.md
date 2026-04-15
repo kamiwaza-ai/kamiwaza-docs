@@ -138,6 +138,32 @@ Administrators should be able to verify:
 - session expiration or revocation behavior
 - enough request context to support incident response or accreditation evidence
 
+### Audit coverage (0.12.1+)
+
+- All state-changing API operations emit an audit record (actor, target, action, request id, and outcome).
+- A denied-request audit middleware records `401` and `403` responses so failed access attempts leave a trail even when the downstream handler is never invoked.
+- Audit records are surfaced through the same observability path as other security logs.
+
+### Authenticated-by-default API surface (0.12.1+)
+
+The platform now applies the `AuthenticatedUser` dependency to all non-exempt endpoints, including admin and destructive routes. The effective contract:
+
+- Every API endpoint requires an authenticated caller unless explicitly exempt (health, login, public metadata).
+- Admin and destructive endpoints additionally require the appropriate role or scope.
+- The OpenAPI spec now documents auth requirements per endpoint — use it as the source of truth when integrating.
+
+### Cluster trust and machine-to-machine federation (0.12.1+)
+
+For multi-cluster and federated deployments, identity headers from peer services are only honored when signed by a trusted cluster identity. Unsigned requester-identity headers are now distrusted and dropped. Operators federating two Kamiwaza clusters must exchange cluster trust material as part of deployment; see your deployment's federation notes for the per-environment procedure.
+
+### Local (non-SSO) user password policy (0.12.1+)
+
+When local authentication is enabled, new users must supply a valid email address and a password meeting the platform's strength policy at creation. Administrators provisioning local users should budget for:
+
+- distributing per-user email addresses (no shared logins)
+- communicating the password-strength requirements (length + complexity)
+- rotating any seeded credentials that pre-date the policy
+
 For broader deployment logging guidance, see:
 
 - [Observability](../observability.md)

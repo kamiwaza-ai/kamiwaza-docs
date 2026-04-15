@@ -52,6 +52,10 @@ DDE connector and document endpoints are mounted under the ingestion service wit
 
 Connectors carry security metadata such as `system_high` (the maximum classification allowed) and an optional `default_security_marking` applied when documents lack explicit markings.
 
+### Audio ingest (0.12.1+)
+
+Audio files submitted through the ingestion endpoints are now routed to the platform's OmniParse transcription endpoint. Transcribed text enters the same extraction and indexing path as documents, so audio sources surface in search and retrieval with the same security markings as their parent connector. No connector-side configuration change is required; the routing is automatic based on file type.
+
 ## DDE MCP tool
 
 Kamiwaza also ships a DDE-focused MCP tool, `tool-kamiwaza-dde`, for apps and agents that need

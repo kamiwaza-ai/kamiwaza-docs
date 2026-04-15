@@ -55,6 +55,11 @@ const sidebars: SidebarsConfig = {
 					id: "workroom-manager/workroom-manager-user-guide",
 					label: "User Guide",
 				},
+				{
+					type: "doc",
+					id: "workroom-manager/workroom-runtime-contract",
+					label: "Runtime Contract",
+				},
 			],
 		},
 	],
