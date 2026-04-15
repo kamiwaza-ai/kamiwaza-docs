@@ -52,6 +52,38 @@ DDE connector and document endpoints are mounted under the ingestion service wit
 
 Connectors carry security metadata such as `system_high` (the maximum classification allowed) and an optional `default_security_marking` applied when documents lack explicit markings.
 
+## DDE MCP tool
+
+Kamiwaza also ships a DDE-focused MCP tool, `tool-kamiwaza-dde`, for apps and agents that need
+to work with catalog, ingestion, retrieval, VectorDB, or knowledge-graph operations without
+building their own REST clients.
+
+| Area | Example tools | What they are used for |
+|--------|--------|--------|
+| Catalog | `search_catalog`, `get_dataset`, `add_to_catalog` | Discover dataset metadata and register datasets in the catalog. |
+| Pipelines | `ingest_source`, `ingest_document`, `create_pipeline_job`, `get_pipeline_job` | Submit content and manage ingestion jobs. |
+| Retrieval | `search_context`, `retrieve_context`, `agentic_search` | Run grounded context search and retrieval from agents. |
+| VectorDB | `list_collections`, `search_collections`, `query_vectors` | Inspect and query retrieval collections and vector stores. |
+| Knowledge graph | `add_knowledge`, `search_knowledge`, `get_memory` | Populate and query Graphiti-backed knowledge state. |
+
+The exact tool inventory can vary by release, but the 0.12.1 line aligns the MCP surface more
+closely to the REST APIs exposed by the platform.
+
+### Session and auth flow
+
+The DDE MCP tool uses streamable HTTP MCP semantics:
+
+1. Send `initialize` to `/mcp`.
+2. Read the returned `MCP-Session-Id` and `MCP-Protocol-Version` headers.
+3. Send both headers on subsequent requests in the same session.
+
+Operational notes:
+
+- Restrict browser access with `KAMIWAZA_ALLOWED_ORIGINS`.
+- For service-to-service use, provide `KAMIWAZA_API_TOKEN` or `KAMIWAZA_API_KEY` if needed.
+- For end-user flows that should preserve the caller's identity, install the shared auth bridge so
+  forwarded Kamiwaza headers reach the tool and downstream APIs.
+
 ## Security markings and rate limits
 
 DDE document indexing and retrieval enforce security markings and system-high rules:

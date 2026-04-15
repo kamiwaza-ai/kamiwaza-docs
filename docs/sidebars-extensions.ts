@@ -35,6 +35,18 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: "category",
+			label: "Graphiti",
+			collapsed: true,
+			items: [
+				{
+					type: "doc",
+					id: "graphiti/graphiti-service-guide",
+					label: "Service Guide",
+				},
+			],
+		},
+		{
+			type: "category",
 			label: "Workroom Manager",
 			collapsed: true,
 			items: [
