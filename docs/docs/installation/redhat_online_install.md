@@ -99,18 +99,21 @@ To review the full license terms, visit: https://www.kamiwaza.ai/license
 sudo -E KAMIWAZA_ACCEPT_LICENSE=yes dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 
 # Option B: Install the package (Enterprise Mode with License Key)
-sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY_HERE" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY_HERE" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 ```
 
-**Note:** Omit the `-E KAMIWAZA_LICENSE_KEY` option if you are installing the Community Edition without an enterprise license.
+**Note:** Omit the `KAMIWAZA_LICENSE_KEY` option if you are installing the Community Edition without an enterprise license.
 
 After the package is installed, run the production installation script. 
 
-> **Warning:** Avoid passing the admin password directly as a CLI argument (`--admin-password`) to prevent it from being saved in your shell history. Use the `KAMIWAZA_ADMIN_PASSWORD` environment variable instead.
+> **Warning:** Avoid passing the admin password directly as a CLI argument (`--admin-password`) or an inline environment variable to prevent it from being saved in your shell history or visible in process lists. Use `read -s` to securely prompt for the password and export it.
 
 ```bash
 # Run the production install script (online mode)
-sudo KAMIWAZA_ADMIN_PASSWORD="your-admin-password" /opt/kamiwaza/scripts/install-prod.sh --domain "your-configured-domain-or-ip" -y
+echo "Enter admin password for Kamiwaza:"
+read -s KAMIWAZA_ADMIN_PASSWORD
+export KAMIWAZA_ADMIN_PASSWORD
+sudo -E /opt/kamiwaza/scripts/install-prod.sh --domain "your-configured-domain-or-ip" -y
 ```
 
 The installer will automatically detect online mode and download required resources from the internet.
