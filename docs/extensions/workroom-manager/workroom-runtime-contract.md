@@ -27,9 +27,16 @@ The workrooms API exposes roster operations that runtimes and the Workroom Manag
 | `GET  /api/workrooms/{id}/members/`     | List members visible to the caller. |
 | `POST /api/workrooms/{id}/members/`     | Invite or add a member. |
 | `PATCH /api/workrooms/{id}/members/{user_id}/` | Update a member's role. |
-| `DELETE /api/workrooms/{id}/members/{user_id}/` | Remove a member (requires active-session confirmation). |
+| `DELETE /api/workrooms/{id}/members/{user_id}/` | Remove a member (see active-session confirmation below). |
 
-Member-removal flows now require explicit confirmation when the target has an active session, and any bound runtime sessions for that user are released as part of the removal.
+**Active-session confirmation mechanism.** Confirmation is carried as the query parameter `?confirm_active_sessions=true` on the `DELETE` request. The contract, grounded in `kamiwaza/services/workrooms/api.py::remove_workroom_member`:
+
+1. Client issues `DELETE /api/workrooms/{id}/members/{user_id}/` without the query parameter (or with `false`).
+2. If the target has one or more active workroom sessions, the server returns **HTTP 409** with `detail: "Member has active workroom sessions; confirm removal to continue"`. The membership is **not** modified.
+3. Client surfaces the confirmation prompt to the operator, then retries with `DELETE /api/workrooms/{id}/members/{user_id}/?confirm_active_sessions=true`.
+4. On the confirmed retry, the server removes the membership and terminates any bound runtime sessions for that user as part of the same request.
+
+If the target has no active sessions, the initial `DELETE` succeeds without the query parameter. There is no request body or custom header — the mechanism is purely the query-string flag plus the `409` retry handshake.
 
 ## Collaboration SSE feed
 

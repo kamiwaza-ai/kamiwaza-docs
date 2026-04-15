@@ -158,7 +158,7 @@ The platform now applies the `AuthenticatedUser` dependency to all non-exempt en
 
 ### Cluster trust and machine-to-machine federation (0.12.1+)
 
-For multi-cluster and federated deployments, identity headers from peer services are only honored when signed by a trusted cluster identity. Unsigned requester-identity headers are now distrusted and dropped. Operators federating two Kamiwaza clusters must exchange cluster trust material as part of deployment; see your deployment's federation notes for the per-environment procedure.
+For multi-cluster and federated deployments, identity headers from peer services are only honored when signed by a trusted cluster identity. Unsigned requester-identity headers are now distrusted and dropped. Operators federating two Kamiwaza clusters must exchange cluster trust material as part of deployment; contact Kamiwaza Support for the per-environment procedure.
 
 **Rotation, revocation, and compromise.** Cluster trust material is long-lived but not permanent. Rotation, revocation on decommission, and response to suspected key compromise are deployment-specific procedures and are not exposed as a self-service UI in the platform. If you need to rotate or revoke a peer cluster's trust material, or if you suspect a cluster identity has been compromised, contact Kamiwaza Support for the per-environment procedure — do not attempt to edit signing material in running pods. Until a compromised identity is revoked through the supported path, isolate the affected cluster at the network layer.
 

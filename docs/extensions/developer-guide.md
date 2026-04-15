@@ -683,6 +683,19 @@ Extensions that launch a scoped runtime session — for example, per-workroom ap
 Lifetime and refresh:
 
 - Tokens are short-lived (minutes, not hours). Treat the exact TTL as platform-controlled and read the expiry from the issuance response rather than hard-coding it.
+- The issuance response carries the expiry on the standard JWT `exp` claim, encoded as a Unix timestamp in seconds (absolute UTC, not relative). Decode the token's claims to read it — do not parse the opaque outer wrapper. A minimal decoded-claims snippet:
+
+  ```json
+  {
+    "sub": "user-123",
+    "workroom_id": "wr-abc",
+    "sid": "sess-789",
+    "exp": 1744747200,
+    "iat": 1744746300
+  }
+  ```
+
+  Schedule refresh a small margin (for example, 30 seconds) before `exp`; treat any token within that margin as already expired.
 - A token that expires mid-request causes the downstream API to return `401`. On `401`, re-fetch a fresh launch token from the platform and retry the request once; do not loop.
 - There is no separate refresh-token grant — re-fetch through the same launch endpoint used at session start. Cache the token only for the lifetime of the active runtime session.
 
