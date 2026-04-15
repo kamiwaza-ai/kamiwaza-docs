@@ -14,7 +14,7 @@ The Kamiwaza platform is composed of several key components and conceptual syste
 
 ### Embeddings Management
 -   **What it is:** The process of generating, storing, and managing vector embeddings for your data. Kamiwaza provides platform services that automate embedding generation using a dedicated, standalone OpenAI-compatible `llama.cpp` embedding service deployed via Helm (replacing legacy in-process fallbacks).
--   **Why it matters:** Consistent and efficient embedding management is fundamental to vector search quality and retrieval performance, and a dedicated service drops significant container bloat while improving throughput.
+-   **Why it matters:** Consistent and efficient embedding management is fundamental to vector search quality and retrieval performance. A dedicated embedding service reduces container footprint and improves service decoupling compared to in-process fallbacks.
 
 ### Data Catalog
 -   **What it is:** A centralized inventory of data assets, containers, and secret metadata. Kamiwaza integrates with **DataHub**-backed catalog workflows and uses URN-based references across the platform.

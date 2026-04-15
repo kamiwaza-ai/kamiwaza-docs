@@ -334,6 +334,6 @@ installed the correct packaged prod RPM for the offline release.
 ## Packaging Flow (For Maintainers)
 
 The offline release artifacts (RPM and the `helm-dt` chart bundle) are generated
-using `build-wrap-bundle.sh`. This process pulls all necessary Docker images,
+using `scripts/build-wrap-bundle.sh` in the `kamiwaza-ai/deploy` repository. This process pulls all necessary Docker images,
 Helm charts, and RPM dependencies, and packages them into the `kamiwaza-helm.*.tar`
-chunks and the `kamiwaza` RPM for distribution.
+chunks and the `kamiwaza-prod-*.x86_64.rpm` file for distribution.

@@ -45,7 +45,7 @@ For customer-facing documentation, integrations, bookmarks, and extension guidan
 
 This aligns with the current Kubernetes deployment model, which uses Istio for `k0s` runtime deployments (Kamiwaza Mesh M1) and Traefik for `Kind` deployments, along with the runtime routing API.
 
-*(Note: In development and local deployments using the Mesh M1 configuration, TLS is handled via a self-signed placeholder certificate.)*
+*(Note: In local development deployments using the `k0s-podman` or `k0s-lima` Mesh M1 configuration, TLS is handled via a self-signed placeholder certificate.)*
 
 ## Routing Configuration API
 

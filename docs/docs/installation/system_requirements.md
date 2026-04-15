@@ -124,7 +124,7 @@ Before running the Kamiwaza installer, ensure the following are installed:
 | **Docker** | Docker Engine 24.0+ with Compose 2.23+ | [Docker Install Guide](https://docs.docker.com/engine/install/) |
 | **Browser** | Chrome 141+ (tested and recommended) | [Download Chrome](https://www.google.com/chrome/) |
 
-> **Note:** An experimental `k0s` runtime via Podman (`--k0s-podman`) or Lima VM (`--k0s-lima`) is available for local dev deployments as an alternative to Docker/Kind. See deploy scripts and `k0s-lima-install.sh` / `k0s-dev-install.sh` for details and benchmarks.
+> **Note:** An experimental `k0s` runtime via Podman (`--k0s-podman`) or Lima VM (`--k0s-lima`) is available for local dev deployments as an alternative to Docker/Kind. See deploy scripts and [`k0s-lima-install.sh`](https://github.com/kamiwaza-ai/deploy/blob/develop/scripts/k0s-lima-install.sh) / [`k0s-dev-install.sh`](https://github.com/kamiwaza-ai/deploy/blob/develop/scripts/k0s-dev-install.sh) for details and benchmarks.
 
 ### GPU Drivers (Required for GPU Inference)
 
