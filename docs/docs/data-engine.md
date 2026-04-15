@@ -55,7 +55,27 @@ Connectors carry security metadata such as `system_high` (the maximum classifica
 
 ### Audio ingest (0.12.1+)
 
-Audio files submitted through the ingestion endpoints are now routed to the platform's OmniParse transcription endpoint. Transcribed text enters the same extraction and indexing path as documents, so audio sources surface in search and retrieval with the same security markings as their parent connector. No connector-side configuration change is required; the routing is automatic based on file type.
+Audio files submitted through the ingestion endpoints are routed to the platform's OmniParse
+transcription endpoint before indexing. In the current 0.12.1 context-service code, the supported
+media extensions are `.aac`, `.aif`, `.aiff`, `.flac`, `.m4a`, `.m4b`, `.mp3`, `.oga`, `.ogg`,
+`.opus`, `.wav`, `.wma`, plus `.mov`, `.mp4`, and `.webm` when only the audio track needs to be
+transcribed.
+
+Transcribed text enters the same extraction and indexing path as documents, so media sources appear
+in search and retrieval with the same security markings as their parent connector. No connector-side
+configuration change is required; the routing is automatic based on file type when OmniParse is
+configured.
+
+The automatic OmniParse path enables `use_omniparse=true` with `strict_omniparse=false` in the
+underlying context service. That means OmniParse failures fall back to the built-in extractors where
+one exists, instead of failing the whole job immediately. For audio/video files themselves, successful
+transcription is still required to produce chunks, so empty transcription results behave like empty
+content.
+
+Current limits come from the context service rather than a DDE-specific knob: the default decoded
+file-size limit is `100 MB`, the streaming upload ceiling is `200 MB`, and the OmniParse
+transcription wait is `300` seconds. The 0.12.1 code does not add a separate media-duration limit
+beyond those size and timeout bounds.
 
 ## DDE MCP tool
 
@@ -72,7 +92,17 @@ building their own REST clients.
 | Knowledge graph | `add_knowledge`, `search_knowledge`, `get_memory` | Populate and query Graphiti-backed knowledge state. |
 
 The exact tool inventory can vary by release, but the 0.12.1 line aligns the MCP surface more
-closely to the REST APIs exposed by the platform.
+closely to the REST APIs exposed by the platform. To inspect the exact tool IDs your deployment
+exposes, send the standard MCP `tools/list` request after `initialize`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "2",
+  "method": "tools/list",
+  "params": {}
+}
+```
 
 ### Session and auth flow
 
@@ -84,8 +114,12 @@ The DDE MCP tool uses streamable HTTP MCP semantics:
 
 Operational notes:
 
-- Restrict browser access with `KAMIWAZA_ALLOWED_ORIGINS`.
-- For service-to-service use, provide `KAMIWAZA_API_TOKEN` or `KAMIWAZA_API_KEY` if needed.
+- Restrict browser access with `KAMIWAZA_ALLOWED_ORIGINS`. The DDE MCP tool reads this variable
+  directly; it does not use the platform-level `KAMIWAZA_CORS_ORIGINS` setting.
+- For static service-to-service auth, set `KAMIWAZA_API_TOKEN`. If that variable is unset, the tool
+  falls back to `KAMIWAZA_API_KEY`.
+- If the incoming MCP request already carries `Authorization` or a forwarded `access_token` cookie,
+  the tool preserves that caller/session auth instead of overriding it with the static env token.
 - For end-user flows that should preserve the caller's identity, install the shared auth bridge so
   forwarded Kamiwaza headers reach the tool and downstream APIs.
 

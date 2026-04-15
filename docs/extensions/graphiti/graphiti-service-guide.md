@@ -25,12 +25,17 @@ data volumes.
 
 Graphiti is installed as an extension and requires:
 
-- a deploy-time `NEO4J_PASSWORD`
+- a deployment-time secret for `NEO4J_PASSWORD`
 - persistent storage for Neo4j data
 - a reachable LLM or OpenAI-compatible endpoint for message processing
 
 Without an LLM endpoint, Graphiti can still accept requests, but message processing, extraction,
 and memory/search results will be incomplete or fail.
+
+In App Garden, the install flow prompts for `NEO4J_PASSWORD`. In declarative or Helm-based
+deployments, supply the same value through your normal secret path (for example a Kubernetes
+`Secret`, `SealedSecret`, or equivalent env-injection mechanism) instead of hard-coding it in the
+checked-in manifest.
 
 ## Runtime Layout
 
@@ -68,18 +73,24 @@ Operational notes:
 - In platform deployments, `OPENAI_BASE_URL` is treated as the primary injection point so the
   platform-managed model endpoint wins by default.
 - Neo4j password seeding happens when the data volume is first initialized. Rotating
-  `NEO4J_PASSWORD` later does not rewrite an existing database automatically.
+  `NEO4J_PASSWORD` later does not rewrite an existing database automatically. See
+  [Neo4j authentication changes do not take effect](#neo4j-authentication-changes-do-not-take-effect)
+  for the in-place rotation workflow.
 
 ## Migration from FalkorDB
 
-0.12.1 replaces FalkorDB with Neo4j. Existing FalkorDB data is not compatible with the new backend.
+:::caution
+0.12.1 replaces FalkorDB with Neo4j. Existing FalkorDB data is not compatible with the new backend,
+and rollback depends on preserving the pre-upgrade FalkorDB state before you switch the deployment.
+:::
 
 Plan upgrades accordingly:
 
-1. Treat the migration as a storage break.
-2. Start Graphiti with a fresh Neo4j data volume.
-3. Rebuild the graph from source documents or other canonical inputs.
-4. Remove the old FalkorDB volume only after you confirm the new Neo4j-backed service is healthy.
+1. Snapshot or otherwise preserve the existing FalkorDB volume before you upgrade.
+2. Treat the migration as a storage break.
+3. Start Graphiti with a fresh Neo4j data volume.
+4. Rebuild the graph from source documents or other canonical inputs.
+5. Remove the old FalkorDB volume only after you confirm the new Neo4j-backed service is healthy.
 
 The Graphiti service also uses a different volume naming convention for Neo4j-backed storage to
 avoid accidental cross-use of FalkorDB data.
@@ -103,7 +114,20 @@ most common reason message ingestion succeeds while retrieval or search fails la
 ### Neo4j authentication changes do not take effect
 
 Neo4j only seeds credentials on first initialization. If you change `NEO4J_PASSWORD` after the
-database already exists, recreate the volume or rotate the password in-place inside Neo4j.
+database already exists, either recreate the volume or rotate the password in place inside Neo4j and
+update the deployment secret/env to match.
+
+For an already-initialized database, rotate it with `cypher-shell`, for example:
+
+```bash
+docker compose exec neo4j \
+  cypher-shell -u neo4j -p "$OLD_NEO4J_PASSWORD" \
+  "ALTER CURRENT USER SET PASSWORD FROM '$OLD_NEO4J_PASSWORD' TO '$NEW_NEO4J_PASSWORD'"
+```
+
+If you are seeding a fresh volume before first startup, `neo4j-admin dbms set-initial-password` is
+the one-time alternative, but it does not replace the in-place rotation flow above for existing
+databases.
 
 ### Local testing with custom Graphiti images
 
