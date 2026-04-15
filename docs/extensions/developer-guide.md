@@ -52,10 +52,12 @@ An extension service can declare a per-service health probe in its service spec 
 # inside your service spec
 healthCheck:
   path: /healthz
-  intervalSeconds: 10
-  timeoutSeconds: 3
-  failureThreshold: 3
+  intervalSeconds: 10   # probe cadence, in seconds
+  timeoutSeconds: 3     # per-probe timeout, in seconds
+  failureThreshold: 3   # consecutive failures before the service is marked unready
 ```
+
+All duration fields are **seconds** (not milliseconds). Minimums are `intervalSeconds: 1`, `timeoutSeconds: 1`, `failureThreshold: 1`.
 
 If `healthCheck` is omitted, the platform keeps the previous app-level `/health` probe behavior.
 
@@ -667,22 +669,33 @@ The platform's extensions API now supports partial updates and a dedicated deplo
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `PATCH` | `/api/extensions/{id}/` | Apply a partial update to an extension record (env overrides, risk_tier, visibility, etc.). Only supplied fields are changed. |
-| `GET`   | `/api/extensions/{id}/status/` | Return the current deployment/runtime status for an extension, including per-service readiness. |
+| `PATCH` | `/api/extensions/{name}` | Apply a partial update to an extension record (env overrides, risk_tier, visibility, etc.). Only supplied fields are changed. |
+| `GET`   | `/api/extensions/{name}/status` | Return the current deployment/runtime status for an extension, including per-service readiness. |
 
 Clients that need to flip a single field no longer have to `PUT` the full record. The status endpoint is the preferred surface for dashboards and CI health checks — it is cheaper than polling the full list and is safe to poll on short intervals.
 
 0.12.1 also bridges legacy app deployments into the extensions API, so deployments created before the unified surface appear in list/status responses alongside native extensions. They are read-only from the extensions API where the legacy contract cannot express a mutation.
 
-### Runtime launch tokens (0.12.1+)
+### Runtime launch tokens (0.12.1+) \{#runtime-launch-tokens}
 
 Extensions that launch a scoped runtime session — for example, per-workroom app runtimes — now receive a short-lived **runtime launch token** rather than a full-auth passthrough. The token is issued by the platform for a specific runtime + user + workroom tuple and is accepted in place of a bearer token by downstream Kamiwaza APIs that honor the runtime scope.
 
-Operational notes:
+Lifetime and refresh:
 
-- Treat the launch token as opaque and short-lived. Re-fetch on session expiry; do not persist it.
-- When calling core APIs, forward the token via `Authorization: Bearer` or the shared auth-bridge helpers.
+- Tokens are short-lived (minutes, not hours). Treat the exact TTL as platform-controlled and read the expiry from the issuance response rather than hard-coding it.
+- A token that expires mid-request causes the downstream API to return `401`. On `401`, re-fetch a fresh launch token from the platform and retry the request once; do not loop.
+- There is no separate refresh-token grant — re-fetch through the same launch endpoint used at session start. Cache the token only for the lifetime of the active runtime session.
+
+Where the token is accepted:
+
+- Core Kamiwaza REST APIs that honor the runtime scope (extensions, workrooms, models, retrieval). Forward via `Authorization: Bearer <token>` or the shared auth-bridge helpers.
+- Platform SSE streams (for example, the workroom events feed) accept the same bearer on the initial `GET`. On `401` during a stream, reconnect with a freshly fetched token and the `Last-Event-ID` header for resumable delivery.
+- WebSocket upgrades accept the bearer on the handshake request. Browsers that cannot set `Authorization` on a WS handshake should use the auth-bridge helper (which sets a short-lived cookie) rather than passing the token in the URL.
+
+Behavior change:
+
 - Full-auth passthrough is no longer the default for runtime sessions — code that relied on seeing a user's raw JWT should move to the launch-token path.
+- Launch tokens are opaque. Do not parse them, log them, or persist them outside the runtime session.
 
 ### Writing portable code
 
