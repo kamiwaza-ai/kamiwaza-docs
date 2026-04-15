@@ -9,6 +9,7 @@ Kamiwaza’s Distributed Data Engine (DDE) aligns unstructured and tabular conte
 - The current Kamiwaza platform is deployed and available over HTTPS.
 - You have administrative access to configure connectors and manage secrets.
 - Target storage (Kamiwaza vector database or an external store) is reachable from the ingestion workers.
+- The platform uses a dedicated, standalone OpenAI-compatible `llama.cpp` embedding service for vector generation, deployed via Helm.
 
 ## Connector workflow
 

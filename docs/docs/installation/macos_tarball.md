@@ -25,6 +25,8 @@ This guide covers installing Kamiwaza Community Edition on macOS using the pre-b
 
 ### 2) Install and start Docker Desktop
 
+*(Note: For developers building from source using the deploy repository scripts, an experimental `k0s` runtime via Lima VM (`--k0s-lima`) is available as an alternative to Docker Desktop for local deployments.)*
+
 ```bash
 brew install --cask docker
 open -a Docker

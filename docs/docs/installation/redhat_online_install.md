@@ -99,6 +99,9 @@ To review the full license terms, visit: https://www.kamiwaza.ai/license
 # Install the package
 sudo -E KAMIWAZA_ACCEPT_LICENSE=yes dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 
+# Run the production install script (online mode)
+sudo /opt/kamiwaza/scripts/install-prod.sh --domain "your-configured-domain-or-ip" --admin-password "your-admin-password" -y
+
 # Alternatively, for Enterprise Mode, Install the package with Kamiwaza License Key
 sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY_HERE" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 ```
