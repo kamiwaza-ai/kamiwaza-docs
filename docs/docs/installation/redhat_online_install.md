@@ -106,7 +106,7 @@ sudo -E KAMIWAZA_ACCEPT_LICENSE=yes KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY_HERE"
 
 After the package is installed, run the production installation script. 
 
-> **Warning:** Avoid passing the admin password directly as a CLI argument (`--admin-password`) or an inline environment variable to prevent it from being saved in your shell history or visible in process lists. Use `read -s` to securely prompt for the password and export it.
+> **Warning:** Avoid passing the admin password directly as a static CLI argument or an inline environment variable to prevent it from being saved in your shell history. Use `read -s` to securely prompt for the password and export it. Note that passing the exported variable to the installation script (`--admin-password "${KAMIWAZA_ADMIN_PASSWORD}"`) will still expose the password briefly in process lists (e.g., `ps aux`) while the script runs, but protects it from permanent shell logs.
 
 ```bash
 # Run the production install script (online mode)
