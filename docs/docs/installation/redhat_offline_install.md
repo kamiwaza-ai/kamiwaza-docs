@@ -22,6 +22,8 @@ This guide assumes:
 - you are installing from the packaged offline artifacts, not from live repos
 - `install-prod.sh` is the entrypoint
 
+> **Note:** The RHEL offline install flow now includes `dnsmasq` alignment and natively supports App Garden extension traffic routing out-of-the-box (per the 0.12.1 release).
+
 ## Inputs You Need
 
 Before you start, decide these values:
@@ -328,3 +330,10 @@ installed the correct packaged prod RPM for the offline release.
 
 - `docs/install-config_final.md`: field-by-field analysis and admin notes
 - `infra/smoke-rhel9/OFFLINE-E2E.md`: automated two-host offline smoke flow
+
+## Packaging Flow (For Maintainers)
+
+The offline release artifacts (RPM and the `helm-dt` chart bundle) are generated
+using `build-wrap-bundle.sh`. This process pulls all necessary Docker images,
+Helm charts, and RPM dependencies, and packages them into the `kamiwaza-helm.*.tar`
+chunks and the `kamiwaza` RPM for distribution.

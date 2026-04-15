@@ -43,7 +43,9 @@ For customer-facing documentation, integrations, bookmarks, and extension guidan
 - treat the platform HTTPS origin as the stable entrypoint
 - avoid documenting port-specific runtime URLs as the preferred access pattern
 
-This aligns with the current Kubernetes deployment model, Traefik ingress setup, and the runtime routing API.
+This aligns with the current Kubernetes deployment model, which uses Istio for `k0s` runtime deployments (Kamiwaza Mesh M1) and Traefik for `Kind` deployments, along with the runtime routing API.
+
+*(Note: In development and local deployments using the Mesh M1 configuration, TLS is handled via a self-signed placeholder certificate.)*
 
 ## Routing Configuration API
 

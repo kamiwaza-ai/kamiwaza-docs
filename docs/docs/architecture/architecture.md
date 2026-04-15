@@ -33,3 +33,5 @@ graph TD
     Workrooms --> DataStores
     Logs --> DataStores
 ```
+
+**Ingress Note:** The platform ingress uses Traefik for default `Kind` deployments and Istio for `k0s` runtime deployments (introduced via Kamiwaza Mesh M1).
