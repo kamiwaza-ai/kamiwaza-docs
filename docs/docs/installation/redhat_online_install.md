@@ -113,7 +113,7 @@ After the package is installed, run the production installation script.
 echo "Enter admin password for Kamiwaza:"
 read -s KAMIWAZA_ADMIN_PASSWORD
 export KAMIWAZA_ADMIN_PASSWORD
-sudo -E /opt/kamiwaza/scripts/install-prod.sh --domain "your-configured-domain-or-ip" --admin-password "${KAMIWAZA_ADMIN_PASSWORD}" -y
+sudo -E /opt/kamiwaza/scripts/install-prod.sh --domain "your-configured-domain-or-ip" -y
 ```
 
 The installer will automatically detect online mode and download required resources from the internet.
