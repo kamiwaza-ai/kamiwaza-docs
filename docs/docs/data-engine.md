@@ -55,8 +55,8 @@ Connectors carry security metadata such as `system_high` (the maximum classifica
 
 ### Audio ingest (0.12.1+)
 
-Audio files submitted through the ingestion endpoints are routed to the platform's OmniParse
-transcription endpoint before indexing. In the current 0.12.1 context-service code, the supported
+Audio files submitted through the context manager are routed to the platform's OmniParse
+transcription endpoint before indexing. In the current 0.12.1 context manager code, the supported
 media extensions are `.aac`, `.aif`, `.aiff`, `.flac`, `.m4a`, `.m4b`, `.mp3`, `.oga`, `.ogg`,
 `.opus`, `.wav`, `.wma`, plus `.mov`, `.mp4`, and `.webm` when only the audio track needs to be
 transcribed.
@@ -65,17 +65,17 @@ Transcribed text enters the same extraction and indexing path as documents, so m
 in search and retrieval with the same security markings as their parent connector. No connector-side
 configuration change is required; the routing is automatic based on file type when OmniParse is
 configured.
-
 The automatic OmniParse path enables `use_omniparse=true` with `strict_omniparse=false` in the
-underlying context service. That means OmniParse failures fall back to the built-in extractors where
+underlying context manager. That means OmniParse failures fall back to the built-in extractors where
 one exists, instead of failing the whole job immediately. For audio/video files themselves, successful
 transcription is still required to produce chunks, so empty transcription results behave like empty
 content.
 
-Current limits come from the context service rather than a DDE-specific knob: the default decoded
-file-size limit is `100 MB`, the streaming upload ceiling is `200 MB`, and the OmniParse
-transcription wait is `300` seconds. The 0.12.1 code does not add a separate media-duration limit
-beyond those size and timeout bounds.
+Current limits come from the context manager rather than a DDE-specific knob: the default decoded
+file-size limit is `100 MB` (configurable via `CONTEXT_MANAGER_MAX_FILE_SIZE`), the streaming upload ceiling is `200 MB`, and the OmniParse
+transcription timeout defaults to `300` seconds.
+
+For detailed documentation on OmniParse deployment, capabilities, and configuration options, see the [OmniParse Extension Guide](../extensions/omniparse/omniparse-service-guide.md).
 
 ## DDE MCP tool
 
