@@ -1,0 +1,1 @@
+---\ntitle: OmniParse Service Guide\ndescription: Deploy and configure the OmniParse transcription extension in Kamiwaza.\n---\n\n# OmniParse Service Guide\n\nThis guide covers the deployment and configuration of the OmniParse extension for audio and video transcription in Kamiwaza.\n\n> **Note:** This section is under construction.\n

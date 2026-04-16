@@ -6,6 +6,18 @@ const sidebars: SidebarsConfig = {
 		"developer-guide",
 		{
 			type: "category",
+			label: "OmniParse",
+			collapsed: true,
+			items: [
+				{
+					type: "doc",
+					id: "omniparse/omniparse-service-guide",
+					label: "Service Guide",
+				},
+			],
+		},
+		{
+			type: "category",
 			label: "Kaizen",
 			collapsed: true,
 			items: [
