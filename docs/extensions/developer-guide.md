@@ -44,7 +44,7 @@ Your local `docker-compose.yml` can and should use host port mappings, bind moun
 * Tool names start with `tool-` or `mcp-`
 * Service names start with `service-`
 
-### Per-service `healthCheck` (0.12.1+)
+### Per-service `healthCheck`
 
 An extension service can declare a per-service health probe in its service spec via a `healthCheck` block. When present, the platform uses it to gate readiness for that service independently of the app-level `/health` endpoint. Useful for tools or services that expose readiness on a non-default path or need custom timing.
 
@@ -108,8 +108,9 @@ This authenticates via the Kamiwaza SDK, stores a PAT locally, and configures th
 ### Create an extension
 
 ```bash
-kz-ext create --type app --name my-app
+mkdir my-app
 cd my-app
+kz-ext create --type app --name my-app
 ```
 
 This creates a production-ready app with a styled frontend and fully-wired backend:
