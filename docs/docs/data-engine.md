@@ -53,11 +53,11 @@ DDE connector and document endpoints are mounted under the ingestion service wit
 
 Connectors carry security metadata such as `system_high` (the maximum classification allowed) and an optional `default_security_marking` applied when documents lack explicit markings.
 
-### Audio ingest (0.12.1+)
+### Audio ingest
 
 Audio files submitted through the context manager are routed to the platform's OmniParse
-transcription endpoint before indexing. In the current 0.12.1 context manager code, the supported
-media extensions are `.aac`, `.aif`, `.aiff`, `.flac`, `.m4a`, `.m4b`, `.mp3`, `.oga`, `.ogg`,
+transcription endpoint before indexing. The context manager's supported media extensions
+are `.aac`, `.aif`, `.aiff`, `.flac`, `.m4a`, `.m4b`, `.mp3`, `.oga`, `.ogg`,
 `.opus`, `.wav`, `.wma`, plus `.mov`, `.mp4`, and `.webm` when only the audio track needs to be
 transcribed.
 
@@ -91,7 +91,7 @@ building their own REST clients.
 | VectorDB | `list_collections`, `search_collections`, `query_vectors` | Inspect and query retrieval collections and vector stores. |
 | Knowledge graph | `add_knowledge`, `search_knowledge`, `get_memory` | Populate and query Graphiti-backed knowledge state. |
 
-The exact tool inventory can vary by release, but the 0.12.1 line aligns the MCP surface more
+The exact tool inventory can vary by release. The current line aligns the MCP surface more
 closely to the REST APIs exposed by the platform. To inspect the exact tool IDs your deployment
 exposes, send the standard MCP `tools/list` request after `initialize`:
 
