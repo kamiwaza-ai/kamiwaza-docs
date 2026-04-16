@@ -158,6 +158,9 @@ You may see:
 
 These indicators help owners understand whether a workroom is currently in use before they change access or remove participants.
 
+For the public runtime, membership, and collaboration-stream contract behind these behaviors, see
+the main-docs [Workroom Runtime Contract](/workrooms/runtime-contract).
+
 ---
 
 ## Starring Workrooms

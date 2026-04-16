@@ -9,17 +9,10 @@ Graphiti is Kamiwaza's temporal knowledge graph service for agent memory, contex
 fact-oriented search. It accepts messages, extracts entities and relationships, and returns graph
 context for downstream agent or RAG flows.
 
-## What Changed in 0.12.1
+For version-specific release notes, see the [Graphiti Changelog](./changelog.md).
 
-The 0.12.1 line changes Graphiti in ways operators need to know about:
-
-- The backend moved from **FalkorDB** to **Neo4j**.
-- The service now runs on pinned prebuilt Graphiti and Neo4j images.
-- LLM and embedding endpoint fallback behavior was tightened so the extension can align cleanly with
-  platform-injected model endpoints.
-
-If you are upgrading an existing Graphiti deployment, read the migration section before reusing old
-data volumes.
+If you are upgrading an existing Graphiti deployment, read both the changelog and the migration
+section before reusing old data volumes.
 
 ## Before You Deploy
 

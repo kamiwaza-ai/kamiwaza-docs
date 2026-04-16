@@ -663,52 +663,29 @@ Example:
 }
 ```
 
-### Extensions API: PATCH and status (0.12.1+)
+### Deployment inspection
 
-The platform's extensions API now supports partial updates and a dedicated deployment-status endpoint:
+For deployment inspection and day-to-day operations, prefer the supported SDK and CLI surfaces
+instead of hardcoding raw platform endpoints in your extension code. In practice that means
+leaning on commands such as `kz-ext status` and the shared runtime libraries rather than treating
+the platform's internal API paths as part of your extension contract.
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `PATCH` | `/api/extensions/{name}` | Apply a partial update to an extension record (env overrides, risk_tier, visibility, etc.). Only supplied fields are changed. |
-| `GET`   | `/api/extensions/{name}/status` | Return the current deployment/runtime status for an extension, including per-service readiness. |
+### Workroom-scoped runtime sessions {#runtime-launch-tokens}
 
-Clients that need to flip a single field no longer have to `PUT` the full record. The status endpoint is the preferred surface for dashboards and CI health checks — it is cheaper than polling the full list and is safe to poll on short intervals.
+If your extension launches a runtime inside a workroom, use the generated auth and session
+scaffolding plus the shared SDK helpers instead of wiring token handling by hand.
 
-0.12.1 also bridges legacy app deployments into the extensions API, so deployments created before the unified surface appear in list/status responses alongside native extensions. They are read-only from the extensions API where the legacy contract cannot express a mutation.
+- Keep `SessionProvider`, `AuthGuard`, and `create_session_router()` in place for browser and
+  session lifecycle behavior.
+- Use `KamiwazaExtClient.from_env()` and `forward_auth_headers()` when your backend calls
+  Kamiwaza APIs on behalf of the active user.
+- Treat any runtime launch token as opaque and short-lived. Do not parse it, log it, persist it
+  outside the active runtime session, or pass it in a URL query string.
+- If a downstream platform call returns `401`, fetch a fresh runtime launch token through the
+  supported platform flow and retry once rather than looping retries.
 
-### Runtime launch tokens (0.12.1+) {#runtime-launch-tokens}
-
-Extensions that launch a scoped runtime session — for example, per-workroom app runtimes — now receive a short-lived **runtime launch token** rather than a full-auth passthrough. The token is issued by the platform for a specific runtime + user + workroom tuple and is accepted in place of a bearer token by downstream Kamiwaza APIs that honor the runtime scope.
-
-Lifetime and refresh:
-
-- Tokens are short-lived (minutes, not hours). Treat the exact TTL as platform-controlled and read the expiry from the issuance response rather than hard-coding it.
-- The issuance response carries the expiry on the standard JWT `exp` claim, encoded as a Unix timestamp in seconds (absolute UTC, not relative). Decode the token's claims to read it — do not parse the opaque outer wrapper. A minimal decoded-claims snippet:
-
-  ```json
-  {
-    "sub": "user-123",
-    "workroom_id": "wr-abc",
-    "sid": "sess-789",
-    "exp": 1744747200,
-    "iat": 1744746300
-  }
-  ```
-
-  Schedule refresh a small margin (for example, 30 seconds) before `exp`; treat any token within that margin as already expired.
-- A token that expires mid-request causes the downstream API to return `401`. On `401`, re-fetch a fresh launch token from the platform and retry the request once; do not loop.
-- There is no separate refresh-token grant — re-fetch through the same launch endpoint used at session start. Cache the token only for the lifetime of the active runtime session.
-
-Where the token is accepted:
-
-- Core Kamiwaza REST APIs that honor the runtime scope (extensions, workrooms, models, retrieval). Forward via `Authorization: Bearer <token>` or the shared auth-bridge helpers.
-- Platform SSE streams (for example, the workroom events feed) accept the same bearer on the initial `GET`. On `401` during a stream, reconnect with a freshly fetched token and the `Last-Event-ID` header for resumable delivery.
-- WebSocket upgrades accept the bearer on the handshake request. Browsers that cannot set `Authorization` on a WS handshake should use the auth-bridge helper (which sets a short-lived cookie) rather than passing the token in the URL.
-
-Behavior change:
-
-- Full-auth passthrough is no longer the default for runtime sessions — code that relied on seeing a user's raw JWT should move to the launch-token path.
-- Launch tokens are opaque. Do not parse them, log them, or persist them outside the runtime session.
+For the public platform contract around workroom-scoped runtimes, membership enforcement, and
+collaboration streams, see [Workroom Runtime Contract](/workrooms/runtime-contract).
 
 ### Writing portable code
 

@@ -55,6 +55,11 @@ const sidebars: SidebarsConfig = {
 					id: "graphiti/graphiti-service-guide",
 					label: "Service Guide",
 				},
+				{
+					type: "doc",
+					id: "graphiti/changelog",
+					label: "Changelog",
+				},
 			],
 		},
 		{
@@ -66,11 +71,6 @@ const sidebars: SidebarsConfig = {
 					type: "doc",
 					id: "workroom-manager/workroom-manager-user-guide",
 					label: "User Guide",
-				},
-				{
-					type: "doc",
-					id: "workroom-manager/workroom-runtime-contract",
-					label: "Runtime Contract",
 				},
 			],
 		},
