@@ -26,6 +26,8 @@ User → Keycloak (IdP) → JWT Token → Traefik → ForwardAuth → API Servic
 - **Traefik**: Reverse proxy routing requests through ForwardAuth middleware
 - **RBAC Policy Engine**: YAML-based endpoint access control
 
+> **Note:** Most API endpoints authenticate via the ForwardAuth flow described above. A small number of endpoints use specialized authentication: App Garden sessions use short-lived session tokens issued at app launch, and cluster federation endpoints use HMAC-signed requests with pre-shared keys exchanged during pairing. These endpoints still require valid credentials and show lock icons in the live API documentation (`/api/docs`) — they just don't go through Keycloak.
+
 ### 1.2 Authentication Modes
 
 Kamiwaza supports two operational modes:
@@ -177,6 +179,10 @@ Kamiwaza defines three primary roles:
 | **admin** | Full access: read, write, delete, configure | System administrators, platform operators |
 | **user** | Standard access: read, write (no delete/admin) | Data scientists, developers, analysts |
 | **viewer** | Read-only access | Auditors, observers, stakeholders |
+
+There is also an `extension` role used as a service identity for platform extensions and automated tools. It is assigned via Keycloak service accounts or client credentials, not to human users.
+
+> **Current state:** The gateway RBAC policy enforces different rules per role (e.g., `viewer` cannot access write endpoints). At the FastAPI endpoint level, most routes currently distinguish `admin` vs. any authenticated user.
 
 **Assigning Roles:**
 
@@ -374,7 +380,21 @@ Once a tuple exists, the UI/API automatically enforces it—no redeploy or resta
 - **Embedding endpoints** require an authenticated user.
 - **Vector database endpoints** (create, search, manage collections) require admin access and return a clear error if no VectorDB is deployed.
 
-### 3.3 Hot Reload (No Restart Required)
+### 3.4 Workrooms
+
+Workrooms are collaborative workspaces that group resources and control team access. Each workroom has its own membership model:
+
+| Workroom Role | Access |
+|---------------|--------|
+| **owner** | Full control — manage members, archive, delete the workroom |
+| **contributor** | Create and modify resources within the workroom |
+| **viewer** | Read-only access to workroom resources |
+
+Workroom roles are separate from platform RBAC roles. The workroom `contributor` role maps to the ReBAC `editor` relation — the product uses "contributor" to distinguish workroom-level write access from any future platform-level `editor` role.
+
+Workroom access is enforced via ReBAC tuples when ReBAC is enabled, or via the workroom service's built-in membership checks in RBAC-only mode.
+
+### 3.5 Hot Reload (No Restart Required)
 
 The RBAC policy file is automatically reloaded when modified:
 
@@ -388,7 +408,7 @@ The RBAC policy file is automatically reloaded when modified:
 
 **⚠️ Important:** Invalid YAML syntax will prevent reload and retain the previous valid configuration.
 
-### 3.4 Adding Custom Endpoints
+### 3.6 Adding Custom Endpoints
 
 **Example: Protecting a new analytics endpoint**
 
@@ -593,7 +613,7 @@ AUTH_GATEWAY_JWKS_URL=https://auth.yourdomain.com/realms/kamiwaza/protocol/openi
 # Security Hardening
 AUTH_REQUIRE_SUB=true  # Require 'sub' claim (user ID) in tokens
 AUTH_EXPOSE_TOKEN_HEADER=false  # Don't expose tokens in response headers (production)
-AUTH_ALLOW_UNSIGNED_STATE=false  # Require signed OIDC state parameter (production)
+AUTH_ALLOW_UNSIGNED_STATE=false  # Require signed OIDC state parameter
 ```
 
 **Token Algorithms:**
@@ -849,9 +869,68 @@ If `KAMIWAZA_EPHEMERAL_EXTENSIONS=true` is set, this should return empty results
 
 ---
 
-## 6. Monitoring & Troubleshooting
+## 6. Verifying Security Posture
 
-### 6.1 Health Checks
+### 6.1 OpenAPI Spec Verification
+
+The platform's interactive API documentation at `/api/docs` on a **running deployment** shows the authentication requirements for every endpoint:
+
+- Endpoints marked with a **lock icon** require authentication
+- The **`x-auth-role`** field in each endpoint's details shows the minimum role required (e.g., `admin` for destructive operations, `authenticated` for read operations)
+- Endpoints marked **`x-auth-exempt`** are intentionally public, with a documented reason (e.g., "Pre-login consent gate" or "Kubernetes health probe")
+
+The same information is available in machine-readable form at `/api/openapi.json` for automated security scanning tools.
+
+> **Note:** These annotations are generated at runtime by the live API. Static OpenAPI exports in this documentation repository do not include them. Always query the live `/api/openapi.json` endpoint for the authoritative auth surface.
+
+### 6.2 Intentionally Public Endpoints
+
+A small number of endpoints are accessible without authentication because they serve pre-login flows, health probes, or token operations. These are marked with `x-auth-exempt` in the live OpenAPI spec at `/api/openapi.json`.
+
+Note: not all `/api/auth/` routes are public — user management, tuple administration, and IdP configuration endpoints require authentication.
+
+Common public endpoints:
+- `/api/auth/login`, `/api/auth/token`, `/api/auth/refresh` — Login and token lifecycle
+- `/api/auth/callback`, `/api/auth/saml/acs` — Identity provider callbacks
+- `/api/auth/jwks`, `/api/auth/validate` — Token verification
+- `/api/auth/logout` — Session termination
+- `/api/security/public/config` — Pre-login consent gate and banner configuration
+- `/api/node/node_status` — Kubernetes health probe
+
+Additionally, some endpoints bypass ForwardAuth but use their own authentication (e.g., cluster federation uses HMAC-signed requests, App Garden uses session tokens). These are not public — see [section 1.1](#11-authentication-architecture) for details.
+
+### 6.3 Production Hardening Checklist
+
+These settings must be reviewed before deploying to production:
+
+| Setting | What It Does | Production Value |
+|---------|-------------|-----------------|
+| `KAMIWAZA_USE_AUTH` | Master switch for authentication enforcement | `true` — **must** be enabled |
+| `AUTH_GATEWAY_DEFAULT_DENY` | Reject requests that don't match any policy rule | `true` — prevents unintended access |
+| `AUTH_FORWARD_HEADER_SECRET` | HMAC secret for signing identity headers between Traefik and the API | **Must be set** — in production, unsigned ForwardAuth headers are rejected; in dev mode, a warning is logged but requests proceed |
+| `AUTH_GATEWAY_ENABLE_DEV_ENDPOINTS` | Enables `/auth/mint` for minting arbitrary tokens | `false` — **never** enable in production |
+| `AUTH_REBAC_ENABLED` | Enable relationship-based access control | Your choice — `false` for RBAC-only, `true` for fine-grained resource control |
+| `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state parameter | `false` (secure by default) |
+
+In production-like environments, setting `KAMIWAZA_USE_AUTH=false` causes all authenticated API requests to return HTTP 503 rather than silently running without auth.
+
+### 6.4 ReBAC Verification
+
+If ReBAC is enabled, you can check for authorization tuple drift using the tenant management tool (`scripts/rebac_tenant.py` in the platform installation directory, requires Python 3.12+):
+
+```bash
+# Check if actual tuples match the expected baseline
+python scripts/rebac_tenant.py diff
+
+# Export current tuples for review
+python scripts/rebac_tenant.py export
+```
+
+---
+
+## 7. Monitoring & Troubleshooting
+
+### 7.1 Health Checks
 
 **Auth Service Health Endpoint:**
 
@@ -880,11 +959,11 @@ curl http://localhost:8080/health/ready
 {"status":"UP"}
 ```
 
-### 6.2 Log Monitoring
+### 7.2 Log Monitoring
 
 Refer to the [Observability Guide](../observability.md) for end-to-end logging, OTEL, and SIEM integration. It covers how to tail auth logs, forward them to your enterprise collectors, and verify that allow/deny events appear in the standard dashboards.
 
-### 6.3 Common Issues and Solutions
+### 7.3 Common Issues and Solutions
 
 #### Issue: 401 Unauthorized on All Requests
 
@@ -997,7 +1076,7 @@ Refer to the [Observability Guide](../observability.md) for end-to-end logging, 
 - Ensure client secret is configured in Keycloak
 - Enable identity provider in Keycloak authentication flow
 
-### 6.4 Diagnostic Commands
+### 7.4 Diagnostic Commands
 
 **Test Token Generation:**
 
@@ -1103,9 +1182,13 @@ The same curl commands can be scripted in CI to ensure future changes do not bre
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
+| `AUTH_GATEWAY_DEFAULT_DENY` | Reject requests not matching any policy rule | `true` | Yes (production) |
+| `AUTH_FORWARD_HEADER_SECRET` | HMAC secret for ForwardAuth header signing | - | Yes (production) |
+| `AUTH_GATEWAY_ENABLE_DEV_ENDPOINTS` | Enable `/auth/mint` token minting | `false` | No (must be `false` in production) |
+| `AUTH_REBAC_ENABLED` | Enable relationship-based access control | `false` | No |
 | `AUTH_REQUIRE_SUB` | Require 'sub' claim in tokens | `false` | No |
 | `AUTH_EXPOSE_TOKEN_HEADER` | Expose token in response headers | `true` | No |
-| `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state | `true` (dev only) | No |
+| `AUTH_ALLOW_UNSIGNED_STATE` | Allow unsigned OIDC state | `false` | No |
 | `AUTH_GATEWAY_TOKEN_LEEWAY` | Clock skew tolerance (seconds) | `30` | No |
 | `AUTH_GATEWAY_JWKS_CACHE_TTL` | JWKS cache duration (seconds) | `300` | No |
 
