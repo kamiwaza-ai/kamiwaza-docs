@@ -45,7 +45,7 @@ The IAM identity should be allowed to perform at least:
 
 ## Configuration Model
 
-*(Note: If you are using the `deploy` repository, the installation scripts (`install-dev.sh`, `install-prod.sh`) natively support configuring these values during deployment via standard Helm values overrides.)*
+*(Note: `install-prod.sh` natively supports configuring these values during deployment via standard Helm values overrides.)*
 
 The `core` chart exposes a single object-storage configuration block:
 
