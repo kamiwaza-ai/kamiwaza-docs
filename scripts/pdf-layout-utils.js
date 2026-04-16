@@ -147,6 +147,8 @@ const tocStyles = `
     box-sizing: border-box;
   }
 
+  /* Grouped TOC: parent row stays at the content margin; subs must sit clearly to the right
+     (otherwise 26pt + index columns visually lines up with the parent title text). */
   .toc-section:not(.toc-section--flat) .toc-section-entries {
     padding-left: 44pt;
   }

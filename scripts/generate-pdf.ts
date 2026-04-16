@@ -736,9 +736,15 @@ class PDFGenerator {
 				return `${offlineIndexUrl}#/${normalizedDocId}`;
 			}
 
-			return normalizedDocId
-				? `${offlineIndexUrl}#${versionPath}/${normalizedDocId}`
-				: `${offlineIndexUrl}#/`;
+			// Intro uses doc id ""; without a version in the hash, the SPA resolves the default
+			// route (current /docs/docs content), not the versioned snapshot — wrong for PDF.
+			if (!normalizedDocId) {
+				return version === "current"
+					? `${offlineIndexUrl}#/`
+					: `${offlineIndexUrl}#${versionPath}/`;
+			}
+
+			return `${offlineIndexUrl}#${versionPath}/${normalizedDocId}`;
 		}
 
 		if (normalizedDocId === "sdk") {
@@ -762,6 +768,10 @@ class PDFGenerator {
 		}
 
 		const versionPath = version === "current" ? "" : `${version}/`;
+		// Intro (empty id): same as offline — avoid bare / which serves unversioned current.
+		if (!normalizedDocId) {
+			return `${this.config.settings.server.baseUrl}/${versionPath}`;
+		}
 		return `${this.config.settings.server.baseUrl}/${versionPath}${normalizedDocId}`;
 	}
 
