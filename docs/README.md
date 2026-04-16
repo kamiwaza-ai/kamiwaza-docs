@@ -139,6 +139,9 @@ npm run pdf:offline
 # Generate complete documentation PDF
 npm run pdf:full
 
+# Generate latest versioned docs PDF (default behavior)
+npm run pdf:full
+
 # Generate specific profile with version
 npm run pdf -- --profile full-docs --version 0.5.1
 
@@ -146,8 +149,10 @@ npm run pdf -- --profile full-docs --version 0.5.1
 ```
 
 **PDF Profiles:**
-- **offline-install**: System requirements, RHEL installation and uninstall guides, quickstart, admin guide, help/fixes, release notes
+- **offline-install**: System requirements, RHEL installation and uninstall guides, quickstart, admin guide, help/fixes
 - **full-docs**: Complete platform documentation
+
+By default, PDF generation targets the latest version from `docs/versions.json`. Override with `--version current` to use the unversioned working docs, or pass a specific version like `--version 0.12.0`.
 
 **Requirements:**
 After adding PDF dependencies, run:

@@ -30,8 +30,6 @@ profiles:
         title: "Administrator Guide"
       - id: "help-and-fixes"
         title: "Help & Fixes"
-      - id: "release-notes"
-        title: "Release Notes"
     options:
       includeTOC: true
       includePageNumbers: true
@@ -67,7 +65,7 @@ profiles:
 # Global PDF Settings
 settings:
   # Default version (can be overridden via CLI)
-  defaultVersion: "current"
+  defaultVersion: "latest"
 
   # Output directory (relative to project root)
   outputDir: "dist/pdf"
@@ -82,6 +80,11 @@ settings:
       left: "15mm"
     printBackground: true
     preferCSSPageSize: false
+
+  # Document source for PDF generation
+  source:
+    mode: "offline-build"
+    buildDir: "docs/build-offline"
 
   # Server settings for local build
   server:

@@ -41,15 +41,23 @@ sudo dpkg -i kamiwaza_v0.9.3_noble_x86_64.deb
 sudo apt-get install -f
 ```
 
-Verify service starts (see [Quickstart](quickstart.md))
+#### Red Hat Enterprise Linux 9
 
-#### RHEL .rpm Package Installation (for RHEL 9)
+Choose the workflow that matches your RHEL 9 environment:
 
-**For standard online installation (recommended)**, see the [Red Hat Installation Guide](redhat_online_install.md) for complete step-by-step instructions including Docker setup and system dependencies.
+**Online workflow (recommended)**
 
-**For air-gapped or offline RHEL environments**, see the [Red Hat Offline Installation Guide](redhat_offline_install.md).
+Use the [Red Hat Installation Guide](redhat_online_install.md) for internet-connected systems. It covers Docker setup, system dependencies, package installation, and post-install configuration.
 
-**Quick install** (for users who already have Docker and dependencies installed):
+> If you require an air-gapped or otherwise offline installation, use the [Red Hat Offline Installation Guide](redhat_offline_install.md) instead.
+
+**Offline workflow**
+
+Use the [Red Hat Offline Installation Guide](redhat_offline_install.md) for restricted or air-gapped RHEL 9 environments that need staged artifacts and offline preparation.
+
+##### Quick online install
+
+For users who already have Docker and dependencies installed:
 
 ```bash
 # Download the package
@@ -62,6 +70,10 @@ sudo -E KAMIWAZA_ACCEPT_LICENSE=yes dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.r
 # Alternatively, for Enterprise Mode, Install the package with Kamiwaza License Key
 sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 ```
+
+#### After Linux Installation
+
+Verify service starts (see [Quickstart](quickstart.md))
 
 ### Community Edition on macOS
 

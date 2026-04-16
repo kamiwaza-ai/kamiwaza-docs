@@ -15,8 +15,22 @@ import { type ChildProcess, spawn } from "child_process";
 import * as fs from "fs-extra";
 import * as yaml from "js-yaml";
 import * as path from "path";
-import { PDFDocument, rgb } from "pdf-lib";
+import { pathToFileURL } from "url";
+import {
+	PDFDocument,
+	PDFName,
+	PDFString,
+	rgb,
+} from "pdf-lib";
 import puppeteer, { type Browser, Page } from "puppeteer";
+import { buildTocHtml } from "./pdf-layout-utils";
+import {
+	buildDocumentUrlVariants,
+	buildLinkTargetUrlVariants,
+	type PDFDestinationTarget,
+	rewritePdfInternalLinks,
+} from "./pdf-link-utils";
+import { isDocusaurusNotFoundPage } from "./pdf-page-utils";
 
 interface PDFConfig {
 	profiles: Record<string, ProfileConfig>;
@@ -46,6 +60,31 @@ interface DocumentConfig {
 	title: string;
 }
 
+interface GeneratedPDFPart {
+	kind: "toc" | "document";
+	pdfBuffer: Buffer;
+	sourceUrl?: string;
+	localDestinations?: CapturedLocalDestination[];
+}
+
+interface CapturedLinkRect {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
+
+interface CapturedLocalLink {
+	url: string;
+	rects: CapturedLinkRect[];
+}
+
+interface CapturedLocalDestination {
+	url: string;
+	pageIndex: number;
+	y: number;
+}
+
 interface PDFOptions {
 	includeTOC: boolean;
 	includePageNumbers: boolean;
@@ -58,6 +97,7 @@ interface GlobalSettings {
 	defaultVersion: string;
 	outputDir: string;
 	pdf: PDFSettings;
+	source: SourceSettings;
 	server: ServerSettings;
 	css: CSSSettings;
 }
@@ -77,6 +117,11 @@ interface PDFSettings {
 interface ServerSettings {
 	port: number;
 	baseUrl: string;
+}
+
+interface SourceSettings {
+	mode: "offline-build" | "local-server";
+	buildDir: string;
 }
 
 interface CSSSettings {
@@ -152,8 +197,8 @@ class PDFGenerator {
 		await fs.ensureDir(outputDir);
 
 		try {
-			// Start local server
-			await this.startServer();
+			// Prepare the document source (offline build or local server)
+			await this.prepareDocumentSource();
 
 			// Launch browser
 			this.browser = await puppeteer.launch({
@@ -162,12 +207,15 @@ class PDFGenerator {
 			});
 
 			// Generate cover page with TOC if enabled
-			const pdfBuffers: Buffer[] = [];
+			const pdfParts: GeneratedPDFPart[] = [];
 
 			if (profile.options.includeTOC) {
 				console.log("\n📋 Generating Table of Contents...\n");
 				const tocBuffer = await this.generateTOC(profile, targetVersion);
-				pdfBuffers.push(tocBuffer);
+				pdfParts.push({
+					kind: "toc",
+					pdfBuffer: tocBuffer,
+				});
 			}
 
 			console.log(
@@ -175,17 +223,17 @@ class PDFGenerator {
 			);
 
 			for (const doc of profile.documents) {
-				const pdfBuffer = await this.generateDocumentPDF(
+				const pdfPart = await this.generateDocumentPDF(
 					doc,
 					targetVersion,
 					profile,
 				);
-				pdfBuffers.push(pdfBuffer);
+				pdfParts.push(pdfPart);
 			}
 
 			// Merge PDFs
 			console.log("\n📦 Merging PDFs...");
-			const mergedPDF = await this.mergePDFs(pdfBuffers, profile);
+			const mergedPDF = await this.mergePDFs(pdfParts, profile);
 
 			// Save final PDF
 			const filename = `${profile.filename}-v${targetVersion}.pdf`;
@@ -225,40 +273,6 @@ class PDFGenerator {
 		const excludeSet = new Set(excludeDocs);
 		const seenIds = new Set<string>();
 
-		// Keywords to exclude (TypeScript/config keywords and category labels)
-		const keywords = new Set([
-			"doc",
-			"category",
-			"label",
-			"type",
-			"items",
-			"id",
-			"collapsed",
-			"Introduction",
-			"Installation",
-			"Models",
-			"Use Cases",
-			"Architecture",
-			"Our Team",
-			"Services",
-			"Platform Overview",
-			"About Kamiwaza",
-			"Quickstart",
-			"App Garden",
-			"Distributed Data Engine",
-			"Administrator Guide",
-			"Help & Fixes",
-			"Release Notes",
-			"Other Topics",
-		]);
-
-		// Pattern for valid document IDs (must contain / or be lowercase with hyphens/underscores)
-		const validDocPattern = /^[a-z0-9][a-z0-9_/-]*$/i;
-
-		// Determine which sidebar to read based on version
-		let mainSidebarPath: string;
-		let mainSidebarContent: string;
-
 		// Check if we should use versioned sidebar
 		const versionedSidebarPath = this.safePath(
 			"docs",
@@ -280,15 +294,7 @@ class PDFGenerator {
 				for (const item of items) {
 					if (typeof item === "string") {
 						const docId = item;
-						if (
-							!seenIds.has(docId) &&
-							!keywords.has(docId) &&
-							validDocPattern.test(docId) &&
-							!excludeSet.has(docId) &&
-							(docId.includes("/") ||
-								docId.includes("-") ||
-								docId.includes("_"))
-						) {
+						if (!seenIds.has(docId) && !excludeSet.has(docId)) {
 							seenIds.add(docId);
 							const title = this.generateTitleFromId(docId);
 							documents.push({ id: docId, title });
@@ -331,15 +337,7 @@ class PDFGenerator {
 					if (typeof item === "string") {
 						const docId = item;
 						const fullId = `sdk/${docId}`;
-						if (
-							!seenIds.has(fullId) &&
-							!keywords.has(docId) &&
-							validDocPattern.test(docId) &&
-							!excludeSet.has(fullId) &&
-							(docId.includes("/") ||
-								docId.includes("-") ||
-								docId.includes("_"))
-						) {
+						if (!seenIds.has(fullId) && !excludeSet.has(fullId)) {
 							seenIds.add(fullId);
 							const title = `SDK - ${this.generateTitleFromId(docId)}`;
 							documents.push({ id: fullId, title });
@@ -379,104 +377,45 @@ class PDFGenerator {
 				);
 				const currentSdkSidebarPath = this.safePath("docs", "sidebars-sdk.ts");
 				if (await fs.pathExists(currentSdkSidebarPath)) {
-					const sdkSidebarContent = await fs.readFile(
-						currentSdkSidebarPath,
-						"utf8",
-					);
-					const sdkDocMatches = sdkSidebarContent.matchAll(/'([^']+)'/g);
-
-					for (const match of sdkDocMatches) {
-						const docId = match[1];
-						const fullId = `sdk/${docId}`;
-
-						// Skip if already seen, is keyword, or is excluded
-						if (
-							seenIds.has(fullId) ||
-							keywords.has(docId) ||
-							!validDocPattern.test(docId) ||
-							excludeSet.has(fullId)
-						) {
-							continue;
-						}
-
-						// Additional check for SDK docs
-						if (
-							docId.includes("/") ||
-							docId.includes("-") ||
-							docId.includes("_")
-						) {
-							seenIds.add(fullId);
-							const title = `SDK - ${this.generateTitleFromId(docId)}`;
-							documents.push({ id: fullId, title });
-						}
+					const currentSdkSidebar = this.loadSidebarConfig(currentSdkSidebarPath);
+					if (currentSdkSidebar.sdk && Array.isArray(currentSdkSidebar.sdk)) {
+						this.extractSidebarDocuments(
+							currentSdkSidebar.sdk,
+							documents,
+							seenIds,
+							excludeSet,
+							"sdk",
+						);
 					}
 				}
 			}
 		} else {
-			// Use current sidebar (TypeScript format)
+			// Use current sidebar modules so we can read the actual structure.
 			console.log("   Using current sidebar: sidebars.ts");
-			mainSidebarPath = this.safePath("docs", "sidebars.ts");
-			mainSidebarContent = await fs.readFile(mainSidebarPath, "utf8");
-
-			// Extract document IDs from main sidebar
-			const mainDocMatches = mainSidebarContent.matchAll(/'([^']+)'/g);
-			for (const match of mainDocMatches) {
-				const docId = match[1];
-
-				// Skip if already seen, is keyword, doesn't match pattern, or is excluded
-				if (
-					seenIds.has(docId) ||
-					keywords.has(docId) ||
-					!validDocPattern.test(docId) ||
-					excludeSet.has(docId)
-				) {
-					continue;
-				}
-
-				// Additional check: must contain a slash OR hyphen/underscore (to filter out single words)
-				if (docId.includes("/") || docId.includes("-") || docId.includes("_")) {
-					seenIds.add(docId);
-					const title = this.generateTitleFromId(docId);
-					documents.push({ id: docId, title });
-				}
+			const currentSidebarPath = this.safePath("docs", "sidebars.ts");
+			const currentSidebar = this.loadSidebarConfig(currentSidebarPath);
+			if (currentSidebar.mainSidebar && Array.isArray(currentSidebar.mainSidebar)) {
+				this.extractSidebarDocuments(
+					currentSidebar.mainSidebar,
+					documents,
+					seenIds,
+					excludeSet,
+				);
 			}
 
 			// Read SDK sidebar
 			const sdkSidebarPath = this.safePath("docs", "sidebars-sdk.ts");
 			if (await fs.pathExists(sdkSidebarPath)) {
-				const sdkSidebarContent = await fs.readFile(sdkSidebarPath, "utf8");
-				const sdkDocMatches = sdkSidebarContent.matchAll(/'([^']+)'/g);
-
-				for (const match of sdkDocMatches) {
-					const docId = match[1];
-					const fullId = `sdk/${docId}`;
-
-					// Skip if already seen, is keyword, or is excluded
-					if (
-						seenIds.has(fullId) ||
-						keywords.has(docId) ||
-						!validDocPattern.test(docId) ||
-						excludeSet.has(fullId)
-					) {
-						continue;
-					}
-
-					// Additional check for SDK docs
-					if (
-						docId.includes("/") ||
-						docId.includes("-") ||
-						docId.includes("_")
-					) {
-						seenIds.add(fullId);
-						const title = `SDK - ${this.generateTitleFromId(docId)}`;
-						documents.push({ id: fullId, title });
-					}
+				const sdkSidebar = this.loadSidebarConfig(sdkSidebarPath);
+				if (sdkSidebar.sdk && Array.isArray(sdkSidebar.sdk)) {
+					this.extractSidebarDocuments(
+						sdkSidebar.sdk,
+						documents,
+						seenIds,
+						excludeSet,
+						"sdk",
+					);
 				}
-			}
-
-			// Add intro at the beginning (with empty id for root) - only for current version
-			if (!excludeSet.has("intro") && !excludeSet.has("")) {
-				documents.unshift({ id: "", title: "Introduction" });
 			}
 		}
 
@@ -487,6 +426,100 @@ class PDFGenerator {
 		return documents;
 	}
 
+	private loadSidebarConfig(modulePath: string): any {
+		const previousOfflineValue = process.env.DOCUSAURUS_OFFLINE_BUILD;
+		if (this.isOfflineBuildMode()) {
+			process.env.DOCUSAURUS_OFFLINE_BUILD = "true";
+		}
+
+		try {
+			const resolvedModulePath = require.resolve(modulePath);
+			delete require.cache[resolvedModulePath];
+			const loadedModule = require(resolvedModulePath);
+			return loadedModule.default ?? loadedModule;
+		} finally {
+			if (previousOfflineValue === undefined) {
+				delete process.env.DOCUSAURUS_OFFLINE_BUILD;
+			} else {
+				process.env.DOCUSAURUS_OFFLINE_BUILD = previousOfflineValue;
+			}
+		}
+	}
+
+	private extractSidebarDocuments(
+		items: any[],
+		documents: DocumentConfig[],
+		seenIds: Set<string>,
+		excludeSet: Set<string>,
+		namespace?: "sdk",
+	): void {
+		for (const item of items) {
+			if (typeof item === "string") {
+				this.addSidebarDocument(
+					item,
+					undefined,
+					documents,
+					seenIds,
+					excludeSet,
+					namespace,
+				);
+				continue;
+			}
+
+			if (!item || typeof item !== "object") {
+				continue;
+			}
+
+			if (item.type === "doc" && item.id) {
+				this.addSidebarDocument(
+					item.id,
+					item.label,
+					documents,
+					seenIds,
+					excludeSet,
+					namespace,
+				);
+			} else if (item.type === "category" && Array.isArray(item.items)) {
+				this.extractSidebarDocuments(
+					item.items,
+					documents,
+					seenIds,
+					excludeSet,
+					namespace,
+				);
+			}
+		}
+	}
+
+	private addSidebarDocument(
+		docId: string,
+		label: string | undefined,
+		documents: DocumentConfig[],
+		seenIds: Set<string>,
+		excludeSet: Set<string>,
+		namespace?: "sdk",
+	): void {
+		const fullId = namespace ? `${namespace}/${docId}` : docId;
+		if (seenIds.has(fullId) || excludeSet.has(fullId)) {
+			return;
+		}
+
+		seenIds.add(fullId);
+
+		if (namespace === "sdk") {
+			documents.push({
+				id: fullId,
+				title: `SDK - ${label || (docId === "intro" ? "Introduction" : this.generateTitleFromId(docId))}`,
+			});
+			return;
+		}
+
+		documents.push({
+			id: docId === "intro" ? "" : docId,
+			title: label || (docId === "intro" ? "Introduction" : this.generateTitleFromId(docId)),
+		});
+	}
+
 	private generateTitleFromId(docId: string): string {
 		// Convert doc ID to readable title
 		// e.g., "installation/system_requirements" -> "System Requirements"
@@ -494,6 +527,11 @@ class PDFGenerator {
 
 		const parts = docId.split("/");
 		let lastPart = parts[parts.length - 1];
+
+		// Treat directory index docs as the parent section title.
+		if (lastPart === "index" && parts.length > 1) {
+			lastPart = parts[parts.length - 2];
+		}
 
 		// Remove README
 		if (lastPart === "README" && parts.length > 1) {
@@ -509,6 +547,18 @@ class PDFGenerator {
 			.split(" ")
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(" ");
+	}
+
+	private normalizeDocRouteId(docId: string): string {
+		if (docId === "sdk/intro") {
+			return "sdk";
+		}
+
+		if (docId.endsWith("/index")) {
+			return docId.slice(0, -"/index".length);
+		}
+
+		return docId;
 	}
 
 	private async findAvailablePort(startPort: number): Promise<number> {
@@ -533,14 +583,38 @@ class PDFGenerator {
 		);
 	}
 
+	private getSourceBuildPath(): string {
+		return this.safePath(this.config.settings.source.buildDir);
+	}
+
+	private isOfflineBuildMode(): boolean {
+		return this.config.settings.source.mode === "offline-build";
+	}
+
+	private async prepareDocumentSource(): Promise<void> {
+		if (this.isOfflineBuildMode()) {
+			console.log("\n📁 Using offline documentation build...");
+			const buildPath = this.getSourceBuildPath();
+			if (!(await fs.pathExists(buildPath))) {
+				throw new Error(
+					`Offline build directory not found at ${buildPath}. Please run "npm run build:offline" first.`,
+				);
+			}
+			console.log(`✅ Offline build ready: ${buildPath}`);
+			return;
+		}
+
+		await this.startServer();
+	}
+
 	private async startServer(): Promise<void> {
 		console.log("\n🚀 Starting local documentation server...");
 
 		// Check if build directory exists
-		const buildPath = path.join(this.projectRoot, "docs", "build");
+		const buildPath = this.getSourceBuildPath();
 		if (!(await fs.pathExists(buildPath))) {
 			throw new Error(
-				'Build directory not found. Please run "npm run build" first.',
+				`Build directory not found at ${buildPath}. Please run "npm run build" first.`,
 			);
 		}
 
@@ -596,6 +670,47 @@ class PDFGenerator {
 		});
 	}
 
+	private buildDocumentUrl(doc: DocumentConfig, version: string): string {
+		const normalizedDocId = this.normalizeDocRouteId(doc.id);
+
+		if (this.isOfflineBuildMode()) {
+			const offlineIndexUrl = pathToFileURL(
+				path.join(this.getSourceBuildPath(), "index.html"),
+			).toString();
+			const versionPath = version === "current" ? "" : `/${version}`;
+
+			if (normalizedDocId === "sdk") {
+				return `${offlineIndexUrl}#/sdk${versionPath}`;
+			}
+
+			if (normalizedDocId.startsWith("sdk/")) {
+				let sdkPath = normalizedDocId.substring(4);
+				sdkPath = sdkPath.replace(/\/README$/, "");
+				const sdkVersionPath = version === "current" ? "" : `/${version}`;
+				return `${offlineIndexUrl}#/sdk${sdkVersionPath}/${sdkPath}`;
+			}
+
+			return normalizedDocId
+				? `${offlineIndexUrl}#${versionPath}/${normalizedDocId}`
+				: `${offlineIndexUrl}#/`;
+		}
+
+		if (normalizedDocId === "sdk") {
+			const versionPath = version === "current" ? "" : `${version}/`;
+			return `${this.config.settings.server.baseUrl}/sdk/${versionPath}`;
+		}
+
+		if (normalizedDocId.startsWith("sdk/")) {
+			let sdkPath = normalizedDocId.substring(4);
+			sdkPath = sdkPath.replace(/\/README$/, "");
+			const versionPath = version === "current" ? "" : `${version}/`;
+			return `${this.config.settings.server.baseUrl}/sdk/${versionPath}${sdkPath}`;
+		}
+
+		const versionPath = version === "current" ? "" : `${version}/`;
+		return `${this.config.settings.server.baseUrl}/${versionPath}${normalizedDocId}`;
+	}
+
 	private async generateTOC(
 		profile: ProfileConfig,
 		version: string,
@@ -619,106 +734,17 @@ class PDFGenerator {
 				}
 			}
 
-			// Create HTML content for TOC
-			const tocHTML = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            @page {
-              size: A4;
-              margin: 20mm 15mm;
-            }
-            body {
-              font-family: 'Helvetica Neue', Arial, sans-serif;
-              margin: 0;
-              padding: 40px;
-              color: #1a1a1a;
-            }
-            .cover {
-              text-align: center;
-              margin-bottom: 60px;
-            }
-            .logo {
-              width: 150px;
-              height: auto;
-              margin-bottom: 30px;
-            }
-            h1 {
-              font-size: 32pt;
-              font-weight: bold;
-              margin-bottom: 10px;
-              color: #1a1a1a;
-            }
-            .subtitle {
-              font-size: 18pt;
-              color: #666;
-              margin-bottom: 5px;
-            }
-            .version {
-              font-size: 14pt;
-              color: #888;
-              margin-top: 20px;
-            }
-            .toc-container {
-              margin-top: 60px;
-            }
-            h2 {
-              font-size: 20pt;
-              font-weight: bold;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #333;
-              padding-bottom: 10px;
-            }
-            .toc-list {
-              list-style: none;
-              padding: 0;
-              margin: 0;
-            }
-            .toc-item {
-              padding: 12px 0;
-              border-bottom: 1px solid #eee;
-              font-size: 12pt;
-              line-height: 1.5;
-            }
-            .toc-item:last-child {
-              border-bottom: none;
-            }
-            .toc-number {
-              display: inline-block;
-              width: 30px;
-              font-weight: bold;
-              color: #666;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="cover">
-            ${logoBase64 ? `<img src="data:image/png;base64,${logoBase64}" class="logo" alt="Kamiwaza Logo" />` : ""}
-            <h1>${profile.cover.title}</h1>
-            <div class="subtitle">${profile.cover.subtitle}</div>
-            ${profile.cover.includeVersion ? `<div class="version">Version ${version}</div>` : ""}
-          </div>
-
-          <div class="toc-container">
-            <h2>Table of Contents</h2>
-            <ul class="toc-list">
-              ${profile.documents
-								.map(
-									(doc, index) => `
-                <li class="toc-item">
-                  <span class="toc-number">${index + 1}.</span>
-                  ${doc.title}
-                </li>
-              `,
-								)
-								.join("")}
-            </ul>
-          </div>
-        </body>
-        </html>
-      `;
+			const tocHTML = buildTocHtml({
+				title: profile.cover.title,
+				subtitle: profile.cover.subtitle,
+				versionLabel: profile.cover.includeVersion ? `Version ${version}` : undefined,
+				logoBase64,
+				documents: profile.documents.map((doc) => ({
+					title: doc.title,
+					url: this.buildDocumentUrl(doc, version),
+					level: doc.id.startsWith("sdk/") ? 2 : 1,
+				})),
+			});
 
 			await page.setContent(tocHTML, { waitUntil: "networkidle0" });
 
@@ -749,22 +775,11 @@ class PDFGenerator {
 		doc: DocumentConfig,
 		version: string,
 		profile: ProfileConfig,
-	): Promise<Buffer> {
+	): Promise<GeneratedPDFPart> {
 		const page = await this.browser!.newPage();
 
 		try {
-			// Construct URL - handle SDK docs differently (version goes after /sdk/ prefix)
-			let url: string;
-			if (doc.id.startsWith("sdk/")) {
-				let sdkPath = doc.id.substring(4); // Remove 'sdk/' prefix
-				// Docusaurus strips /README from URLs, so remove it from the path
-				sdkPath = sdkPath.replace(/\/README$/, "");
-				const versionPath = version === "current" ? "" : `${version}/`;
-				url = `${this.config.settings.server.baseUrl}/sdk/${versionPath}${sdkPath}`;
-			} else {
-				const versionPath = version === "current" ? "" : `${version}/`;
-				url = `${this.config.settings.server.baseUrl}/${versionPath}${doc.id}`;
-			}
+			const url = this.buildDocumentUrl(doc, version);
 
 			console.log(`  📄 ${doc.title}`);
 			console.log(`     ${url}`);
@@ -775,12 +790,31 @@ class PDFGenerator {
 				timeout: 30000,
 			});
 
-			// Wait for content to render
-			await page.waitForSelector("article", { timeout: 10000 }).catch(() => {
-				console.warn(
-					`     ⚠️  Warning: Article selector not found for ${doc.id}`,
-				);
+			const pageSnapshot = await page.evaluate(() => {
+				const doc = (globalThis as any).document;
+				return {
+					title: doc?.title || "",
+					bodyText: doc?.body?.innerText || "",
+					hasArticle: Boolean(doc?.querySelector("article")),
+				};
 			});
+
+			if (
+				isDocusaurusNotFoundPage(pageSnapshot.title, pageSnapshot.bodyText)
+			) {
+				throw new Error(
+					`Docusaurus page not found for "${doc.title}" (${doc.id}) at ${url}`,
+				);
+			}
+
+			// Wait for content to render
+			if (!pageSnapshot.hasArticle) {
+				await page.waitForSelector("article", { timeout: 10000 }).catch(() => {
+					console.warn(
+						`     ⚠️  Warning: Article selector not found for ${doc.id}`,
+					);
+				});
+			}
 
 			// Scroll through page to trigger lazy-loaded images
 			await page.evaluate(`(async () => {
@@ -828,6 +862,9 @@ class PDFGenerator {
 				await page.addStyleTag({ content: cssContent });
 			}
 
+			await page.emulateMediaType("print");
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
 			// Add document title as header (if enabled)
 			// Note: Footer is added in mergePDFs for consistent positioning across all pages
 			if (profile.options.includeHeaders) {
@@ -844,6 +881,12 @@ class PDFGenerator {
 				await page.addStyleTag({ content: headerCSS });
 			}
 
+			const capturedLocalLinks = await this.captureLocalPdfLinks(page);
+			const capturedLocalDestinations = await this.captureLocalPdfDestinations(
+				page,
+				url,
+			);
+
 			// Generate PDF
 			const pdfBuffer = await page.pdf({
 				format: this.config.settings.pdf.format as any,
@@ -856,7 +899,20 @@ class PDFGenerator {
 				`     ✅ Generated (${(pdfBuffer.length / 1024).toFixed(0)} KB)`,
 			);
 
-			return Buffer.from(pdfBuffer);
+			const enrichedPdfBuffer =
+				capturedLocalLinks.length > 0
+					? await this.addPdfLinkAnnotations(
+							Buffer.from(pdfBuffer),
+							capturedLocalLinks,
+						)
+					: Buffer.from(pdfBuffer);
+
+			return {
+				kind: "document",
+				pdfBuffer: enrichedPdfBuffer,
+				sourceUrl: url,
+				localDestinations: capturedLocalDestinations,
+			};
 		} catch (error) {
 			console.error(
 				`     ❌ Failed: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -867,20 +923,188 @@ class PDFGenerator {
 		}
 	}
 
+	private async captureLocalPdfLinks(page: Page): Promise<CapturedLocalLink[]> {
+		return page.evaluate(() => {
+			const doc = (globalThis as any).document;
+			const links: CapturedLocalLink[] = [];
+
+			for (const anchor of Array.from(doc.querySelectorAll("article a")) as any[]) {
+				const rawHref = anchor.getAttribute("href") || "";
+				const text = (anchor.textContent || "").trim();
+				if (!text || !(rawHref.startsWith("#") || rawHref.startsWith("/"))) {
+					continue;
+				}
+
+				const rects = Array.from(anchor.getClientRects())
+					.map((rect: any) => ({
+						left: rect.left,
+						top: rect.top,
+						width: rect.width,
+						height: rect.height,
+					}))
+					.filter((rect) => rect.width > 0 && rect.height > 0);
+
+				if (rects.length === 0) {
+					continue;
+				}
+
+				links.push({
+					url: anchor.href,
+					rects,
+				});
+			}
+
+			return links;
+		});
+	}
+
+	private async captureLocalPdfDestinations(
+		page: Page,
+		documentUrl: string,
+	): Promise<CapturedLocalDestination[]> {
+		const headings = await page.evaluate(() => {
+			const doc = (globalThis as any).document;
+			return Array.from(
+				doc.querySelectorAll(
+					"article h1[id], article h2[id], article h3[id], article h4[id], article h5[id], article h6[id]",
+				),
+			).map((heading: any) => {
+				const rect = heading.getBoundingClientRect();
+				return {
+					id: heading.id,
+					top: rect.top,
+				};
+			});
+		});
+
+		return headings
+			.filter((heading) => heading.id && heading.top >= 0)
+			.map((heading) => {
+				const position = this.locatePdfPosition(heading.top);
+				return {
+					url: `${documentUrl}#${heading.id}`,
+					pageIndex: position.pageIndex,
+					y: position.y,
+				};
+			});
+	}
+
+	private async addPdfLinkAnnotations(
+		pdfBuffer: Buffer,
+		links: CapturedLocalLink[],
+	): Promise<Buffer> {
+		const pdfDoc = await PDFDocument.load(pdfBuffer);
+		const pxToPt = 72 / 96;
+		const leftMargin = this.parseLengthToPoints(this.config.settings.pdf.margin.left);
+
+		for (const link of links) {
+			for (const rect of link.rects) {
+				const position = this.locatePdfPosition(rect.top);
+				const pageIndex = position.pageIndex;
+				if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) {
+					continue;
+				}
+
+				const page = pdfDoc.getPage(pageIndex);
+				const x1 = leftMargin + rect.left * pxToPt;
+				const x2 = x1 + rect.width * pxToPt;
+				const y2 = position.y;
+				const y1 = y2 - rect.height * pxToPt;
+
+				const annotation = pdfDoc.context.register(
+					pdfDoc.context.obj({
+						Type: PDFName.of("Annot"),
+						Subtype: PDFName.of("Link"),
+						Rect: [x1, y1, x2, y2],
+						Border: [0, 0, 0],
+						A: {
+							Type: PDFName.of("Action"),
+							S: PDFName.of("URI"),
+							URI: PDFString.of(link.url),
+						},
+					}),
+				);
+
+				page.node.addAnnot(annotation);
+			}
+		}
+
+		return Buffer.from(await pdfDoc.save());
+	}
+
+	private locatePdfPosition(topPx: number): { pageIndex: number; y: number } {
+		const pageSize = this.getPageSizeInPoints();
+		const margin = {
+			top: this.parseLengthToPoints(this.config.settings.pdf.margin.top),
+			bottom: this.parseLengthToPoints(this.config.settings.pdf.margin.bottom),
+		};
+		const printableHeightPx =
+			((pageSize.height - margin.top - margin.bottom) * 96) / 72;
+		const pageIndex = Math.floor(topPx / printableHeightPx);
+		const localTopPx = topPx - pageIndex * printableHeightPx;
+		const y = pageSize.height - margin.top - localTopPx * (72 / 96);
+
+		return { pageIndex, y };
+	}
+
+	private parseLengthToPoints(value: string): number {
+		const trimmed = value.trim();
+		if (trimmed.endsWith("mm")) {
+			return parseFloat(trimmed) * 2.83465;
+		}
+		if (trimmed.endsWith("in")) {
+			return parseFloat(trimmed) * 72;
+		}
+		if (trimmed.endsWith("pt")) {
+			return parseFloat(trimmed);
+		}
+		return parseFloat(trimmed);
+	}
+
+	private getPageSizeInPoints(): { width: number; height: number } {
+		const format = this.config.settings.pdf.format.toUpperCase();
+		if (format === "LETTER") {
+			return { width: 612, height: 792 };
+		}
+		return { width: 595.28, height: 841.89 };
+	}
+
 	private async mergePDFs(
-		pdfBuffers: Buffer[],
+		pdfParts: GeneratedPDFPart[],
 		profile: ProfileConfig,
 	): Promise<Buffer> {
 		const mergedPdf = await PDFDocument.create();
+		const pageIndexByUrl = new Map<string, PDFDestinationTarget>();
 
 		// Merge all PDFs
-		for (const pdfBuffer of pdfBuffers) {
-			const pdf = await PDFDocument.load(pdfBuffer);
+		for (const pdfPart of pdfParts) {
+			const pdf = await PDFDocument.load(pdfPart.pdfBuffer);
+			const startPageIndex = mergedPdf.getPageCount();
 			const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
 
 			for (const page of pages) {
 				mergedPdf.addPage(page);
 			}
+
+			if (pdfPart.kind === "document" && pdfPart.sourceUrl) {
+				for (const variant of buildDocumentUrlVariants(pdfPart.sourceUrl)) {
+					pageIndexByUrl.set(variant, { pageIndex: startPageIndex });
+				}
+
+				for (const destination of pdfPart.localDestinations || []) {
+					for (const variant of buildLinkTargetUrlVariants(destination.url)) {
+						pageIndexByUrl.set(variant, {
+							pageIndex: startPageIndex + destination.pageIndex,
+							y: destination.y,
+						});
+					}
+				}
+			}
+		}
+
+		const rewrittenLinkCount = rewritePdfInternalLinks(mergedPdf, pageIndexByUrl);
+		if (rewrittenLinkCount > 0) {
+			console.log(`🔗 Rewrote ${rewrittenLinkCount} PDF link(s) to internal destinations...`);
 		}
 
 		// Add footer and page numbers if enabled

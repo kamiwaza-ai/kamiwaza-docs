@@ -3,6 +3,8 @@
 
 # Production
 /build
+build-offline*
+dist
 
 # Generated files
 .docusaurus
