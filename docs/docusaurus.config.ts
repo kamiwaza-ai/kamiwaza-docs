@@ -6,20 +6,19 @@ import { themes as prismThemes } from "prism-react-renderer";
 
 // Check if federal docs should be included (excluded by default)
 const includeFederal = process.env.INCLUDE_FEDERAL_DOCS === "true";
-const readLatestVersion = (versionsFile: string, fallback: string) => {
+const readTrunkVersion = (fallback: string) => {
 	try {
-		const versions = JSON.parse(
-			fs.readFileSync(path.join(__dirname, versionsFile), "utf8")
+		const pkg = JSON.parse(
+			fs.readFileSync(path.join(__dirname, "package.json"), "utf8")
 		);
-
-		return Array.isArray(versions) && versions[0] ? versions[0] : fallback;
+		return typeof pkg.version === "string" && pkg.version ? pkg.version : fallback;
 	} catch {
 		return fallback;
 	}
 };
 
-const latestMainVersion = readLatestVersion("versions.json", "current");
-const latestSdkVersion = readLatestVersion("sdk_versions.json", latestMainVersion);
+const latestMainVersion = readTrunkVersion("current");
+const latestSdkVersion = latestMainVersion;
 const latestMainLabel = `${latestMainVersion} (Latest)`;
 const latestSdkLabel = `${latestSdkVersion} (Latest)`;
 

@@ -47,6 +47,11 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: "category",
+			label: "Workrooms",
+			items: ["workrooms/runtime-contract"],
+		},
+		{
+			type: "category",
 			label: "Security",
 			items: [
 				"security/admin-guide",

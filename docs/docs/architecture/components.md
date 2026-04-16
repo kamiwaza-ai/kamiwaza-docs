@@ -13,8 +13,8 @@ The Kamiwaza platform is composed of several key components and conceptual syste
 -   **Why it matters:** Vector databases are the engine behind similarity search, Retrieval-Augmented Generation (RAG), and other semantic retrieval workflows. Kamiwaza's abstraction layer lets deployments adopt supported backends without changing user-facing workflows.
 
 ### Embeddings Management
--   **What it is:** The process of generating, storing, and managing vector embeddings for your data. Kamiwaza provides platform services that automate embedding generation using supported models and shared configuration.
--   **Why it matters:** Consistent and efficient embedding management is fundamental to vector search quality and retrieval performance.
+-   **What it is:** The process of generating, storing, and managing vector embeddings for your data. Kamiwaza provides platform services that automate embedding generation using a dedicated, standalone OpenAI-compatible `llama.cpp` embedding service deployed via Helm (replacing legacy in-process fallbacks).
+-   **Why it matters:** Consistent and efficient embedding management is fundamental to vector search quality and retrieval performance. A dedicated embedding service reduces container footprint and improves service decoupling compared to in-process fallbacks.
 
 ### Data Catalog
 -   **What it is:** A centralized inventory of data assets, containers, and secret metadata. Kamiwaza integrates with **DataHub**-backed catalog workflows and uses URN-based references across the platform.

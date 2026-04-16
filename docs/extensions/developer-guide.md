@@ -44,6 +44,23 @@ Your local `docker-compose.yml` can and should use host port mappings, bind moun
 * Tool names start with `tool-` or `mcp-`
 * Service names start with `service-`
 
+### Per-service `healthCheck` (0.12.1+)
+
+An extension service can declare a per-service health probe in its service spec via a `healthCheck` block. When present, the platform uses it to gate readiness for that service independently of the app-level `/health` endpoint. Useful for tools or services that expose readiness on a non-default path or need custom timing.
+
+```yaml
+# inside your service spec
+healthCheck:
+  path: /healthz
+  intervalSeconds: 10   # probe cadence, in seconds
+  timeoutSeconds: 3     # per-probe timeout, in seconds
+  failureThreshold: 3   # consecutive failures before the service is marked unready
+```
+
+All duration fields are **seconds** (not milliseconds). Minimums are `intervalSeconds: 1`, `timeoutSeconds: 1`, `failureThreshold: 1`.
+
+If `healthCheck` is omitted, the platform keeps the previous app-level `/health` probe behavior.
+
 ## Getting Started
 
 ### Install the CLI
@@ -645,6 +662,30 @@ Example:
   }
 }
 ```
+
+### Deployment inspection
+
+For deployment inspection and day-to-day operations, prefer the supported SDK and CLI surfaces
+instead of hardcoding raw platform endpoints in your extension code. In practice that means
+leaning on commands such as `kz-ext status` and the shared runtime libraries rather than treating
+the platform's internal API paths as part of your extension contract.
+
+### Workroom-scoped runtime sessions {#runtime-launch-tokens}
+
+If your extension launches a runtime inside a workroom, use the generated auth and session
+scaffolding plus the shared SDK helpers instead of wiring token handling by hand.
+
+- Keep `SessionProvider`, `AuthGuard`, and `create_session_router()` in place for browser and
+  session lifecycle behavior.
+- Use `KamiwazaExtClient.from_env()` and `forward_auth_headers()` when your backend calls
+  Kamiwaza APIs on behalf of the active user.
+- Treat any runtime launch token as opaque and short-lived. Do not parse it, log it, persist it
+  outside the active runtime session, or pass it in a URL query string.
+- If a downstream platform call returns `401`, fetch a fresh runtime launch token through the
+  supported platform flow and retry once rather than looping retries.
+
+For the public platform contract around workroom-scoped runtimes, membership enforcement, and
+collaboration streams, see [Workroom Runtime Contract](/workrooms/runtime-contract).
 
 ### Writing portable code
 

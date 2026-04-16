@@ -81,7 +81,7 @@ Use:
 
 Best practice:
 
-- set bucket, region, and secret references through your deployment values
+- set bucket, region, and secret references through your deployment values (`install-prod.sh` or standard Helm overrides)
 - prefer secret references or ambient cloud identity over inline credentials
 
 ## Logging and Observability
