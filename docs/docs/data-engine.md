@@ -75,7 +75,8 @@ Current limits come from the context manager rather than a DDE-specific knob: th
 file-size limit is `100 MB` (configurable via `CONTEXT_MANAGER_MAX_FILE_SIZE`), the streaming upload ceiling is `200 MB`, and the OmniParse
 transcription timeout defaults to `300` seconds.
 
-For detailed documentation on OmniParse deployment, capabilities, and configuration options, see the [OmniParse Extension Guide](../extensions/omniparse/omniparse-service-guide.md).
+For detailed documentation on OmniParse deployment, capabilities, and configuration options, see
+the [OmniParse Extension Guide](/extensions/omniparse/omniparse-service-guide).
 
 ## DDE MCP tool
 
