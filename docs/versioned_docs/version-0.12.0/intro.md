@@ -14,7 +14,7 @@ Kamiwaza is a comprehensive AI orchestration platform that provides developers a
 
 ## Getting Started
 
-Ready to dive in? The fastest way to get started is to follow our **[Installation Guide](installation/installation_process)** to set up your environment.
+Ready to dive in? For production deployments, follow the **[RHEL 9 offline installation guide](installation/redhat_offline_install)**.
 
 
 ## Looking for Inspiration?
@@ -38,13 +38,13 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
   </div>
   <div className="doc-card">
     <div className="card__header">
-      <h3>🚀 Installation Guide</h3>
+      <h3>🚀 Installation</h3>
     </div>
     <div className="card__body">
-      <p>Review supported installation paths, prerequisites, and system requirements.</p>
+      <p>RHEL 9 offline production install using packaged RPMs and the offline wrap bundle.</p>
     </div>
     <div className="card__footer">
-      <a href="installation/installation_process" className="button button--primary button--block">Start the Installation →</a>
+      <a href="installation/redhat_offline_install" className="button button--primary button--block">Open offline RHEL 9 install →</a>
     </div>
   </div>
   <div className="doc-card">

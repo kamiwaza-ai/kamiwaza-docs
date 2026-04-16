@@ -18,6 +18,33 @@ const createUriLinkAnnotation = (pdfDoc, url, rect) => pdfDoc.context.register(p
         URI: pdf_lib_1.PDFString.of(url),
     },
 }));
+(0, node_test_1.default)("publicHttpsAliasesForFileDocUrl includes https equivalents of file hash routes", () => {
+    const file = "file:///tmp/docs/build-offline/index.html#/0.12.0/installation/installation_process";
+    const aliases = (0, pdf_link_utils_1.publicHttpsAliasesForFileDocUrl)(file, "https://docs.kamiwaza.ai");
+    strict_1.default.ok(aliases.some((a) => a ===
+        "https://docs.kamiwaza.ai/0.12.0/installation/installation_process" ||
+        a ===
+            "https://docs.kamiwaza.ai/0.12.0/installation/installation_process/"), `expected https alias, got: ${aliases.slice(0, 5).join(", ")}`);
+});
+(0, node_test_1.default)("pathnameOnlyOfflineFileToPublicDocsUrl maps filesystem paths under build-offline", () => {
+    strict_1.default.equal((0, pdf_link_utils_1.pathnameOnlyOfflineFileToPublicDocsUrl)("file:///home/user/project/docs/build-offline/installation/installation_process", "https://docs.kamiwaza.ai"), "https://docs.kamiwaza.ai/installation/installation_process");
+});
+(0, node_test_1.default)("fileOfflineUriToPublicDocsUrl maps hash routes to the public docs origin", () => {
+    strict_1.default.equal((0, pdf_link_utils_1.fileOfflineUriToPublicDocsUrl)("file:///tmp/proj/docs/build-offline/index.html#/0.12.0/quickstart", "https://docs.kamiwaza.ai"), "https://docs.kamiwaza.ai/0.12.0/quickstart");
+    strict_1.default.equal((0, pdf_link_utils_1.fileOfflineUriToPublicDocsUrl)("file:///tmp/index.html#/0.12.0/system_requirements#special-considerations", "https://docs.kamiwaza.ai"), "https://docs.kamiwaza.ai/0.12.0/system_requirements#special-considerations");
+});
+(0, node_test_1.default)("canonicalizeFileUrlForPdfMatching leaves http(s) URLs unchanged", () => {
+    strict_1.default.equal((0, pdf_link_utils_1.canonicalizeFileUrlForPdfMatching)("http://localhost:9003/a"), "http://localhost:9003/a");
+});
+(0, node_test_1.default)("isAnnotatableDocHrefForPdfCapture accepts Docusaurus doc-relative hrefs", () => {
+    strict_1.default.equal((0, pdf_link_utils_1.isAnnotatableDocHrefForPdfCapture)("security/admin-guide"), true);
+    strict_1.default.equal((0, pdf_link_utils_1.isAnnotatableDocHrefForPdfCapture)("../observability"), true);
+    strict_1.default.equal((0, pdf_link_utils_1.isAnnotatableDocHrefForPdfCapture)("/0.12.0/quickstart"), true);
+    strict_1.default.equal((0, pdf_link_utils_1.isAnnotatableDocHrefForPdfCapture)("#anchor"), true);
+    strict_1.default.equal((0, pdf_link_utils_1.isAnnotatableDocHrefForPdfCapture)("http://localhost:9003/a"), true);
+    strict_1.default.equal((0, pdf_link_utils_1.isAnnotatableDocHrefForPdfCapture)("mailto:a@b"), false);
+    strict_1.default.equal((0, pdf_link_utils_1.isAnnotatableDocHrefForPdfCapture)("javascript:void(0)"), false);
+});
 (0, node_test_1.default)("buildDocumentUrlVariants normalizes trailing slashes and hashes", () => {
     const variants = (0, pdf_link_utils_1.buildDocumentUrlVariants)("http://localhost:9003/installation/installation_process/#overview");
     strict_1.default.deepEqual(variants, [
@@ -56,6 +83,13 @@ const createUriLinkAnnotation = (pdfDoc, url, rect) => pdfDoc.context.register(p
         "file:///tmp/docs/build-offline/index.html#/quickstart/",
     ]);
 });
+(0, node_test_1.default)("buildDocumentUrlVariants preserves plain file URLs", () => {
+    const variants = (0, pdf_link_utils_1.buildDocumentUrlVariants)("file:///tmp/docs/build-offline/quickstart");
+    strict_1.default.deepEqual(variants, [
+        "file:///tmp/docs/build-offline/quickstart",
+        "file:///tmp/docs/build-offline/quickstart/",
+    ]);
+});
 (0, node_test_1.default)("buildLinkTargetUrlVariants preserves browser section fragments", () => {
     const variants = (0, pdf_link_utils_1.buildLinkTargetUrlVariants)("http://localhost:9003/installation/system_requirements/#special-considerations");
     strict_1.default.deepEqual(variants, [
@@ -86,8 +120,9 @@ const createUriLinkAnnotation = (pdfDoc, url, rect) => pdfDoc.context.register(p
     strict_1.default.equal(replacements, 1);
     const annots = page1.node.lookup(pdf_lib_1.PDFName.of("Annots"), pdf_lib_1.PDFArray);
     const rewrittenAnnot = annots.lookup(0, pdf_lib_1.PDFDict);
-    strict_1.default.equal(rewrittenAnnot.lookupMaybe(pdf_lib_1.PDFName.of("A"), pdf_lib_1.PDFDict), undefined);
-    const dest = rewrittenAnnot.lookup(pdf_lib_1.PDFName.of("Dest"), pdf_lib_1.PDFArray);
+    const goto = rewrittenAnnot.lookup(pdf_lib_1.PDFName.of("A"), pdf_lib_1.PDFDict);
+    strict_1.default.equal(goto.lookup(pdf_lib_1.PDFName.of("S"), pdf_lib_1.PDFName).asString(), "/GoTo");
+    const dest = goto.lookup(pdf_lib_1.PDFName.of("D"), pdf_lib_1.PDFArray);
     strict_1.default.equal(dest.get(0), page2.ref);
     strict_1.default.equal(dest.lookup(1, pdf_lib_1.PDFName).asString(), "/XYZ");
     strict_1.default.equal(dest.lookup(2, pdf_lib_1.PDFNumber).asNumber(), 0);
@@ -105,8 +140,9 @@ const createUriLinkAnnotation = (pdfDoc, url, rect) => pdfDoc.context.register(p
     strict_1.default.equal(replacements, 1);
     const annots = page1.node.lookup(pdf_lib_1.PDFName.of("Annots"), pdf_lib_1.PDFArray);
     const rewrittenAnnot = annots.lookup(0, pdf_lib_1.PDFDict);
-    strict_1.default.equal(rewrittenAnnot.lookupMaybe(pdf_lib_1.PDFName.of("A"), pdf_lib_1.PDFDict), undefined);
-    const dest = rewrittenAnnot.lookup(pdf_lib_1.PDFName.of("Dest"), pdf_lib_1.PDFArray);
+    const goto = rewrittenAnnot.lookup(pdf_lib_1.PDFName.of("A"), pdf_lib_1.PDFDict);
+    strict_1.default.equal(goto.lookup(pdf_lib_1.PDFName.of("S"), pdf_lib_1.PDFName).asString(), "/GoTo");
+    const dest = goto.lookup(pdf_lib_1.PDFName.of("D"), pdf_lib_1.PDFArray);
     strict_1.default.equal(dest.get(0), page2.ref);
 });
 (0, node_test_1.default)("rewritePdfInternalLinks preserves section destinations", async () => {
@@ -123,7 +159,8 @@ const createUriLinkAnnotation = (pdfDoc, url, rect) => pdfDoc.context.register(p
     strict_1.default.equal(replacements, 1);
     const annots = page1.node.lookup(pdf_lib_1.PDFName.of("Annots"), pdf_lib_1.PDFArray);
     const rewrittenAnnot = annots.lookup(0, pdf_lib_1.PDFDict);
-    const dest = rewrittenAnnot.lookup(pdf_lib_1.PDFName.of("Dest"), pdf_lib_1.PDFArray);
+    const goto = rewrittenAnnot.lookup(pdf_lib_1.PDFName.of("A"), pdf_lib_1.PDFDict);
+    const dest = goto.lookup(pdf_lib_1.PDFName.of("D"), pdf_lib_1.PDFArray);
     strict_1.default.equal(dest.get(0), page2.ref);
     strict_1.default.equal(dest.lookup(2, pdf_lib_1.PDFNumber).asNumber(), 0);
     strict_1.default.equal(dest.lookup(3, pdf_lib_1.PDFNumber).asNumber(), 512);

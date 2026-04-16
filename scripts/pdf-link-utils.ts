@@ -1,3 +1,6 @@
+import * as fs from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
 import {
 	PDFArray,
 	PDFDict,
@@ -23,6 +26,7 @@ const URI = PDFName.of("URI");
 const DEST = PDFName.of("Dest");
 const XYZ = PDFName.of("XYZ");
 const ANNOTS = PDFName.of("Annots");
+const GOTO = PDFName.of("GoTo");
 
 export function buildDocumentUrlVariants(url: string): string[] {
 	return buildUrlVariants(url, false);
@@ -30,6 +34,222 @@ export function buildDocumentUrlVariants(url: string): string[] {
 
 export function buildLinkTargetUrlVariants(url: string): string[] {
 	return buildUrlVariants(url, true);
+}
+
+/**
+ * Whether to add a PDF link annotation for this raw `<a href>`.
+ * Docusaurus often emits Markdown doc links as relative paths without a leading
+ * slash (e.g. `security/admin-guide`); capture previously only accepted `#` and
+ * `/`, so those links had no clickable region in the PDF.
+ */
+/**
+ * Resolves symlink/casing differences so the same build path matches between
+ * `pageIndexByUrl` keys and link URI strings embedded in PDF annotations.
+ */
+export function canonicalizeFileUrlForPdfMatching(url: string): string {
+	try {
+		const u = new URL(url);
+		if (u.protocol !== "file:") {
+			return url;
+		}
+		const hash = u.hash;
+		const withoutHash = hash ? url.slice(0, url.length - hash.length) : url;
+		let filePath: string;
+		try {
+			filePath = fileURLToPath(withoutHash);
+		} catch {
+			return url;
+		}
+		let realPath = filePath;
+		try {
+			realPath = fs.realpathSync(filePath);
+		} catch {
+			// keep filePath if the file is gone or not yet resolved
+		}
+		const rebased = pathToFileURL(realPath).href;
+		return hash ? `${rebased}${hash}` : rebased;
+	} catch {
+		return url;
+	}
+}
+
+export const isAnnotatableDocHrefForPdfCapture = (rawHref: string): boolean => {
+	const h = rawHref.trim();
+	if (!h) {
+		return false;
+	}
+	const lower = h.toLowerCase();
+	if (
+		lower.startsWith("mailto:") ||
+		lower.startsWith("tel:") ||
+		lower.startsWith("javascript:") ||
+		lower.startsWith("data:") ||
+		lower.startsWith("blob:")
+	) {
+		return false;
+	}
+	if (h.startsWith("#") || h.startsWith("/")) {
+		return true;
+	}
+	if (lower.startsWith("http://") || lower.startsWith("https://")) {
+		return true;
+	}
+	// Doc-relative: security/foo, ../bar, ./baz
+	if (!h.includes(":")) {
+		return true;
+	}
+	return false;
+};
+
+/**
+ * Map an offline `file:///…/index.html#/…` client-router URL to the public docs site.
+ * Used when a page is not included in the merged PDF so we still replace `file:` with https
+ * (avoids Acrobat "connect to local file" warnings).
+ */
+/**
+ * Map the client-router path in a file URL (`#/…`) to the same path on the public docs origin.
+ */
+export function fileHashUriToPublicDocsHttps(
+	uri: string,
+	publicDocsOrigin: string,
+): string | null {
+	try {
+		const u = new URL(uri);
+		if (u.protocol !== "file:" || !u.hash.startsWith("#/")) {
+			return null;
+		}
+		const inner = u.hash.slice(1);
+		const hashParts = inner.split("#");
+		const routePath = hashParts[0] ?? "";
+		const nested = hashParts.slice(1).join("#");
+		const base = publicDocsOrigin.replace(/\/$/, "");
+		let out = `${base}${routePath.startsWith("/") ? routePath : `/${routePath}`}`;
+		if (nested) {
+			out += `#${nested}`;
+		}
+		return out;
+	} catch {
+		return null;
+	}
+}
+
+export function fileOfflineUriToPublicDocsUrl(
+	uri: string,
+	publicDocsOrigin: string,
+): string | null {
+	return fileHashUriToPublicDocsHttps(uri, publicDocsOrigin);
+}
+
+/**
+ * For merge: every `file:///…/index.html#/route` key should also match absolute
+ * `https://docs…/route` link annotations (Docusaurus sets `url` in config).
+ */
+export function publicHttpsAliasesForFileDocUrl(
+	fileDocUrl: string,
+	publicDocsOrigin: string,
+): string[] {
+	const out = new Set<string>();
+	for (const variant of buildDocumentUrlVariants(fileDocUrl)) {
+		const https = fileHashUriToPublicDocsHttps(variant, publicDocsOrigin);
+		if (!https) {
+			continue;
+		}
+		for (const t of buildLinkTargetUrlVariants(https)) {
+			out.add(t);
+		}
+	}
+	return [...out];
+}
+
+/**
+ * When the browser wrongly resolves a doc-relative href to a bare file path under
+ * `…/build-offline/…` (no `#/…` hash), map it to the public site URL so we can strip file: prompts.
+ */
+export function pathnameOnlyOfflineFileToPublicDocsUrl(
+	uri: string,
+	publicDocsOrigin: string,
+): string | null {
+	try {
+		const u = new URL(uri);
+		if (u.protocol !== "file:" || u.hash) {
+			return null;
+		}
+		const p = u.pathname.replace(/\\/g, "/");
+		const marker = "/build-offline/";
+		const idx = p.indexOf(marker);
+		if (idx === -1) {
+			return null;
+		}
+		const tail = p.slice(idx + marker.length).replace(/\/+$/, "");
+		if (!tail) {
+			return null;
+		}
+		const base = publicDocsOrigin.replace(/\/$/, "");
+		return `${base}/${tail}`;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Replace remaining `file:` URI actions (not mapped into this PDF) with https://docs… URLs.
+ */
+export function rewriteRemainingOfflineFileUrisToPublicDocsSite(
+	pdfDoc: PDFDocument,
+	publicDocsOrigin: string,
+): number {
+	let rewrittenCount = 0;
+
+	for (const page of pdfDoc.getPages()) {
+		const annots = page.node.lookupMaybe(ANNOTS, PDFArray);
+		if (!annots) {
+			continue;
+		}
+
+		for (let index = 0; index < annots.size(); index++) {
+			const annot = annots.lookup(index, PDFDict);
+			const subtype = annot.lookupMaybe(SUBTYPE, PDFName);
+			if (!subtype || subtype.asString() !== LINK.asString()) {
+				continue;
+			}
+
+			if (annot.get(DEST) !== undefined) {
+				continue;
+			}
+
+			const action = annot.lookupMaybe(ACTION, PDFDict);
+			if (!action) {
+				continue;
+			}
+
+			const actionType = action.lookupMaybe(ACTION_TYPE, PDFName);
+			if (!actionType || actionType.asString() !== URI_ACTION.asString()) {
+				continue;
+			}
+
+			const uriObject = action.lookupMaybe(URI, PDFString, PDFHexString);
+			if (!uriObject) {
+				continue;
+			}
+
+			const text = uriObject.decodeText();
+			if (!text.startsWith("file:")) {
+				continue;
+			}
+
+			let mapped =
+				fileOfflineUriToPublicDocsUrl(text, publicDocsOrigin) ??
+				pathnameOnlyOfflineFileToPublicDocsUrl(text, publicDocsOrigin);
+			if (!mapped) {
+				continue;
+			}
+
+			action.set(URI, PDFString.of(mapped));
+			rewrittenCount++;
+		}
+	}
+
+	return rewrittenCount;
 }
 
 export function rewritePdfInternalLinks(
@@ -84,8 +304,21 @@ export function rewritePdfInternalLinks(
 			);
 			destination.push(PDFNull);
 
+			// Use a GoTo action instead of a /Dest key — Acrobat reliably follows
+			// intra-document navigation for /A/S/GoTo; a bare /Dest is sometimes ignored.
+			const gotoAction = pdfDoc.context.register(
+				pdfDoc.context.obj({
+					Type: PDFName.of("Action"),
+					S: GOTO,
+					D: destination,
+				}),
+			);
+
 			annot.delete(ACTION);
-			annot.set(DEST, destination);
+			annot.set(ACTION, gotoAction);
+			if (annot.get(DEST) !== undefined) {
+				annot.delete(DEST);
+			}
 			rewrittenCount++;
 		}
 	}
@@ -134,13 +367,17 @@ function findDestinationForUrl(
 	url: string,
 	destinations: Map<string, number | PDFDestinationTarget>,
 ): PDFDestinationTarget | null {
-	for (const variant of buildLinkTargetUrlVariants(url)) {
-		const value = destinations.get(variant);
-		if (value === undefined) {
-			continue;
-		}
+	const seeds = new Set<string>([url, canonicalizeFileUrlForPdfMatching(url)]);
 
-		return typeof value === "number" ? { pageIndex: value } : value;
+	for (const seed of seeds) {
+		for (const variant of buildLinkTargetUrlVariants(seed)) {
+			const value = destinations.get(variant);
+			if (value === undefined) {
+				continue;
+			}
+
+			return typeof value === "number" ? { pageIndex: value } : value;
+		}
 	}
 
 	return null;

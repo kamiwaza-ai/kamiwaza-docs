@@ -6,35 +6,24 @@ profiles:
   # For customers doing air-gapped/offline installations
   offline-install:
     name: "Kamiwaza Offline Installation Guide"
-    description: "Essential documentation for offline installations"
+    description: "Full platform documentation for air-gapped customers (all in-site links resolve inside the PDF)"
     filename: "kamiwaza-offline-install"
     cover:
       title: "Kamiwaza AI Platform"
       subtitle: "Offline Installation Guide"
       includeVersion: true
       includeLogo: true
-    documents:
-      - id: "installation/installation_process"
-        title: "Installation Process"
-      - id: "installation/system_requirements"
-        title: "System Requirements"
-      - id: "installation/redhat_online_install"
-        title: "Red Hat Online Installation"
-      - id: "installation/redhat_offline_install"
-        title: "Red Hat Offline Installation"
-      - id: "installation/redhat_uninstall"
-        title: "Red Hat Uninstall"
-      - id: "quickstart"
-        title: "Quickstart"
-      - id: "security/admin-guide"
-        title: "Administrator Guide"
-      - id: "help-and-fixes"
-        title: "Help & Fixes"
+    # Same discovery as full-docs plus Extensions plugin docs (sidebars-extensions.ts), so links
+    # to Kaizen, Workroom Manager, models, observability, etc. navigate within the merged PDF.
+    includeAll: true
+    excludeDocs:
+      - team/kamiwaza
+      - team/jobs
+      - team/mts
     options:
       includeTOC: true
       includePageNumbers: true
       includeHeaders: true
-      includeFooters: true
       pageNumberStart: 1
 
   # Full Documentation Profile
@@ -59,7 +48,6 @@ profiles:
       includeTOC: true
       includePageNumbers: true
       includeHeaders: true
-      includeFooters: true
       pageNumberStart: 1
 
 # Global PDF Settings
@@ -85,6 +73,9 @@ settings:
   source:
     mode: "offline-build"
     buildDir: "docs/build-offline"
+
+  # Links to docs not included in a profile are rewritten from file: to this base URL for clickable PDF links (no local-file prompts). Printed body text uses a short note in docs/src/css/pdf.css instead of the raw URL.
+  publicDocsBaseUrl: "https://docs.kamiwaza.ai"
 
   # Server settings for local build
   server:

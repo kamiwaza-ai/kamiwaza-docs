@@ -13,6 +13,11 @@ import {
 import {
 	buildDocumentUrlVariants,
 	buildLinkTargetUrlVariants,
+	canonicalizeFileUrlForPdfMatching,
+	fileOfflineUriToPublicDocsUrl,
+	isAnnotatableDocHrefForPdfCapture,
+	pathnameOnlyOfflineFileToPublicDocsUrl,
+	publicHttpsAliasesForFileDocUrl,
 	rewritePdfInternalLinks,
 } from "./pdf-link-utils";
 
@@ -34,6 +39,69 @@ const createUriLinkAnnotation = (
 			},
 		}),
 	);
+
+test("publicHttpsAliasesForFileDocUrl includes https equivalents of file hash routes", () => {
+	const file =
+		"file:///tmp/docs/build-offline/index.html#/0.12.0/installation/installation_process";
+	const aliases = publicHttpsAliasesForFileDocUrl(
+		file,
+		"https://docs.kamiwaza.ai",
+	);
+	assert.ok(
+		aliases.some(
+			(a) =>
+				a ===
+					"https://docs.kamiwaza.ai/0.12.0/installation/installation_process" ||
+				a ===
+					"https://docs.kamiwaza.ai/0.12.0/installation/installation_process/",
+		),
+		`expected https alias, got: ${aliases.slice(0, 5).join(", ")}`,
+	);
+});
+
+test("pathnameOnlyOfflineFileToPublicDocsUrl maps filesystem paths under build-offline", () => {
+	assert.equal(
+		pathnameOnlyOfflineFileToPublicDocsUrl(
+			"file:///home/user/project/docs/build-offline/installation/installation_process",
+			"https://docs.kamiwaza.ai",
+		),
+		"https://docs.kamiwaza.ai/installation/installation_process",
+	);
+});
+
+test("fileOfflineUriToPublicDocsUrl maps hash routes to the public docs origin", () => {
+	assert.equal(
+		fileOfflineUriToPublicDocsUrl(
+			"file:///tmp/proj/docs/build-offline/index.html#/0.12.0/quickstart",
+			"https://docs.kamiwaza.ai",
+		),
+		"https://docs.kamiwaza.ai/0.12.0/quickstart",
+	);
+	assert.equal(
+		fileOfflineUriToPublicDocsUrl(
+			"file:///tmp/index.html#/0.12.0/system_requirements#special-considerations",
+			"https://docs.kamiwaza.ai",
+		),
+		"https://docs.kamiwaza.ai/0.12.0/system_requirements#special-considerations",
+	);
+});
+
+test("canonicalizeFileUrlForPdfMatching leaves http(s) URLs unchanged", () => {
+	assert.equal(
+		canonicalizeFileUrlForPdfMatching("http://localhost:9003/a"),
+		"http://localhost:9003/a",
+	);
+});
+
+test("isAnnotatableDocHrefForPdfCapture accepts Docusaurus doc-relative hrefs", () => {
+	assert.equal(isAnnotatableDocHrefForPdfCapture("security/admin-guide"), true);
+	assert.equal(isAnnotatableDocHrefForPdfCapture("../observability"), true);
+	assert.equal(isAnnotatableDocHrefForPdfCapture("/0.12.0/quickstart"), true);
+	assert.equal(isAnnotatableDocHrefForPdfCapture("#anchor"), true);
+	assert.equal(isAnnotatableDocHrefForPdfCapture("http://localhost:9003/a"), true);
+	assert.equal(isAnnotatableDocHrefForPdfCapture("mailto:a@b"), false);
+	assert.equal(isAnnotatableDocHrefForPdfCapture("javascript:void(0)"), false);
+});
 
 test("buildDocumentUrlVariants normalizes trailing slashes and hashes", () => {
 	const variants = buildDocumentUrlVariants(
@@ -149,9 +217,9 @@ test("rewritePdfInternalLinks converts local doc URLs into internal destinations
 
 	const annots = page1.node.lookup(PDFName.of("Annots"), PDFArray);
 	const rewrittenAnnot = annots.lookup(0, PDFDict);
-	assert.equal(rewrittenAnnot.lookupMaybe(PDFName.of("A"), PDFDict), undefined);
-
-	const dest = rewrittenAnnot.lookup(PDFName.of("Dest"), PDFArray);
+	const goto = rewrittenAnnot.lookup(PDFName.of("A"), PDFDict);
+	assert.equal(goto.lookup(PDFName.of("S"), PDFName).asString(), "/GoTo");
+	const dest = goto.lookup(PDFName.of("D"), PDFArray);
 	assert.equal(dest.get(0), page2.ref);
 	assert.equal(dest.lookup(1, PDFName).asString(), "/XYZ");
 	assert.equal(dest.lookup(2, PDFNumber).asNumber(), 0);
@@ -188,9 +256,9 @@ test("rewritePdfInternalLinks converts offline file URLs into internal destinati
 
 	const annots = page1.node.lookup(PDFName.of("Annots"), PDFArray);
 	const rewrittenAnnot = annots.lookup(0, PDFDict);
-	assert.equal(rewrittenAnnot.lookupMaybe(PDFName.of("A"), PDFDict), undefined);
-
-	const dest = rewrittenAnnot.lookup(PDFName.of("Dest"), PDFArray);
+	const goto = rewrittenAnnot.lookup(PDFName.of("A"), PDFDict);
+	assert.equal(goto.lookup(PDFName.of("S"), PDFName).asString(), "/GoTo");
+	const dest = goto.lookup(PDFName.of("D"), PDFArray);
 	assert.equal(dest.get(0), page2.ref);
 });
 
@@ -221,7 +289,8 @@ test("rewritePdfInternalLinks preserves section destinations", async () => {
 
 	const annots = page1.node.lookup(PDFName.of("Annots"), PDFArray);
 	const rewrittenAnnot = annots.lookup(0, PDFDict);
-	const dest = rewrittenAnnot.lookup(PDFName.of("Dest"), PDFArray);
+	const goto = rewrittenAnnot.lookup(PDFName.of("A"), PDFDict);
+	const dest = goto.lookup(PDFName.of("D"), PDFArray);
 	assert.equal(dest.get(0), page2.ref);
 	assert.equal(dest.lookup(2, PDFNumber).asNumber(), 0);
 	assert.equal(dest.lookup(3, PDFNumber).asNumber(), 512);

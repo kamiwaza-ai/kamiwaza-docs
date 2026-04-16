@@ -25,8 +25,7 @@ For most teams, the best practice is:
 
 Use these guides together:
 
-- [System Requirements](installation/system_requirements)
-- [Installing Kamiwaza](installation/installation_process)
+- [RHEL 9 offline installation](installation/redhat_offline_install)
 - [Quickstart](quickstart)
 - [Administrator Guide](security/admin-guide)
 - [AWS S3 Workroom Storage](workroom-storage-s3)

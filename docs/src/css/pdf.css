@@ -98,6 +98,9 @@
     color: var(--pdf-accent);
     font-size: 14pt;
     font-weight: 700;
+    /* Avoid an extra page break before the doc title when printing */
+    page-break-before: avoid;
+    break-before: avoid-page;
   }
 
   h2 {
@@ -162,15 +165,24 @@
     word-break: break-word;
   }
 
+  /* Default: show destination URL for external http(s) links in print */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    color: var(--pdf-muted);
+    font-size: 9pt;
+  }
+
+  /* Preview / same-site paths: no URL suffix */
   a[href^="http://localhost"]::after,
-  a[href^="https://docs.kamiwaza.ai"]::after,
   a[href^="/"]::after,
   a[href^="#"]::after {
     content: "";
   }
 
-  a[href^="http"]::after {
-    content: " (" attr(href) ")";
+  /* Public docs: short note instead of printing the full URL (must follow the generic http rule) */
+  a[href^="https://docs.kamiwaza.ai"]::after,
+  a[href^="http://docs.kamiwaza.ai"]::after {
+    content: " (see online documentation)";
     color: var(--pdf-muted);
     font-size: 9pt;
   }
