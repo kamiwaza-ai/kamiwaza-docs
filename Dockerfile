@@ -24,11 +24,13 @@ FROM node:22-slim AS builder
 
 WORKDIR /build
 
-# Copy root package.json and lockfile first for cache efficiency
+# Root install uses --omit=dev: root devDependencies (puppeteer, ts-node, pdf-lib,
+# fs-extra, gh-pages) are only needed by sync/version/pdf scripts, not by build:docs.
+# Runtime deps are still installed — redoc (via redocusaurus) has an undeclared
+# transitive dependency on `yaml` that resolves via hoisting from the root install.
 COPY package.json package-lock.json ./
 
-# Install root dependencies (includes sync scripts)
-RUN npm ci --ignore-scripts
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copy docs package files first for cache efficiency
 COPY docs/package.json docs/package-lock.json docs/
@@ -57,6 +59,8 @@ RUN npm init -y && npm install --omit=dev serve@14.2.4
 # Runtime stage — serve the static build
 # ---------------------------------------------------------------------------
 FROM node:22-slim AS runtime
+
+ENV NODE_ENV=production
 
 # Create non-root user matching the Kamiwaza convention (UID 65532)
 RUN groupadd -g 65532 nonroot && \

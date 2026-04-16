@@ -52,9 +52,8 @@ container-validate: ## Lint Dockerfile via bake check
 .PHONY: container-clean
 container-clean: ## Remove local docs container images
 	@echo "$(YELLOW)Removing docs container images...$(NC)"
-	@docker images --format "{{.Repository}}:{{.Tag}}" | \
-		grep "$(IMAGE_NAME)" | \
-		xargs -r docker rmi -f 2>/dev/null || true
+	@images=$$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "$(IMAGE_NAME)" || true); \
+		if [ -n "$$images" ]; then echo "$$images" | xargs docker rmi -f 2>/dev/null || true; fi
 	@echo "$(GREEN)Docs images removed$(NC)"
 
 # ==============================================================================
