@@ -2,9 +2,9 @@
   "sdk": [
     "intro",
     {
-      "type": "link",
-      "label": "REST API Reference",
-      "href": "/sdk/api/"
+      "type": "doc",
+      "id": "api-reference",
+      "label": "REST API Reference"
     },
     {
       "type": "category",

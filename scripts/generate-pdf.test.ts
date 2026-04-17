@@ -1,11 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "path";
+import { pathToFileURL } from "url";
 
 // Prefer the TypeScript source over the stale compiled JS in this folder.
 const { PDFGenerator } = require("./generate-pdf");
 
-const configPath = path.join(__dirname, "..", "pdf-config.yaml");
+const repoRoot = path.resolve(__dirname, "..");
+const configPath = path.join(repoRoot, "pdf-config.yaml");
+const offlineIndexHref = pathToFileURL(
+	path.join(repoRoot, "docs", "build-offline", "index.html"),
+).href;
 
 test("buildDocumentUrl normalizes folder index docs for offline versioned routes", () => {
 	const generator = new PDFGenerator(configPath) as any;
@@ -15,10 +20,7 @@ test("buildDocumentUrl normalizes folder index docs for offline versioned routes
 		"0.12.0",
 	);
 
-	assert.equal(
-		url,
-		"file:///home/shkevin/code/compliance/kamiwaza-docs/docs/build-offline/index.html#/0.12.0/use-cases",
-	);
+	assert.equal(url, `${offlineIndexHref}#/0.12.0/use-cases`);
 });
 
 test("generateTitleFromId uses parent folder name for index docs", () => {
@@ -35,8 +37,5 @@ test("buildDocumentUrl maps sdk intro to the version root route", () => {
 		"0.12.0",
 	);
 
-	assert.equal(
-		url,
-		"file:///home/shkevin/code/compliance/kamiwaza-docs/docs/build-offline/index.html#/sdk/0.12.0",
-	);
+	assert.equal(url, `${offlineIndexHref}#/sdk/0.12.0`);
 });

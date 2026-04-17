@@ -10,6 +10,9 @@ dist
 .docusaurus
 .cache-loader
 
+# Compiled TypeScript outputs (npm scripts run the .ts sources via ts-node).
+/scripts/*.js
+
 # SDK docs (synced from kamiwaza-sdk repo)
 /docs/sdk/current/
 /docs/sdk-services.generated.json

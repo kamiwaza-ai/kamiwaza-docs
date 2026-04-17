@@ -136,10 +136,7 @@ Generate PDF documentation for offline installations:
 # Generate offline installation PDF (essential docs only)
 npm run pdf:offline
 
-# Generate complete documentation PDF
-npm run pdf:full
-
-# Generate latest versioned docs PDF (default behavior)
+# Generate complete documentation PDF (defaults to the latest versioned snapshot)
 npm run pdf:full
 
 # Generate specific profile with version

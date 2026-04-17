@@ -31,10 +31,11 @@
  *
  * Environment variables:
  *   KAMIWAZA_REPO_PATH - Path to local kamiwaza repo (default: ../platform/kamiwaza)
- *   KAMIWAZA_API_URL   - URL to fetch OpenAPI spec from (default: https://kamiwaza.test/api/openapi.json)
+ *   KAMIWAZA_API_URL   - URL to fetch OpenAPI spec from (default: http://localhost:7777/openapi.json)
  */
 
 import { execFileSync } from "child_process";
+import crypto from "crypto";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
@@ -79,7 +80,7 @@ function getCurrentBranch(repoPath: string): string {
 
 async function fetchFromRunningPlatform(): Promise<string> {
 	const apiUrl =
-		process.env.KAMIWAZA_API_URL || "https://kamiwaza.test/api/openapi.json";
+		process.env.KAMIWAZA_API_URL || "http://localhost:7777/openapi.json";
 	console.log(`Fetching OpenAPI spec from running platform: ${apiUrl}`);
 
 	try {
@@ -159,9 +160,10 @@ print(json.dumps(app.openapi()))
 					`sqlite:///${path.join(tempDir, "cluster.db")}`,
 				AUTH_DATABASE_URL:
 					process.env.AUTH_DATABASE_URL || `sqlite:///${path.join(tempDir, "auth.db")}`,
+				// Ephemeral per-invocation secret so no literal is committed.
 				AUTH_FORWARD_HEADER_SECRET:
 					process.env.AUTH_FORWARD_HEADER_SECRET ||
-					"dev-secret-for-openapi-generation-123456",
+					crypto.randomBytes(32).toString("hex"),
 			},
 		});
 	} catch (error: any) {
@@ -317,12 +319,12 @@ async function main() {
 	await fs.writeFile(TARGET_FILE, JSON.stringify(spec, null, 2));
 	console.log(`\nWritten to: ${TARGET_FILE}`);
 
-	// Get source branch for metadata
 	const sourceBranch = getCurrentBranch(repoPath);
 
-	// Create a metadata file for tracking
 	const metadata = {
 		syncedAt: new Date().toISOString(),
+		sourceRepo: repoPath,
+		sourceBranch,
 		originalApiVersion: originalVersion,
 		patchedApiVersion: docsVersion,
 		endpoints: pathCount,

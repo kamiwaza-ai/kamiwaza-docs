@@ -17,6 +17,24 @@ export interface PDFDestinationTarget {
 	y?: number;
 }
 
+// realpath is a stat syscall and link merging hits the same files repeatedly.
+const realPathCache = new Map<string, string>();
+
+function cachedRealPath(filePath: string): string {
+	const cached = realPathCache.get(filePath);
+	if (cached !== undefined) {
+		return cached;
+	}
+	let resolved = filePath;
+	try {
+		resolved = fs.realpathSync(filePath);
+	} catch {
+		// keep filePath if the file is gone or not yet resolved
+	}
+	realPathCache.set(filePath, resolved);
+	return resolved;
+}
+
 const LINK = PDFName.of("Link");
 const SUBTYPE = PDFName.of("Subtype");
 const ACTION = PDFName.of("A");
@@ -60,12 +78,7 @@ export function canonicalizeFileUrlForPdfMatching(url: string): string {
 		} catch {
 			return url;
 		}
-		let realPath = filePath;
-		try {
-			realPath = fs.realpathSync(filePath);
-		} catch {
-			// keep filePath if the file is gone or not yet resolved
-		}
+		const realPath = cachedRealPath(filePath);
 		const rebased = pathToFileURL(realPath).href;
 		return hash ? `${rebased}${hash}` : rebased;
 	} catch {
@@ -430,9 +443,10 @@ function buildAliasCandidates(parsed: URL): string[] {
 			aliases.add(route.slice(0, -"/index".length) || "/");
 		}
 
-		const versionlessRoute = route
-			.replace(/^\/sdk\/\d+\.\d+\.\d+(\/.+)$/u, "/sdk$1")
-			.replace(/^\/\d+\.\d+\.\d+(\/.+)$/u, "$1");
+		const stripped = route
+			.replace(/^\/sdk\/\d+\.\d+\.\d+(?:[-+][\w.]+)?(\/.*)?$/u, "/sdk$1")
+			.replace(/^\/\d+\.\d+\.\d+(?:[-+][\w.]+)?(\/.*)?$/u, "$1");
+		const versionlessRoute = stripped === "" ? "/" : stripped;
 
 		if (versionlessRoute !== route) {
 			aliases.add(versionlessRoute);
@@ -453,10 +467,10 @@ function buildAliasCandidates(parsed: URL): string[] {
 		aliases.add(parsed.pathname.slice(0, -"/index".length) || "/");
 	}
 
-	const versionlessPath = parsed.pathname.replace(
-		/^\/sdk\/\d+\.\d+\.\d+(\/.+)$/u,
-		"/sdk$1",
-	).replace(/^\/\d+\.\d+\.\d+(\/.+)$/u, "$1");
+	const strippedPath = parsed.pathname
+		.replace(/^\/sdk\/\d+\.\d+\.\d+(?:[-+][\w.]+)?(\/.*)?$/u, "/sdk$1")
+		.replace(/^\/\d+\.\d+\.\d+(?:[-+][\w.]+)?(\/.*)?$/u, "$1");
+	const versionlessPath = strippedPath === "" ? "/" : strippedPath;
 
 	if (versionlessPath !== parsed.pathname) {
 		aliases.add(versionlessPath);

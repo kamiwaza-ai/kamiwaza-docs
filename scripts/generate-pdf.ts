@@ -605,12 +605,9 @@ class PDFGenerator {
 
 		for (let port = startPort; port < startPort + 10; port++) {
 			try {
-				const { stdout } = await execPromise(`lsof -i:${port}`);
-				// If lsof returns output, port is in use
-				if (stdout) {
-				}
-			} catch (error) {
-				// lsof returns error if port is free
+				await execPromise(`lsof -i:${port}`);
+				continue;
+			} catch {
 				return port;
 			}
 		}
@@ -670,9 +667,9 @@ class PDFGenerator {
 			const docsPath = path.join(this.projectRoot, "docs");
 			const portStr = port.toString();
 
-			this.server = spawn("npm", ["run", "serve", "--", "--port", portStr], {
+			const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+			this.server = spawn(npmCmd, ["run", "serve", "--", "--port", portStr], {
 				cwd: docsPath,
-				shell: true,
 				stdio: "pipe",
 			});
 
