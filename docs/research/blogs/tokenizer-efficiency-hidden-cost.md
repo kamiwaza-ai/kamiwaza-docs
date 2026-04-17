@@ -15,9 +15,9 @@ image: /img/research/blog_embedding_efficiency_ogcard.png
 
 ---
 
-I was running [RIKER](https://arxiv.org/abs/2504.15253) long-context benchmarks for GPT 5.4 when something caught my eye: its reported context-length token count was WAY LESS than I assumed it would be. As an advanced, frontier-level model, I assumed it would (by now) be far more "dense" / verbose than the old faithful Llama 3 tokenizer.
+I was running [RIKER](/research/papers/riker) long-context benchmarks for GPT 5.4 when something caught my eye: its reported context-length token count was WAY LESS than I assumed it would be. As an advanced, frontier-level model, I assumed it would (by now) be far more "dense" / verbose than the old faithful Llama 3 tokenizer.
 
-That the embeddings from different models differ is NOT surprising. What was surprising was how vast the differences can be. 1-2% is just *"whatever, no one cares"*. But 30%? Now that's a dimension that needs to be factored in when doing cost analysis and workload estimation.
+That the tokenization from different models differs is NOT surprising. What was surprising was how vast the differences can be. 1-2% is just *"whatever, no one cares"*. But 30%? Now that's a dimension that needs to be factored in when doing cost analysis and workload estimation.
 
 ## Text-to-token count differences
 
@@ -49,7 +49,7 @@ This is for our 32K RIKER corpus (composed of lease documents, field reports, an
 
 ### Cost and latency at scale
 
-Gemma 4's +26% is a solid outlier in the absolute scale of embedding efficiency. That's the kind of gap you definitely feel in large-scale production settings.
+Gemma 4's +26% is a solid outlier in the absolute scale of tokenizer efficiency. That's the kind of gap you definitely feel in large-scale production settings.
 
 If you're paying per-token (API pricing), a 26% token overhead means 26% higher input costs. For a single query, who cares. For an enterprise doing millions of queries against long documents, it can add up fast.
 
@@ -61,7 +61,7 @@ Models advertise a max context length in tokens. But given what we've seen so fa
 
 Let's take the softer case of two modern open models: Qwen3.5 and Gemma 4. Let's say you were deciding between two models: Qwen3.5 27B and Gemma 4 31B. Both are about the same size, and about the same max context length in tokens.
 
-Gemma 4 uses about 13% more tokens on the same text (for English, at least, which was all we've tested so far). This means you don't actually have "256K tokens' worth of text" for Gemma 4, relative to Qwen3.5. Instead, you have less than 230K.
+Gemma 4 uses about 15% more tokens on the same text (for English, at least, which was all we've tested so far). This means you don't actually have "256K tokens' worth of text" for Gemma 4, relative to Qwen3.5. Instead, you have less than 230K.
 
 Or, think of it in human terms. If Qwen3.5's 256K tokens is about 500 documents or records from your knowledge base, for Gemma 4, that's only... 440 documents. Uh oh... now you are off by 60 documents that could fit.
 
@@ -69,7 +69,7 @@ Or, think of it in human terms. If Qwen3.5's 256K tokens is about 500 documents 
 
 More tokens = more compute per query. This affects both time-to-first-token (TTFT) and total latency. A 26% token overhead translates roughly to 26% more attention computation, though in practice it's model-dependent since attention mechanisms vary.
 
-If (like me) you just casually assumed embedding differences are basically a rounding error, then you might have benchmarked your models on fixed tokens instead of fixed text. Typical benchmarking for input/output TPS traditionally does fixed input/output shapes like:
+If (like me) you just casually assumed tokenizer differences are basically a rounding error, then you might have benchmarked your models on fixed tokens instead of fixed text. Typical benchmarking for input/output TPS traditionally does fixed input/output shapes like:
 
 - 2,048 input / 256 output (short input)
 - 8,192 input / 256 output (medium input)
@@ -77,7 +77,7 @@ If (like me) you just casually assumed embedding differences are basically a rou
 
 And this is all fine, and lets us compare model processing speeds at fixed and fair comparison points.
 
-Except, now that we know embedding efficiency can actually differ by as much as 30%... then our fixed-token benchmarks are NOT actually that realistic at times. A less efficient tokenizer would essentially make one model handle much more tokens in the real world.
+Except, now that we know tokenizer efficiency can actually differ by as much as 30%... then our fixed-token benchmarks are NOT actually that realistic at times. A less efficient tokenizer would essentially make one model handle much more tokens in the real world.
 
 So while model A (an example model with the more efficient tokenizer) processes 5,000 input TPS at 32K, and model B (with the 30% less efficient tokenizer) seems to be faster at 5,500 input TPS at 32K, their real-world speed is actually the reverse!
 
@@ -109,4 +109,4 @@ Token counts come from `usage.prompt_tokens` in the API response, which reflects
 
 ---
 
-*For more on our long-context evaluation methodology, see the [RIKER paper](https://docs.kamiwaza.ai/research/papers/riker). For a larger, more comprehensive study using RIKER, see [RIKER2](https://docs.kamiwaza.ai/research/papers/riker2).*
+*For more on our long-context evaluation methodology, see the [RIKER paper](/research/papers/riker). For a larger, more comprehensive study using RIKER, see [RIKER2](/research/papers/riker2).*
