@@ -1,7 +1,7 @@
 ---
 title: "The Tokenizer Tax: The Same Text Can Cost 26% More on Some Models"
 description: "We fed identical text to 10 model families and counted tokens. The differences are bigger than you'd expect, and they compound at scale."
-image: /img/research/blog_embedding_efficiency_ogcard.png
+image: /img/research/blog_tokenizing_efficiency_ogcard.png
 ---
 
 # The Tokenizer Tax: The Same Text Can Cost 26% More on Some Models

@@ -15,7 +15,7 @@ Shorter, more timely and frequent research insights and perspectives from the Ka
 
 *JV Roig · April 17, 2026*
 
-[![Article cover](/img/research/blog_embedding_efficiency_ogcard.png)](/research/blogs/tokenizer-efficiency-hidden-cost)
+[![Article cover](/img/research/blog_tokenizing_efficiency_ogcard.png)](/research/blogs/tokenizer-efficiency-hidden-cost)
 
 We fed identical text to 10 model families and counted tokens. MiniMax M2 is the most efficient, GPT-5.4 is close behind, and Gemma 4 uses 26% more tokens than Llama 3 baseline for the exact same text. For long-context workloads, this tokenizer difference is a significant hidden dimension affecting workload estimation and cost analysis.
 
