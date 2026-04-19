@@ -86,6 +86,58 @@ export function canonicalizeFileUrlForPdfMatching(url: string): string {
 	}
 }
 
+/**
+ * Resolve a doc-relative href against the current Docusaurus hash route,
+ * mirroring browser semantics for `.` / `..` traversal so the result is a
+ * normalized hash route (e.g. `#/0.12.0/quickstart`). Returns null when the
+ * current location is not a hash route we can join against.
+ *
+ * Pure / SSR-safe: lifted out of the in-page evaluator so it can be unit
+ * tested directly and shared with the browser via toString() injection.
+ */
+export const resolveDocRelativeHashRoute = (
+	currentHash: string,
+	rawHref: string,
+): string | null => {
+	if (!currentHash.startsWith("#/")) {
+		return null;
+	}
+	const [routeOnly, ...nestedParts] = currentHash.slice(1).split("#");
+	const nested = nestedParts.length > 0 ? nestedParts.join("#") : "";
+
+	const [hrefPath, ...hrefHashParts] = rawHref.split("#");
+	const hrefHash = hrefHashParts.join("#");
+
+	const cleanedPath = hrefPath.replace(/\.mdx?$/i, "");
+	if (!cleanedPath) {
+		return hrefHash ? `#${routeOnly}#${hrefHash}` : `#${routeOnly}`;
+	}
+
+	// Resolve relative to the *directory* of the current route — anchors in
+	// /a/b/c with href "../d" target /a/d, mirroring browser semantics.
+	const baseSegments = routeOnly.replace(/^\//, "").split("/");
+	if (baseSegments.length > 0) {
+		baseSegments.pop();
+	}
+
+	for (const segment of cleanedPath.split("/")) {
+		if (segment === "" || segment === ".") {
+			continue;
+		}
+		if (segment === "..") {
+			if (baseSegments.length > 0) {
+				baseSegments.pop();
+			}
+			continue;
+		}
+		baseSegments.push(segment);
+	}
+
+	const joined = "/" + baseSegments.join("/");
+	const fragment = hrefHash || nested;
+	return fragment ? `#${joined}#${fragment}` : `#${joined}`;
+};
+
 export const isAnnotatableDocHrefForPdfCapture = (rawHref: string): boolean => {
 	const h = rawHref.trim();
 	if (!h) {
@@ -308,13 +360,14 @@ export function rewritePdfInternalLinks(
 			}
 
 			const targetPage = pdfDoc.getPage(target.pageIndex);
+			// PDF /XYZ with null y means "keep current vertical position" — for
+			// doc-level targets (no heading anchor) we want the top of the page.
+			const topY = target.y ?? targetPage.getHeight();
 			const destination = PDFArray.withContext(pdfDoc.context);
 			destination.push(targetPage.ref);
 			destination.push(XYZ);
 			destination.push(PDFNumber.of(0));
-			destination.push(
-				target.y === undefined ? PDFNull : PDFNumber.of(target.y),
-			);
+			destination.push(PDFNumber.of(topY));
 			destination.push(PDFNull);
 
 			// Use a GoTo action instead of a /Dest key — Acrobat reliably follows

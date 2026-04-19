@@ -14,6 +14,7 @@
 import { type ChildProcess, spawn } from "child_process";
 import * as fs from "fs-extra";
 import * as yaml from "js-yaml";
+import * as os from "os";
 import * as path from "path";
 import { pathToFileURL } from "url";
 import {
@@ -32,6 +33,7 @@ import {
 	isAnnotatableDocHrefForPdfCapture,
 	publicHttpsAliasesForFileDocUrl,
 	type PDFDestinationTarget,
+	resolveDocRelativeHashRoute,
 	rewritePdfInternalLinks,
 	rewriteRemainingOfflineFileUrisToPublicDocsSite,
 } from "./pdf-link-utils";
@@ -215,19 +217,16 @@ class PDFGenerator {
 			});
 
 			// Generate document PDFs first so we can compute accurate TOC page numbers
+			const concurrency = this.resolvePdfConcurrency();
 			console.log(
-				`\n📑 Generating ${profile.documents.length} document(s)...\n`,
+				`\n📑 Generating ${profile.documents.length} document(s) (concurrency=${concurrency})...\n`,
 			);
 
-			const docParts: GeneratedPDFPart[] = [];
-			for (const doc of profile.documents) {
-				const pdfPart = await this.generateDocumentPDF(
-					doc,
-					targetVersion,
-					profile,
-				);
-				docParts.push(pdfPart);
-			}
+			const docParts = await this.mapWithConcurrency(
+				profile.documents,
+				concurrency,
+				(doc) => this.generateDocumentPDF(doc, targetVersion, profile),
+			);
 
 			const pdfParts: GeneratedPDFPart[] = [];
 
@@ -596,6 +595,45 @@ class PDFGenerator {
 		}
 
 		return docId;
+	}
+
+	private resolvePdfConcurrency(): number {
+		const fromEnv = Number(process.env.PDF_CONCURRENCY);
+		if (Number.isFinite(fromEnv) && fromEnv > 0) {
+			// Each puppeteer page shares one CDP connection; >4 risks
+			// Runtime.evaluate protocol timeouts on large doc sets.
+			return Math.min(8, Math.max(1, Math.floor(fromEnv)));
+		}
+		// Default to sequential for parity with prior behavior; opt in via
+		// PDF_CONCURRENCY for parallel runs once the host can spare RAM/CPU.
+		void os;
+		return 1;
+	}
+
+	private async mapWithConcurrency<T, R>(
+		items: T[],
+		limit: number,
+		fn: (item: T, index: number) => Promise<R>,
+	): Promise<R[]> {
+		const results = new Array<R>(items.length);
+		let cursor = 0;
+		const workerCount = Math.max(1, Math.min(limit, items.length));
+		const workers: Promise<void>[] = [];
+		for (let w = 0; w < workerCount; w++) {
+			workers.push(
+				(async () => {
+					while (true) {
+						const index = cursor++;
+						if (index >= items.length) {
+							return;
+						}
+						results[index] = await fn(items[index]!, index);
+					}
+				})(),
+			);
+		}
+		await Promise.all(workers);
+		return results;
 	}
 
 	private async findAvailablePort(startPort: number): Promise<number> {
@@ -994,11 +1032,15 @@ class PDFGenerator {
 
 	private async captureLocalPdfLinks(page: Page): Promise<CapturedLocalLink[]> {
 		const checkerSource = isAnnotatableDocHrefForPdfCapture.toString();
+		const resolverSource = resolveDocRelativeHashRoute.toString();
 		return page.evaluate(
-			(src: string) => {
+			(src: string, resolverSrc: string) => {
 				const isAnnotatableDocHrefForPdfCapture = new Function(
 					`"use strict"; return (${src});`,
 				)() as (h: string) => boolean;
+				const resolveDocRelativeHashRoute = new Function(
+					`"use strict"; return (${resolverSrc});`,
+				)() as (currentHash: string, rawHref: string) => string | null;
 				const doc = (globalThis as any).document;
 				const links: CapturedLocalLink[] = [];
 
@@ -1026,25 +1068,12 @@ class PDFGenerator {
 							!raw.startsWith("#") &&
 							!raw.startsWith("?")
 						) {
-							const h = loc.hash || "";
-							if (h.startsWith("#/")) {
-								const verM = h.match(/^#\/(\d+\.\d+\.\d+|current)(?=\/?|$)/);
-								if (verM) {
-									const ver = verM[1];
-									const pathOnly = raw
-										.replace(/^\.\//, "")
-										.replace(/\.mdx?$/i, "");
-									return baseFile + "#/" + ver + "/" + pathOnly;
-								}
-								if (/^#\/(extensions)(?:\/|$)/.test(h)) {
-									const pathOnly = raw
-										.replace(/^\.\//, "")
-										.replace(/\.mdx?$/i, "");
-									if (pathOnly.indexOf("extensions/") === 0) {
-										return baseFile + "#/" + pathOnly;
-									}
-									return baseFile + "#/extensions/" + pathOnly;
-								}
+							const resolved = resolveDocRelativeHashRoute(
+								loc.hash || "",
+								raw,
+							);
+							if (resolved) {
+								return baseFile + resolved;
 							}
 						}
 					}
@@ -1096,6 +1125,7 @@ class PDFGenerator {
 				return links;
 			},
 			checkerSource,
+			resolverSource,
 		);
 	}
 

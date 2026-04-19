@@ -18,6 +18,7 @@ import {
 	isAnnotatableDocHrefForPdfCapture,
 	pathnameOnlyOfflineFileToPublicDocsUrl,
 	publicHttpsAliasesForFileDocUrl,
+	resolveDocRelativeHashRoute,
 	rewritePdfInternalLinks,
 } from "./pdf-link-utils";
 
@@ -223,6 +224,11 @@ test("rewritePdfInternalLinks converts local doc URLs into internal destinations
 	assert.equal(dest.get(0), page2.ref);
 	assert.equal(dest.lookup(1, PDFName).asString(), "/XYZ");
 	assert.equal(dest.lookup(2, PDFNumber).asNumber(), 0);
+	assert.equal(
+		dest.lookup(3, PDFNumber).asNumber(),
+		page2.getHeight(),
+		"doc-level destinations should land at the top of the target page",
+	);
 
 	const untouchedAnnot = annots.lookup(1, PDFDict);
 	const action = untouchedAnnot.lookup(PDFName.of("A"), PDFDict);
@@ -294,4 +300,58 @@ test("rewritePdfInternalLinks preserves section destinations", async () => {
 	assert.equal(dest.get(0), page2.ref);
 	assert.equal(dest.lookup(2, PDFNumber).asNumber(), 0);
 	assert.equal(dest.lookup(3, PDFNumber).asNumber(), 512);
+});
+
+test("resolveDocRelativeHashRoute traverses ../ segments under a versioned route", () => {
+	assert.equal(
+		resolveDocRelativeHashRoute(
+			"#/0.12.0/security/admin-guide",
+			"../quickstart.md",
+		),
+		"#/0.12.0/quickstart",
+	);
+});
+
+test("resolveDocRelativeHashRoute joins ./ siblings under a nested SDK route", () => {
+	assert.equal(
+		resolveDocRelativeHashRoute(
+			"#/sdk/0.12.0/current/services/apps",
+			"./extensions",
+		),
+		"#/sdk/0.12.0/current/services/extensions",
+	);
+});
+
+test("resolveDocRelativeHashRoute preserves an explicit fragment from the href", () => {
+	assert.equal(
+		resolveDocRelativeHashRoute(
+			"#/0.12.0/security/admin-guide",
+			"../quickstart#install",
+		),
+		"#/0.12.0/quickstart#install",
+	);
+});
+
+test("resolveDocRelativeHashRoute strips .mdx extension when joining", () => {
+	assert.equal(
+		resolveDocRelativeHashRoute(
+			"#/0.12.0/security/admin-guide",
+			"../quickstart.mdx",
+		),
+		"#/0.12.0/quickstart",
+	);
+});
+
+test("resolveDocRelativeHashRoute returns null when the location is not a hash route", () => {
+	assert.equal(
+		resolveDocRelativeHashRoute("", "../quickstart"),
+		null,
+	);
+});
+
+test("resolveDocRelativeHashRoute clamps ../ traversal at the route root", () => {
+	assert.equal(
+		resolveDocRelativeHashRoute("#/0.12.0/quickstart", "../../../../intro"),
+		"#/intro",
+	);
 });
