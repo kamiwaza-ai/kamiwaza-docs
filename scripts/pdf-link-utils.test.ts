@@ -349,6 +349,16 @@ test("resolveDocRelativeHashRoute returns null when the location is not a hash r
 	);
 });
 
+test("resolveDocRelativeHashRoute keeps the current route for fragment-only hrefs", () => {
+	assert.equal(
+		resolveDocRelativeHashRoute(
+			"#/0.12.0/installation/system_requirements",
+			"#special-considerations",
+		),
+		"#/0.12.0/installation/system_requirements#special-considerations",
+	);
+});
+
 test("resolveDocRelativeHashRoute clamps ../ traversal at the route root", () => {
 	assert.equal(
 		resolveDocRelativeHashRoute("#/0.12.0/quickstart", "../../../../intro"),
