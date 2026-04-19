@@ -988,11 +988,11 @@ class PDFGenerator {
 				await page.addStyleTag({ content: headerCSS });
 			}
 
-			const capturedLocalLinks = await this.captureLocalPdfLinks(page);
-			const capturedLocalDestinations = await this.captureLocalPdfDestinations(
-				page,
-				url,
-			);
+		const capturedLocalLinks = await this.captureLocalPdfLinks(page);
+		const capturedLocalDestinations = await this.captureLocalPdfDestinations(
+			page,
+			url,
+		);
 
 			// Generate PDF
 			const pdfBuffer = await page.pdf({
