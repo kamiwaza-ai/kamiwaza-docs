@@ -151,6 +151,8 @@ npm run pdf -- --profile full-docs --version 0.5.1
 
 By default, PDF generation targets the latest version from `docs/versions.json`. Override with `--version current` to use the unversioned working docs, or pass a specific version like `--version 0.12.0`.
 
+PDF generation reads from the offline build at `docs/build-offline/`. If that directory is missing (clean checkout, CI, or after `npm run clear`), the script runs `npm run build:offline` automatically before producing the PDF. Set `PDF_SKIP_AUTO_BUILD=1` to disable auto-build and surface a hard error instead — useful when you want to ensure CI ran the build step explicitly.
+
 **Requirements:**
 After adding PDF dependencies, run:
 ```bash

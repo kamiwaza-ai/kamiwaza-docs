@@ -668,15 +668,44 @@ class PDFGenerator {
 			console.log("\n📁 Using offline documentation build...");
 			const buildPath = this.getSourceBuildPath();
 			if (!(await fs.pathExists(buildPath))) {
-				throw new Error(
-					`Offline build directory not found at ${buildPath}. Please run "npm run build:offline" first.`,
+				if (process.env.PDF_SKIP_AUTO_BUILD === "1") {
+					throw new Error(
+						`Offline build directory not found at ${buildPath}. Run "npm run build:offline" first or unset PDF_SKIP_AUTO_BUILD.`,
+					);
+				}
+				console.log(
+					`⚠️  Offline build directory missing at ${buildPath} — running build:offline...`,
 				);
+				await this.runOfflineBuild();
+				if (!(await fs.pathExists(buildPath))) {
+					throw new Error(
+						`Offline build still missing at ${buildPath} after build:offline. Investigate the build output above.`,
+					);
+				}
 			}
 			console.log(`✅ Offline build ready: ${buildPath}`);
 			return;
 		}
 
 		await this.startServer();
+	}
+
+	private async runOfflineBuild(): Promise<void> {
+		const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+		await new Promise<void>((resolve, reject) => {
+			const child = spawn(npmCmd, ["run", "build:offline"], {
+				cwd: this.projectRoot,
+				stdio: "inherit",
+			});
+			child.on("error", reject);
+			child.on("exit", (code) => {
+				if (code === 0) {
+					resolve();
+				} else {
+					reject(new Error(`build:offline exited with code ${code}`));
+				}
+			});
+		});
 	}
 
 	private async startServer(): Promise<void> {
