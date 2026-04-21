@@ -43,8 +43,7 @@ RUN npm ci --ignore-scripts
 WORKDIR /build
 COPY docs/ docs/
 
-# Build the Docusaurus site (baseUrl defaults to / in docusaurus.config.ts)
-WORKDIR /build
+# Build the Docusaurus site
 RUN npm run build:docs
 
 # ---------------------------------------------------------------------------

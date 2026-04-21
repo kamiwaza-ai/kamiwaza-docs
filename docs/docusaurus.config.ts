@@ -28,8 +28,8 @@ const config: Config = {
 	tagline: "Kamiwaza AI Platform Documentation",
 	favicon: "img/favicon.ico",
 
-	url: process.env.DOCS_URL || "https://docs.kamiwaza.ai",
-	baseUrl: process.env.DOCS_BASE_URL || "/",
+	url: "https://docs.kamiwaza.ai",
+	baseUrl: "/",
 	trailingSlash: false,
 
 	markdown: {
