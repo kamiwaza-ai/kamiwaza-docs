@@ -79,13 +79,6 @@ target "_common" {
     "org.opencontainers.image.url"           = "https://www.kamiwaza.ai/"
     "org.opencontainers.image.documentation" = "https://docs.kamiwaza.ai/"
   }
-  annotations = [
-    "manifest:org.opencontainers.image.authors=Kamiwaza AI <support@kamiwaza.ai>",
-    "manifest:org.opencontainers.image.vendor=Kamiwaza AI",
-    "manifest:org.opencontainers.image.licenses=Kamiwaza EULA <https://www.kamiwaza.ai/eula-license>",
-    "manifest:org.opencontainers.image.url=https://www.kamiwaza.ai/",
-    "manifest:org.opencontainers.image.documentation=https://docs.kamiwaza.ai/",
-  ]
   attest = equal("1", ATTEST) ? [
     "type=provenance,mode=max",
     "type=sbom"
