@@ -95,15 +95,26 @@ curl -LO https://packages.kamiwaza.ai/rpm/kamiwaza_v0.9.3_rhel9_x86_64.rpm
 To review the full license terms, visit: https://www.kamiwaza.ai/license
 
 ```bash
-
-# Install the package
+# Option A: Install the package (Community Edition)
 sudo -E KAMIWAZA_ACCEPT_LICENSE=yes dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 
-# Alternatively, for Enterprise Mode, Install the package with Kamiwaza License Key
-sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY_HERE" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
+# Option B: Install the package (Enterprise Mode with License Key)
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY_HERE" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 ```
 
-**Note:** Omit the `-E KAMIWAZA_LICENSE_KEY` option if you are installing the Community Edition without an enterprise license.
+**Note:** Omit the `KAMIWAZA_LICENSE_KEY` option if you are installing the Community Edition without an enterprise license.
+
+After the package is installed, run the production installation script. 
+
+> **Warning:** Avoid passing the admin password directly as a static CLI argument or an inline environment variable to prevent it from being saved in your shell history. Use `read -s` to securely prompt for the password and export it. Note that passing the exported variable to the installation script (`--admin-password "${KAMIWAZA_ADMIN_PASSWORD}"`) will still expose the password briefly in process lists (e.g., `ps aux`) while the script runs, but protects it from permanent shell logs.
+
+```bash
+# Run the production install script (online mode)
+echo "Enter admin password for Kamiwaza:"
+read -s KAMIWAZA_ADMIN_PASSWORD
+export KAMIWAZA_ADMIN_PASSWORD
+sudo -E /opt/kamiwaza/scripts/install-prod.sh --domain "your-configured-domain-or-ip" --admin-password "${KAMIWAZA_ADMIN_PASSWORD}" -y
+```
 
 The installer will automatically detect online mode and download required resources from the internet.
 
@@ -164,12 +175,9 @@ https://your-configured-domain-or-ip
 
 ## Step 6: Create Users
 
-After installation, you'll need to create user accounts to access Kamiwaza.
-```bash
-/opt/kamiwaza/kamiwaza/bin/kz-user add admin --email admin@company.com --roles admin --random --safe
-```
+After installation, create administrator and standard-user accounts through the identity provider or supported administrative workflow used by your deployment.
 
-**Note:** Passwords are displayed once and must be saved immediately. For bulk user creation and full documentation, see the [Security Admin Guide](../security/admin-guide#221-using-kz-user-cli-tool).
+Use the [Security Admin Guide](../security/admin-guide.md) for the recommended public-facing user-management model.
 
 ---
 

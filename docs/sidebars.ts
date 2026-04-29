@@ -41,8 +41,14 @@ const sidebars: SidebarsConfig = {
 			label: "Configuration",
 			items: [
 				"configuration",
+				"workroom-storage-s3",
 				"routing-modes",
 			],
+		},
+		{
+			type: "category",
+			label: "Workrooms",
+			items: ["workrooms/runtime-contract"],
 		},
 		{
 			type: "category",
@@ -72,14 +78,25 @@ const sidebars: SidebarsConfig = {
 			],
 		},
 		{
-			type: "doc",
-			id: "app-garden",
-			label: "App Garden",
-		},
-		{
-			type: "doc",
-			id: "tool-garden",
-			label: "Tool Garden",
+			type: "category",
+			label: "Extensions",
+			items: [
+				{
+					type: "doc",
+					id: "app-garden",
+					label: "App Garden",
+				},
+				{
+					type: "doc",
+					id: "tool-garden",
+					label: "Tool Garden",
+				},
+				{
+					type: "link",
+					label: "Developer Guide",
+					href: "/extensions/developer-guide",
+				},
+			],
 		},
 		{
 			type: "category",

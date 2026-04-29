@@ -5,152 +5,162 @@ sidebar_position: 3
 
 # Configuration Reference
 
-Kamiwaza uses environment variables for configuration. The installer automatically sets sensible defaults based on your installation type, so most users don't need to configure anything manually.
+Current Kamiwaza deployments are Kubernetes-based. In customer environments, configuration should be managed through your Helm values and cluster release workflow, not through ad hoc edits to source-managed `env.sh` files.
 
-## Installation Types
+## Configuration Model
 
-| Type | Command | Description |
-|------|---------|-------------|
-| **Community/Lite** | `install.sh --community` | Local development with SQLite, auth disabled |
-| **Community/Full** | `install.sh --community --full` | Local development with full database, auth enabled |
-| **Enterprise** | `install.sh` | Production deployment with full features |
+In the current deployment model, configuration comes from three main layers:
 
-## When to Customize
+- Helm values and override files in the deployment workflow
+- Kubernetes ConfigMaps and Secrets rendered from those values
+- a small set of runtime-managed settings stored through platform APIs
 
-You only need to set environment variables if you want to modify or enable features:
-- Change the default admin password
-- Configure external network access
-- Enable optional features (vector database, observability)
-- Set up CORS for external applications
+For most teams, the best practice is:
 
-## Core Configuration
+1. set customer-specific defaults in Helm values
+2. keep secrets in Kubernetes Secrets or an external secret manager
+3. use the platform API only for runtime settings that are explicitly designed to be changed after deployment
 
-### Mode Settings
+## Start With These Docs
 
-| Variable | Description | Community Default | Enterprise Default |
-|----------|-------------|-------------------|-------------------|
-| `KAMIWAZA_LITE` | Lite mode enables faster restarts and smaller footprint. Suitible for individual users. | `true` | `false` |
-| `KAMIWAZA_USE_AUTH` | Enable authentication stack | `false` | `true` |
+Use these guides together:
 
-### Installation Paths
+- [System Requirements](installation/system_requirements)
+- [Installing Kamiwaza](installation/installation_process)
+- [Quickstart](quickstart)
+- [Administrator Guide](security/admin-guide)
+- [AWS S3 Workroom Storage](workroom-storage-s3)
+- [Observability](observability)
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `KAMIWAZA_ROOT` | Installation directory | Auto-detected |
-| `KAMIWAZA_INSTALL_ROOT` | Alias for `KAMIWAZA_ROOT` | Auto-detected |
+## Core Platform Settings
 
-## Authentication
+### Domain and Origin
 
-### Basic Auth Settings
+The most important public-access setting is the deployment domain.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `KAMIWAZA_ADMIN_PASSWORD` | Admin user password | `kamiwaza` (dev) or auto-generated |
-| `AUTH_FORWARD_HEADER_SECRET` | ForwardAuth HMAC secret | Auto-generated |
+In the Kubernetes deployment charts, this is typically set through:
 
-When authentication is enabled (`KAMIWAZA_USE_AUTH=true`), additional configuration is required. See the [Security Admin Guide](security/admin-guide) for complete authentication setup.
-
-## Network & CORS
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `KAMIWAZA_EXTERNAL_URL` | Public-facing hostname (without protocol) | `localhost` |
-| `KAMIWAZA_CORS_ORIGINS` | Additional CORS origins (comma-separated) | `""` (empty) |
-| `KAMIWAZA_ORIGIN` | Origin for redirects and App Garden apps | Defaults to `https://{EXTERNAL_URL}` |
-
-**Example CORS configuration:**
-```bash
-# Allow requests from a separate frontend
-export KAMIWAZA_CORS_ORIGINS="dashboard.mycompany.com,dev.mycompany.com"
-
-# Allow all subdomains (use with caution)
-export KAMIWAZA_CORS_ORIGINS="*.mycompany.com"
+```yaml
+global:
+  domain: kamiwaza.example.com
 ```
 
-## Optional Features
+That domain is then used to derive platform-facing values such as:
 
-### Vector Database (Milvus)
+- `KAMIWAZA_EXTERNAL_URL`
+- `KAMIWAZA_ORIGIN`
+- allowed browser origins for authenticated platform traffic
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `KAMIWAZA_MILVUS_ENABLED` | Enable Milvus vector database | `true` |
+Best practice:
 
-Milvus provides vector storage for RAG and similarity search. Disable if not using these features:
-```bash
-export KAMIWAZA_MILVUS_ENABLED=false
-```
+- set `global.domain` to the canonical customer-facing hostname
+- keep `KAMIWAZA_ORIGIN` aligned to that same HTTPS origin
+- avoid mixing multiple “primary” hostnames unless your ingress and auth setup explicitly require it
 
-### Observability (OpenTelemetry)
+## Authentication and Security Configuration
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `KAMIWAZA_OTEL_ENABLED` | Enable OpenTelemetry tracing | `false` |
-| `KAMIWAZA_LOKI_ENABLED` | Enable Loki logging | `false` |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint | `http://localhost:4318` |
+Authentication, identity provider integration, consent, banners, ReBAC, and secrets management are covered in the [Administrator Guide](security/admin-guide).
 
-See [Observability](observability) for setup details.
+Best practice:
 
-### Logging
+- manage auth and banner settings through your Helm values and platform admin workflow
+- keep secrets out of plain-text values files whenever possible
+- use Kubernetes Secrets, sealed secrets, or your cluster’s secret-management pattern for credentials and keys
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `KAMIWAZA_DEBUG` | Enable debug logging | `false` |
-| `KAMIWAZA_LOG_LEVEL` | Log level (DEBUG, INFO, WARNING, ERROR) | `INFO` |
-| `KAMIWAZA_LOG_JSON` | Use JSON log format | `true` |
+If you are deploying a federal CAC-enabled environment, also use:
 
-## Example Configurations
+- [CAC Overview](federal/cac-overview)
 
-### Local Development (Default)
+## Object Storage
 
-For most local development, no configuration is needed. The installer creates sensible defaults:
+If users will upload files, preserve workroom context, or use the Skills Library, configure object storage before rollout.
 
-```bash
-# Run the installer - it handles everything
-bash install.sh --community --i-accept-the-kamiwaza-license
-```
+Use:
 
-If you want to customize, create `env.sh` before running the installer:
+- [AWS S3 Workroom Storage](workroom-storage-s3)
 
-```bash
-#!/bin/bash
-# Optional: Custom admin password
-export KAMIWAZA_ADMIN_PASSWORD="my-secure-password"
+Best practice:
 
-# Optional: Use a specific IP (for network access)
-export KAMIWAZA_HEAD_IP="192.168.1.100"
-```
+- set bucket, region, and secret references through your deployment values (`install-prod.sh` or standard Helm overrides)
+- prefer secret references or ambient cloud identity over inline credentials
 
-### Production Deployment
+## Logging and Observability
 
-For production deployments, see the [Security Admin Guide](security/admin-guide) which covers:
-- Full authentication setup with Keycloak
-- HTTPS configuration
-- External access and CORS
-- Session management
+Logging and telemetry configuration should be treated as platform configuration, not per-user customization.
 
-## Applying Configuration Changes
+Use:
 
-1. **Before installation**: Create `env.sh` in your `KAMIWAZA_ROOT` directory
-2. **After installation**: Edit `env.sh` and restart services:
-   ```bash
-   source env.sh
-   bash startup/kamiwazad.sh restart
-   ```
+- [Observability](observability)
 
-## Troubleshooting
+Best practice:
 
-### Common Issues
+- verify the UI log viewer works for deployment troubleshooting
+- configure any OpenTelemetry or external log forwarding through your platform release values
+- validate log access and retention as part of rollout readiness
 
-**Services won't start after changing configuration:**
-- Ensure all required variables are set (check logs for missing values)
-- Verify `env.sh` syntax with `bash -n env.sh`
-- Restart all services: `bash startup/kamiwazad.sh restart`
+## CORS and Browser Origins
 
-**CORS errors in browser:**
-- Add your frontend origin to `KAMIWAZA_CORS_ORIGINS`
-- Ensure `KAMIWAZA_EXTERNAL_URL` matches your access URL
+Kamiwaza supports additional browser origins through serving configuration, including `KAMIWAZA_CORS_ORIGINS`.
 
-**Authentication not working:**
-- Verify `KAMIWAZA_USE_AUTH=true` is set
-- Check Keycloak is running: `docker ps | grep keycloak`
-- See [Security Admin Guide](security/admin-guide) for detailed auth setup
+Best practice:
+
+- keep browser origins specific
+- do not use wildcard CORS unless you are in a controlled development environment
+- make sure the configured allowed origins match the actual HTTPS origins users and extensions will access
+
+If credentials are in use, broad or mismatched CORS settings are a common source of extension and browser failures.
+
+## Routing Configuration
+
+Routing is now managed as a runtime control-plane setting, backed by the shared runtime store rather than per-pod file edits.
+
+The routing API is:
+
+- `GET /api/config/routing`
+- `PATCH /api/config/routing`
+
+Current best practice is to treat path-based routing as the standard customer-facing mode.
+
+Canonical runtime prefixes are:
+
+- models: `/runtime/models/<deployment-id>`
+- apps: `/runtime/apps/<deployment-id>`
+- tools: `/runtime/tools/<deployment-id>`
+
+The Kubernetes charts already seed path-based routing defaults. Use the routing API only when you intentionally need to adjust the base host or service prefixes after deployment.
+
+For more detail, see:
+
+- [Routing & URLs](routing-modes)
+
+## Where To Change Settings
+
+Use this table as a quick guide:
+
+| Setting Area | Best Place to Change It |
+| --- | --- |
+| Customer hostname / ingress domain | Helm values |
+| Auth and IdP integration | Helm values + admin workflow |
+| Secrets and credentials | Kubernetes Secrets or external secret manager |
+| Object storage | Helm values + secret references |
+| Observability endpoints and log forwarding | Helm values |
+| Runtime routing prefixes / base host | Routing API |
+
+## Anti-Patterns to Avoid
+
+- editing source-repo install scripts as a customer configuration mechanism
+- treating old package-install `env.sh` flows as the primary deployment model
+- storing cloud credentials directly in user-editable metadata
+- documenting port-specific runtime URLs as the preferred public access pattern
+
+## Validation Checklist
+
+After a configuration change, validate:
+
+- the platform is reachable at the expected HTTPS origin
+- administrator and standard-user sign-in still work
+- app and tool launches resolve under the expected runtime paths
+- storage-backed workflows still function
+- logs remain visible to the right administrators
+
+When in doubt, use the [Quickstart](quickstart) as the post-change validation path.

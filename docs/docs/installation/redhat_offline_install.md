@@ -3,13 +3,13 @@
 This guide covers a fresh Kamiwaza production install on a RHEL9 host using the
 packaged prod RPM, offline wrap bundle, and `install-prod.sh`.
 
-It is the operator-facing install path for current offline release artifacts.
+It is the administrator-facing install path for current offline release artifacts.
 For field-by-field analysis and internal background, see
 `docs/install-config_final.md`.
 
 For the exact smoke-tested install flow used on `rhel-install`, see
 `docs/rhel9-offline-prod-install-smoke.sh`. It defaults to a direct host-side
-S3 pull from `builds/offline/2026-03-05_0615`, the tested `release-0.11.0`
+S3 pull from the latest `release-0.12.1` builds, the tested `release-0.12.1`
 tags, and `AUTH_REBAC_SESSION_ENABLED=false`, but you can override those via
 env vars.
 
@@ -21,6 +21,8 @@ This guide assumes:
 - release artifacts have already been built
 - you are installing from the packaged offline artifacts, not from live repos
 - `install-prod.sh` is the entrypoint
+
+> **Note:** The RHEL offline install flow now includes `dnsmasq` alignment and natively supports App Garden extension traffic routing out-of-the-box (per the 0.12.1 release).
 
 ## Inputs You Need
 
@@ -42,7 +44,7 @@ confirm from release metadata for the build you are installing.
 Historical site config blocks often include many values that are now derived
 from `--domain`, carried by chart defaults, or no longer used in the packaged
 Kubernetes install path. This guide only carries forward the fields that still
-need operator input.
+need administrator input.
 
 ## Required Artifacts
 
@@ -74,7 +76,7 @@ DOMAIN="kamiwaza.example.com"
 ADMIN_PASSWORD="replace-me"
 RELEASE_DIR="$HOME/kajiya-release"
 
-APP_TAG="release-0.11.0"
+APP_TAG="release-0.12.1"
 FRONTEND_TAG="${APP_TAG}"
 CONTAINERS_TAG="${APP_TAG}"
 ```
@@ -152,7 +154,7 @@ Most installs can skip this step. Create the file only if you need non-default
 settings such as security banners, consent, ReBAC, or a non-prod template
 catalog stage.
 
-Use this operator-facing path:
+Use this administrator-facing path:
 
 ```bash
 /opt/kamiwaza/cluster/values/overrides.yaml
@@ -181,7 +183,7 @@ core:
 
   scheduler:
     extraEnv:
-      # Keep only the env vars that still need explicit operator input.
+      # Keep only the env vars that still need explicit administrator input.
       # Most historical URL/auth fields are now chart-derived from --domain.
       - name: LICENSE_KEY
         value: "replace-with-license-key"
