@@ -1,0 +1,44 @@
+name: Lockfile Check
+
+# Guards against package-lock.json drift before merge. The downstream
+# kamiwaza-internal/kamiwaza-docs-builder image build runs `npm ci` under
+# Chainguard's node:22-dev (npm 11), which strict-checks optional
+# dependencies in the lockfile. Older npm 10 (Debian node:22) is lenient
+# and lets drift slip through. We pin npm 11 here to match the consumer.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-locks:
+    name: Validate package locks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            docs/package-lock.json
+
+      - name: Upgrade npm to match Chainguard builder
+        run: npm install -g npm@11
+
+      # Mirrors `RUN npm ci --omit=dev --ignore-scripts` in
+      # kamiwaza-docs-builder/Dockerfile (root install, prod-only).
+      - name: Validate root lockfile
+        run: npm ci --omit=dev --ignore-scripts
+
+      # Mirrors `RUN npm ci --ignore-scripts` in
+      # kamiwaza-docs-builder/Dockerfile (docs/ install, includes dev for
+      # the Docusaurus build).
+      - name: Validate docs lockfile
+        working-directory: docs
+        run: npm ci --ignore-scripts
