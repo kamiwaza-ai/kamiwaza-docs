@@ -120,7 +120,7 @@ curl -X POST "https://<your-domain>/runtime/models/<deployment-id>/v1/chat/compl
 
 Streaming, tool calls, and structured-output requests follow the same shape applications use against any OpenAI-compatible endpoint. Whether the underlying provider supports each capability depends on the specific model.
 
-For reasoning models (OpenAI o-series, gpt-5.x), Kamiwaza translates `max_tokens` to `max_completion_tokens` automatically and propagates `reasoning_effort` when set.
+For reasoning models (OpenAI o-series, gpt-5.x) called through `/v1/chat/completions`, Kamiwaza translates `max_tokens` to `max_completion_tokens` automatically. Reasoning controls (`reasoning_effort` and the broader reasoning configuration) belong on OpenAI's Responses API path (`/v1/responses`), where they are forwarded as the `reasoning` object — not on chat completions, where any `reasoning_effort` value is silently dropped at the param-allowlist boundary.
 
 ## Operational notes
 

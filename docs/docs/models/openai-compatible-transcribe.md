@@ -60,13 +60,13 @@ curl -X POST "https://<your-domain>/runtime/models/<deployment-id>/v1/audio/tran
   -F "response_format=json"
 ```
 
-Supported request parameters mirror the OpenAI Whisper API: `file`, `model`, `response_format` (`json`, `text`, `verbose_json`, `srt`, `vtt`), `language`, `prompt`, `temperature`. Whether each parameter takes effect depends on the underlying provider model — most accept the OpenAI Whisper subset.
+Supported request fields: `file` (the audio), `model` (the underlying model), `language` (BCP-47 code), and `response_format`. Other OpenAI Whisper fields (`prompt`, `temperature`) are not forwarded by Kamiwaza on this path. `response_format` accepts `json` (default), `text`, `verbose_json`, `srt`, and `vtt`; values outside that set are normalized to `json`.
 
 ## Operational notes
 
 - Audio uploads are streamed through Kamiwaza to the upstream provider. Kamiwaza does not retain audio bytes after the response is returned to the caller.
 - Transcription errors from the provider are surfaced through the Kamiwaza response body. The requester, workroom, and deployment ID are recorded in the Kamiwaza audit log (`make logs-audit`), regardless of upstream success or failure.
-- Streaming transcription is provider-dependent. OpenAI Whisper does not stream; `gpt-4o-transcribe` and some Azure deployments do.
+- This path is request/response only — Kamiwaza does not stream OpenAI-compatible transcription. For streaming speech-to-text, register an [AWS Transcribe](./aws-transcribe.md) endpoint instead.
 
 ## Next steps
 

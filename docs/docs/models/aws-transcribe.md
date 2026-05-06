@@ -98,7 +98,7 @@ curl -X POST "https://<your-domain>/runtime/models/<deployment-id>/v1/audio/tran
 
 Streaming returns Server-Sent Events (SSE) with partial results.
 
-> **Note:** Streaming only supports `pcm`, `ogg`, and `flac` formats. The format is auto-detected from the file extension. If no language is specified, streaming defaults to `en-US`.
+> **Note:** Streaming only supports `pcm`, `ogg`, and `flac` formats. The format is auto-detected from the file extension. Streaming always uses the registered language (set via **Show advanced options** on the registration form); if none is registered it defaults to `en-US`. The per-request `language` parameter is ignored on streaming.
 
 ### Request Parameters
 
@@ -106,7 +106,7 @@ Streaming returns Server-Sent Events (SSE) with partial results.
 |-----------|----------|-------------|
 | `file` | Yes | Audio file (multipart form-data) |
 | `response_format` | No | `text`, `json` (default), or `verbose_json` |
-| `language` | No | Override configured language |
+| `language` | No | BCP-47 code. Overrides the registered language on **batch** requests; ignored on streaming requests, which always use the registered language (or `en-US` if none is registered). |
 | `stream` | No | `true` for streaming mode |
 
 ## Response Formats
@@ -142,7 +142,7 @@ Hello, how are you today?
 | Feature | Batch | Streaming |
 |---------|-------|-----------|
 | Audio formats | mp3, mp4, wav, flac, ogg, amr, webm | pcm, ogg, flac |
-| Max duration | 4 hours | 5 minutes (300s) |
+| Max duration | 15 minutes (Kamiwaza default `job_timeout_seconds`; AWS-side hard limit is 4 hours) | 5 minutes (300s, AWS-side limit) |
 | Auto language detection | Yes | No (defaults to en-US) |
 | Speaker labels | Yes | No |
 | Custom vocabulary | Yes | Yes |
@@ -158,13 +158,12 @@ AWS Transcribe supports 100+ languages for batch and 30+ for streaming.
 
 Set the **Language** field on the Setup form to **Auto-detect** to let AWS identify the spoken language automatically. This applies to batch mode only.
 
-> **Note:** Automatic language detection is only supported for **batch mode**. Streaming transcription requires an explicit language code and defaults to `en-US` if none is supplied. To use a different language for streaming, pass the `language` parameter in your request.
+> **Note:** Automatic language detection is only supported for **batch mode**. For streaming, set the **Language** field on the registration form — streaming uses that registered value (or defaults to `en-US`) and ignores any per-request `language` parameter.
 
 ### Common Language Codes
 
 | Code | Language |
 |------|----------|
-| `auto` | Auto-detect |
 | `en-US` | English (US) |
 | `en-GB` | English (UK) |
 | `es-ES` | Spanish (Spain) |
@@ -198,4 +197,4 @@ Confirm the **AWS Region** on the registered endpoint matches the region your IA
 - Ensure audio data is sent promptly from the client.
 
 ### Job timeout
-Batch jobs time out after 15 minutes by default. For longer audio, raise the timeout via the **Show advanced options** controls on the registration form.
+Kamiwaza enforces a 15-minute (`job_timeout_seconds = 900`) ceiling on each batch job by default. AWS Transcribe itself supports up to 4 hours per job, but the Kamiwaza ceiling will fire first. The form does not currently expose this value, so longer audio must be split into shorter clips or transcribed via the AWS console directly.
