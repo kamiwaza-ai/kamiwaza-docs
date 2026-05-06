@@ -30,7 +30,7 @@ Registration is a three-step wizard: pick the provider, configure the endpoint, 
    Click **Next**.
 3. **Setup** — configure the endpoint:
    - **Inference endpoint URL** — The provider's API root.
-     - For OpenAI: leave the default `https://api.openai.com/v1`, or override for an organization or project endpoint.
+     - For OpenAI: leave the default `https://api.openai.com/v1`. Organization and project scoping are handled by the API key itself (`sk-proj-…` keys) plus optional `OpenAI-Organization` / `OpenAI-Project` headers — there's no separate base URL for them.
      - For Azure: paste the URL Azure gave you (`https://<your-resource>.openai.azure.com` or `https://<your-project>.services.ai.azure.com/models`). Kamiwaza picks the right Azure handler from the hostname.
      - For Other: paste your published proxy or service URL.
    - **Credentials** — If a credential is already stored for this endpoint, Kamiwaza offers **Use existing credential** with a **Use a different credential** link to override. Otherwise paste the provider API key. See [Credentials](#credentials) below for what to use.

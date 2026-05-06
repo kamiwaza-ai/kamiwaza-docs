@@ -36,8 +36,12 @@ Before registering a Bedrock endpoint, make sure:
 
    ![Bedrock Setup form](/img/models/external/bedrock-setup.png)
 
-4. Click **Save Endpoint**.
-5. Deploy the new model from the Models list.
+4. *(Optional)* Click **Show advanced options** to reveal an **Endpoint URL** field. Leave it blank to use the AWS default for your region. Set it explicitly for VPC PrivateLink, GovCloud, or other non-standard endpoints (placeholder shown is `https://bedrock-runtime.us-east-2.amazonaws.com`).
+
+   ![Bedrock Setup with advanced options expanded](/img/models/external/bedrock-setup-advanced.png)
+
+5. Click **Save Endpoint**.
+6. Deploy the new model from the Models list.
 
 > Use long-lived IAM credentials for production. Temporary or session credentials expire while a deployment is running and lead to silent authentication failures. Kamiwaza no longer accepts a session token field on registration.
 
@@ -119,7 +123,7 @@ For Nova, image inputs work with inline `data:` URLs — arbitrary external imag
 - **Region is required.** Bedrock model availability and pricing vary by region; the registration form will not save without one. If you paste a full inference profile ARN, the region in the ARN must match the **AWS Region** field.
 - **Model availability is account- and region-specific.** A model ID that works in one AWS account or region may not be enabled in another. Verify in the AWS console before registering.
 - Errors from Bedrock — throttling, access denied, model not enabled — are surfaced through the Kamiwaza response body and the audit log.
-- For VPC endpoints or private connectivity, ensure the Kamiwaza control-plane network has a permitted path to the Bedrock runtime hostname before registering.
+- For VPC PrivateLink, GovCloud, or other non-standard endpoints, set the **Endpoint URL** field under **Show advanced options** on the registration form. Ensure the Kamiwaza control-plane network has a permitted path to the chosen hostname before registering.
 - **Rotate long-lived IAM credentials regularly.** Treat the registered access key like any other long-lived AWS credential — rotate on the same cadence as the rest of your cloud key inventory and monitor `AccessKeyLastUsed` in IAM. Rotated credentials propagate to running deployments through the **Edit** form within the engine credential cache window (~5 minutes).
 
 ## Next steps

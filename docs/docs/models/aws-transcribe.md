@@ -12,7 +12,9 @@ Before registering an AWS Transcribe endpoint, make sure:
 - Your AWS account has Transcribe enabled in the region you plan to use.
 - You have an S3 bucket that Kamiwaza can write to for batch transcription (audio is staged there briefly during processing).
 - You have a long-lived IAM access key whose attached policy grants the permissions below.
-- Outbound HTTPS from the Kamiwaza control plane to `transcribe.<region>.amazonaws.com` and your S3 bucket is permitted.
+- Outbound HTTPS from the Kamiwaza control plane is permitted to your S3 bucket and to both AWS Transcribe endpoints:
+  - `transcribe.<region>.amazonaws.com` — batch transcription jobs.
+  - `transcribestreaming.<region>.amazonaws.com` on port 8443 — real-time streaming. Egress-restricted networks must whitelist the streaming hostname separately, otherwise streaming requests will fail to connect.
 
 Minimum IAM policy:
 
@@ -94,8 +96,7 @@ curl -X POST "https://<your-domain>/runtime/models/<deployment-id>/v1/audio/tran
 curl -X POST "https://<your-domain>/runtime/models/<deployment-id>/v1/audio/transcriptions" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@recording.pcm" \
-  -F "stream=true" \
-  -F "language=en-US"
+  -F "stream=true"
 ```
 
 Streaming returns Server-Sent Events (SSE) with partial results.
