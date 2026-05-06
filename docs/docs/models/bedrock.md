@@ -7,81 +7,85 @@ sidebar_label: AWS Bedrock
 
 Kamiwaza can proxy [Amazon Bedrock](https://aws.amazon.com/bedrock/) models through the same OpenAI-compatible APIs used by locally hosted models. Administrators register Bedrock as an external endpoint, deploy it through the normal model lifecycle, and expose familiar `/v1/models` and `/v1/chat/completions` routes to application teams.
 
-The Bedrock integration currently supports:
-
-- Meta Llama 3 instruct models
-- Amazon Nova models, including streaming chat responses and image inputs
-- Anthropic Claude models through the Bedrock Messages API
+The Bedrock integration covers the major model families available in Bedrock — including Anthropic Claude (Sonnet, Haiku, Opus), Amazon Nova, Meta Llama 3, and other Bedrock-hosted families — invoked through the modern Bedrock Converse and InvokeModel APIs.
 
 ## Prerequisites
 
 Before registering a Bedrock endpoint, make sure:
 
-- Kamiwaza is reachable via HTTPS.
 - Your AWS account has Bedrock access enabled in the region you plan to use.
-- The target model ID or inference profile is enabled in that AWS account.
-- Outbound HTTPS traffic from the Kamiwaza control plane to the Bedrock runtime endpoint is allowed.
-- You have either AWS credentials or a Bedrock credential secret that can invoke the target model.
+- The target model or inference profile is enabled in that account and region.
+- Outbound HTTPS from the Kamiwaza control plane to `bedrock-runtime.<region>.amazonaws.com` is permitted. See [External endpoints overview](./overview.md#network-egress) for the full hostname list and private-connectivity guidance.
+- You have either an AWS IAM access key or a Bedrock API key (bearer token) that can invoke the target model.
 
 ## Quick Start (UI)
 
-1. In Kamiwaza, go to **Models** and click **Add external inference endpoint**.
-2. Select **AWS Bedrock** from the Service dropdown.
-3. Enter the endpoint details:
-   - **Display Name**: Friendly name shown in the UI
-   - **Model ID or Inference Profile ID / ARN**: A Bedrock model ID such as `meta.llama3-70b-instruct-v1:0` or `amazon.nova-premier-v1:0`, or an inference profile ARN such as `arn:aws:bedrock:us-east-1:############:inference-profile/us.amazon.nova-premier-v1:0`
-   - **AWS Region**: The region where the Bedrock model or profile is available
-   - **Endpoint URL (optional)**: Override the Bedrock runtime URL if needed
-   - **Inference Profile ARN (optional)**: Optional if the model ID field already contains the ARN
-   - **Credential Secret or URN**: A secret URN or inline credential payload
-   - **Extra Body JSON**: Optional model-native default parameters; the UI defaults to `{}`
+1. In Kamiwaza, go to **Models** and click **Add Model** → **Add External Inference Endpoint**.
+2. On the **Source** step, choose **AWS Bedrock** under **Where is your model hosted?** and click **Next**.
+3. On the **Setup** step, fill in the form:
+   - **Display Name** — Friendly name shown in the Kamiwaza UI.
+   - **Description** *(optional)* — Free-form note for other operators.
+   - **AWS Region** — The region where the Bedrock model or inference profile is available (for example `us-east-1`, `us-west-2`, `eu-west-1`). Required.
+   - **Authentication** — Choose **IAM Access Key** (the default; long-lived AWS access key + secret) or **Bedrock API Key** (bearer token). Most production setups use IAM access keys.
+     - For **IAM Access Key**, paste the **Access Key ID** and **Secret Access Key**.
+     - For **Bedrock API Key**, paste the bearer token.
+   - **Model ID or Inference Profile ID / ARN** — Either a Bedrock model ID, an inference profile ID, or a full ARN. See [Model identifiers](#model-identifiers) below for examples.
 4. Click **Save Endpoint**.
 5. Deploy the new model from the Models list.
 
+> Use long-lived IAM credentials for production. Temporary or session credentials expire while a deployment is running and lead to silent authentication failures. Kamiwaza no longer accepts a session token field on registration.
+
+## Model identifiers
+
+The **Model ID or Inference Profile ID / ARN** field accepts three shapes — pick whichever matches what AWS gave you for the model you want to call.
+
+| Shape | Example | When to use |
+|-------|---------|-------------|
+| Foundation model ID | `anthropic.claude-sonnet-4-5-20250929-v1:0` | Calling a foundation model directly in a single region. |
+| Inference profile ID | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Cross-region inference profiles that AWS published for you. |
+| Inference profile ARN | `arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Application or custom inference profiles, or any case where you'd rather paste the full ARN. |
+
+Use the same field for all three — Kamiwaza recognizes the shape and routes the call accordingly.
+
 ## Credentials
 
-The **Credential Secret or URN** field supports:
+Credentials registered through the Bedrock form are encrypted on save and stored in the Kamiwaza secret catalog, keyed by AWS region. The catalog rules — credential reuse across endpoints in the same region, rotation through the **Edit** form, and the five-minute propagation window — are described in [External endpoints overview](./overview.md#credentials-catalog).
 
-1. A Kamiwaza secret URN (recommended), such as `urn:li:secret:bedrock-creds`
-2. Inline JSON credentials, which Kamiwaza will store securely on save
-3. A raw bearer token or Bedrock API key if your Bedrock setup uses token-based authentication
-
-For standard AWS credentials, the secret value should look like:
+For **IAM Access Key** authentication, the stored secret is JSON containing your long-lived AWS keys:
 
 ```json
 {
   "aws_access_key_id": "AKIA...",
-  "aws_secret_access_key": "...",
-  "aws_session_token": "..."
+  "aws_secret_access_key": "..."
 }
 ```
 
-## Request Shaping and `extra_body`
+For **Bedrock API Key** authentication, the stored secret is the raw bearer token Bedrock issued. Kamiwaza handles the wrapping when you paste it into the form.
 
-The **Extra Body JSON** field is optional. In most cases, leave it as `{}` and send request controls such as `max_tokens`, `temperature`, and `top_p` at call time.
+## API Usage
 
-When `extra_body` is set:
+Once deployed, the endpoint is callable via the standard Kamiwaza runtime route:
 
-- Kamiwaza merges it into every Bedrock request as a set of defaults.
-- Per-request OpenAI-style fields win over values from `extra_body`.
-- For Amazon Nova models, those overrides are applied inside Nova's nested `inferenceConfig`.
-- For Claude models, Kamiwaza automatically adds the required `anthropic_version` value and a default `max_tokens` if you omit them.
+```bash
+curl -X POST "https://<your-domain>/runtime/models/<deployment-id>/v1/chat/completions" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "user", "content": "Summarize the Bedrock Converse API in one sentence."}
+    ],
+    "max_tokens": 128,
+    "temperature": 0
+  }'
+```
 
-## Model Family Behavior
+OpenAI-style streaming, tool calls, and structured output are supported on Bedrock model families that support them upstream. Kamiwaza translates between OpenAI wire format and the Bedrock Converse API on each request.
 
-Kamiwaza keeps the public API shape consistent across supported Bedrock model families:
+## Multimodal input
 
-| Model family | Bedrock request shape | Notes |
-|--------------|-----------------------|-------|
-| Llama 3      | Meta prompt template | OpenAI-style chat messages are translated into the prompt format Bedrock expects. |
-| Nova         | Nova `messages-v1` schema | Buffered and streamed responses are normalized back into OpenAI-compatible chat completion payloads. Nova image inputs are accepted through OpenAI-style content blocks and converted into Nova-native image blocks. |
-| Claude       | Anthropic Messages API | OpenAI-style chat messages are translated into Claude's Messages format, with automatic `anthropic_version` injection and a default `max_tokens` when omitted. |
+Claude and Nova deployments accept OpenAI-style multimodal payloads on `/v1/chat/completions`. Image inputs use OpenAI-style content blocks; Kamiwaza converts them to the appropriate Bedrock-native shape.
 
-## Multimodal Input
-
-For Claude and Nova deployments, you can send OpenAI-style multimodal chat payloads to the normal `/v1/chat/completions` route. Nova image inputs currently work with inline `data:` URLs and native Nova image blocks; arbitrary external image URLs are not fetched by Kamiwaza for Nova requests.
-
-Example request body:
+For Nova, image inputs work with inline `data:` URLs — arbitrary external image URLs are not fetched server-side.
 
 ```json
 {
@@ -95,10 +99,7 @@ Example request body:
             "url": "data:image/png;base64,<base64-image-bytes>"
           }
         },
-        {
-          "type": "text",
-          "text": "What is shown in this image?"
-        }
+        {"type": "text", "text": "What is shown in this image?"}
       ]
     }
   ],
@@ -107,16 +108,15 @@ Example request body:
 }
 ```
 
-For Nova, Kamiwaza automatically reshapes that payload into the Bedrock `messages-v1` schema and places media before the text prompt inside the user turn, which matches Nova's expected ordering.
-
 ## Operational notes
 
-- Credentials are stored using Kamiwaza’s encrypted secret store. Rotate the AWS keys on the same cadence as other cloud credentials.
-- Region can be supplied explicitly or inferred from a Bedrock runtime endpoint URL or inference profile ARN.
-- Error handling surfaces Bedrock response codes directly in the UI and API responses.
-- For environments that require VPC endpoints or private connectivity, ensure the control plane network has a permitted path to Bedrock before registering the model.
+- **Region is required.** Bedrock model availability and pricing vary by region; the registration form will not save without one. If you paste a full inference profile ARN, the region in the ARN must match the **AWS Region** field.
+- **Model availability is account- and region-specific.** A model ID that works in one AWS account or region may not be enabled in another. Verify in the AWS console before registering.
+- Errors from Bedrock — throttling, access denied, model not enabled — are surfaced through the Kamiwaza response body and the audit log.
+- For VPC endpoints or private connectivity, ensure the Kamiwaza control-plane network has a permitted path to the Bedrock runtime hostname before registering.
 
 ## Next steps
 
-- Pair the Bedrock deployment with the ReBAC validation checklist to ensure access controls are enforced across your hosted APIs.
-- Contact Kamiwaza Support if you need help enabling specific Bedrock models, inference profiles, or private network connectivity.
+- Pair the Bedrock deployment with the ReBAC validation checklist to ensure workroom-scoped access controls are enforced.
+- Register a transcription endpoint against the same AWS account — see [AWS Transcribe](./aws-transcribe.md).
+- Contact Kamiwaza Support if you need help with model enablement, custom inference profiles, or private network connectivity.
