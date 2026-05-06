@@ -11,10 +11,18 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: lockfile-check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate-locks:
     name: Validate package locks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -36,12 +44,24 @@ jobs:
 
       # Mirrors `RUN npm ci --omit=dev --ignore-scripts` in
       # kamiwaza-docs-builder/Dockerfile (root install, prod-only).
-      - name: Validate root lockfile
+      - name: Validate root lockfile (npm ci)
         run: npm ci --omit=dev --ignore-scripts
+
+      # Catches orphaned/extraneous lockfile entries that `npm ci`
+      # alone misses — `npm ci` succeeds even when nodes in the lock
+      # are no longer reachable from package.json. `npm ls
+      # --package-lock-only` exits non-zero on extraneous, invalid,
+      # or missing entries.
+      - name: Check root lockfile graph (no extraneous entries)
+        run: npm ls --package-lock-only
 
       # Mirrors `RUN npm ci --ignore-scripts` in
       # kamiwaza-docs-builder/Dockerfile (docs/ install, includes dev for
       # the Docusaurus build).
-      - name: Validate docs lockfile
+      - name: Validate docs lockfile (npm ci)
         working-directory: docs
         run: npm ci --ignore-scripts
+
+      - name: Check docs lockfile graph (no extraneous entries)
+        working-directory: docs
+        run: npm ls --package-lock-only
