@@ -57,7 +57,7 @@ The wizard is the same for every provider; only the values change.
 | Source | **OpenAI** |
 | Inference endpoint URL | `https://api.openai.com/v1` |
 | Credential | OpenAI API key (`sk-…`) |
-| Underlying model (Review step) | `gpt-5.5`, `gpt-4o`, `gpt-5-chat-latest`, etc. |
+| Underlying model (Review step) | `gpt-5`, `gpt-4o`, `gpt-5-chat-latest`, etc. |
 
 > Restricted OpenAI keys default to chat-only. If you also intend to register a transcription endpoint with the same key, widen the key's scope to include `Audio` first.
 
@@ -124,7 +124,7 @@ For reasoning models (OpenAI o-series, gpt-5.x) called through `/v1/chat/complet
 
 ## Operational notes
 
-- Inference errors from the upstream provider are surfaced through the Kamiwaza response body. Every inference call records requester, workroom, and deployment ID in the Kamiwaza audit log (`make logs-audit`), regardless of upstream success or failure.
+- Inference errors from the upstream provider are surfaced through the Kamiwaza response body. Every inference call records requester, workroom, and deployment ID in the Kamiwaza audit log under `event_type=model_invocation`, regardless of upstream success or failure. Use whichever log-aggregation mechanism your deployment provides to surface those entries.
 - Multiple registered models that share a base URL share one credential in the catalog. Rotating that credential through any model's **Edit** form updates all of them.
 - For environments that require private connectivity (VPC endpoints, private link, mesh-internal proxies), point the **Inference endpoint URL** at the private hostname; Kamiwaza does not enforce reachability.
 

@@ -71,7 +71,9 @@ Supported integrations:
 - [**OpenAI-compatible chat**](./openai-compatible-chat.md) — OpenAI directly, Azure OpenAI Service, Azure AI Foundry, customer-hosted LiteLLM proxies, and any other provider whose chat API matches the OpenAI shape.
 - [**OpenAI-compatible transcription**](./openai-compatible-transcribe.md) — OpenAI Whisper, Azure Whisper / gpt-4o-transcribe, and any other provider whose transcription API matches the OpenAI shape.
 
-Registration is an admin action: an operator pastes provider credentials into the registration form, and once deployed, the endpoint is invoked the same way as any local deployment. See each provider page for the exact wizard fields.
+Registration is an admin action: an operator pastes provider credentials into the registration form, and once deployed, the endpoint is invoked the same way as any local deployment. The Source step of the wizard offers four hosting options — AWS, Azure, OpenAI, and Other (OpenAI-compatible) — and routes to a provider-specific Setup form from there. See each provider page for the exact wizard fields.
+
+![Add Model wizard with the four hosting options](/img/models/external/wizard-source-options.png)
 
 ### Credentials catalog
 

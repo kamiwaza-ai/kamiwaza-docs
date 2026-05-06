@@ -65,7 +65,7 @@ Supported request fields: `file` (the audio), `model` (the underlying model), `l
 ## Operational notes
 
 - Audio uploads are streamed through Kamiwaza to the upstream provider. Kamiwaza does not retain audio bytes after the response is returned to the caller.
-- Transcription errors from the provider are surfaced through the Kamiwaza response body. The requester, workroom, and deployment ID are recorded in the Kamiwaza audit log (`make logs-audit`), regardless of upstream success or failure.
+- Transcription errors from the provider are surfaced through the Kamiwaza response body. The requester, workroom, and deployment ID are recorded in the Kamiwaza audit log under `event_type=model_invocation`, regardless of upstream success or failure.
 - This path is request/response only — Kamiwaza does not stream OpenAI-compatible transcription. For streaming speech-to-text, register an [AWS Transcribe](./aws-transcribe.md) endpoint instead.
 
 ## Next steps

@@ -73,7 +73,9 @@ The stored secret is JSON containing your long-lived AWS keys:
 }
 ```
 
-If you've already registered an AWS Bedrock endpoint in the same region, Kamiwaza recognizes the existing credential and offers **Use existing credential** during registration.
+If you've already registered an AWS Bedrock endpoint in the same region **with IAM access-key auth**, Kamiwaza recognizes the existing credential and offers **Use existing credential** during registration. Bedrock endpoints registered with the **Bedrock API Key** auth path store a bearer token, not AWS keys, and cannot be reused for Transcribe — Transcribe requires IAM access keys.
+
+> **Rotate long-lived IAM credentials regularly.** Treat the registered access key like any other long-lived AWS credential — rotate on the same cadence as your cloud key inventory and monitor `AccessKeyLastUsed` in IAM. Rotated credentials propagate to running deployments through the **Edit** form within the engine credential cache window (~5 minutes).
 
 ## API Usage
 
@@ -144,9 +146,6 @@ Hello, how are you today?
 | Audio formats | mp3, mp4, wav, flac, ogg, amr, webm | pcm, ogg, flac |
 | Max duration | 15 minutes (Kamiwaza default `job_timeout_seconds`; AWS-side hard limit is 4 hours) | 5 minutes (300s, AWS-side limit) |
 | Auto language detection | Yes | No (defaults to en-US) |
-| Speaker labels | Yes | No |
-| Custom vocabulary | Yes | Yes |
-| PII redaction | Yes | No |
 | Latency | Higher (job-based) | Real-time |
 | Use case | Recorded audio | Live audio |
 
@@ -189,7 +188,7 @@ Streaming supports: `pcm`, `ogg`, `flac` only.
 Verify the IAM policy attached to the registered access key includes `s3:PutObject`, `s3:GetObject`, and `s3:DeleteObject` on the configured S3 bucket.
 
 ### "Region mismatch" or 401 / signature errors
-Confirm the **AWS Region** on the registered endpoint matches the region your IAM key is scoped to and the region your S3 bucket lives in.
+Confirm the **AWS Region** on the registered endpoint matches the region your S3 bucket lives in. IAM access keys are global to the account, but Transcribe and S3 are regional services — a region mismatch between the registered endpoint and the bucket surfaces as a 401 or signature error.
 
 ### Streaming timeout
 - Audio chunks must arrive within 30 seconds.

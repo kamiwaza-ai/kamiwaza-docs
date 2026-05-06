@@ -120,6 +120,7 @@ For Nova, image inputs work with inline `data:` URLs — arbitrary external imag
 - **Model availability is account- and region-specific.** A model ID that works in one AWS account or region may not be enabled in another. Verify in the AWS console before registering.
 - Errors from Bedrock — throttling, access denied, model not enabled — are surfaced through the Kamiwaza response body and the audit log.
 - For VPC endpoints or private connectivity, ensure the Kamiwaza control-plane network has a permitted path to the Bedrock runtime hostname before registering.
+- **Rotate long-lived IAM credentials regularly.** Treat the registered access key like any other long-lived AWS credential — rotate on the same cadence as the rest of your cloud key inventory and monitor `AccessKeyLastUsed` in IAM. Rotated credentials propagate to running deployments through the **Edit** form within the engine credential cache window (~5 minutes).
 
 ## Next steps
 
