@@ -13,7 +13,7 @@ Once registered, the endpoint exposes the standard `/runtime/models/<id>/v1/audi
 
 - A provider API key with permission to call the audio-transcription endpoint.
 - The transcription model is enabled on the account (or, for Azure, the deployment exists in the project).
-- Outbound HTTPS from the Kamiwaza control plane to the provider hostname is permitted. See [External endpoints overview](./overview.md#network-egress) for the hostname matrix.
+- Outbound HTTPS from the Kamiwaza control plane to the provider hostname is permitted (see [Provider examples](#provider-examples) below for hostnames).
 
 > **OpenAI-specific:** Restricted API keys must be granted the `Audio` scope in addition to chat. Keys created with the default restricted scope set return 401 on transcription calls. Either widen the scope or create a separate key with the `Audio` permission enabled.
 
@@ -65,7 +65,7 @@ Supported request parameters mirror the OpenAI Whisper API: `file`, `model`, `re
 ## Operational notes
 
 - Audio uploads are streamed through Kamiwaza to the upstream provider. Kamiwaza does not retain audio bytes after the response is returned to the caller.
-- Transcription errors from the provider are surfaced through the Kamiwaza response body. The requester, workroom, and deployment ID are recorded in the audit log — see [External endpoints overview](./overview.md#audit-logging).
+- Transcription errors from the provider are surfaced through the Kamiwaza response body. The requester, workroom, and deployment ID are recorded in the Kamiwaza audit log (`make logs-audit`), regardless of upstream success or failure.
 - Streaming transcription is provider-dependent. OpenAI Whisper does not stream; `gpt-4o-transcribe` and some Azure deployments do.
 
 ## Next steps

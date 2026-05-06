@@ -12,7 +12,7 @@ Before registering an AWS Transcribe endpoint, make sure:
 - Your AWS account has Transcribe enabled in the region you plan to use.
 - You have an S3 bucket that Kamiwaza can write to for batch transcription (audio is staged there briefly during processing).
 - You have a long-lived IAM access key whose attached policy grants the permissions below.
-- Outbound HTTPS from the Kamiwaza control plane to `transcribe.<region>.amazonaws.com` and your S3 bucket is permitted. See [External endpoints overview](./overview.md#network-egress) for the full hostname matrix.
+- Outbound HTTPS from the Kamiwaza control plane to `transcribe.<region>.amazonaws.com` and your S3 bucket is permitted.
 
 Minimum IAM policy:
 
@@ -48,7 +48,7 @@ Minimum IAM policy:
    - **AWS Region** — The region where audio will be processed (for example `us-east-1`). Required.
    - **S3 Bucket** — The bucket Kamiwaza will use to stage batch audio. Required.
    - **IAM Access Key** — Paste the **Access Key ID** and **Secret Access Key**.
-   - **Show advanced options** *(optional)* — Reveals language defaults, sample rate, speaker labels, custom vocabulary, and PII redaction; covered under [Optional configuration](#optional-configuration).
+   - **Show advanced options** *(optional)* — Reveals a **Language** field for setting a default language. Leave it unset to let Transcribe auto-detect the language on each batch request (see [Supported Languages](#supported-languages)).
 4. Click **Save Endpoint**.
 5. Deploy the model from the Models list.
 
@@ -68,23 +68,6 @@ The stored secret is JSON containing your long-lived AWS keys:
 ```
 
 If you've already registered an AWS Bedrock endpoint in the same region, Kamiwaza recognizes the existing credential and offers **Use existing credential** during registration.
-
-## Optional configuration
-
-Click **Show advanced options** on the Setup step to expose transcription defaults. Each field has a sensible default; override only what you need.
-
-| Field | Default | Description |
-|-------|---------|-------------|
-| Language | Auto-detect (batch only) | BCP-47 code (`en-US`, `es-ES`, `fr-FR`, etc.). Streaming requires an explicit code. |
-| Media format | `auto` | `auto`, `mp3`, `mp4`, `wav`, `flac`, `ogg`, `amr`, `webm`. `auto` detects from filename. |
-| Sample rate | `16000` | Sample rate in Hz. |
-| Show speaker labels | off | Enable speaker identification (diarize). |
-| Max speaker labels | `2` | Maximum speakers (1–10). |
-| Vocabulary name | — | Custom vocabulary for domain terms (must be created in AWS first). |
-| Redact PII | off | Strip PII from transcript output. |
-| PII entity types | `[]` | PII categories to redact: `PERSON`, `EMAIL`, `PHONE_NUMBER`, etc. |
-
-Per-request overrides — `language`, `response_format`, and `stream` — can be passed at call time and take precedence over the registered defaults.
 
 ## API Usage
 

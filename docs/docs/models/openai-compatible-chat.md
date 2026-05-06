@@ -15,7 +15,7 @@ Before registering an OpenAI-compatible endpoint, make sure:
 
 - You have a provider API key (OpenAI key, Azure resource key, Azure AI Foundry project key, LiteLLM master key, etc.).
 - The model you intend to register is enabled on the account the API key belongs to. For Azure, the deployment exists in the project the URL points at.
-- Outbound HTTPS from the Kamiwaza control plane to the provider hostname is permitted. See [External endpoints overview](./overview.md#network-egress) for the hostname matrix and private-connectivity notes.
+- Outbound HTTPS from the Kamiwaza control plane to the provider hostname is permitted (see [Provider examples](#provider-examples) below for hostnames).
 
 ## Quick Start (UI)
 
@@ -119,7 +119,7 @@ For reasoning models (OpenAI o-series, gpt-5.x), Kamiwaza translates `max_tokens
 
 ## Operational notes
 
-- Inference errors from the upstream provider are surfaced through the Kamiwaza response body. The requester, workroom, and deployment ID for every inference call are recorded in the audit log — see [External endpoints overview](./overview.md#audit-logging).
+- Inference errors from the upstream provider are surfaced through the Kamiwaza response body. Every inference call records requester, workroom, and deployment ID in the Kamiwaza audit log (`make logs-audit`), regardless of upstream success or failure.
 - Multiple registered models that share a base URL share one credential in the catalog. Rotating that credential through any model's **Edit** form updates all of them.
 - For environments that require private connectivity (VPC endpoints, private link, mesh-internal proxies), point the **Inference endpoint URL** at the private hostname; Kamiwaza does not enforce reachability.
 

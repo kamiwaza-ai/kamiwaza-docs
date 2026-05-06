@@ -15,7 +15,7 @@ Before registering a Bedrock endpoint, make sure:
 
 - Your AWS account has Bedrock access enabled in the region you plan to use.
 - The target model or inference profile is enabled in that account and region.
-- Outbound HTTPS from the Kamiwaza control plane to `bedrock-runtime.<region>.amazonaws.com` is permitted. See [External endpoints overview](./overview.md#network-egress) for the full hostname list and private-connectivity guidance.
+- Outbound HTTPS from the Kamiwaza control plane to `bedrock-runtime.<region>.amazonaws.com` is permitted. For VPC endpoints or private connectivity, point the deployment at the private hostname.
 - You have either an AWS IAM access key or a Bedrock API key (bearer token) that can invoke the target model.
 
 ## Quick Start (UI)
