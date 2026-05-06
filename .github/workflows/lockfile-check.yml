@@ -4,7 +4,8 @@ name: Lockfile Check
 # kamiwaza-internal/kamiwaza-docs-builder image build runs `npm ci` under
 # Chainguard's node:22-dev (npm 11), which strict-checks optional
 # dependencies in the lockfile. Older npm 10 (Debian node:22) is lenient
-# and lets drift slip through. We pin npm 11 here to match the consumer.
+# and lets drift slip through, so we run on a node that ships with npm 11
+# by default (node 24) to match the consumer's strictness.
 
 on:
   pull_request:
@@ -19,17 +20,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Node 24 ships with npm 11.x by default, matching the strict
+      # behavior of Chainguard's node:22-dev (npm 11) used downstream.
+      # Self-upgrading npm via `npm i -g npm@11` on node 22 is fragile —
+      # npm shuffles its own files mid-execution and the require graph
+      # breaks (MODULE_NOT_FOUND on promise-retry).
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: |
             package-lock.json
             docs/package-lock.json
-
-      - name: Upgrade npm to match Chainguard builder
-        run: npm install -g npm@11
 
       # Mirrors `RUN npm ci --omit=dev --ignore-scripts` in
       # kamiwaza-docs-builder/Dockerfile (root install, prod-only).
