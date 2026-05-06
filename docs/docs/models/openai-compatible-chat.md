@@ -19,9 +19,9 @@ Before registering an OpenAI-compatible endpoint, make sure:
 
 ## Quick Start (UI)
 
-Registration is a three-step wizard: pick the provider, configure the endpoint, then choose which model to register.
+Registration is a three-step wizard: pick the provider, configure the endpoint, then pick which discovered models to register.
 
-1. In Kamiwaza, go to **Models** and click **Add Model** → **Add External Inference Endpoint**.
+1. In Kamiwaza, go to **Models**, click **Add Model**, then click **Add external inference endpoint** in the dialog header.
 2. **Source** — under **Where is your model hosted?**, choose one of:
    - **OpenAI** — for OpenAI directly.
    - **Azure** — for Azure OpenAI Service or Azure AI Foundry. Kamiwaza detects which one from the hostname you paste in step 3.
@@ -33,13 +33,18 @@ Registration is a three-step wizard: pick the provider, configure the endpoint, 
      - For OpenAI: leave the default `https://api.openai.com/v1`, or override for an organization or project endpoint.
      - For Azure: paste the URL Azure gave you (`https://<your-resource>.openai.azure.com` or `https://<your-project>.services.ai.azure.com/models`). Kamiwaza picks the right Azure handler from the hostname.
      - For Other: paste your published proxy or service URL.
-   - **Credentials** — If a credential is already stored for this endpoint, Kamiwaza offers **Use existing credential**. Otherwise paste the provider API key. See [Credentials](#credentials) below for what to use.
+   - **Credentials** — If a credential is already stored for this endpoint, Kamiwaza offers **Use existing credential** with a **Use a different credential** link to override. Otherwise paste the provider API key. See [Credentials](#credentials) below for what to use.
+
+   ![OpenAI Setup form](/img/models/external/openai-setup.png)
 
    Click **Connect**. Kamiwaza validates the URL, authenticates with the credential, and discovers the models the endpoint exposes.
-4. **Review** — pick the underlying model from the discovered list, give the endpoint a **Display Name** that applications will see, and confirm. Click **Save Endpoint**.
-5. From the Models list, deploy the new model.
+4. **Review** — Kamiwaza shows the list of models discovered on the endpoint. Tick the checkbox for each model you want to register. Expand a row to customize the display name, default parameters, or other per-model settings. Use the **Filter models…** box to narrow the list. Click **Register N models** when done.
 
-> Test the deployment from the Models list to confirm Kamiwaza can reach the provider with the credentials you supplied before applications start calling it.
+   ![Review step with discovered models](/img/models/external/openai-review.png)
+
+5. From the Models list, deploy each newly registered model.
+
+> Test each deployment from the Models list to confirm Kamiwaza can reach the provider with the credentials you supplied before applications start calling it.
 
 ## Provider examples
 

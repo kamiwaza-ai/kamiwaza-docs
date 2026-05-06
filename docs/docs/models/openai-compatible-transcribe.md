@@ -19,9 +19,9 @@ Once registered, the endpoint exposes the standard `/runtime/models/<id>/v1/audi
 
 ## Quick Start (UI)
 
-The wizard is identical to the chat-endpoint wizard — only the underlying model you select on the Review step is different.
+The wizard is identical to the chat-endpoint wizard — only the models you tick on the Review step differ. See [OpenAI-Compatible Chat](./openai-compatible-chat.md#quick-start-ui) for screenshots of each step.
 
-1. In Kamiwaza, go to **Models** and click **Add Model** → **Add External Inference Endpoint**.
+1. In Kamiwaza, go to **Models**, click **Add Model**, then click **Add external inference endpoint** in the dialog header.
 2. **Source** — choose **OpenAI**, **Azure**, or **Other (OpenAI-compatible)** under **Where is your model hosted?**, then click **Next**.
 3. **Setup** — configure the endpoint:
    - **Inference endpoint URL** — The provider's API root. Examples:
@@ -31,9 +31,9 @@ The wizard is identical to the chat-endpoint wizard — only the underlying mode
      - Self-hosted Whisper: your internal hostname
    - **Credentials** — paste the provider API key, or pick **Use existing credential** if one is already stored for this URL.
 
-   Click **Connect**. Kamiwaza validates the URL, authenticates, and discovers transcription models the endpoint exposes.
-4. **Review** — pick a transcription model from the discovered list (`whisper-1`, `gpt-4o-transcribe`, an Azure deployment name, etc.), give the endpoint a **Display Name**, and click **Save Endpoint**.
-5. Deploy the new model from the Models list.
+   Click **Connect**. Kamiwaza validates the URL, authenticates, and discovers the models the endpoint exposes.
+4. **Review** — tick the transcription model(s) you want to register (`whisper-1`, `gpt-4o-transcribe`, an Azure deployment name, etc.). Expand a row to customize the display name or per-model defaults. Click **Register N models** when done.
+5. Deploy each newly registered model from the Models list.
 
 ## Provider examples
 

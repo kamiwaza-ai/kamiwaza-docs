@@ -20,16 +20,22 @@ Before registering a Bedrock endpoint, make sure:
 
 ## Quick Start (UI)
 
-1. In Kamiwaza, go to **Models** and click **Add Model** → **Add External Inference Endpoint**.
-2. On the **Source** step, choose **AWS Bedrock** under **Where is your model hosted?** and click **Next**.
+1. In Kamiwaza, go to **Models**, click **Add Model**, then click **Add external inference endpoint** in the dialog header.
+2. On the **Source** step, choose **AWS** under **Where is your model hosted?**, then choose **Bedrock (chat)** under **Service**. Click **Next**.
+
+   ![Source step with AWS and Bedrock selected](/img/models/external/wizard-source-aws-bedrock.png)
+
 3. On the **Setup** step, fill in the form:
    - **Display Name** — Friendly name shown in the Kamiwaza UI.
    - **Description** *(optional)* — Free-form note for other operators.
    - **AWS Region** — The region where the Bedrock model or inference profile is available (for example `us-east-1`, `us-west-2`, `eu-west-1`). Required.
-   - **Authentication** — Choose **IAM Access Key** (the default; long-lived AWS access key + secret) or **Bedrock API Key** (bearer token). Most production setups use IAM access keys.
+   - **Auth type** — Choose **IAM Access Key** (the default; long-lived AWS access key + secret) or **Bedrock API Key** (bearer token). Most production setups use IAM access keys.
      - For **IAM Access Key**, paste the **Access Key ID** and **Secret Access Key**.
      - For **Bedrock API Key**, paste the bearer token.
    - **Model ID or Inference Profile ID / ARN** — Either a Bedrock model ID, an inference profile ID, or a full ARN. See [Model identifiers](#model-identifiers) below for examples.
+
+   ![Bedrock Setup form](/img/models/external/bedrock-setup.png)
+
 4. Click **Save Endpoint**.
 5. Deploy the new model from the Models list.
 

@@ -40,15 +40,21 @@ Minimum IAM policy:
 
 ## Quick Start (UI)
 
-1. In Kamiwaza, go to **Models** and click **Add Model** → **Add External Inference Endpoint**.
-2. On the **Source** step, choose **AWS Transcribe** under **Where is your model hosted?** and click **Next**.
+1. In Kamiwaza, go to **Models**, click **Add Model**, then click **Add external inference endpoint** in the dialog header.
+2. On the **Source** step, choose **AWS** under **Where is your model hosted?**, then choose **Transcribe (transcription)** under **Service**. Click **Next**.
+
+   ![Source step with AWS and Transcribe selected](/img/models/external/wizard-source-aws-transcribe.png)
+
 3. On the **Setup** step, fill in the form:
    - **Display Name** — Friendly name shown in the Kamiwaza UI.
    - **Description** *(optional)* — Free-form note for other operators.
-   - **AWS Region** — The region where audio will be processed (for example `us-east-1`). Required.
-   - **S3 Bucket** — The bucket Kamiwaza will use to stage batch audio. Required.
+   - **AWS Region** — The region where audio will be processed (for example `us-east-1`). Must match the S3 bucket's region. Required.
+   - **S3 Bucket** — The bucket Kamiwaza will use to stage batch audio and transcript artifacts. Must be in the same region. Required.
    - **IAM Access Key** — Paste the **Access Key ID** and **Secret Access Key**.
    - **Show advanced options** *(optional)* — Reveals a **Language** field for setting a default language. Leave it unset to let Transcribe auto-detect the language on each batch request (see [Supported Languages](#supported-languages)).
+
+   ![Transcribe Setup form](/img/models/external/transcribe-setup.png)
+
 4. Click **Save Endpoint**.
 5. Deploy the model from the Models list.
 
