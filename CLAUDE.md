@@ -90,6 +90,10 @@ GIT_USER=<username> npm run deploy
 set GIT_USER=<username> && npm run deploy
 ```
 
+### Container Builds (External)
+
+Container images for this site are built and published from a separate private build repo, not in-tree. Do not add a `Dockerfile`, `docker-bake.hcl`, or container-build workflow to this repo. `.github/workflows/lockfile-check.yml` validates the lockfile contract the external builder consumes — that's the only build-side coupling that lives here. See ENG-4594 for context.
+
 ## Repository Architecture
 
 ### Directory Structure
