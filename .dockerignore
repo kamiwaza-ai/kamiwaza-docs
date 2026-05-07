@@ -1,9 +1,0 @@
-.git
-node_modules
-docs/node_modules
-docs/build
-docs/.docusaurus
-dist
-*.log
-.DS_Store
-.env*
