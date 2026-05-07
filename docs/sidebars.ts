@@ -74,6 +74,8 @@ const sidebars: SidebarsConfig = {
 				"models/deployment",
 				"models/bedrock",
 				"models/aws-transcribe",
+				"models/openai-compatible-chat",
+				"models/openai-compatible-transcribe",
 				"models/troubleshooting",
 			],
 		},

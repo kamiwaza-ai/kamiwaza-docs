@@ -5,24 +5,18 @@ sidebar_label: AWS Transcribe
 
 [AWS Transcribe](https://aws.amazon.com/transcribe/) provides enterprise-grade, managed speech-to-text capabilities through Kamiwaza's unified transcription API. Audio is processed by AWS's cloud service, eliminating local compute requirements.
 
-## Quick Start (UI)
-
-1. In Kamiwaza, go to **Models** and click **Add external endpoint**
-2. Select **AWS Transcribe** from the Service dropdown
-3. Enter your configuration:
-   - **Display Name**: A name for this transcription endpoint
-   - **Language**: Select a language or use "Auto-detect" (default)
-   - **AWS Region**: Region where audio will be processed
-   - **S3 Bucket**: Bucket for temporary audio storage
-   - **Credential Secret**: AWS credentials (URN or JSON)
-4. Click **Save Endpoint**
-5. Deploy the model from the Models list
-
 ## Prerequisites
 
-1. **AWS Account** with Transcribe access enabled
-2. **S3 Bucket** for batch transcription (audio is temporarily stored during processing)
-3. **IAM Credentials** with the following permissions:
+Before registering an AWS Transcribe endpoint, make sure:
+
+- Your AWS account has Transcribe enabled in the region you plan to use.
+- You have an S3 bucket that Kamiwaza can write to for batch transcription (audio is staged there briefly during processing).
+- You have a long-lived IAM access key whose attached policy grants the permissions below.
+- Outbound HTTPS from the Kamiwaza control plane is permitted to your S3 bucket and to both AWS Transcribe endpoints:
+  - `transcribe.<region>.amazonaws.com` — batch transcription jobs.
+  - `transcribestreaming.<region>.amazonaws.com` on port 8443 — real-time streaming. Egress-restricted networks must whitelist the streaming hostname separately, otherwise streaming requests will fail to connect.
+
+Minimum IAM policy:
 
 ```json
 {
@@ -46,92 +40,44 @@ sidebar_label: AWS Transcribe
 }
 ```
 
-## Configuration
+## Quick Start (UI)
 
-Create a model with `external_endpoint` configuration:
+1. In Kamiwaza, go to **Models**, click **Add Model**, then click **Add external inference endpoint** in the dialog header.
+2. On the **Source** step, choose **AWS** under **Where is your model hosted?**, then choose **Transcribe (transcription)** under **Service**. Click **Next**.
+
+   ![Source step with AWS and Transcribe selected](/img/models/external/wizard-source-aws-transcribe.png)
+
+3. On the **Setup** step, fill in the form:
+   - **Display Name** — Friendly name shown in the Kamiwaza UI.
+   - **Description** *(optional)* — Free-form note for other operators.
+   - **AWS Region** — The region where audio will be processed (for example `us-east-1`). Must match the S3 bucket's region. Required.
+   - **S3 Bucket** — The bucket Kamiwaza will use to stage batch audio and transcript artifacts. Must be in the same region. Required.
+   - **IAM Access Key** — Paste the **Access Key ID** and **Secret Access Key**.
+   - **Show advanced options** *(optional)* — Reveals a **Language** field for setting a default language. Leave it unset to let Transcribe auto-detect the language on each batch request (see [Supported Languages](#supported-languages)).
+
+   ![Transcribe Setup form](/img/models/external/transcribe-setup.png)
+
+4. Click **Save Endpoint**.
+5. Deploy the model from the Models list.
+
+> Use long-lived IAM credentials. Temporary or session credentials expire while a deployment is running and lead to silent authentication failures.
+
+## Credentials
+
+Credentials registered through the form are encrypted on save and stored in the Kamiwaza secret catalog, keyed by AWS region. Catalog reuse across endpoints in the same region, rotation through the **Edit** form, and the five-minute propagation window are described in [External endpoints overview](./overview.md#credentials-catalog).
+
+The stored secret is JSON containing your long-lived AWS keys:
 
 ```json
 {
-  "name": "aws-transcribe",
-  "capability": "audio_transcription",
-  "config": {
-    "external_endpoint": {
-      "service": "aws_transcribe",
-      "region": "us-east-1",
-      "language_code": "en-US",
-      "s3_bucket": "your-bucket-name",
-      "credential_secret_urn": "urn:li:secret:aws-transcribe-creds"
-    }
-  }
+  "aws_access_key_id": "AKIA...",
+  "aws_secret_access_key": "..."
 }
 ```
 
-### Required Fields
+If you've already registered an AWS Bedrock endpoint in the same region **with IAM access-key auth**, Kamiwaza recognizes the existing credential and offers **Use existing credential** during registration. Bedrock endpoints registered with the **Bedrock API Key** auth path store a bearer token, not AWS keys, and cannot be reused for Transcribe — Transcribe requires IAM access keys.
 
-| Field | Description |
-|-------|-------------|
-| `region` | AWS region (e.g., `us-east-1`) |
-| `language_code` | BCP-47 code (e.g., `en-US`, `es-ES`, `fr-FR`) |
-| `s3_bucket` | S3 bucket for batch audio storage |
-
-### Optional Fields
-
-| Field | Default | Description |
-|-------|---------|-------------|
-| `media_format` | `auto` | Audio format: auto, mp3, mp4, wav, flac, ogg, amr, webm. "auto" detects from filename. |
-| `sample_rate` | `16000` | Sample rate in Hz |
-| `show_speaker_labels` | `false` | Enable speaker identification (diarize) |
-| `max_speaker_labels` | `2` | Maximum speakers (1-10) |
-| `vocabulary_name` | - | Custom vocabulary for domain terms |
-| `redact_pii` | `false` | Remove PII from transcript |
-| `pii_entity_types` | `[]` | PII types to redact: `PERSON`, `EMAIL`, `PHONE_NUMBER`, etc. |
-
-### Credentials
-
-Provide AWS credentials via one of:
-
-1. **Kamiwaza Secret Catalog** (recommended):
-
-   First, store your AWS credentials in Kamiwaza's secret catalog, then reference by URN:
-   ```json
-   { "credential_secret_urn": "urn:li:secret:aws-transcribe-creds" }
-   ```
-
-   The secret value should be JSON containing AWS credentials:
-   ```json
-   {
-     "aws_access_key_id": "AKIA...",
-     "aws_secret_access_key": "...",
-     "aws_session_token": "..."  // optional, for temporary credentials
-   }
-   ```
-
-2. **Inline credentials** (for testing):
-
-   Paste the raw JSON directly in the Credential Secret field:
-   ```json
-   {"aws_access_key_id":"AKIA...","aws_secret_access_key":"...","aws_session_token":"..."}
-   ```
-
-3. **Environment variables** (on the Kamiwaza server):
-   - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
-   - `AWS_SESSION_TOKEN` (optional)
-
-
-## Deployment
-
-Deploy the model using engine name `aws_transcribe`:
-
-```bash
-# Via API
-curl -X POST https://<your-domain>/api/v1/serving/deploy_model \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"model_id": "<model-uuid>", "engine_name": "aws_transcribe"}'
-```
-
-Use the customer-facing HTTPS hostname for your deployment rather than `localhost`.
+> **Rotate long-lived IAM credentials regularly.** Treat the registered access key like any other long-lived AWS credential — rotate on the same cadence as your cloud key inventory and monitor `AccessKeyLastUsed` in IAM. Rotated credentials propagate to running deployments through the **Edit** form within the engine credential cache window (~5 minutes).
 
 ## API Usage
 
@@ -150,13 +96,12 @@ curl -X POST "https://<your-domain>/runtime/models/<deployment-id>/v1/audio/tran
 curl -X POST "https://<your-domain>/runtime/models/<deployment-id>/v1/audio/transcriptions" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@recording.pcm" \
-  -F "stream=true" \
-  -F "language=en-US"
+  -F "stream=true"
 ```
 
 Streaming returns Server-Sent Events (SSE) with partial results.
 
-> **Note:** Streaming only supports `pcm`, `ogg`, and `flac` formats. The format is auto-detected from the file extension. If no language is specified, streaming defaults to `en-US`.
+> **Note:** Streaming only supports `pcm`, `ogg`, and `flac` formats. The format is auto-detected from the file extension. Streaming always uses the registered language (set via **Show advanced options** on the registration form); if none is registered it defaults to `en-US`. The per-request `language` parameter is ignored on streaming.
 
 ### Request Parameters
 
@@ -164,7 +109,7 @@ Streaming returns Server-Sent Events (SSE) with partial results.
 |-----------|----------|-------------|
 | `file` | Yes | Audio file (multipart form-data) |
 | `response_format` | No | `text`, `json` (default), or `verbose_json` |
-| `language` | No | Override configured language |
+| `language` | No | BCP-47 code. Overrides the registered language on **batch** requests; ignored on streaming requests, which always use the registered language (or `en-US` if none is registered). |
 | `stream` | No | `true` for streaming mode |
 
 ## Response Formats
@@ -200,11 +145,8 @@ Hello, how are you today?
 | Feature | Batch | Streaming |
 |---------|-------|-----------|
 | Audio formats | mp3, mp4, wav, flac, ogg, amr, webm | pcm, ogg, flac |
-| Max duration | 4 hours | 5 minutes (300s) |
+| Max duration | 15 minutes (Kamiwaza default `job_timeout_seconds`; AWS-side hard limit is 4 hours) | 5 minutes (300s, AWS-side limit) |
 | Auto language detection | Yes | No (defaults to en-US) |
-| Speaker labels | Yes | No |
-| Custom vocabulary | Yes | Yes |
-| PII redaction | Yes | No |
 | Latency | Higher (job-based) | Real-time |
 | Use case | Recorded audio | Live audio |
 
@@ -214,21 +156,14 @@ AWS Transcribe supports 100+ languages for batch and 30+ for streaming.
 
 ### Auto-Detect (Batch Only)
 
-Set `language_code` to `auto` (or leave empty) to enable automatic language identification. AWS Transcribe will detect the spoken language automatically.
+Set the **Language** field on the Setup form to **Auto-detect** to let AWS identify the spoken language automatically. This applies to batch mode only.
 
-```json
-{
-  "language_code": "auto"
-}
-```
-
-> **Note:** Automatic language detection is only supported for **batch mode**. Streaming transcription requires an explicit language code and will default to `en-US` if not specified. To use a different language for streaming, pass the `language` parameter in your request.
+> **Note:** Automatic language detection is only supported for **batch mode**. For streaming, set the **Language** field on the registration form — streaming uses that registered value (or defaults to `en-US`) and ignores any per-request `language` parameter.
 
 ### Common Language Codes
 
 | Code | Language |
 |------|----------|
-| `auto` | Auto-detect |
 | `en-US` | English (US) |
 | `en-GB` | English (UK) |
 | `es-ES` | Spanish (Spain) |
@@ -246,20 +181,20 @@ Check [AWS pricing](https://aws.amazon.com/transcribe/pricing/) for current rate
 
 ## Troubleshooting
 
-### "Missing external_endpoint configuration"
-Ensure the model config includes `external_endpoint` with `region` and `language_code`.
-
 ### "Unsupported media format"
-Batch supports: mp3, mp4, wav, flac, ogg, amr, webm, pcm.
-Streaming supports: pcm, ogg, flac only.
+Batch supports: `mp3`, `mp4`, `wav`, `flac`, `ogg`, `amr`, `webm`, `pcm`.
+Streaming supports: `pcm`, `ogg`, `flac` only.
 
 ### "S3 access denied"
-Verify IAM permissions include `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` for your bucket.
+Verify the IAM policy attached to the registered access key includes `s3:PutObject`, `s3:GetObject`, and `s3:DeleteObject` on the configured S3 bucket.
+
+### "Region mismatch" or 401 / signature errors
+Confirm the **AWS Region** on the registered endpoint matches the region your S3 bucket lives in. IAM access keys are global to the account, but Transcribe and S3 are regional services — a region mismatch between the registered endpoint and the bucket surfaces as a 401 or signature error.
 
 ### Streaming timeout
-- Chunks must arrive within 30 seconds
-- Total stream duration limited to 5 minutes
-- Ensure audio data is sent promptly
+- Audio chunks must arrive within 30 seconds.
+- Total stream duration is limited to 5 minutes (AWS-side limit).
+- Ensure audio data is sent promptly from the client.
 
 ### Job timeout
-Batch jobs timeout after 15 minutes by default. For longer audio, configure `job_timeout_seconds` in `external_endpoint`.
+Kamiwaza enforces a 15-minute (`job_timeout_seconds = 900`) ceiling on each batch job by default. AWS Transcribe itself supports up to 4 hours per job, but the Kamiwaza ceiling will fire first. The form does not currently expose this value, so longer audio must be split into shorter clips or transcribed via the AWS console directly.
