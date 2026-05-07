@@ -70,7 +70,7 @@
     ]
   },
   "engines": {
-    "node": ">=18.0"
+    "node": ">=22.0"
   },
   "overrides": {
     "sitemap": "9.0.0"
