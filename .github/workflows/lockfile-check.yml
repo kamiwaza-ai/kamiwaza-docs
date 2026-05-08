@@ -65,3 +65,44 @@ jobs:
       - name: Check docs lockfile graph (no extraneous entries)
         working-directory: docs
         run: npm ls --package-lock-only
+
+      # Catches cross-package version skew that `npm ci` alone misses.
+      # Each `npm ci` succeeds independently even if root and docs/ resolve
+      # to different versions of @docusaurus/*; the failure only surfaces
+      # at build time, when the root-installed `docusaurus` binary loads
+      # plugins from docs/node_modules and the two halves disagree on
+      # internal APIs (e.g. mdxCrossCompilerCache).
+      #
+      # Compares only @docusaurus/* packages present in BOTH locks at the
+      # top level. Packages that exist on only one side (root has
+      # module-type-aliases / tsconfig / types as devDeps; docs/ doesn't)
+      # are correctly ignored.
+      - name: Detect @docusaurus/* version skew between root and docs/
+        run: |
+          node <<'EOF'
+          const root = require("./package-lock.json").packages;
+          const docs = require("./docs/package-lock.json").packages;
+          const extract = (pkgs) => {
+            const out = {};
+            for (const [k, v] of Object.entries(pkgs)) {
+              const m = k.match(/^node_modules\/(@docusaurus\/[^/]+)$/);
+              if (m) out[m[1]] = v.version;
+            }
+            return out;
+          };
+          const r = extract(root), d = extract(docs);
+          const shared = Object.keys(r).filter((k) => k in d).sort();
+          const mismatches = shared.filter((k) => r[k] !== d[k]);
+          if (mismatches.length === 0) {
+            console.log(`OK: ${shared.length} @docusaurus/* package(s) agree across root and docs/ lockfiles`);
+            process.exit(0);
+          }
+          console.error("ERROR: @docusaurus/* version skew between root and docs/ lockfiles:");
+          for (const k of mismatches) console.error(`  ${k}: root=${r[k]} docs=${d[k]}`);
+          console.error("");
+          console.error("Same package family resolving to different versions across the two locks");
+          console.error("causes `npm run build:docs` to load both into a single Node process and");
+          console.error("crash on internal-API mismatch (e.g. mdxCrossCompilerCache).");
+          console.error("Re-align by regenerating one or both locks under the same registry snapshot.");
+          process.exit(1);
+          EOF
