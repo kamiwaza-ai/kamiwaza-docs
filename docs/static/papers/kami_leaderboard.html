@@ -1397,6 +1397,10 @@
         let filteredHeatmapData = [];
 
         // Sorting state
+        // Note: The statistical table and chart use normalized accuracy (0.0-1.0 / percentage),
+        // NOT raw per-question scores. This means v0.1 (30 samples/question) and v0.5
+        // (10 samples/question) results are directly comparable in all visible UI elements.
+        // Only the heatmap used raw scores (hidden, incompatible with mixed sample counts).
         let currentSort = { column: 'percentage_score', direction: 'desc' }; // Used by heatmap
         let statisticalSort = { column: 'mean_run_accuracy', direction: 'desc' };
         let selectedQuestions = ['q101', 'q102', 'q201', 'q202', 'q301', 'q302', 'q303', 'q304', 'q401', 'q402', 'q403', 'q501', 'q502', 'q503', 'q601', 'q602', 'q701', 'q702', 'q703'];
