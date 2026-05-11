@@ -11,7 +11,7 @@ try {
 
 const sidebars: SidebarsConfig = {
 	sdk: [
-		"intro",
+		"index",
 		{
 			type: "link",
 			label: "REST API Reference",
