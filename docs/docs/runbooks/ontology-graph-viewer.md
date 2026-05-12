@@ -17,7 +17,12 @@ The Graph tab surfaces two empty states that link to this runbook:
 - **"Knowledge graph is being set up"** — the workroom's graph instance is `pending`. The auto-provisioner deploys the graph backend in the background; typical provisioning takes around 30 seconds. The UI polls instance status for up to 60 seconds and then stops auto-refreshing.
 - **"Graph instance idle"** — the workroom's graph instance was provisioned at some point but is not currently running. The empty state displays the instance status string (for example, `stopped`, `failed`, `unknown`).
 
-The first response in either case is to refresh the page. The tab re-queries instance status on reload, and a transient state may resolve on its own.
+For context, two adjacent Graph tab states that don't link here but appear elsewhere in this page:
+
+- **"No ontology instance"** — shown before any provisioning has occurred for the workroom, with a "Create ontology instance" CTA gated on the admin role. This state is the post-recovery target of the [Recreate the Instance](#recreate-the-instance) step below.
+- **"Graph unavailable"** — the backend-error state, shown with a retry action and a correlation ID for support. If you saw this and were redirected to this runbook, include the correlation ID when you ask for help.
+
+The first response to either of the runbook-linked states is to refresh the page. The tab re-queries instance status on reload, and a transient state may resolve on its own.
 
 ## "Knowledge graph is being set up"
 
@@ -51,7 +56,15 @@ The instance status string in the empty state indicates the broad failure mode. 
 kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti --show-labels
 ```
 
-`--show-labels` is useful when more than one Graphiti deployment exists in the namespace. Each per-workroom graph instance is provisioned as a separate `KamiwazaExtension` and carries a unique `extensions.kamiwaza.io/deployment-id` label — note this value for the deployment that backs the affected workroom; the subsequent recovery steps use it to scope actions to that one instance.
+`--show-labels` is useful when more than one Graphiti deployment exists in the namespace. Each per-workroom graph instance is provisioned as a separate `KamiwazaExtension` and carries a unique `extensions.kamiwaza.io/deployment-id` label. To list just the deployment-id values currently in the namespace:
+
+```bash
+kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti \
+  -o jsonpath='{range .items[*]}{.metadata.labels.extensions\.kamiwaza\.io/deployment-id}{"\t"}{.metadata.name}{"\n"}{end}' \
+  | sort -u
+```
+
+Cross-reference the listed deployment-ids against the affected workroom's `ontology_id` from the Graph tab status payload to pick the one to recover. The subsequent recovery steps use this value to scope actions to that single instance.
 
 A `failed` status indicates the platform tried to reconcile the instance to running and surfaced a terminal error. A `stopped` status means the instance was explicitly stopped. An `unknown` status means the platform could not determine the instance's current state at all.
 
@@ -78,13 +91,16 @@ If a pod restart does not recover the instance — for example, the instance is 
 Recreating a graph instance discards the graph data that was built up for the workroom. Sources will need to be re-ingested into the new instance before the Graph tab repopulates. Do not recreate an instance while a long-running ingestion is in flight unless you intend to redo it.
 :::
 
-Issue the following call with admin credentials against the Kamiwaza API gateway:
+Issue the following call against the Kamiwaza API gateway with an admin bearer token:
 
-```text
-DELETE /api/context/ontologies/{ontology_id}
+```bash
+curl -X DELETE "https://<your-domain>/api/context/ontologies/<ontology-id>" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-The workroom's current `ontology_id` is included in the instance status payload returned by the Graph tab's backing query. After the delete completes, reload the Graph tab in the workroom; the empty state will return to **No ontology instance**, and the auto-provisioner will create a fresh one when the next admin or eligible user opens the workroom.
+`<your-domain>` is the host serving the Kamiwaza UI, and `<ontology-id>` is the workroom's current `ontology_id` (included in the instance status payload returned by the Graph tab's backing query). The bearer token must belong to an account with administrative authority on the platform.
+
+After the delete completes, reload the Graph tab in the workroom; the empty state will return to **"No ontology instance"** (described above), and the auto-provisioner will create a fresh instance when the next admin or eligible user opens the workroom.
 
 ## What to Gather Before Reaching Out
 
