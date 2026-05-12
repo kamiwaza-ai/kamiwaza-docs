@@ -2,85 +2,85 @@
 id: ontology-graph-viewer
 title: Ontology Graph Viewer Runbook
 sidebar_label: Ontology Graph Viewer
-sidebar_position: 1
 ---
 
 # Ontology Graph Viewer Runbook
 
-Troubleshooting guidance for the **Graph** tab in a workroom when the ontology graph viewer shows an empty or degraded state. The Graph tab links here from its **View runbook** button when the graph instance is in an idle, pending, or otherwise non-running state.
+The **Graph** tab in a workroom shows a knowledge graph built from the workroom's sources. The Graph tab renders an empty or "being set up" state when the underlying ontology graph instance for the workroom is not yet running. This page describes what those states mean and how to recover from them.
 
-## Symptoms
+If you reached this page from the **View runbook** button in the Graph tab, the workroom's graph instance is provisioned but not in a running state, or is still being provisioned and has exceeded the typical setup window.
 
-You opened the **Graph** tab in a workroom and saw one of:
+## What You May See
 
-- **"Knowledge graph is being set up"** with a spinner and a **View runbook** link.
-- **"Graph instance idle"** with an instance status such as `pending`, `stopped`, `failed`, or `unknown`.
+The Graph tab surfaces two empty states that link to this runbook:
 
-The graph viewer is gated on a healthy ontology instance backing the workroom. When the instance has not yet reached a running state, or has fallen out of one, the viewer surfaces an empty state with a link to this page.
+- **"Knowledge graph is being set up"** — the workroom's graph instance is `pending`. The auto-provisioner deploys the graph backend in the background; typical provisioning takes around 30 seconds. The UI polls instance status for up to 60 seconds and then stops auto-refreshing.
+- **"Graph instance idle"** — the workroom's graph instance was provisioned at some point but is not currently running. The empty state displays the instance status string (for example, `stopped`, `failed`, `unknown`).
 
-## Common causes
+The first response in either case is to refresh the page. The tab re-queries instance status on reload, and a transient state may resolve on its own.
 
-### Auto-provisioner still running
+## "Knowledge graph is being set up"
 
-When a workroom is first opened (or after a long idle period), an auto-provisioner deploys the underlying graph database for the workroom. The typical end-to-end time is around 30 seconds, but image pulls, node scheduling, and dependency readiness can extend it.
+If this message persists for longer than a minute or two, the auto-provisioner is not completing. Check the underlying pods:
 
-The UI polls instance status every 5 seconds for up to 60 seconds. After that cap, polling stops to avoid hammering the API, and the runbook link is surfaced as the recovery path.
+```bash
+kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti
+```
 
-### Provisioner finished but instance is not running
+The Kamiwaza extension operator labels graph backend pods with `extensions.kamiwaza.io/name=service-graphiti`. If the selector returns no pods, the operator has not yet created them — confirm the `service-graphiti` `KamiwazaExtension` resource is present in the namespace and reconciling without errors.
 
-The instance was provisioned at some point but is no longer `running`. Common reasons:
+If the pods exist but are not `Running`, inspect them:
 
-- The underlying pod was evicted or restarted and has not yet become ready.
-- A dependency (e.g. the embedding service) is unavailable, so the provisioner marked the instance `failed`.
-- The instance was deliberately stopped to free resources.
+```bash
+kubectl describe pod -n kamiwaza <pod>
+kubectl logs -n kamiwaza <pod>
+```
 
-### Backend dependency unreachable
+Common causes for a stuck `pending` state include:
 
-The Graphiti ontology backend depends on its own Neo4j store. If the configured Neo4j endpoint isn't reachable (network policy, wrong endpoint configured, credentials mismatch, the Neo4j pod itself unhealthy), the readiness check never passes and the instance stays `pending`.
+- The image is still being pulled (check `describe` events).
+- A required secret or config value is missing.
+- The underlying graph database is starting up or failing its readiness probe.
+- The pod cannot reach a dependency it needs to become ready.
 
-## Diagnostic steps
+## "Graph instance idle"
 
-Work through these in order, stopping as soon as one resolves the issue.
+The instance status string in the empty state indicates the broad failure mode. Use the same selector to find the pods:
 
-1. **Wait for the typical provisioning window.** If the empty state copy reads "Knowledge graph is being set up", give it 60–90 seconds total before treating it as stuck. Most healthy provisions complete inside that window.
+```bash
+kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti --show-labels
+```
 
-2. **Refresh the Graph tab.** A page reload re-issues the instance status query and re-arms the 60-second auto-poll. If the instance has since flipped to `running` in the background, the viewer will pick it up.
+`--show-labels` is useful when more than one Graphiti deployment exists in the namespace — confirm you are inspecting the deployment that backs the affected workroom.
 
-3. **Check the underlying pods from kubectl.**
+A `failed` status indicates the platform tried to reconcile the instance to running and surfaced a terminal error. A `stopped` status means the instance was explicitly stopped. An `unknown` status means the platform could not determine the instance's current state at all.
 
-   The Graphiti ontology backend is deployed by the Kamiwaza extension operator, which labels pods with `extensions.kamiwaza.io/name`. From a shell with `kubectl` access to the cluster running Kamiwaza:
+In each case, the next step is the same: inspect the pods and the operator's reconciliation events, identify the root cause, and either restart the affected deployment or recover the instance as described below.
 
-   ```bash
-   kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti
-   ```
+## Recovering a Stuck Instance
 
-   The same query with `--show-labels` is useful for confirming the deployment is the one you expect:
+If a graph instance cannot be returned to a healthy state by restarting the underlying deployment, an administrator can recreate it. The platform's auto-provisioner will then deploy a fresh instance the next time the workroom is opened.
 
-   ```bash
-   kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti --show-labels
-   ```
+:::caution
+Recreating a graph instance discards the graph data that was built up for the workroom. Sources will need to be re-ingested into the new instance before the Graph tab repopulates. Do not recreate an instance while a long-running ingestion is in flight unless you intend to redo it.
+:::
 
-   Pods in `Pending` or `CrashLoopBackOff` for more than a few minutes indicate a deployment-level problem. `kubectl describe pod <name>` and `kubectl logs <name>` will narrow it down (image pull failure, missing secret, OOM, the Neo4j sidecar failing to start, etc.).
+To delete the instance, issue the following call with admin credentials against the Kamiwaza API:
 
-4. **Verify the Neo4j backend is reachable.** The Graphiti instance depends on its Neo4j store. If the Neo4j pod is not running, or if the endpoint configured for the Graphiti instance points at something unreachable, the instance status stays `pending` indefinitely. Inspect the Neo4j pod's status with the same selector above and check the Graphiti pod's logs for connection errors.
+```text
+DELETE /context/ontologies/{ontology_id}
+```
 
-5. **Recreate the ontology instance.** If the underlying pod is stuck in a failure state, an admin can delete the instance and let the auto-provisioner create a fresh one. The Graph tab will return to the **No ontology instance** state on next load, and the **Create ontology instance** CTA will provision a new instance:
+The workroom's current `ontology_id` is included in the instance status payload returned by the Graph tab's backing query. After the delete completes, reload the Graph tab in the workroom; the empty state will return to **No ontology instance** and the auto-provisioner will create a fresh one.
 
-   ```
-   DELETE /context/ontologies/{ontology_id}
-   ```
+## What to Gather Before Reaching Out
 
-   Issue this call with admin credentials; the workroom's current `ontology_id` is visible in the instance status payload that backs the Graph tab.
+If the steps above do not recover the Graph tab, share the following with Kamiwaza support or your platform team:
 
-6. **Check the embedding service.** Graph ingestion depends on the embedding service. If embeddings are returning HTTP 403 or are otherwise unreachable, downstream pipelines may mark the instance unhealthy. Verify the embedding service is deployed, healthy, and that its credentials are valid for the workroom's tenant.
+- **Workroom ID** — visible in the workroom URL.
+- **Instance status string** — the value shown in the Graph tab empty state (for example, `pending`, `failed`).
+- **Pod state** — output of `kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti -o wide`, plus `kubectl describe` for any pod that is not `Running`.
+- **Correlation ID** — if you reached the **Graph unavailable** error state, the correlation ID it displays.
+- **Approximate time** the issue began.
 
-## Getting help
-
-If the above steps do not recover the graph viewer, gather the following before reaching out:
-
-- The workroom ID.
-- The instance status string visible in the Graph tab empty state (e.g. `pending`, `failed`).
-- Output of `kubectl get pods -n kamiwaza` filtered to the ontology component, plus `kubectl describe` and recent `kubectl logs` for any non-ready pod.
-- Any correlation ID surfaced by the **Graph unavailable** error state, if you reached it.
-
-See the [Help & Fixes](../help-and-fixes.md) page for community and support channels.
+See [Help & Fixes](../help-and-fixes) for the broader set of Kamiwaza support channels.
