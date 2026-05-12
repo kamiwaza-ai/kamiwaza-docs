@@ -53,10 +53,11 @@ Common causes for a stuck `pending` state include:
 The instance status string in the empty state indicates the broad failure mode. Use the same selector to find the pods:
 
 ```bash
-kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti --show-labels
+kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti \
+  -L extensions.kamiwaza.io/deployment-id
 ```
 
-`--show-labels` is useful when more than one Graphiti deployment exists in the namespace. Each per-workroom graph instance is provisioned as a separate `KamiwazaExtension` and carries a unique `extensions.kamiwaza.io/deployment-id` label. To list just the deployment-id values currently in the namespace:
+`-L extensions.kamiwaza.io/deployment-id` surfaces the per-workroom deployment id as a column rather than printing the full label set. Each per-workroom graph instance is provisioned as a separate `KamiwazaExtension` and carries a unique `extensions.kamiwaza.io/deployment-id` label, which the operator also propagates to the owning Deployment — so the same label scopes both pod-level and Deployment-level commands later in this runbook. To list just the deployment-id values currently in the namespace:
 
 ```bash
 kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti \
@@ -95,10 +96,21 @@ Issue the following call against the Kamiwaza API gateway with an admin bearer t
 
 ```bash
 curl -X DELETE "https://<your-domain>/api/context/ontologies/<ontology-id>" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Workroom-ID: <workroom-id>"
 ```
 
-`<your-domain>` is the host serving the Kamiwaza UI, and `<ontology-id>` is the workroom's current `ontology_id` (included in the instance status payload returned by the Graph tab's backing query). The bearer token must belong to an account with administrative authority on the platform.
+`<your-domain>` is the host serving the Kamiwaza UI, and `<ontology-id>` is the workroom's current ontology id (see below for retrieval). The `X-Workroom-ID` header is optional per the OpenAPI spec but is the workroom-isolation header used by the surrounding API; include it on admin recovery calls so the operation stays scoped to the right workroom. The bearer token must belong to an account with administrative authority on the platform.
+
+To retrieve the ontology id for a workroom, list its ontology instances via the same API. The endpoint accepts the same `X-Workroom-ID` header for scope:
+
+```bash
+curl "https://<your-domain>/api/context/ontologies/" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Workroom-ID: <workroom-id>"
+```
+
+The response payload includes each instance's `id` (the `ontology_id` referenced above), `status`, and runtime endpoint. Alternatively, the same payload backs the Graph tab in the UI — operators with browser access can read it from the network panel by opening the affected workroom's Graph tab.
 
 After the delete completes, reload the Graph tab in the workroom; the empty state will return to **"No ontology instance"** (described above), and the auto-provisioner will create a fresh instance when the next admin or eligible user opens the workroom.
 
