@@ -1067,7 +1067,8 @@
 
 
             <!-- Bottom Section: Performance Heatmap -->
-            <div class="section">
+            <!-- TODO: Heatmap hidden — incompatible with mixed v0.1 (30 samples) and v0.5 (10 samples) per-question scales -->
+            <div class="section" style="display:none">
                 <div class="section-title">
                     <i class="fas fa-th"></i>
                     Performance Heatmap
@@ -1287,8 +1288,8 @@
             "qwen2_5_72b_instruct": "Qwen2.5-72B-Instruct",
             // Alibaba - Qwen 3 series
             "qwen3_4b": "Qwen3-4B",
-            "qwen3_4b_thinkmode": "Qwen3-4B (Thinking)",
             "qwen3_4b_instruct_2507": "Qwen3-4B-Instruct-2507",
+            "qwen3_4b_thinkmode": "Qwen3-4B (Thinking)",
             "qwen3_8b": "Qwen3-8B",
             "qwen3_8b_thinkmode": "Qwen3-8B (Thinking)",
             "qwen3_14b": "Qwen3-14B",
@@ -1306,6 +1307,7 @@
             "qwen3_max_2025_09_23": "Qwen3-Max (2025-09-23)",
             "qwen3_max_preview": "Qwen3-Max-Preview",
             "qwen3_coder_480b_a35b_instruct": "Qwen3-Coder-480B-A35B-Instruct",
+            "qwen3_coder_30b_a3b_instruct": "Qwen3-Coder-30B-A3B-Instruct",
             "qwen3_next_80b_a3b_instruct": "Qwen3-Next-80B-A3B-Instruct",
             // Alibaba - Qwen 3.5 series
             "qwen3_5_0_8b": "Qwen3.5-0.8B",
@@ -1334,10 +1336,18 @@
             "gemini_2_5_flashlite": "Gemini 2.5 Flash-Lite",
             "gemini_2_5_pro": "Gemini 2.5 Pro",
             "gemini_3_pro_preview": "Gemini 3 Pro Preview",
+            // Google - Gemma
+            "gemma_4_31b_it": "Gemma4-31B",
+            "gemma_4_31b_it_thinkmode": "Gemma4-31B (Thinking)",
+            "gemma_4_26b_a4b_it": "Gemma4-26B-A4B",
+            "gemma_4_26b_a4b_it_thinkmode": "Gemma4-26B-A4B (Thinking)",
+            "gemma_4_e4b_it": "Gemma4-E4B",
+            "gemma_4_e4b_it_thinkmode": "Gemma4-E4B (Thinking)",
             // Zhipu - GLM
             "glm_4_5": "GLM-4.5",
             "glm_4_5_air": "GLM-4.5 Air",
             "glm_4_6": "GLM-4.6",
+            "glm_4_7": "GLM-4.7",
             // OpenAI - GPT
             "gpt_4_1": "GPT-4.1",
             "gpt_5_1": "GPT-5.1",
@@ -1387,6 +1397,10 @@
         let filteredHeatmapData = [];
 
         // Sorting state
+        // Note: The statistical table and chart use normalized accuracy (0.0-1.0 / percentage),
+        // NOT raw per-question scores. This means v0.1 (30 samples/question) and v0.5
+        // (10 samples/question) results are directly comparable in all visible UI elements.
+        // Only the heatmap used raw scores (hidden, incompatible with mixed sample counts).
         let currentSort = { column: 'percentage_score', direction: 'desc' }; // Used by heatmap
         let statisticalSort = { column: 'mean_run_accuracy', direction: 'desc' };
         let selectedQuestions = ['q101', 'q102', 'q201', 'q202', 'q301', 'q302', 'q303', 'q304', 'q401', 'q402', 'q403', 'q501', 'q502', 'q503', 'q601', 'q602', 'q701', 'q702', 'q703'];
