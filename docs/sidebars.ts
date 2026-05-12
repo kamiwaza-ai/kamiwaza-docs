@@ -144,6 +144,11 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: "category",
+			label: "Runbooks",
+			items: ["runbooks/ontology-graph-viewer"],
+		},
+		{
+			type: "category",
 			label: "Our Team",
 			items: [
 				{
