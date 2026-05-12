@@ -51,7 +51,7 @@ The instance status string in the empty state indicates the broad failure mode. 
 kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti --show-labels
 ```
 
-`--show-labels` is useful when more than one Graphiti deployment exists in the namespace — confirm you are inspecting the deployment that backs the affected workroom.
+`--show-labels` is useful when more than one Graphiti deployment exists in the namespace. Each per-workroom graph instance is provisioned as a separate `KamiwazaExtension` and carries a unique `extensions.kamiwaza.io/deployment-id` label — note this value for the deployment that backs the affected workroom; the subsequent recovery steps use it to scope actions to that one instance.
 
 A `failed` status indicates the platform tried to reconcile the instance to running and surfaced a terminal error. A `stopped` status means the instance was explicitly stopped. An `unknown` status means the platform could not determine the instance's current state at all.
 
@@ -61,11 +61,11 @@ In each case, the next step is the same: inspect the pods and the operator's rec
 
 ### Try a Pod Restart First
 
-If the underlying pods are unhealthy but the instance record itself looks fine, restart the deployment before deleting anything:
+If the underlying pods are unhealthy but the instance record itself looks fine, restart the deployment before deleting anything. Scope the restart to the single workroom's instance using the `deployment-id` value you noted above — the namespace may host multiple Graphiti deployments, one per workroom, and restarting all of them would bounce unrelated workrooms:
 
 ```bash
-kubectl rollout restart deployment -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti
-kubectl rollout status deployment -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti --timeout=180s
+kubectl rollout restart deployment -n kamiwaza -l extensions.kamiwaza.io/deployment-id=<deployment-id>
+kubectl rollout status deployment -n kamiwaza -l extensions.kamiwaza.io/deployment-id=<deployment-id> --timeout=180s
 ```
 
 Refresh the Graph tab once the rollout reports ready. If the instance returns to running, no further action is needed.
