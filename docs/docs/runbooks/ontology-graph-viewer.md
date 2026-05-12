@@ -55,23 +55,36 @@ kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti --s
 
 A `failed` status indicates the platform tried to reconcile the instance to running and surfaced a terminal error. A `stopped` status means the instance was explicitly stopped. An `unknown` status means the platform could not determine the instance's current state at all.
 
-In each case, the next step is the same: inspect the pods and the operator's reconciliation events, identify the root cause, and either restart the affected deployment or recover the instance as described below.
+In each case, the next step is the same: inspect the pods and the operator's reconciliation events, identify the root cause, and start with the least destructive recovery — pod restart — before resorting to recreating the instance.
 
 ## Recovering a Stuck Instance
 
-If a graph instance cannot be returned to a healthy state by restarting the underlying deployment, an administrator can recreate it. The platform's auto-provisioner will then deploy a fresh instance the next time the workroom is opened.
+### Try a Pod Restart First
+
+If the underlying pods are unhealthy but the instance record itself looks fine, restart the deployment before deleting anything:
+
+```bash
+kubectl rollout restart deployment -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti
+kubectl rollout status deployment -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti --timeout=180s
+```
+
+Refresh the Graph tab once the rollout reports ready. If the instance returns to running, no further action is needed.
+
+### Recreate the Instance
+
+If a pod restart does not recover the instance — for example, the instance is in a terminal `failed` state, or the underlying configuration that produced it is no longer correct — an administrator can delete the instance and let the platform's auto-provisioner deploy a fresh one the next time the workroom is opened.
 
 :::caution
 Recreating a graph instance discards the graph data that was built up for the workroom. Sources will need to be re-ingested into the new instance before the Graph tab repopulates. Do not recreate an instance while a long-running ingestion is in flight unless you intend to redo it.
 :::
 
-To delete the instance, issue the following call with admin credentials against the Kamiwaza API:
+Issue the following call with admin credentials against the Kamiwaza API gateway:
 
 ```text
-DELETE /context/ontologies/{ontology_id}
+DELETE /api/context/ontologies/{ontology_id}
 ```
 
-The workroom's current `ontology_id` is included in the instance status payload returned by the Graph tab's backing query. After the delete completes, reload the Graph tab in the workroom; the empty state will return to **No ontology instance** and the auto-provisioner will create a fresh one.
+The workroom's current `ontology_id` is included in the instance status payload returned by the Graph tab's backing query. After the delete completes, reload the Graph tab in the workroom; the empty state will return to **No ontology instance**, and the auto-provisioner will create a fresh one when the next admin or eligible user opens the workroom.
 
 ## What to Gather Before Reaching Out
 
@@ -83,4 +96,4 @@ If the steps above do not recover the Graph tab, share the following with Kamiwa
 - **Correlation ID** — if you reached the **Graph unavailable** error state, the correlation ID it displays.
 - **Approximate time** the issue began.
 
-See [Help & Fixes](../help-and-fixes) for the broader set of Kamiwaza support channels.
+See [Help & Fixes](../help-and-fixes.md) for the broader set of Kamiwaza support channels.
