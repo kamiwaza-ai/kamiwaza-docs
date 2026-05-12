@@ -34,9 +34,9 @@ The instance was provisioned at some point but is no longer `running`. Common re
 - A dependency (e.g. the embedding service) is unavailable, so the provisioner marked the instance `failed`.
 - The instance was deliberately stopped to free resources.
 
-### Misrouted graph backend binding
+### Backend dependency unreachable
 
-The ontology instance can bind to the wrong backend in some configurations — for example, a Graphiti instance that has been provisioned but is bound to a Neo4j endpoint that is not reachable. The instance status stays `pending` because the readiness check never passes.
+The Graphiti ontology backend depends on its own Neo4j store. If the configured Neo4j endpoint isn't reachable (network policy, wrong endpoint configured, credentials mismatch, the Neo4j pod itself unhealthy), the readiness check never passes and the instance stays `pending`.
 
 ## Diagnostic steps
 
@@ -46,19 +46,31 @@ Work through these in order, stopping as soon as one resolves the issue.
 
 2. **Refresh the Graph tab.** A page reload re-issues the instance status query and re-arms the 60-second auto-poll. If the instance has since flipped to `running` in the background, the viewer will pick it up.
 
-3. **Check the workroom's instance status from the API or kubectl.**
+3. **Check the underlying pods from kubectl.**
 
-   From a shell with `kubectl` access to the cluster running Kamiwaza:
+   The Graphiti ontology backend is deployed by the Kamiwaza extension operator, which labels pods with `extensions.kamiwaza.io/name`. From a shell with `kubectl` access to the cluster running Kamiwaza:
+
+   ```bash
+   kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti
+   ```
+
+   The same query with `--show-labels` is useful for confirming the deployment is the one you expect:
+
+   ```bash
+   kubectl get pods -n kamiwaza -l extensions.kamiwaza.io/name=service-graphiti --show-labels
+   ```
+
+   Pods in `Pending` or `CrashLoopBackOff` for more than a few minutes indicate a deployment-level problem. `kubectl describe pod <name>` and `kubectl logs <name>` will narrow it down (image pull failure, missing secret, OOM, the Neo4j sidecar failing to start, etc.).
+
+4. **Verify the Neo4j backend is reachable.** The Graphiti instance depends on its Neo4j store. If the Neo4j pod is not running, or if the endpoint configured for the Graphiti instance points at something unreachable, the instance status stays `pending` indefinitely. Inspect the Neo4j pod's status with the same selector above and check the Graphiti pod's logs for connection errors.
+
+5. **Recreate the ontology instance.** If the underlying pod is stuck in a failure state, an admin can delete the instance and let the auto-provisioner create a fresh one. The Graph tab will return to the **No ontology instance** state on next load, and the **Create ontology instance** CTA will provision a new instance:
 
    ```
-   kubectl get pods -n kamiwaza -l app.kubernetes.io/component=ontology
+   DELETE /context/ontologies/{ontology_id}
    ```
 
-   Pods in `Pending` or `CrashLoopBackOff` for more than a few minutes indicate a deployment-level problem. `kubectl describe pod <name>` and `kubectl logs <name>` will narrow it down (image pull failure, missing secret, OOM, etc.).
-
-4. **Verify the backend binding.** If the instance status is `pending` for an extended period, confirm that the ontology instance is bound to a reachable backend. A misbound instance will never reach `running` regardless of how long you wait.
-
-5. **Restart the ontology instance.** If the underlying pod is stuck in a failure state, an admin can stop and recreate the instance from the workroom's admin surface. The Graph tab will return to the **No ontology instance** state, and the **Create ontology instance** CTA will provision a fresh one.
+   Issue this call with admin credentials; the workroom's current `ontology_id` is visible in the instance status payload that backs the Graph tab.
 
 6. **Check the embedding service.** Graph ingestion depends on the embedding service. If embeddings are returning HTTP 403 or are otherwise unreachable, downstream pipelines may mark the instance unhealthy. Verify the embedding service is deployed, healthy, and that its credentials are valid for the workroom's tenant.
 
