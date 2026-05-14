@@ -15,11 +15,14 @@ import {
 	buildLinkTargetUrlVariants,
 	canonicalizeFileUrlForPdfMatching,
 	fileOfflineUriToPublicDocsUrl,
+	idShapedAliasesForDocSourceUrl,
 	isAnnotatableDocHrefForPdfCapture,
 	pathnameOnlyOfflineFileToPublicDocsUrl,
 	publicHttpsAliasesForFileDocUrl,
+	publicHttpsAliasesForFileLinkTarget,
 	resolveDocRelativeHashRoute,
 	resolveOfflineFileSpaHref,
+	rewriteOfflineHrefToPublicDocsHttps,
 	rewritePdfInternalLinks,
 } from "./pdf-link-utils";
 
@@ -58,6 +61,68 @@ test("publicHttpsAliasesForFileDocUrl includes https equivalents of file hash ro
 					"https://docs.kamiwaza.ai/0.12.0/installation/installation_process/",
 		),
 		`expected https alias, got: ${aliases.slice(0, 5).join(", ")}`,
+	);
+});
+
+test("idShapedAliasesForDocSourceUrl re-adds /intro for the SDK home doc", () => {
+	const aliases = idShapedAliasesForDocSourceUrl(
+		"file:///tmp/docs/build-offline/index.html#/sdk",
+		"sdk/intro",
+	);
+	assert.ok(
+		aliases.some(
+			(a) => a === "file:///tmp/docs/build-offline/index.html#/sdk/intro",
+		),
+		`expected #/sdk/intro alias, got: ${aliases.join(", ")}`,
+	);
+});
+
+test("idShapedAliasesForDocSourceUrl re-adds /index for directory index docs", () => {
+	const aliases = idShapedAliasesForDocSourceUrl(
+		"file:///tmp/docs/build-offline/index.html#/use-cases",
+		"use-cases/index",
+	);
+	assert.ok(
+		aliases.some(
+			(a) =>
+				a === "file:///tmp/docs/build-offline/index.html#/use-cases/index",
+		),
+		`expected #/use-cases/index alias, got: ${aliases.join(", ")}`,
+	);
+});
+
+test("idShapedAliasesForDocSourceUrl returns no extras when id already matches the route", () => {
+	assert.deepEqual(
+		idShapedAliasesForDocSourceUrl(
+			"file:///tmp/docs/build-offline/index.html#/quickstart",
+			"quickstart",
+		),
+		[],
+	);
+});
+
+test("idShapedAliasesForDocSourceUrl ignores docs whose source url has no hash route", () => {
+	assert.deepEqual(
+		idShapedAliasesForDocSourceUrl(
+			"https://docs.kamiwaza.ai/quickstart",
+			"sdk/intro",
+		),
+		[],
+	);
+});
+
+test("publicHttpsAliasesForFileLinkTarget preserves the heading fragment", () => {
+	const file =
+		"file:///tmp/docs/build-offline/index.html#/0.12.0/quickstart#section-a";
+	const aliases = publicHttpsAliasesForFileLinkTarget(
+		file,
+		"https://docs.kamiwaza.ai",
+	);
+	assert.ok(
+		aliases.some(
+			(a) => a === "https://docs.kamiwaza.ai/0.12.0/quickstart#section-a",
+		),
+		`expected fragmented https alias, got: ${aliases.slice(0, 5).join(", ")}`,
 	);
 });
 
@@ -436,5 +501,161 @@ test("resolveOfflineFileSpaHref falls back to baseFile + raw when current hash i
 			`${OFFLINE_INDEX_BASE}#anchor`,
 		),
 		`${OFFLINE_INDEX_BASE}#anchor`,
+	);
+});
+
+test("resolveOfflineFileSpaHref preserves Docusaurus Link hash routes (#/route)", () => {
+	// Docusaurus' Link component renders most internal links as `#/route` when
+	// the offline build uses HashRouter. The resolver must NOT route these
+	// through the same-page-fragment branch — otherwise `#/installation/...`
+	// becomes `#/<currentRoute>#/installation/...`, misses the merge map, and
+	// every internal link silently falls back to docs.kamiwaza.ai.
+	assert.equal(
+		resolveOfflineFileSpaHref(
+			"#/installation/installation_process",
+			OFFLINE_LOCATION,
+			`${OFFLINE_INDEX_BASE}#/installation/installation_process`,
+		),
+		`${OFFLINE_INDEX_BASE}#/installation/installation_process`,
+	);
+});
+
+test("resolveOfflineFileSpaHref preserves hash routes that include a section anchor", () => {
+	assert.equal(
+		resolveOfflineFileSpaHref(
+			"#/quickstart#1-confirm-the-kubernetes-deployment-is-healthy",
+			OFFLINE_LOCATION,
+			`${OFFLINE_INDEX_BASE}#/quickstart#1-confirm-the-kubernetes-deployment-is-healthy`,
+		),
+		`${OFFLINE_INDEX_BASE}#/quickstart#1-confirm-the-kubernetes-deployment-is-healthy`,
+	);
+});
+
+test("resolveOfflineFileSpaHref preserves the bare root hash route (#/)", () => {
+	assert.equal(
+		resolveOfflineFileSpaHref(
+			"#/",
+			OFFLINE_LOCATION,
+			`${OFFLINE_INDEX_BASE}#/`,
+		),
+		`${OFFLINE_INDEX_BASE}#/`,
+	);
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps converts hash routes to canonical https URLs", () => {
+	assert.equal(
+		rewriteOfflineHrefToPublicDocsHttps(
+			"#/installation/installation_process",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai",
+		),
+		"https://docs.kamiwaza.ai/installation/installation_process",
+	);
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps preserves nested hash route fragments", () => {
+	assert.equal(
+		rewriteOfflineHrefToPublicDocsHttps(
+			"#/quickstart#section-a",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai",
+		),
+		"https://docs.kamiwaza.ai/quickstart#section-a",
+	);
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps converts the bare root route", () => {
+	assert.equal(
+		rewriteOfflineHrefToPublicDocsHttps(
+			"#/",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai",
+		),
+		"https://docs.kamiwaza.ai/",
+	);
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps wraps absolute paths under the public docs origin", () => {
+	assert.equal(
+		rewriteOfflineHrefToPublicDocsHttps(
+			"/0.12.0/quickstart",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai",
+		),
+		"https://docs.kamiwaza.ai/0.12.0/quickstart",
+	);
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps resolves doc-relative hrefs against the current route", () => {
+	assert.equal(
+		rewriteOfflineHrefToPublicDocsHttps(
+			"../quickstart",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai",
+		),
+		"https://docs.kamiwaza.ai/0.12.0/quickstart",
+	);
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps resolves same-page anchors to the current route", () => {
+	assert.equal(
+		rewriteOfflineHrefToPublicDocsHttps(
+			"#special-considerations",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai",
+		),
+		"https://docs.kamiwaza.ai/0.12.0/installation/system_requirements#special-considerations",
+	);
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps leaves external https links alone", () => {
+	assert.equal(
+		rewriteOfflineHrefToPublicDocsHttps(
+			"https://example.com/page",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai",
+		),
+		null,
+	);
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps leaves docs.kamiwaza.ai absolute URLs alone (already public)", () => {
+	// rewritePdfInternalLinks still maps these to internal GoTo when the route
+	// is in the merged PDF, so we don't need to touch them here.
+	assert.equal(
+		rewriteOfflineHrefToPublicDocsHttps(
+			"https://docs.kamiwaza.ai/quickstart",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai",
+		),
+		null,
+	);
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps skips mailto/tel/javascript schemes", () => {
+	for (const href of [
+		"mailto:a@b.com",
+		"tel:+1-555-1234",
+		"javascript:void(0)",
+	]) {
+		assert.equal(
+			rewriteOfflineHrefToPublicDocsHttps(
+				href,
+				OFFLINE_LOCATION,
+				"https://docs.kamiwaza.ai",
+			),
+			null,
+		);
+	}
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps strips trailing slash from origin", () => {
+	assert.equal(
+		rewriteOfflineHrefToPublicDocsHttps(
+			"#/quickstart",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai/",
+		),
+		"https://docs.kamiwaza.ai/quickstart",
 	);
 });

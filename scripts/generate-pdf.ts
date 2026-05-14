@@ -17,24 +17,19 @@ import * as yaml from "js-yaml";
 import * as os from "os";
 import * as path from "path";
 import { pathToFileURL } from "url";
-import {
-	PDFDocument,
-	PDFName,
-	PDFString,
-	StandardFonts,
-	rgb,
-} from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import puppeteer, { type Browser, Page } from "puppeteer";
 import { buildTocHtml } from "./pdf-layout-utils";
 import {
 	buildDocumentUrlVariants,
 	buildLinkTargetUrlVariants,
 	canonicalizeFileUrlForPdfMatching,
-	isAnnotatableDocHrefForPdfCapture,
+	idShapedAliasesForDocSourceUrl,
 	publicHttpsAliasesForFileDocUrl,
+	publicHttpsAliasesForFileLinkTarget,
 	type PDFDestinationTarget,
 	resolveDocRelativeHashRoute,
-	resolveOfflineFileSpaHref,
+	rewriteOfflineHrefToPublicDocsHttps,
 	rewritePdfInternalLinks,
 	rewriteRemainingOfflineFileUrisToPublicDocsSite,
 } from "./pdf-link-utils";
@@ -74,19 +69,16 @@ interface GeneratedPDFPart {
 	kind: "toc" | "document";
 	pdfBuffer: Buffer;
 	sourceUrl?: string;
+	/**
+	 * Original (un-normalized) doc id from the sidebar — e.g. `sdk/intro`,
+	 * `use-cases/index`. Some Docusaurus doc IDs collapse to a shorter route
+	 * (`sdk/intro` → `/sdk`, `foo/index` → `/foo`), so links that reference
+	 * the original id form (`<a href="sdk/intro">`) won't match a merge key
+	 * derived from the normalized route alone. We carry the id forward so
+	 * mergePDFs can register the additional alias.
+	 */
+	docId?: string;
 	localDestinations?: CapturedLocalDestination[];
-}
-
-interface CapturedLinkRect {
-	left: number;
-	top: number;
-	width: number;
-	height: number;
-}
-
-interface CapturedLocalLink {
-	url: string;
-	rects: CapturedLinkRect[];
 }
 
 interface CapturedLocalDestination {
@@ -999,13 +991,13 @@ class PDFGenerator {
 				await page.addStyleTag({ content: cssContent });
 			}
 
-			await page.emulateMediaType("print");
-			await new Promise((resolve) => setTimeout(resolve, 100));
+		await page.emulateMediaType("print");
+		await new Promise((resolve) => setTimeout(resolve, 100));
 
-			// Add document title as header (if enabled)
-			// Note: Page numbers are added in mergePDFs for consistent positioning across all pages
-			if (profile.options.includeHeaders) {
-				const headerCSS = `
+		// Add document title as header (if enabled)
+		// Note: Page numbers are added in mergePDFs for consistent positioning across all pages
+		if (profile.options.includeHeaders) {
+			const headerCSS = `
           @page {
             @top-center {
               content: "${doc.title}";
@@ -1015,10 +1007,22 @@ class PDFGenerator {
           }
         `;
 
-				await page.addStyleTag({ content: headerCSS });
-			}
+			await page.addStyleTag({ content: headerCSS });
+		}
 
-		const capturedLocalLinks = await this.captureLocalPdfLinks(page);
+		// Rewrite article <a href> values to absolute https://docs.kamiwaza.ai/<route>
+		// URLs *before* page.pdf() so Chromium embeds them as native PDF Link
+		// annotations with correctly positioned rects. Manual annotation rects
+		// derived from getClientRects() drift from the real PDF position when
+		// page-break-inside rules push content downward (the user-visible
+		// "have to click below the link" symptom). The merge step republishes
+		// every doc as a https alias key, so URI links rewrite cleanly to
+		// internal GoTo destinations in rewritePdfInternalLinks; any link to a
+		// page not in the merged PDF stays as a working public docs URL.
+		const publicBase =
+			this.config.settings.publicDocsBaseUrl ?? "https://docs.kamiwaza.ai";
+		await this.rewriteArticleHrefsForPdf(page, publicBase);
+
 		const capturedLocalDestinations = await this.captureLocalPdfDestinations(
 			page,
 			url,
@@ -1036,18 +1040,11 @@ class PDFGenerator {
 				`     ✅ Generated (${(pdfBuffer.length / 1024).toFixed(0)} KB)`,
 			);
 
-			const enrichedPdfBuffer =
-				capturedLocalLinks.length > 0
-					? await this.addPdfLinkAnnotations(
-							Buffer.from(pdfBuffer),
-							capturedLocalLinks,
-						)
-					: Buffer.from(pdfBuffer);
-
 			return {
 				kind: "document",
-				pdfBuffer: enrichedPdfBuffer,
+				pdfBuffer: Buffer.from(pdfBuffer),
 				sourceUrl: url,
+				docId: doc.id,
 				localDestinations: capturedLocalDestinations,
 			};
 		} catch (error) {
@@ -1060,88 +1057,57 @@ class PDFGenerator {
 		}
 	}
 
-	private async captureLocalPdfLinks(page: Page): Promise<CapturedLocalLink[]> {
-		const checkerSource = isAnnotatableDocHrefForPdfCapture.toString();
+	private async rewriteArticleHrefsForPdf(
+		page: Page,
+		publicDocsOrigin: string,
+	): Promise<void> {
 		const resolverSource = resolveDocRelativeHashRoute.toString();
-		const spaResolverSource = resolveOfflineFileSpaHref.toString();
-		return page.evaluate(
-			(src: string, resolverSrc: string, spaResolverSrc: string) => {
-				const isAnnotatableDocHrefForPdfCapture = new Function(
-					`"use strict"; return (${src});`,
-				)() as (h: string) => boolean;
+		const rewriterSource = rewriteOfflineHrefToPublicDocsHttps.toString();
+
+		await page.evaluate(
+			(resolverSrc: string, rewriterSrc: string, publicOrigin: string) => {
 				const resolveDocRelativeHashRoute = new Function(
 					`"use strict"; return (${resolverSrc});`,
 				)() as (currentHash: string, rawHref: string) => string | null;
-				const resolveOfflineFileSpaHref = new Function(
-					`"use strict"; return (${spaResolverSrc});`,
+				const rewriteOfflineHrefToPublicDocsHttps = new Function(
+					`"use strict"; return (${rewriterSrc});`,
 				)() as (
 					rawHref: string,
 					location: { protocol: string; href: string; hash: string },
-					anchorHref: string,
+					publicDocsOrigin: string,
 					resolveRelative?: (
 						currentHash: string,
 						rawHref: string,
 					) => string | null,
-				) => string;
+				) => string | null;
+
 				const doc = (globalThis as any).document;
-				const links: CapturedLocalLink[] = [];
-
+				const loc = globalThis.location;
 				for (const anchor of Array.from(
-					doc.querySelectorAll("article a"),
+					doc.querySelectorAll("article a[href]"),
 				) as any[]) {
-					const rawHref = anchor.getAttribute("href") || "";
-					const text = (anchor.textContent || "").trim();
-					if (!text || !isAnnotatableDocHrefForPdfCapture(rawHref)) {
+					const rawHref = (anchor.getAttribute("href") || "").trim();
+					if (!rawHref) {
 						continue;
 					}
-
-					let rects = Array.from(anchor.getClientRects())
-						.map((rect: any) => ({
-							left: rect.left,
-							top: rect.top,
-							width: rect.width,
-							height: rect.height,
-						}))
-						.filter((rect: any) => rect.width > 0 && rect.height > 0);
-
-					if (rects.length === 0) {
-						const br = anchor.getBoundingClientRect();
-						if (br.width > 0 && br.height > 0) {
-							rects = [
-								{
-									left: br.left,
-									top: br.top,
-									width: br.width,
-									height: br.height,
-								},
-							];
-						}
-					}
-
-					if (rects.length === 0) {
-						continue;
-					}
-
-					const loc = globalThis.location;
-					const url = resolveOfflineFileSpaHref(
-						rawHref.trim(),
+					const rewritten = rewriteOfflineHrefToPublicDocsHttps(
+						rawHref,
 						{
 							protocol: loc.protocol,
 							href: loc.href,
 							hash: loc.hash,
 						},
-						anchor.href as string,
+						publicOrigin,
 						resolveDocRelativeHashRoute,
 					);
-
-					links.push({ url, rects });
+					if (rewritten) {
+						anchor.setAttribute("href", rewritten);
+					}
 				}
-
-				return links;
 			},
-			checkerSource,
 			resolverSource,
-			spaResolverSource,
+			rewriterSource,
+			publicDocsOrigin,
 		);
 	}
 
@@ -1174,51 +1140,6 @@ class PDFGenerator {
 					y: position.y,
 				};
 			});
-	}
-
-	private async addPdfLinkAnnotations(
-		pdfBuffer: Buffer,
-		links: CapturedLocalLink[],
-	): Promise<Buffer> {
-		const pdfDoc = await PDFDocument.load(pdfBuffer);
-		const pxToPt = 72 / 96;
-		const leftMargin = this.parseLengthToPoints(this.config.settings.pdf.margin.left);
-
-		for (const link of links) {
-			for (const rect of link.rects) {
-				const position = this.locatePdfPosition(rect.top);
-				const pageIndex = position.pageIndex;
-				if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) {
-					continue;
-				}
-
-				const page = pdfDoc.getPage(pageIndex);
-				const x1 = leftMargin + rect.left * pxToPt;
-				const x2 = x1 + rect.width * pxToPt;
-				const y2 = position.y;
-				const y1 = y2 - rect.height * pxToPt;
-
-				const annotation = pdfDoc.context.register(
-					pdfDoc.context.obj({
-						Type: PDFName.of("Annot"),
-						Subtype: PDFName.of("Link"),
-						Rect: [x1, y1, x2, y2],
-						Border: [0, 0, 0],
-						A: {
-							Type: PDFName.of("Action"),
-							S: PDFName.of("URI"),
-							URI: PDFString.of(
-								canonicalizeFileUrlForPdfMatching(link.url),
-							),
-						},
-					}),
-				);
-
-				page.node.addAnnot(annotation);
-			}
-		}
-
-		return Buffer.from(await pdfDoc.save());
 	}
 
 	private locatePdfPosition(topPx: number): { pageIndex: number; y: number } {
@@ -1292,6 +1213,30 @@ class PDFGenerator {
 				)) {
 					pageIndexByUrl.set(httpsAlias, dest);
 				}
+				// Also register `…/sdk/intro`, `…/foo/index`, `…/intro`
+				// shapes. Docusaurus collapses these suffixes when assigning
+				// slugs, so the standard route-based aliases above only cover
+				// `/sdk`, `/foo`, `/`. Links written with the id form (the
+				// "Explore the SDK" doc card on the intro page is the
+				// canonical example) need the un-normalized alias too.
+				if (pdfPart.docId) {
+					for (const idVariant of idShapedAliasesForDocSourceUrl(
+						pdfPart.sourceUrl,
+						pdfPart.docId,
+					)) {
+						pageIndexByUrl.set(idVariant, dest);
+						const canon = canonicalizeFileUrlForPdfMatching(idVariant);
+						if (canon !== idVariant) {
+							pageIndexByUrl.set(canon, dest);
+						}
+						for (const httpsAlias of publicHttpsAliasesForFileLinkTarget(
+							idVariant,
+							publicBase,
+						)) {
+							pageIndexByUrl.set(httpsAlias, dest);
+						}
+					}
+				}
 
 				for (const destination of pdfPart.localDestinations || []) {
 					const destWithHeading: PDFDestinationTarget = {
@@ -1305,7 +1250,11 @@ class PDFGenerator {
 							pageIndexByUrl.set(canon, destWithHeading);
 						}
 					}
-					for (const httpsAlias of publicHttpsAliasesForFileDocUrl(
+					// Use the link-target alias helper so the heading fragment
+					// survives into the https key — Chromium-emitted href
+					// `https://docs.kamiwaza.ai/<route>#<heading>` only matches
+					// when the destinations map has that exact fragmented URL.
+					for (const httpsAlias of publicHttpsAliasesForFileLinkTarget(
 						destination.url,
 						publicBase,
 					)) {

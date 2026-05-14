@@ -142,6 +142,12 @@ export const resolveDocRelativeHashRoute = (
  * Translate an `<a href>` into the URL the PDF link annotation should target
  * when the offline shell is loaded under `file://` with the hash router.
  *
+ * - Hash routes (`#/route`, `#/route#anchor`) → return as-is on the same
+ *   `<index>.html` shell so PDF merge keys match. Docusaurus' Link component
+ *   renders the bulk of internal links in this shape, so misclassifying them
+ *   as bare fragments is the difference between every internal link landing
+ *   on its target page in the merged PDF and every internal link silently
+ *   falling back to the public docs site.
  * - Absolute paths (`/...`)            → `<index>.html#/...` so PDF merge keys
  *   match the hash-route entries instead of resolving against the filesystem
  *   root (`file:///0.12.0/...`).
@@ -170,6 +176,16 @@ export const resolveOfflineFileSpaHref = (
 
 	const baseFile = location.href.split("#")[0] || location.href;
 
+	// Hash route emitted by Docusaurus' Link component under HashRouter
+	// (e.g. `#/quickstart`, `#/quickstart#section`, `#/`). These already encode
+	// the full destination route — passing them through resolveDocRelativeHashRoute
+	// would treat the leading `#/...` as a same-page fragment and produce
+	// `#/<currentRoute>#/<route>` (a dead key that misses the merge map and
+	// gets rewritten to a public docs URL).
+	if (rawHref.startsWith("#/")) {
+		return `${baseFile}${rawHref}`;
+	}
+
 	if (rawHref.startsWith("/") && !rawHref.startsWith("//") && rawHref.length > 1) {
 		return `${baseFile}#${rawHref}`;
 	}
@@ -194,6 +210,89 @@ export const resolveOfflineFileSpaHref = (
 	}
 
 	return anchorHref;
+};
+
+/**
+ * Rewrite an `<a href>` to the canonical `https://docs.kamiwaza.ai/<route>`
+ * URL Chrome should embed natively as a PDF Link annotation.
+ *
+ * Why https instead of `file:///…#/<route>`:
+ *   Chromium's print pipeline only emits Link/URI annotations for absolute
+ *   http(s) URLs. `file:` URIs (and same-document fragment hrefs) are dropped
+ *   silently, so the PDF renders the link text but has no clickable rect.
+ *   By feeding Chrome an https URL we let it position the rect correctly via
+ *   layout (which is the only thing we don't have a reliable substitute for —
+ *   manual annotation rects derived from getClientRects() drift from the
+ *   real PDF position when page-break-inside rules push content downward).
+ *
+ * Why https://docs.kamiwaza.ai specifically:
+ *   The merge step already publishes `https://docs.kamiwaza.ai/<route>` aliases
+ *   for every document and heading via {@link publicHttpsAliasesForFileDocUrl}.
+ *   So Chrome-emitted URI links rewrite cleanly to internal GoTo destinations
+ *   in {@link rewritePdfInternalLinks}; any link to a doc not in the merged
+ *   PDF stays as a working https URL that resolves to the public docs site.
+ *
+ * Returns null when the href should not be rewritten (mailto:, tel:, external
+ * https that already points elsewhere, javascript:, etc.).
+ *
+ * Pure / SSR-safe: shared with the in-page evaluator via toString() injection.
+ */
+export const rewriteOfflineHrefToPublicDocsHttps = (
+	rawHref: string,
+	location: { protocol: string; href: string; hash: string },
+	publicDocsOrigin: string,
+	resolveRelative: (
+		currentHash: string,
+		rawHref: string,
+	) => string | null = resolveDocRelativeHashRoute,
+): string | null => {
+	const h = rawHref.trim();
+	if (!h) {
+		return null;
+	}
+	const lower = h.toLowerCase();
+	if (
+		lower.startsWith("mailto:") ||
+		lower.startsWith("tel:") ||
+		lower.startsWith("javascript:") ||
+		lower.startsWith("data:") ||
+		lower.startsWith("blob:")
+	) {
+		return null;
+	}
+
+	const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(h);
+	if (hasScheme) {
+		// Leave external (and already-public) absolute URLs alone — Chromium
+		// embeds them natively, and {@link rewritePdfInternalLinks} converts
+		// them to GoTo destinations when their route is also in the merged PDF.
+		return null;
+	}
+
+	const base = publicDocsOrigin.replace(/\/$/, "");
+
+	if (h.startsWith("#/")) {
+		return `${base}${h.slice(1)}`;
+	}
+
+	if (h.startsWith("/") && !h.startsWith("//")) {
+		return `${base}${h}`;
+	}
+
+	if (h.startsWith("#")) {
+		const resolved = resolveRelative(location.hash || "", h);
+		if (resolved && resolved.startsWith("#/")) {
+			return `${base}${resolved.slice(1)}`;
+		}
+		return null;
+	}
+
+	// Doc-relative (security/foo, ../bar, ./baz, plain.md, etc.)
+	const resolved = resolveRelative(location.hash || "", h);
+	if (resolved && resolved.startsWith("#/")) {
+		return `${base}${resolved.slice(1)}`;
+	}
+	return null;
 };
 
 export const isAnnotatableDocHrefForPdfCapture = (rawHref: string): boolean => {
@@ -280,6 +379,90 @@ export function publicHttpsAliasesForFileDocUrl(
 		for (const t of buildLinkTargetUrlVariants(https)) {
 			out.add(t);
 		}
+	}
+	return [...out];
+}
+
+/**
+ * Like {@link publicHttpsAliasesForFileDocUrl} but preserves the heading
+ * fragment so heading destinations (`…#section-id`) get registered with their
+ * full https URL. Without this, `<a href="https://docs.kamiwaza.ai/quickstart#section">`
+ * (the post-rewrite href Chromium embeds for in-doc TOC entries) misses the
+ * heading destination and stays as a public URL instead of a same-PDF GoTo.
+ */
+export function publicHttpsAliasesForFileLinkTarget(
+	fileLinkUrl: string,
+	publicDocsOrigin: string,
+): string[] {
+	const out = new Set<string>();
+	for (const variant of buildLinkTargetUrlVariants(fileLinkUrl)) {
+		const https = fileHashUriToPublicDocsHttps(variant, publicDocsOrigin);
+		if (!https) {
+			continue;
+		}
+		for (const t of buildLinkTargetUrlVariants(https)) {
+			out.add(t);
+		}
+	}
+	return [...out];
+}
+
+/**
+ * Compute the additional `<index>.html#/<docId>` URL aliases that won't be
+ * produced from a doc's route alone, because Docusaurus collapses certain
+ * id suffixes when assigning slugs:
+ *
+ *   `sdk/intro`     → route `/sdk`     (SDK plugin home)
+ *   `foo/index`     → route `/foo`     (directory index docs)
+ *   `intro`         → route `/`        (main docs home)
+ *
+ * Markdown (and raw HTML) inside other docs frequently writes these links
+ * using the original id form — e.g. `<a href="sdk/intro">` in the doc-card
+ * grid on the intro page. The route-based merge keys
+ * (`https://docs.kamiwaza.ai/sdk`) don't match the rewritten link
+ * (`https://docs.kamiwaza.ai/sdk/intro`), so the link silently falls back to
+ * the public docs site. Registering the id-shaped alias closes that gap.
+ *
+ * Returns an empty array if no extra alias is needed (the id already equals
+ * the normalized route).
+ */
+export function idShapedAliasesForDocSourceUrl(
+	fileDocUrl: string,
+	docId: string,
+): string[] {
+	if (!docId) {
+		return [];
+	}
+	let parsed: URL;
+	try {
+		parsed = new URL(fileDocUrl);
+	} catch {
+		return [];
+	}
+	if (parsed.protocol !== "file:" || !parsed.hash.startsWith("#/")) {
+		return [];
+	}
+
+	// What does the docId imply the route should be? Mirror the in-script
+	// `normalizeDocRouteId` collapse so we add aliases only when the id form
+	// actually differs from the route form.
+	const idAsRoute = "/" + docId.replace(/^\/+/, "");
+
+	const collapsedFromId = idAsRoute
+		.replace(/\/intro$/u, "")
+		.replace(/\/index$/u, "");
+	const normalizedIdRoute = collapsedFromId === "" ? "/" : collapsedFromId;
+	if (normalizedIdRoute === idAsRoute) {
+		// Id has no collapsible suffix — the standard alias generation
+		// already covers this doc.
+		return [];
+	}
+
+	const base = `file://${parsed.pathname}`;
+	const idVariant = `${base}#${idAsRoute}`;
+	const out = new Set<string>();
+	for (const v of buildLinkTargetUrlVariants(idVariant)) {
+		out.add(v);
 	}
 	return [...out];
 }
