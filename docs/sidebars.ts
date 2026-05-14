@@ -47,6 +47,11 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: "category",
+			label: "Workrooms",
+			items: ["workrooms/runtime-contract"],
+		},
+		{
+			type: "category",
 			label: "Security",
 			items: [
 				"security/admin-guide",
@@ -69,6 +74,8 @@ const sidebars: SidebarsConfig = {
 				"models/deployment",
 				"models/bedrock",
 				"models/aws-transcribe",
+				"models/openai-compatible-chat",
+				"models/openai-compatible-transcribe",
 				"models/troubleshooting",
 			],
 		},

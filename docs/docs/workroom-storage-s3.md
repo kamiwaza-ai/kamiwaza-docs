@@ -45,6 +45,8 @@ The IAM identity should be allowed to perform at least:
 
 ## Configuration Model
 
+*(Note: `install-prod.sh` natively supports configuring these values during deployment via standard Helm values overrides.)*
+
 The `core` chart exposes a single object-storage configuration block:
 
 ```yaml
@@ -94,20 +96,28 @@ kubectl create secret generic core-s3 \
 
 ### 2. Prepare a Configuration Override
 
-Create a configuration override file for your deployment workflow, for example `aws-s3.yaml`:
+If you deploy Kamiwaza through the `deploy` repo Helmfile workflow, add this to
+`deploy/cluster/values/overrides.yaml`.
+
+The umbrella chart passes these values to the `core` subchart, so the override
+must be nested under `core.context.objectStorage`:
 
 ```yaml
-context:
-  objectStorage:
-    defaultBucket: "my-kamiwaza-artifacts"
-    defaultRegion: "us-west-2"
-    defaultPrefix: "context/raw"
-    credentialsSecretRef:
-      name: "core-s3"
-      accessKeyIdKey: "access_key_id"
-      secretAccessKeyKey: "secret_access_key"
-      sessionTokenKey: "session_token"
+core:
+  context:
+    objectStorage:
+      defaultBucket: "my-kamiwaza-artifacts"
+      defaultRegion: "us-west-2"
+      defaultPrefix: "context/raw"
+      credentialsSecretRef:
+        name: "core-s3"
+        accessKeyIdKey: "access_key_id"
+        secretAccessKeyKey: "secret_access_key"
+        sessionTokenKey: "session_token"
 ```
+
+If you are applying values directly to the `core` chart instead of the umbrella
+chart, use the same structure without the top-level `core:` wrapper.
 
 For AWS S3, leave `endpointUrl` empty.
 
@@ -117,19 +127,25 @@ Apply the updated values through your standard Helm or cluster release workflow.
 
 ## Option 2: Ambient AWS Credentials
 
-Use this option if your cluster already provides AWS credentials to pods through IAM roles or another AWS-native mechanism.
+Use this option if your cluster already provides AWS credentials to pods through
+IAM roles or another AWS-native mechanism.
 
-In this case, do not create a Secret. Only set the bucket and region:
+In this case, do not create a Secret. If you deploy through the `deploy` repo,
+add this to `deploy/cluster/values/overrides.yaml`:
 
 ```yaml
-context:
-  objectStorage:
-    defaultBucket: "my-kamiwaza-artifacts"
-    defaultRegion: "us-west-2"
-    defaultPrefix: "context/raw"
-    credentialsSecretRef:
-      name: ""
+core:
+  context:
+    objectStorage:
+      defaultBucket: "my-kamiwaza-artifacts"
+      defaultRegion: "us-west-2"
+      defaultPrefix: "context/raw"
+      credentialsSecretRef:
+        name: ""
 ```
+
+If you are applying values directly to the `core` chart instead of the umbrella
+chart, use the same structure without the top-level `core:` wrapper.
 
 Apply the updated values through your standard Helm or cluster release workflow.
 
@@ -202,6 +218,7 @@ This usually means core does not see `CONTEXT_SERVICE_S3_DEFAULT_BUCKET`.
 Check:
 
 - your Helm values file includes `context.objectStorage.defaultBucket`
+- if you are using the `deploy` repo umbrella chart, make sure the override is nested under `core.context.objectStorage`, not top-level `context.objectStorage`
 - the `core-config` ConfigMap contains `CONTEXT_SERVICE_S3_DEFAULT_BUCKET`
 - the scheduler and Ray pods were restarted after the config change
 

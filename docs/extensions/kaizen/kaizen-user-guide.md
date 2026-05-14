@@ -180,9 +180,35 @@ To get the best results:
 
 If a response should be grounded but comes back without citations, check whether the relevant data source, skill, or retrieval path is configured in your environment.
 
+### Related Data Suggestions
+
+Current Kaizen builds can show a **Related Data Suggestions** card around an active conversation.
+This panel aggregates likely useful:
+
+- workspace files
+- published or attached skills
+- Microsoft 365 results
+
+Each suggestion includes a score and a short reason so you can decide whether to pull that source
+into the conversation. Kaizen keeps partial results visible even if one source is degraded. For
+example, if an M365 connector is unavailable or a search times out, the panel can still show file
+or skill suggestions together with a diagnostic note instead of failing the entire suggestion pass.
+
+Use this panel when you want to ground the next turn, find the right file faster, or understand why
+Kaizen thinks a specific skill or document may help with the current task.
+
 ### Downloading Results
 
 Any files created by the agent, including reports, charts, code, and presentations, appear in the workspace panel on the right side of the chat. You can preview and download them directly.
+
+Preview behavior depends on file type. In current releases, Kaizen can render:
+
+- presentations as slide previews
+- DOCX files as extracted inline text
+- images such as SVG and WEBP inline in the browser
+- CSV and Excel files in a table view
+
+If a file type is not previewable in place, use the same panel to download it.
 
 ---
 

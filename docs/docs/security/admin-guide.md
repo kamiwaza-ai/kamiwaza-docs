@@ -138,6 +138,48 @@ Administrators should be able to verify:
 - session expiration or revocation behavior
 - enough request context to support incident response or accreditation evidence
 
+### Audit coverage
+
+- All state-changing API operations emit an audit record (actor, target, action, request id, and outcome).
+- A denied-request audit middleware records `401` and `403` responses so failed access attempts leave a trail even when the downstream handler is never invoked.
+- Audit records are surfaced through the same observability path as other security logs.
+
+**What is not audited.** Read-only `GET` requests that succeed are not individually audited — only denied reads (`401`/`403`) and state-changing operations are. Internal health probes, static-asset fetches, and identity-provider redirect callbacks are excluded to keep the audit trail signal-to-noise high. Payload bodies are not captured; audit records store identifiers and outcome, not request/response contents.
+
+**Retention and storage.** Audit records are emitted to the deployment's configured observability sink (the same path as other security logs — Kubernetes-native logging, OpenTelemetry collector, or the Kamiwaza UI log viewer). Retention is governed by that sink's configuration, not by Kamiwaza itself: set retention on your log backend (for example, Loki, Elasticsearch, or a SIEM) to match your accreditation requirements. There is no Kamiwaza-internal audit database with its own retention window.
+
+### Authenticated-by-default API surface
+
+The platform now applies the `AuthenticatedUser` dependency to all non-exempt endpoints, including admin and destructive routes. The effective contract:
+
+- Every API endpoint requires an authenticated caller unless explicitly exempt (health, login, public metadata).
+- Admin and destructive endpoints additionally require the appropriate role or scope.
+- The OpenAPI spec now documents auth requirements per endpoint — use it as the source of truth when integrating. The spec is served by the platform at `/api/openapi.json` (with an interactive browser at `/api/docs`) on the deployment's own hostname.
+
+### Cluster trust and machine-to-machine federation
+
+For multi-cluster and federated deployments, identity headers from peer services are only honored when signed by a trusted cluster identity. Unsigned requester-identity headers are now distrusted and dropped. Operators federating two Kamiwaza clusters must exchange cluster trust material as part of deployment; contact Kamiwaza Support for the per-environment procedure.
+
+**Rotation, revocation, and compromise.** Cluster trust material is long-lived but not permanent. Rotation, revocation on decommission, and response to suspected key compromise are deployment-specific procedures and are not exposed as a self-service UI in the platform. If you need to rotate or revoke a peer cluster's trust material, or if you suspect a cluster identity has been compromised, contact Kamiwaza Support for the per-environment procedure — do not attempt to edit signing material in running pods. Until a compromised identity is revoked through the supported path, isolate the affected cluster at the network layer.
+
+### Local (non-SSO) user password policy
+
+When local authentication is enabled, new users must supply a valid email address and a password meeting the platform's strength policy at creation. Administrators provisioning local users should budget for:
+
+- distributing per-user email addresses (no shared logins)
+- communicating the password-strength requirements to end users
+- rotating any seeded credentials that pre-date the policy
+
+**Policy specifics.**
+
+- **Minimum length:** 12 characters. Shorter passwords are rejected at creation and at rotation.
+- **Complexity:** the platform does not enforce a fixed character-class rule (upper/lower/digit/symbol); length is the primary control. Deployments that require explicit complexity rules should federate to an external IdP that enforces them.
+- **Reuse and expiry:** the local store does not enforce password history or forced expiry. If these are required for accreditation, use an external IdP (for example, Keycloak) rather than local auth.
+- **Lockout:** the local store does not implement per-user lockout on repeated failed logins. Rate-limiting and lockout should be enforced at the IdP or at the ingress layer for deployments that require it.
+- **Hash at rest:** passwords are stored as PBKDF2-HMAC-SHA256 with a per-user random salt and 200,000 iterations. Plaintext passwords are never persisted. The hash and salt are held in the platform's identity store alongside the rest of the user record.
+
+For environments with stricter requirements (rotation cadence, history depth, lockout, complexity classes), run in auth-enabled mode against your IdP rather than relying on local auth.
+
 For broader deployment logging guidance, see:
 
 - [Observability](../observability.md)

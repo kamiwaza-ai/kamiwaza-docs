@@ -44,6 +44,23 @@ Your local `docker-compose.yml` can and should use host port mappings, bind moun
 * Tool names start with `tool-` or `mcp-`
 * Service names start with `service-`
 
+### Per-service `healthCheck`
+
+An extension service can declare a per-service health probe in its service spec via a `healthCheck` block. When present, the platform uses it to gate readiness for that service independently of the app-level `/health` endpoint. Useful for tools or services that expose readiness on a non-default path or need custom timing.
+
+```yaml
+# inside your service spec
+healthCheck:
+  path: /healthz
+  intervalSeconds: 10   # probe cadence, in seconds
+  timeoutSeconds: 3     # per-probe timeout, in seconds
+  failureThreshold: 3   # consecutive failures before the service is marked unready
+```
+
+All duration fields are **seconds** (not milliseconds). Minimums are `intervalSeconds: 1`, `timeoutSeconds: 1`, `failureThreshold: 1`.
+
+If `healthCheck` is omitted, the platform keeps the previous app-level `/health` probe behavior.
+
 ## Getting Started
 
 ### Install the CLI
@@ -91,8 +108,9 @@ This authenticates via the Kamiwaza SDK, stores a PAT locally, and configures th
 ### Create an extension
 
 ```bash
-kz-ext create --type app --name my-app
+mkdir my-app
 cd my-app
+kz-ext create --type app --name my-app
 ```
 
 This creates a production-ready app with a styled frontend and fully-wired backend:
@@ -179,6 +197,18 @@ These bind mounts and dev entrypoints exist only in your local `docker-compose.y
 
 For extensions that don't need Kamiwaza integration (e.g., a standalone tool that will be accessed by apps but doesn't call Kamiwaza APIs itself), `kz-ext dev local` still works — it just runs docker-compose without the SDK configuration.
 
+#### Local auth bridge (`--auth`)
+
+By default, `kz-ext dev local` runs with `KAMIWAZA_USE_AUTH=false` so the session router returns an anonymous identity. To exercise the real ForwardAuth flow against your connected instance — useful when iterating on auth-gated routes, role checks, or workroom scoping — pass `--auth`:
+
+```bash
+kz-ext dev local --auth
+```
+
+This stands up a local sidecar that injects the same identity headers (`X-User-Id`, `X-User-Email`, `X-Workroom-Id`, etc.) the platform would inject in a deployed extension, sourced from your `kz-ext login` session. `X-Workroom-Id` defaults to the global-workroom sentinel (`ffffffff-ffff-ffff-ffff-ffffffffffff`); set `--workroom <uuid>` to scope to a specific workroom. The bridge also configures Docker `host-gateway` routing so the local backend can reach a host-loopback Kamiwaza ingress (e.g. `https://kamiwaza.test`) without manual `host.docker.internal` plumbing.
+
+`--auth` is most useful for `app` scaffolds that exercise authenticated browser flows. Tool and service scaffolds typically don't need it.
+
 ### Deployed development
 
 When you need to test in the full platform environment — real ingress, real auth flows, real workroom scoping:
@@ -217,6 +247,12 @@ The deployed dev loop is:
 4. Repeat.
 
 Each run builds only what changed (Docker layer caching), pushes a uniquely-tagged image, and updates the running extension. The Kubernetes operator handles the rolling update. No version bumps. No registry builds. No manual redeploy.
+
+:::note Rollout characteristics
+
+The PATCH-update path uses the standard Kubernetes rolling-update strategy on the underlying Deployment. In-flight requests at the moment a pod is replaced may be dropped — under default container settings this typically registers as a small spike of `connection reset` / `502` errors during the rollout window (low-loss, but not strictly zero-downtime). For most dev iteration this is invisible; for live user traffic, design idempotent retries on the client or pin pods with a `lifecycle.preStop` hook in your service spec.
+
+:::
 
 Options:
 
@@ -646,6 +682,30 @@ Example:
 }
 ```
 
+### Deployment inspection
+
+For deployment inspection and day-to-day operations, prefer the supported SDK and CLI surfaces
+instead of hardcoding raw platform endpoints in your extension code. In practice that means
+leaning on commands such as `kz-ext status` and the shared runtime libraries rather than treating
+the platform's internal API paths as part of your extension contract.
+
+### Workroom-scoped runtime sessions {#runtime-launch-tokens}
+
+If your extension launches a runtime inside a workroom, use the generated auth and session
+scaffolding plus the shared SDK helpers instead of wiring token handling by hand.
+
+- Keep `SessionProvider`, `AuthGuard`, and `create_session_router()` in place for browser and
+  session lifecycle behavior.
+- Use `KamiwazaExtClient.from_env()` and `forward_auth_headers()` when your backend calls
+  Kamiwaza APIs on behalf of the active user.
+- Treat any runtime launch token as opaque and short-lived. Do not parse it, log it, persist it
+  outside the active runtime session, or pass it in a URL query string.
+- If a downstream platform call returns `401`, fetch a fresh runtime launch token through the
+  supported platform flow and retry once rather than looping retries.
+
+For the public platform contract around workroom-scoped runtimes, membership enforcement, and
+collaboration streams, see [Workroom Runtime Contract](/workrooms/runtime-contract).
+
 ### Writing portable code
 
 Use the library's config and client classes rather than reading environment variables directly. This ensures your code works in both local and deployed modes:
@@ -731,11 +791,14 @@ The conversion tool uses an AI agent to analyze and modify your existing code:
 
 All file modifications are tracked by git — review with `git diff` and revert anything you disagree with.
 
-The AI agent supports multiple LLM providers:
+The AI agent supports multiple LLM providers, picked in this order:
 
-* **OpenAI-compatible** (priority): Set `OPENAI_API_KEY`. Set `OPENAI_BASE_URL` for Kamiwaza, vLLM, Ollama, or any OpenAI-compatible endpoint.
-* **Anthropic**: Set `ANTHROPIC_API_KEY`.
-* **No API key**: Falls back to basic `kamiwaza.json` generation with a compatibility report.
+* **Claude CLI** / **Codex CLI** (subscription auth): If `claude` or `codex` is on your `PATH` and already authenticated (e.g. you've run `claude login`), `kz-ext convert` reuses that session — no API key needed. This is the most convenient path if you already use either CLI day-to-day.
+* **OpenAI-compatible** (API key): Set `OPENAI_API_KEY`. Set `OPENAI_BASE_URL` for Kamiwaza, vLLM, Ollama, or any OpenAI-compatible endpoint.
+* **Anthropic** (API key): Set `ANTHROPIC_API_KEY`.
+* **No credentials**: Falls back to basic `kamiwaza.json` generation with a compatibility report — useful for a quick read on what would need to change without mutating files.
+
+The agent also handles monorepo layouts (it discovers per-app `Dockerfile` / `package.json` / `requirements.txt` under a configurable subdirectory), and can vendor template files via copy rather than symlink when needed for distroless dev-local builds.
 
 Preview without modifying files:
 
@@ -752,6 +815,32 @@ kz-ext validate         # Verify everything passes
 kz-ext dev local        # Test locally
 kz-ext dev              # Deploy to Kamiwaza
 ```
+
+## Updating Scaffolds When the Template Evolves
+
+When the `kz-ext` CLI ships a newer template (new generated files, refreshed proxy routes, updated `AGENTS.md`, etc.), existing scaffolded extensions can pick up the changes without a full rescaffold:
+
+```bash
+kz-ext update
+```
+
+`update` reconciles only **template-owned files** — the wiring scaffolded by `kz-ext create`. Author-owned files (your `src/`, your routes, anything you've added or substantially edited) are never touched. Each template-owned file gets one of three strategies:
+
+* **`overwrite`** — replaced unconditionally; a `.orig` backup is written if your on-disk copy differs from the new template.
+* **`preserve_if_modified`** — replaced only if the on-disk copy is identical to the previous template render. If you've edited it, the file is skipped (or, in interactive mode, you see a unified diff and choose `apply` / `keep`).
+* **`merge`** — reserved for future smart-merge; v1 behaves as `preserve_if_modified`.
+
+Modes:
+
+```bash
+kz-ext update                     # interactive — prompts on every conflict
+kz-ext update --dry-run           # print planned changes only; no writes
+kz-ext update --force             # apply all template-owned updates, write .orig on conflicts
+kz-ext update --non-interactive   # fail with non-zero exit on the first conflict (for CI)
+kz-ext update --bootstrap         # adopt current state as baseline for older scaffolds
+```
+
+The set of template-owned files is enumerated explicitly in code (not glob-based) — there are no surprises about what `update` can or can't touch. Use `--dry-run` first when in doubt; review the proposed diff with `git diff` after running.
 
 ## Validation
 
@@ -802,6 +891,37 @@ This stores named profiles that `kz-ext publish --stage <profile>` uses to deter
 Profiles can be stored at the user level (`~/.kamiwaza/profiles/`) or at the repo level (`.kz-ext/profiles/` — useful for team-shared configs). Repo-level profiles override user-level profiles by name.
 
 You do not need publish profiles for the dev loop — `kz-ext dev` only needs the Kamiwaza instance connection from `kz-ext login`.
+
+#### Profile JSON shape
+
+Behind the CLI, each profile is just a JSON file at `~/.kamiwaza/profiles/<name>.json` (file mode `0600`). You can edit it directly if you'd rather not re-run the CLI:
+
+```json
+{
+  "name": "dev",
+  "registry": "ghcr.io/my-org",
+  "catalog_endpoint": "https://my-account.r2.cloudflarestorage.com",
+  "catalog_bucket": "dev-info",
+  "catalog_credentials": "aws-profile:my-dev-profile",
+  "catalog_prefix": "",
+  "created_at": "2026-05-06T00:00:00.000000+00:00"
+}
+```
+
+The `catalog_credentials` field accepts:
+
+* **`aws-profile:<name>`** — `kz-ext` runs `boto3.Session(profile_name="<name>")`, which reads `~/.aws/credentials`. This is the most reliable option for Cloudflare R2 (where you've already configured an `r2.cloudflarestorage.com` profile in `~/.aws/config` with `region = auto`).
+* **`env`** — `kz-ext` runs `boto3.Session()` with no args. boto3 then resolves credentials from the standard chain: `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` exported in the shell, or `AWS_PROFILE` if set. **Note:** `kz-ext publish` does not load `.env` files — these env vars must be exported in the shell that runs the command (or set in your CI environment). If you have a repo-level `.env` with custom variable names like `AWS_PROFILE_DEV=…`, those are not picked up; either export them with `eval $(grep '^AWS_' .env | xargs)` first, or switch the profile to `aws-profile:<name>` (recommended).
+* **`sso`** — reserved for Cloudflare SSO; not yet implemented for `kz-ext publish`. Use `aws-profile:<name>` with an SSO-configured AWS profile instead.
+
+#### Endpoint and credentials must match
+
+The `catalog_endpoint` and the credentials you point at have to be for the same provider. R2 keys talk to R2 endpoints; AWS S3 keys talk to AWS S3 endpoints. Common signs of a mismatch:
+
+* `Unable to locate credentials` — boto3 can't find any credentials at all. Either `~/.aws/credentials` has no `[<profile>]` section by that name, or `catalog_credentials` is `"env"` and no AWS env vars are exported. Fix: confirm `aws --profile <name> sts get-caller-identity` works from your shell, then make sure your kz-ext profile points at that AWS profile.
+* `An error occurred (InvalidAccessKeyId) when calling the GetObject operation` — boto3 found credentials, but the *provider* rejected them. This usually means the endpoint and the keys are for different providers (e.g., R2 keys hitting `s3.amazonaws.com`, or AWS keys hitting `r2.cloudflarestorage.com`). Fix: align `catalog_endpoint` with whichever provider holds the keys.
+
+A quick way to check whether an AWS profile is configured for R2: `grep -A2 '\[profile <name>\]' ~/.aws/config` — R2 profiles typically have `region = auto`.
 
 ## Releasing
 
@@ -969,18 +1089,22 @@ app = mcp.create_fastapi_app()
 | `kz-ext login <url>`                              | Connect to a Kamiwaza instance                               |
 | `kz-ext create --type app --name my-app`          | Create a new extension                                       |
 | `kz-ext dev local`                                | Run locally with docker-compose + SDK (auto-detects port conflicts) |
+| `kz-ext dev local --auth`                         | Run locally with the ForwardAuth identity bridge enabled     |
 | `kz-ext dev local --sdk-repo <path>`              | Run locally with local SDK runtime libs (volume mount)       |
 | `kz-ext dev`                                      | Build, push, and deploy to Kamiwaza                          |
 | `kz-ext dev --sdk-repo <path>`                    | Build with local SDK libs baked into images, then deploy     |
 | `kz-ext dev --no-build`                           | Push and deploy (skip build)                                 |
 | `kz-ext dev --service backend`                    | Rebuild one service only                                     |
+| `kz-ext update`                                   | Reconcile a scaffold against the current template (interactive by default; supports `--dry-run` / `--force` / `--non-interactive` / `--bootstrap`) |
+| `kz-ext bump <major\|minor\|patch>`               | Bump the version in `kamiwaza.json`                          |
 | `kz-ext validate`                                 | Check extension requirements                                 |
-| `kz-ext doctor`                                   | Check CLI compatibility, tools, connection, and SDK override config |
+| `kz-ext doctor`                                   | Check CLI compatibility, tools, connection, SDK override config, and per-failure-class auth hints |
 | `kz-ext convert /path`                            | AI-powered conversion of existing app to extension           |
 | `kz-ext config publish-profile <name>`            | Configure a named publish profile                            |
 | `kz-ext config publish-profile --list`            | List all publish profiles                                    |
 | `kz-ext publish --stage <profile>`                | Publish to extension catalog                                 |
 | `kz-ext publish --stage <profile> --dry-run`      | Preview what would be published                              |
+| `kz-ext publish --stage <profile> --revision <sha>` | Override the published image tag (CI integration)          |
 | `kz-ext status`                                   | Show deployment status and URL                               |
 | `kz-ext logs [--service name] [--follow]`         | Stream logs from deployed extension                          |
 | `kz-ext shell [--service name]`                   | Exec into a running container                                |
@@ -1008,7 +1132,7 @@ pip install --upgrade kamiwaza-extensions-lib           # Python runtime library
 npm update @kamiwaza-ai/extensions-lib                  # TypeScript runtime library
 ```
 
-After upgrading, run `kz-ext doctor` to verify compatibility with your extension's declared `kz_ext_version` range. No template syncing — the intelligence lives in installed packages, not copied files in your repo.
+After upgrading, run `kz-ext doctor` to verify compatibility with your extension's declared `kz_ext_version` range. The intelligence lives in installed packages, not copied files in your repo — but a small set of generated wiring (proxy routes, `AGENTS.md`, etc.) is template-owned. To pick up template changes shipped with a newer CLI, run `kz-ext update` (see [Updating Scaffolds When the Template Evolves](<#updating-scaffolds-when-the-template-evolves>)).
 
 ### How do I handle authentication?
 

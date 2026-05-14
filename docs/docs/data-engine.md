@@ -9,6 +9,7 @@ Kamiwaza’s Distributed Data Engine (DDE) aligns unstructured and tabular conte
 - The current Kamiwaza platform is deployed and available over HTTPS.
 - You have administrative access to configure connectors and manage secrets.
 - Target storage (Kamiwaza vector database or an external store) is reachable from the ingestion workers.
+- The platform uses a dedicated, standalone OpenAI-compatible `llama.cpp` embedding service for vector generation, deployed via Helm.
 
 ## Connector workflow
 
@@ -51,6 +52,77 @@ DDE connector and document endpoints are mounted under the ingestion service wit
 - `GET /api/ingestion/api/dde/documents` – list documents for a connector
 
 Connectors carry security metadata such as `system_high` (the maximum classification allowed) and an optional `default_security_marking` applied when documents lack explicit markings.
+
+### Audio ingest
+
+Audio files submitted through the context manager are routed to the platform's OmniParse
+transcription endpoint before indexing. The context manager's supported media extensions
+are `.aac`, `.aif`, `.aiff`, `.flac`, `.m4a`, `.m4b`, `.mp3`, `.oga`, `.ogg`,
+`.opus`, `.wav`, `.wma`, plus `.mov`, `.mp4`, and `.webm` when only the audio track needs to be
+transcribed.
+
+Transcribed text enters the same extraction and indexing path as documents, so media sources appear
+in search and retrieval with the same security markings as their parent connector. No connector-side
+configuration change is required; the routing is automatic based on file type when OmniParse is
+configured.
+The automatic OmniParse path enables `use_omniparse=true` with `strict_omniparse=false` in the
+underlying context manager. That means OmniParse failures fall back to the built-in extractors where
+one exists, instead of failing the whole job immediately. For audio/video files themselves, successful
+transcription is still required to produce chunks, so empty transcription results behave like empty
+content.
+
+Current limits come from the context manager rather than a DDE-specific knob: the default decoded
+file-size limit is `100 MB` (configurable via `CONTEXT_MANAGER_MAX_FILE_SIZE`), the streaming upload ceiling is `200 MB`, and the OmniParse
+transcription timeout defaults to `300` seconds.
+
+For detailed documentation on OmniParse deployment, capabilities, and configuration options, see
+the [OmniParse Extension Guide](/extensions/omniparse/omniparse-service-guide).
+
+## DDE MCP tool
+
+Kamiwaza also ships a DDE-focused MCP tool, `tool-kamiwaza-dde`, for apps and agents that need
+to work with catalog, ingestion, retrieval, VectorDB, or knowledge-graph operations without
+building their own REST clients.
+
+| Area | Example tools | What they are used for |
+|--------|--------|--------|
+| Catalog | `search_catalog`, `get_dataset`, `add_to_catalog` | Discover dataset metadata and register datasets in the catalog. |
+| Pipelines | `ingest_source`, `ingest_document`, `create_pipeline_job`, `get_pipeline_job` | Submit content and manage ingestion jobs. |
+| Retrieval | `search_context`, `retrieve_context`, `agentic_search` | Run grounded context search and retrieval from agents. |
+| VectorDB | `list_collections`, `search_collections`, `query_vectors` | Inspect and query retrieval collections and vector stores. |
+| Knowledge graph | `add_knowledge`, `search_knowledge`, `get_memory` | Populate and query Graphiti-backed knowledge state. |
+
+The exact tool inventory can vary by release. The current line aligns the MCP surface more
+closely to the REST APIs exposed by the platform. To inspect the exact tool IDs your deployment
+exposes, send the standard MCP `tools/list` request after `initialize`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "2",
+  "method": "tools/list",
+  "params": {}
+}
+```
+
+### Session and auth flow
+
+The DDE MCP tool uses streamable HTTP MCP semantics:
+
+1. Send `initialize` to `/mcp`.
+2. Read the returned `MCP-Session-Id` and `MCP-Protocol-Version` headers.
+3. Send both headers on subsequent requests in the same session.
+
+Operational notes:
+
+- Restrict browser access with `KAMIWAZA_ALLOWED_ORIGINS`. The DDE MCP tool reads this variable
+  directly; it does not use the platform-level `KAMIWAZA_CORS_ORIGINS` setting.
+- For static service-to-service auth, set `KAMIWAZA_API_TOKEN`. If that variable is unset, the tool
+  falls back to `KAMIWAZA_API_KEY`.
+- If the incoming MCP request already carries `Authorization` or a forwarded `access_token` cookie,
+  the tool preserves that caller/session auth instead of overriding it with the static env token.
+- For end-user flows that should preserve the caller's identity, install the shared auth bridge so
+  forwarded Kamiwaza headers reach the tool and downstream APIs.
 
 ## Security markings and rate limits
 
