@@ -52,8 +52,18 @@ profiles:
 
 # Global PDF Settings
 settings:
-  # Default version (can be overridden via CLI)
-  defaultVersion: "latest"
+  # Default version (can be overridden via CLI with `--version <name>`).
+  # Allowed values:
+  #   "current"            - trunk content under docs/docs/ and docs/sdk/ (the
+  #                          "Latest" entry in the navbar dropdown). Picks up
+  #                          edits as soon as they land in the working tree;
+  #                          recommended default so the PDF always reflects the
+  #                          most recent in-development docs.
+  #   "latest"             - newest published snapshot per docs/versions.json
+  #                          (e.g. version-0.12.0/). Use this when producing a
+  #                          frozen, customer-facing artifact tied to a release.
+  #   "0.11.0", "0.5.1"... - any specific snapshot listed in versions.json.
+  defaultVersion: "current"
 
   # Output directory (relative to project root)
   outputDir: "dist/pdf"
