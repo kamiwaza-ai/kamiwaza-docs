@@ -3,18 +3,23 @@
 This guide covers a fresh Kamiwaza production install on a RHEL9 host using the
 packaged prod RPM, offline wrap bundle, and `install-prod.sh`.
 
-It is for administrators who are installing from **offline release artifacts**
-you already have (for example from your delivery package, secure file transfer, or
-your organization’s object storage). It does not describe how release packages
-are produced or built.
+It is the administrator-facing install path for current offline release artifacts.
+For field-by-field analysis and internal background, see
+`docs/install-config_final.md`.
+
+For the exact smoke-tested install flow used on `rhel-install`, see
+`docs/rhel9-offline-prod-install-smoke.sh`. It defaults to a direct host-side
+S3 pull from `builds/offline/2026-03-05_0615`, the tested `release-0.11.0`
+tags, and `AUTH_REBAC_SESSION_ENABLED=false`, but you can override those via
+env vars.
 
 ## Scope
 
 This guide assumes:
 
 - a fresh RHEL9 host
-- you have the complete offline artifact set for your release
-- you are installing from the packaged offline artifacts, not from live internet repos
+- release artifacts have already been built
+- you are installing from the packaged offline artifacts, not from live repos
 - `install-prod.sh` is the entrypoint
 
 ## Inputs You Need
@@ -32,7 +37,7 @@ Before you start, decide these values:
   - chainguard base/containers tag
 
 For many releases, all three tag groups use the same value. Do not assume that;
-confirm the correct values from your release documentation or delivery manifest.
+confirm from release metadata for the build you are installing.
 
 Historical site config blocks often include many values that are now derived
 from `--domain`, carried by chart defaults, or no longer used in the packaged
@@ -67,9 +72,9 @@ Fill in the variables for your release:
 ```bash
 DOMAIN="kamiwaza.example.com"
 ADMIN_PASSWORD="replace-me"
-RELEASE_DIR="$HOME/kamiwaza-offline-release"
+RELEASE_DIR="$HOME/kajiya-release"
 
-APP_TAG="replace-with-your-release-tag"
+APP_TAG="release-0.11.0"
 FRONTEND_TAG="${APP_TAG}"
 CONTAINERS_TAG="${APP_TAG}"
 ```
@@ -81,12 +86,11 @@ If your artifacts are already staged locally, set `RELEASE_DIR` to that path.
 
 If the release artifacts are already on disk, skip to Step 3.
 
-Example: copy from an S3 bucket and prefix where your organization staged the
-release (replace bucket, prefix, and credentials with your environment):
+Example S3 pull:
 
 ```bash
-BUCKET="your-artifact-bucket"
-PREFIX="path/to/kamiwaza-offline/<release>/"
+BUCKET="kajiya"
+PREFIX="builds/offline/<timestamp_folder>"
 
 mkdir -p "${RELEASE_DIR}"
 cd "${RELEASE_DIR}"
@@ -319,3 +323,8 @@ If you enable `AUTH_REBAC_SESSION_ENABLED="true"`, you must also provide
 
 If `/opt/kamiwaza/prereqs/rpms/` is missing after RPM install, verify that you
 installed the correct packaged prod RPM for the offline release.
+
+## Related Docs
+
+- `docs/install-config_final.md`: field-by-field analysis and admin notes
+- `infra/smoke-rhel9/OFFLINE-E2E.md`: automated two-host offline smoke flow

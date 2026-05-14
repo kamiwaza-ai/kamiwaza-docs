@@ -21,7 +21,8 @@ Confirm the deployment meets these prerequisites:
 
 For general installation and environment preparation, see:
 
-- [RHEL 9 offline installation](../installation/redhat_offline_install.md)
+- [System Requirements](../installation/system_requirements.md)
+- [Installing Kamiwaza](../installation/installation_process.md)
 - [Configuration Reference](../configuration.md)
 
 ## ReBAC Deployment Model
