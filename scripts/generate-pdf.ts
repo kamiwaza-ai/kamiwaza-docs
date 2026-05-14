@@ -34,6 +34,7 @@ import {
 	publicHttpsAliasesForFileDocUrl,
 	type PDFDestinationTarget,
 	resolveDocRelativeHashRoute,
+	resolveOfflineFileSpaHref,
 	rewritePdfInternalLinks,
 	rewriteRemainingOfflineFileUrisToPublicDocsSite,
 } from "./pdf-link-utils";
@@ -1062,52 +1063,28 @@ class PDFGenerator {
 	private async captureLocalPdfLinks(page: Page): Promise<CapturedLocalLink[]> {
 		const checkerSource = isAnnotatableDocHrefForPdfCapture.toString();
 		const resolverSource = resolveDocRelativeHashRoute.toString();
+		const spaResolverSource = resolveOfflineFileSpaHref.toString();
 		return page.evaluate(
-			(src: string, resolverSrc: string) => {
+			(src: string, resolverSrc: string, spaResolverSrc: string) => {
 				const isAnnotatableDocHrefForPdfCapture = new Function(
 					`"use strict"; return (${src});`,
 				)() as (h: string) => boolean;
 				const resolveDocRelativeHashRoute = new Function(
 					`"use strict"; return (${resolverSrc});`,
 				)() as (currentHash: string, rawHref: string) => string | null;
+				const resolveOfflineFileSpaHref = new Function(
+					`"use strict"; return (${spaResolverSrc});`,
+				)() as (
+					rawHref: string,
+					location: { protocol: string; href: string; hash: string },
+					anchorHref: string,
+					resolveRelative?: (
+						currentHash: string,
+						rawHref: string,
+					) => string | null,
+				) => string;
 				const doc = (globalThis as any).document;
 				const links: CapturedLocalLink[] = [];
-
-				function resolvedLinkHrefForFileSpa(anchor: any): string {
-					const loc = globalThis.location;
-					const raw = (anchor.getAttribute("href") || "").trim();
-					const baseFile = loc.href.split("#")[0] || loc.href;
-					if (loc.protocol === "file:") {
-						// Leading / paths must become hash routes on the Docusaurus shell; otherwise
-						// URL resolution yields file:///0.12.0/... (filesystem root) and PDF merge
-						// cannot match index.html#/0.12.0/... keys.
-						if (raw.startsWith("/") && !raw.startsWith("//") && raw.length > 1) {
-							return baseFile + "#" + raw;
-						}
-						if (raw.startsWith("#")) {
-							return baseFile + raw;
-						}
-						// Doc-relative hrefs (e.g. installation/installation_process) otherwise resolve to
-						// file:///.../build-offline/installation/... with no hash — merge cannot match.
-						const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(raw);
-						if (
-							raw &&
-							!hasScheme &&
-							!raw.startsWith("/") &&
-							!raw.startsWith("#") &&
-							!raw.startsWith("?")
-						) {
-							const resolved = resolveDocRelativeHashRoute(
-								loc.hash || "",
-								raw,
-							);
-							if (resolved) {
-								return baseFile + resolved;
-							}
-						}
-					}
-					return anchor.href as string;
-				}
 
 				for (const anchor of Array.from(
 					doc.querySelectorAll("article a"),
@@ -1145,16 +1122,26 @@ class PDFGenerator {
 						continue;
 					}
 
-					links.push({
-						url: resolvedLinkHrefForFileSpa(anchor),
-						rects,
-					});
+					const loc = globalThis.location;
+					const url = resolveOfflineFileSpaHref(
+						rawHref.trim(),
+						{
+							protocol: loc.protocol,
+							href: loc.href,
+							hash: loc.hash,
+						},
+						anchor.href as string,
+						resolveDocRelativeHashRoute,
+					);
+
+					links.push({ url, rects });
 				}
 
 				return links;
 			},
 			checkerSource,
 			resolverSource,
+			spaResolverSource,
 		);
 	}
 

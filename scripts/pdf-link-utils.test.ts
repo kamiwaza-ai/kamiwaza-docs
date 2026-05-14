@@ -19,6 +19,7 @@ import {
 	pathnameOnlyOfflineFileToPublicDocsUrl,
 	publicHttpsAliasesForFileDocUrl,
 	resolveDocRelativeHashRoute,
+	resolveOfflineFileSpaHref,
 	rewritePdfInternalLinks,
 } from "./pdf-link-utils";
 
@@ -363,5 +364,77 @@ test("resolveDocRelativeHashRoute clamps ../ traversal at the route root", () =>
 	assert.equal(
 		resolveDocRelativeHashRoute("#/0.12.0/quickstart", "../../../../intro"),
 		"#/intro",
+	);
+});
+
+const OFFLINE_INDEX_HREF =
+	"file:///tmp/build-offline/index.html#/0.12.0/installation/system_requirements";
+const OFFLINE_INDEX_BASE = "file:///tmp/build-offline/index.html";
+const OFFLINE_LOCATION = {
+	protocol: "file:",
+	href: OFFLINE_INDEX_HREF,
+	hash: "#/0.12.0/installation/system_requirements",
+};
+
+test("resolveOfflineFileSpaHref preserves the route segment for fragment-only hrefs", () => {
+	assert.equal(
+		resolveOfflineFileSpaHref(
+			"#special-considerations",
+			OFFLINE_LOCATION,
+			"file:///tmp/build-offline/installation/system_requirements#special-considerations",
+		),
+		`${OFFLINE_INDEX_BASE}#/0.12.0/installation/system_requirements#special-considerations`,
+	);
+});
+
+test("resolveOfflineFileSpaHref turns absolute paths into hash routes", () => {
+	assert.equal(
+		resolveOfflineFileSpaHref(
+			"/0.12.0/quickstart",
+			OFFLINE_LOCATION,
+			"file:///0.12.0/quickstart",
+		),
+		`${OFFLINE_INDEX_BASE}#/0.12.0/quickstart`,
+	);
+});
+
+test("resolveOfflineFileSpaHref resolves doc-relative hrefs against the current route", () => {
+	assert.equal(
+		resolveOfflineFileSpaHref(
+			"../quickstart",
+			OFFLINE_LOCATION,
+			"file:///tmp/build-offline/installation/quickstart",
+		),
+		`${OFFLINE_INDEX_BASE}#/0.12.0/quickstart`,
+	);
+});
+
+test("resolveOfflineFileSpaHref falls back to anchor.href on non-file protocols", () => {
+	assert.equal(
+		resolveOfflineFileSpaHref(
+			"#anchor",
+			{
+				protocol: "http:",
+				href: "http://localhost:3000/foo",
+				hash: "",
+			},
+			"http://localhost:3000/foo#anchor",
+		),
+		"http://localhost:3000/foo#anchor",
+	);
+});
+
+test("resolveOfflineFileSpaHref falls back to baseFile + raw when current hash is not a route", () => {
+	assert.equal(
+		resolveOfflineFileSpaHref(
+			"#anchor",
+			{
+				protocol: "file:",
+				href: OFFLINE_INDEX_BASE,
+				hash: "",
+			},
+			`${OFFLINE_INDEX_BASE}#anchor`,
+		),
+		`${OFFLINE_INDEX_BASE}#anchor`,
 	);
 });
