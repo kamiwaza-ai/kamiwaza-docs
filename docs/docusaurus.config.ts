@@ -153,6 +153,16 @@ const config: Config = {
 						label: latestSdkLabel,
 					},
 				},
+				// `api-reference.mdx` is the offline-build placeholder that the
+				// SDK sidebar swap script targets when DOCUSAURUS_OFFLINE_BUILD
+				// is set. Drop it from hosted builds so it never appears in the
+				// hosted sitemap, search index, or as a stranded URL with
+				// offline-only language. The glob is applied per version, so
+				// it covers `sdk/api-reference.mdx` and any
+				// `sdk_versioned_docs/version-*/api-reference.mdx`. Older
+				// versions ship `api-reference.md` (no `x`) with legitimate
+				// content and are unaffected.
+				exclude: offlineBuild ? [] : ["api-reference.mdx"],
 			},
 		],
 		// Extensions docs plugin
