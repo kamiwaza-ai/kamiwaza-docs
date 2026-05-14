@@ -32,6 +32,7 @@
  */
 
 const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
 const path = require("node:path");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
@@ -45,6 +46,28 @@ const transformerScript = path.join(
 let sidebarsMutated = false;
 let restoreInProgress = false;
 
+/**
+ * Map a spawnSync result to a non-zero exit code on signal-killed children.
+ *
+ * `result.status` is null when the OS killed the child with a signal (OOM,
+ * SIGTERM from a parent orchestrator, etc.). The previous implementation
+ * coerced that to 0 with `?? 0`, which would (a) skip the abort branch in
+ * the swap step and (b) make this script claim a successful offline build
+ * despite missing or partial output. Map signal kills to 128 + the signal
+ * number when we can resolve it, falling back to 1 otherwise so the
+ * non-zero contract is preserved either way.
+ */
+function statusFromSpawnResult(result) {
+	if (typeof result.status === "number") {
+		return result.status;
+	}
+	if (result.signal) {
+		const sigNumber = require("node:os").constants?.signals?.[result.signal];
+		return typeof sigNumber === "number" ? 128 + sigNumber : 1;
+	}
+	return 1;
+}
+
 function runNode(args, opts = {}) {
 	const result = spawnSync(process.execPath, args, {
 		stdio: "inherit",
@@ -53,7 +76,7 @@ function runNode(args, opts = {}) {
 	if (result.error) {
 		throw result.error;
 	}
-	return result.status ?? 0;
+	return statusFromSpawnResult(result);
 }
 
 function restoreSidebars(reason) {
@@ -64,11 +87,12 @@ function restoreSidebars(reason) {
 	console.log(
 		`Restoring SDK versioned sidebars to canonical link form (reason: ${reason}).`,
 	);
-	const status = spawnSync(
+	const result = spawnSync(
 		process.execPath,
 		[transformerScript, "--restore"],
 		{ stdio: "inherit" },
-	).status ?? 0;
+	);
+	const status = statusFromSpawnResult(result);
 	if (status === 0) {
 		sidebarsMutated = false;
 	}
@@ -90,23 +114,55 @@ function handleSignal(signal) {
 process.on("SIGINT", () => handleSignal("SIGINT"));
 process.on("SIGTERM", () => handleSignal("SIGTERM"));
 
-function runDocusaurus() {
+/**
+ * Resolve the docusaurus binary across the install layouts contributors and
+ * CI use:
+ *   - `npm install` from `docs/`  → docs/node_modules/.bin/docusaurus
+ *   - `npm install` from repo root only → root node_modules/.bin/docusaurus
+ *     (root package.json declares @docusaurus/core; that's how the PDF
+ *     auto-build path can run after a single root install)
+ *   - PATH-resolved `docusaurus` (managed installs / Nix / corepack-style
+ *     setups)
+ *
+ * Falling back to `null` when nothing resolves lets {@link runDocusaurus}
+ * surface a clear ENOENT-equivalent error message instead of spawning a
+ * non-existent binary.
+ */
+function resolveDocusaurusBin() {
 	const localBin =
 		process.platform === "win32" ? "docusaurus.cmd" : "docusaurus";
-	const docusaurusBin = path.join(docsDir, "node_modules", ".bin", localBin);
-	const result = spawnSync(
-		docusaurusBin,
-		["build", "--out-dir", "build-offline"],
-		{
-			stdio: "inherit",
-			cwd: docsDir,
-			env: { ...process.env, DOCUSAURUS_OFFLINE_BUILD: "true" },
-		},
-	);
+	const candidates = [
+		path.join(docsDir, "node_modules", ".bin", localBin),
+		path.join(repoRoot, "node_modules", ".bin", localBin),
+	];
+	for (const candidate of candidates) {
+		if (fs.existsSync(candidate)) {
+			return { bin: candidate, viaPath: false };
+		}
+	}
+	return { bin: localBin, viaPath: true };
+}
+
+function runDocusaurus() {
+	const { bin, viaPath } = resolveDocusaurusBin();
+	const result = spawnSync(bin, ["build", "--out-dir", "build-offline"], {
+		stdio: "inherit",
+		cwd: docsDir,
+		env: { ...process.env, DOCUSAURUS_OFFLINE_BUILD: "true" },
+		// PATH lookup needs `shell: true` on Windows for the .cmd shim; on POSIX
+		// spawnSync handles it natively.
+		shell: viaPath && process.platform === "win32",
+	});
 	if (result.error) {
+		if (viaPath && result.error.code === "ENOENT") {
+			throw new Error(
+				`docusaurus binary not found in docs/node_modules/.bin, root node_modules/.bin, or PATH.\n` +
+					`Run 'npm install' from either the repo root or the docs/ directory before invoking the offline build.`,
+			);
+		}
 		throw result.error;
 	}
-	return result.status ?? 0;
+	return statusFromSpawnResult(result);
 }
 
 const swapStatus = runNode([transformerScript, "--to-doc-form"]);

@@ -37,8 +37,16 @@ function cachedRealPath(filePath: string): string {
 	let resolved = filePath;
 	try {
 		resolved = fs.realpathSync(filePath);
-	} catch {
-		// keep filePath if the file is gone or not yet resolved
+	} catch (err) {
+		// Cache the unresolved path only when the file legitimately doesn't
+		// exist yet (Docusaurus references docs by URL before the build writes
+		// every file). EACCES, EBUSY, EMFILE, etc. mean realpath could resolve
+		// next time — let those propagate so we don't silently bake a wrong
+		// path into the cache for the rest of the process.
+		const code = (err as NodeJS.ErrnoException | null)?.code;
+		if (code !== "ENOENT") {
+			throw err;
+		}
 	}
 	realPathCache.set(filePath, resolved);
 	return resolved;
@@ -63,12 +71,6 @@ export function buildLinkTargetUrlVariants(url: string): string[] {
 	return buildUrlVariants(url, true);
 }
 
-/**
- * Whether to add a PDF link annotation for this raw `<a href>`.
- * Docusaurus often emits Markdown doc links as relative paths without a leading
- * slash (e.g. `security/admin-guide`); capture previously only accepted `#` and
- * `/`, so those links had no clickable region in the PDF.
- */
 /**
  * Resolves symlink/casing differences so the same build path matches between
  * `pageIndexByUrl` keys and link URI strings embedded in PDF annotations.
@@ -145,80 +147,6 @@ export const resolveDocRelativeHashRoute = (
 	const joined = "/" + baseSegments.join("/");
 	const fragment = hrefHash || nested;
 	return fragment ? `#${joined}#${fragment}` : `#${joined}`;
-};
-
-/**
- * Translate an `<a href>` into the URL the PDF link annotation should target
- * when the offline shell is loaded under `file://` with the hash router.
- *
- * - Hash routes (`#/route`, `#/route#anchor`) → return as-is on the same
- *   `<index>.html` shell so PDF merge keys match. Docusaurus' Link component
- *   renders the bulk of internal links in this shape, so misclassifying them
- *   as bare fragments is the difference between every internal link landing
- *   on its target page in the merged PDF and every internal link silently
- *   falling back to the public docs site.
- * - Absolute paths (`/...`)            → `<index>.html#/...` so PDF merge keys
- *   match the hash-route entries instead of resolving against the filesystem
- *   root (`file:///0.12.0/...`).
- * - Same-page fragments (`#anchor`)    → preserve the current hash route so
- *   the link lands on the same doc inside the merged PDF instead of stripping
- *   the route segment to `<index>.html#anchor`.
- * - Doc-relative (`./x`, `../y`, `z`)  → resolve against the current hash
- *   route via {@link resolveDocRelativeHashRoute} so doc-to-doc navigation
- *   inside the offline build matches the merge map.
- *
- * Pure / SSR-safe: lifted out of the in-page evaluator so it can be unit
- * tested directly and shared with the browser via toString() injection.
- */
-export const resolveOfflineFileSpaHref = (
-	rawHref: string,
-	location: { protocol: string; href: string; hash: string },
-	anchorHref: string,
-	resolveRelative: (
-		currentHash: string,
-		rawHref: string,
-	) => string | null = resolveDocRelativeHashRoute,
-): string => {
-	if (location.protocol !== "file:") {
-		return anchorHref;
-	}
-
-	const baseFile = location.href.split("#")[0] || location.href;
-
-	// Hash route emitted by Docusaurus' Link component under HashRouter
-	// (e.g. `#/quickstart`, `#/quickstart#section`, `#/`). These already encode
-	// the full destination route — passing them through resolveDocRelativeHashRoute
-	// would treat the leading `#/...` as a same-page fragment and produce
-	// `#/<currentRoute>#/<route>` (a dead key that misses the merge map and
-	// gets rewritten to a public docs URL).
-	if (rawHref.startsWith("#/")) {
-		return `${baseFile}${rawHref}`;
-	}
-
-	if (rawHref.startsWith("/") && !rawHref.startsWith("//") && rawHref.length > 1) {
-		return `${baseFile}#${rawHref}`;
-	}
-
-	if (rawHref.startsWith("#")) {
-		const resolved = resolveRelative(location.hash || "", rawHref);
-		return resolved ? `${baseFile}${resolved}` : `${baseFile}${rawHref}`;
-	}
-
-	const hasScheme = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(rawHref);
-	if (
-		rawHref &&
-		!hasScheme &&
-		!rawHref.startsWith("/") &&
-		!rawHref.startsWith("#") &&
-		!rawHref.startsWith("?")
-	) {
-		const resolved = resolveRelative(location.hash || "", rawHref);
-		if (resolved) {
-			return `${baseFile}${resolved}`;
-		}
-	}
-
-	return anchorHref;
 };
 
 /**
@@ -302,34 +230,6 @@ export const rewriteOfflineHrefToPublicDocsHttps = (
 		return `${base}${resolved.slice(1)}`;
 	}
 	return null;
-};
-
-export const isAnnotatableDocHrefForPdfCapture = (rawHref: string): boolean => {
-	const h = rawHref.trim();
-	if (!h) {
-		return false;
-	}
-	const lower = h.toLowerCase();
-	if (
-		lower.startsWith("mailto:") ||
-		lower.startsWith("tel:") ||
-		lower.startsWith("javascript:") ||
-		lower.startsWith("data:") ||
-		lower.startsWith("blob:")
-	) {
-		return false;
-	}
-	if (h.startsWith("#") || h.startsWith("/")) {
-		return true;
-	}
-	if (lower.startsWith("http://") || lower.startsWith("https://")) {
-		return true;
-	}
-	// Doc-relative: security/foo, ../bar, ./baz
-	if (!h.includes(":")) {
-		return true;
-	}
-	return false;
 };
 
 /**

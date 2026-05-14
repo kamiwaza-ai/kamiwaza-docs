@@ -32,8 +32,8 @@ async function main() {
 	const pages = pdf.getPages();
 	let uriCount = 0;
 	let internalNavCount = 0;
-	let fileUriSamples: string[] = [];
-	let otherUriSamples: string[] = [];
+	const fileUriSamples: string[] = [];
+	const otherUriSamples: string[] = [];
 
 	for (let pi = 0; pi < pages.length; pi++) {
 		const page = pages[pi]!;

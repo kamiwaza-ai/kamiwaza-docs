@@ -14,7 +14,6 @@
 import { type ChildProcess, spawn } from "child_process";
 import * as fs from "fs-extra";
 import * as yaml from "js-yaml";
-import * as os from "os";
 import * as path from "path";
 import { pathToFileURL } from "url";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
@@ -624,7 +623,6 @@ class PDFGenerator {
 		}
 		// Default to sequential for parity with prior behavior; opt in via
 		// PDF_CONCURRENCY for parallel runs once the host can spare RAM/CPU.
-		void os;
 		return 1;
 	}
 
@@ -655,15 +653,33 @@ class PDFGenerator {
 	}
 
 	private async findAvailablePort(startPort: number): Promise<number> {
-		const { exec } = require("child_process");
-		const util = require("util");
-		const execPromise = util.promisify(exec);
+		// Probe each candidate port by trying to bind a throwaway server. This
+		// works on every platform Node supports (the previous lsof shell-out was
+		// POSIX-only). EADDRINUSE → port is taken, try the next; any other bind
+		// error → propagate so we fail loudly instead of silently picking a
+		// port we can't actually use.
+		const net = await import("node:net");
+
+		const isAvailable = (port: number): Promise<boolean> =>
+			new Promise((resolve, reject) => {
+				const server = net.createServer();
+				server.once("error", (err: NodeJS.ErrnoException) => {
+					if (err.code === "EADDRINUSE") {
+						resolve(false);
+						return;
+					}
+					reject(err);
+				});
+				server.once("listening", () => {
+					server.close((closeErr) =>
+						closeErr ? reject(closeErr) : resolve(true),
+					);
+				});
+				server.listen(port, "127.0.0.1");
+			});
 
 		for (let port = startPort; port < startPort + 10; port++) {
-			try {
-				await execPromise(`lsof -i:${port}`);
-				continue;
-			} catch {
+			if (await isAvailable(port)) {
 				return port;
 			}
 		}

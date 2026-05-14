@@ -16,12 +16,10 @@ import {
 	canonicalizeFileUrlForPdfMatching,
 	fileOfflineUriToPublicDocsUrl,
 	idShapedAliasesForDocSourceUrl,
-	isAnnotatableDocHrefForPdfCapture,
 	pathnameOnlyOfflineFileToPublicDocsUrl,
 	publicHttpsAliasesForFileDocUrl,
 	publicHttpsAliasesForFileLinkTarget,
 	resolveDocRelativeHashRoute,
-	resolveOfflineFileSpaHref,
 	rewriteOfflineHrefToPublicDocsHttps,
 	rewritePdfInternalLinks,
 } from "./pdf-link-utils";
@@ -184,16 +182,6 @@ test("canonicalizeFileUrlForPdfMatching leaves http(s) URLs unchanged", () => {
 		canonicalizeFileUrlForPdfMatching("http://localhost:9003/a"),
 		"http://localhost:9003/a",
 	);
-});
-
-test("isAnnotatableDocHrefForPdfCapture accepts Docusaurus doc-relative hrefs", () => {
-	assert.equal(isAnnotatableDocHrefForPdfCapture("security/admin-guide"), true);
-	assert.equal(isAnnotatableDocHrefForPdfCapture("../observability"), true);
-	assert.equal(isAnnotatableDocHrefForPdfCapture("/0.12.0/quickstart"), true);
-	assert.equal(isAnnotatableDocHrefForPdfCapture("#anchor"), true);
-	assert.equal(isAnnotatableDocHrefForPdfCapture("http://localhost:9003/a"), true);
-	assert.equal(isAnnotatableDocHrefForPdfCapture("mailto:a@b"), false);
-	assert.equal(isAnnotatableDocHrefForPdfCapture("javascript:void(0)"), false);
 });
 
 test("buildDocumentUrlVariants normalizes trailing slashes and hashes", () => {
@@ -474,107 +462,6 @@ const OFFLINE_LOCATION = {
 	hash: "#/0.12.0/installation/system_requirements",
 };
 
-test("resolveOfflineFileSpaHref preserves the route segment for fragment-only hrefs", () => {
-	assert.equal(
-		resolveOfflineFileSpaHref(
-			"#special-considerations",
-			OFFLINE_LOCATION,
-			"file:///tmp/build-offline/installation/system_requirements#special-considerations",
-		),
-		`${OFFLINE_INDEX_BASE}#/0.12.0/installation/system_requirements#special-considerations`,
-	);
-});
-
-test("resolveOfflineFileSpaHref turns absolute paths into hash routes", () => {
-	assert.equal(
-		resolveOfflineFileSpaHref(
-			"/0.12.0/quickstart",
-			OFFLINE_LOCATION,
-			"file:///0.12.0/quickstart",
-		),
-		`${OFFLINE_INDEX_BASE}#/0.12.0/quickstart`,
-	);
-});
-
-test("resolveOfflineFileSpaHref resolves doc-relative hrefs against the current route", () => {
-	assert.equal(
-		resolveOfflineFileSpaHref(
-			"../quickstart",
-			OFFLINE_LOCATION,
-			"file:///tmp/build-offline/installation/quickstart",
-		),
-		`${OFFLINE_INDEX_BASE}#/0.12.0/quickstart`,
-	);
-});
-
-test("resolveOfflineFileSpaHref falls back to anchor.href on non-file protocols", () => {
-	assert.equal(
-		resolveOfflineFileSpaHref(
-			"#anchor",
-			{
-				protocol: "http:",
-				href: "http://localhost:3000/foo",
-				hash: "",
-			},
-			"http://localhost:3000/foo#anchor",
-		),
-		"http://localhost:3000/foo#anchor",
-	);
-});
-
-test("resolveOfflineFileSpaHref falls back to baseFile + raw when current hash is not a route", () => {
-	assert.equal(
-		resolveOfflineFileSpaHref(
-			"#anchor",
-			{
-				protocol: "file:",
-				href: OFFLINE_INDEX_BASE,
-				hash: "",
-			},
-			`${OFFLINE_INDEX_BASE}#anchor`,
-		),
-		`${OFFLINE_INDEX_BASE}#anchor`,
-	);
-});
-
-test("resolveOfflineFileSpaHref preserves Docusaurus Link hash routes (#/route)", () => {
-	// Docusaurus' Link component renders most internal links as `#/route` when
-	// the offline build uses HashRouter. The resolver must NOT route these
-	// through the same-page-fragment branch — otherwise `#/installation/...`
-	// becomes `#/<currentRoute>#/installation/...`, misses the merge map, and
-	// every internal link silently falls back to docs.kamiwaza.ai.
-	assert.equal(
-		resolveOfflineFileSpaHref(
-			"#/installation/installation_process",
-			OFFLINE_LOCATION,
-			`${OFFLINE_INDEX_BASE}#/installation/installation_process`,
-		),
-		`${OFFLINE_INDEX_BASE}#/installation/installation_process`,
-	);
-});
-
-test("resolveOfflineFileSpaHref preserves hash routes that include a section anchor", () => {
-	assert.equal(
-		resolveOfflineFileSpaHref(
-			"#/quickstart#1-confirm-the-kubernetes-deployment-is-healthy",
-			OFFLINE_LOCATION,
-			`${OFFLINE_INDEX_BASE}#/quickstart#1-confirm-the-kubernetes-deployment-is-healthy`,
-		),
-		`${OFFLINE_INDEX_BASE}#/quickstart#1-confirm-the-kubernetes-deployment-is-healthy`,
-	);
-});
-
-test("resolveOfflineFileSpaHref preserves the bare root hash route (#/)", () => {
-	assert.equal(
-		resolveOfflineFileSpaHref(
-			"#/",
-			OFFLINE_LOCATION,
-			`${OFFLINE_INDEX_BASE}#/`,
-		),
-		`${OFFLINE_INDEX_BASE}#/`,
-	);
-});
-
 test("rewriteOfflineHrefToPublicDocsHttps converts hash routes to canonical https URLs", () => {
 	assert.equal(
 		rewriteOfflineHrefToPublicDocsHttps(
@@ -690,5 +577,80 @@ test("rewriteOfflineHrefToPublicDocsHttps strips trailing slash from origin", ()
 			"https://docs.kamiwaza.ai/",
 		),
 		"https://docs.kamiwaza.ai/quickstart",
+	);
+});
+
+// `rewriteArticleHrefsForPdf` (in generate-pdf.ts) ships the source of these
+// two helpers to the puppeteer page via `fn.toString()` + `new Function(src)`,
+// then invokes them with `resolveDocRelativeHashRoute` passed explicitly. If a
+// future refactor accidentally references an outer-module binding from inside
+// the function body (or from a default-parameter expression evaluated when an
+// arg is omitted), the failure only surfaces at PDF generation time as a
+// browser ReferenceError. These round-trip tests rebuild each helper through
+// `Function()` with NO outer scope captured and exercise it on representative
+// inputs, locking in the closure-free contract before it ships to a browser.
+
+test("resolveDocRelativeHashRoute survives a closure-free Function() round-trip", () => {
+	const src = resolveDocRelativeHashRoute.toString();
+	const reconstituted = new Function(`"use strict"; return (${src});`)() as (
+		currentHash: string,
+		rawHref: string,
+	) => string | null;
+	// Mirrors the existing in-module assertion at "../quickstart.md" from
+	// "#/0.12.0/security/admin-guide" → the traversal goes up to /0.12.0
+	// (one segment beyond the current doc) before joining the bare name.
+	assert.equal(
+		reconstituted("#/0.12.0/security/admin-guide", "../quickstart"),
+		"#/0.12.0/quickstart",
+	);
+	assert.equal(
+		reconstituted("#/0.12.0/quickstart", "#section"),
+		"#/0.12.0/quickstart#section",
+	);
+	assert.equal(reconstituted("", "../quickstart"), null);
+});
+
+test("rewriteOfflineHrefToPublicDocsHttps survives a closure-free Function() round-trip", () => {
+	// Pass `resolveDocRelativeHashRoute` explicitly the way the page-side
+	// caller in rewriteArticleHrefsForPdf does. The reason this test matters is
+	// that the source of `rewriteOfflineHrefToPublicDocsHttps` includes a
+	// default-parameter expression (`= resolveDocRelativeHashRoute`) that
+	// references the outer module binding — never evaluated when all four args
+	// are passed (the production path), but a silent foot-gun if a future call
+	// site forgets the fourth argument inside the page context.
+	const src = rewriteOfflineHrefToPublicDocsHttps.toString();
+	const reconstituted = new Function(`"use strict"; return (${src});`)() as (
+		rawHref: string,
+		location: { protocol: string; href: string; hash: string },
+		publicDocsOrigin: string,
+		resolveRelative: (
+			currentHash: string,
+			rawHref: string,
+		) => string | null,
+	) => string | null;
+	const resolverSrc = resolveDocRelativeHashRoute.toString();
+	const resolver = new Function(
+		`"use strict"; return (${resolverSrc});`,
+	)() as (currentHash: string, rawHref: string) => string | null;
+	assert.equal(
+		reconstituted(
+			"#/installation/process",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai",
+			resolver,
+		),
+		"https://docs.kamiwaza.ai/installation/process",
+	);
+	// The OFFLINE_LOCATION hash is `#/0.12.0/installation/system_requirements`,
+	// so `../quickstart` traverses up one extra segment past the current doc
+	// to land at `/0.12.0/quickstart`.
+	assert.equal(
+		reconstituted(
+			"../quickstart",
+			OFFLINE_LOCATION,
+			"https://docs.kamiwaza.ai",
+			resolver,
+		),
+		"https://docs.kamiwaza.ai/0.12.0/quickstart",
 	);
 });

@@ -78,6 +78,36 @@ function getCurrentBranch(repoPath: string): string {
 	}
 }
 
+function getCurrentCommit(repoPath: string): string {
+	try {
+		const result = execFileSync("git", ["rev-parse", "HEAD"], {
+			cwd: repoPath,
+			encoding: "utf-8",
+			stdio: ["pipe", "pipe", "pipe"],
+		});
+		return result.trim();
+	} catch {
+		return "unknown";
+	}
+}
+
+function getOriginUrl(repoPath: string): string {
+	try {
+		const result = execFileSync(
+			"git",
+			["config", "--get", "remote.origin.url"],
+			{
+				cwd: repoPath,
+				encoding: "utf-8",
+				stdio: ["pipe", "pipe", "pipe"],
+			},
+		);
+		return result.trim();
+	} catch {
+		return "unknown";
+	}
+}
+
 async function fetchFromRunningPlatform(): Promise<string> {
 	const apiUrl =
 		process.env.KAMIWAZA_API_URL || "http://localhost:7777/openapi.json";
@@ -320,11 +350,18 @@ async function main() {
 	console.log(`\nWritten to: ${TARGET_FILE}`);
 
 	const sourceBranch = getCurrentBranch(repoPath);
+	const sourceCommit = getCurrentCommit(repoPath);
+	const sourceRemote = getOriginUrl(repoPath);
 
+	// Identify the SDK source by stable, machine-independent fields rather than
+	// the absolute checkout path. The path leaks the developer / CI workspace
+	// location (often including a username) into a tracked metadata file, which
+	// then ends up in commits / image layers consumed elsewhere.
 	const metadata = {
 		syncedAt: new Date().toISOString(),
-		sourceRepo: repoPath,
+		sourceRemote,
 		sourceBranch,
+		sourceCommit,
 		originalApiVersion: originalVersion,
 		patchedApiVersion: docsVersion,
 		endpoints: pathCount,
