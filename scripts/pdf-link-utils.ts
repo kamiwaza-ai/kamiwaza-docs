@@ -18,7 +18,16 @@ export interface PDFDestinationTarget {
 }
 
 // realpath is a stat syscall and link merging hits the same files repeatedly.
+// Module-level cache: the PDF generator runs as a one-shot CLI today, so an
+// unbounded cache is fine. {@link clearRealPathCache} exists for embedders
+// that import these utils into a long-running process (e.g. a build daemon
+// regenerating PDFs across watched filesystem changes), where stale entries
+// would shadow real path moves or grow without bound.
 const realPathCache = new Map<string, string>();
+
+export function clearRealPathCache(): void {
+	realPathCache.clear();
+}
 
 function cachedRealPath(filePath: string): string {
 	const cached = realPathCache.get(filePath);
@@ -410,21 +419,27 @@ export function publicHttpsAliasesForFileLinkTarget(
 /**
  * Compute the additional `<index>.html#/<docId>` URL aliases that won't be
  * produced from a doc's route alone, because Docusaurus collapses certain
- * id suffixes when assigning slugs:
+ * id suffixes when assigning slugs to plugins configured with `slug: '/'`:
  *
  *   `sdk/intro`     → route `/sdk`     (SDK plugin home)
  *   `foo/index`     → route `/foo`     (directory index docs)
  *   `intro`         → route `/`        (main docs home)
+ *
+ * Other plugins (extensions, research) keep the literal `…/intro` suffix in
+ * their route, so `extensions/intro` stays at `/extensions/intro`. The id
+ * form already equals the route in those cases and the standard alias
+ * generation covers them — but we can only tell by inspecting the actual
+ * route from `fileDocUrl` rather than assuming any `/intro` or `/index`
+ * suffix gets collapsed.
  *
  * Markdown (and raw HTML) inside other docs frequently writes these links
  * using the original id form — e.g. `<a href="sdk/intro">` in the doc-card
  * grid on the intro page. The route-based merge keys
  * (`https://docs.kamiwaza.ai/sdk`) don't match the rewritten link
  * (`https://docs.kamiwaza.ai/sdk/intro`), so the link silently falls back to
- * the public docs site. Registering the id-shaped alias closes that gap.
- *
- * Returns an empty array if no extra alias is needed (the id already equals
- * the normalized route).
+ * the public docs site. Registering the id-shaped alias closes that gap for
+ * docs Docusaurus actually collapsed; it returns an empty array for docs
+ * whose id form already equals their route.
  */
 export function idShapedAliasesForDocSourceUrl(
 	fileDocUrl: string,
@@ -443,18 +458,15 @@ export function idShapedAliasesForDocSourceUrl(
 		return [];
 	}
 
-	// What does the docId imply the route should be? Mirror the in-script
-	// `normalizeDocRouteId` collapse so we add aliases only when the id form
-	// actually differs from the route form.
 	const idAsRoute = "/" + docId.replace(/^\/+/, "");
+	const [actualRoute] = splitHashRoute(parsed.hash);
+	const normalizedActualRoute =
+		actualRoute === "/" ? "/" : actualRoute.replace(/\/+$/, "");
 
-	const collapsedFromId = idAsRoute
-		.replace(/\/intro$/u, "")
-		.replace(/\/index$/u, "");
-	const normalizedIdRoute = collapsedFromId === "" ? "/" : collapsedFromId;
-	if (normalizedIdRoute === idAsRoute) {
-		// Id has no collapsible suffix — the standard alias generation
-		// already covers this doc.
+	if (normalizedActualRoute === idAsRoute) {
+		// Id form already equals the route — `extensions/intro` →
+		// `/extensions/intro`, `foo/bar` → `/foo/bar`. The standard alias
+		// generation in {@link buildLinkTargetUrlVariants} already covers it.
 		return [];
 	}
 
@@ -498,6 +510,51 @@ export function pathnameOnlyOfflineFileToPublicDocsUrl(
 }
 
 /**
+ * Yields each Link annotation in the PDF that has a `/A` URI action, exposing
+ * the annot dict, its action dict, and the decoded URI string. Both
+ * {@link rewriteRemainingOfflineFileUrisToPublicDocsSite} and
+ * {@link rewritePdfInternalLinks} drive off this iterator so a future change
+ * to the Link/URI annotation shape (e.g. handling `Border`, `BS`, or
+ * non-URI actions) can be made in one place instead of two slightly
+ * out-of-sync loops.
+ */
+function* iterateLinkUriAnnotations(
+	pdfDoc: PDFDocument,
+): Iterable<{ annot: PDFDict; action: PDFDict; uri: string }> {
+	for (const page of pdfDoc.getPages()) {
+		const annots = page.node.lookupMaybe(ANNOTS, PDFArray);
+		if (!annots) {
+			continue;
+		}
+
+		for (let index = 0; index < annots.size(); index++) {
+			const annot = annots.lookup(index, PDFDict);
+			const subtype = annot.lookupMaybe(SUBTYPE, PDFName);
+			if (!subtype || subtype.asString() !== LINK.asString()) {
+				continue;
+			}
+
+			const action = annot.lookupMaybe(ACTION, PDFDict);
+			if (!action) {
+				continue;
+			}
+
+			const actionType = action.lookupMaybe(ACTION_TYPE, PDFName);
+			if (!actionType || actionType.asString() !== URI_ACTION.asString()) {
+				continue;
+			}
+
+			const uriObject = action.lookupMaybe(URI, PDFString, PDFHexString);
+			if (!uriObject) {
+				continue;
+			}
+
+			yield { annot, action, uri: uriObject.decodeText() };
+		}
+	}
+}
+
+/**
  * Replace remaining `file:` URI actions (not mapped into this PDF) with https://docs… URLs.
  */
 export function rewriteRemainingOfflineFileUrisToPublicDocsSite(
@@ -506,53 +563,26 @@ export function rewriteRemainingOfflineFileUrisToPublicDocsSite(
 ): number {
 	let rewrittenCount = 0;
 
-	for (const page of pdfDoc.getPages()) {
-		const annots = page.node.lookupMaybe(ANNOTS, PDFArray);
-		if (!annots) {
+	for (const { annot, action, uri } of iterateLinkUriAnnotations(pdfDoc)) {
+		// Skip annots that already carry a /Dest — those are internal GoTo-style
+		// destinations from a prior pass and don't need URI rewriting.
+		if (annot.get(DEST) !== undefined) {
 			continue;
 		}
 
-		for (let index = 0; index < annots.size(); index++) {
-			const annot = annots.lookup(index, PDFDict);
-			const subtype = annot.lookupMaybe(SUBTYPE, PDFName);
-			if (!subtype || subtype.asString() !== LINK.asString()) {
-				continue;
-			}
-
-			if (annot.get(DEST) !== undefined) {
-				continue;
-			}
-
-			const action = annot.lookupMaybe(ACTION, PDFDict);
-			if (!action) {
-				continue;
-			}
-
-			const actionType = action.lookupMaybe(ACTION_TYPE, PDFName);
-			if (!actionType || actionType.asString() !== URI_ACTION.asString()) {
-				continue;
-			}
-
-			const uriObject = action.lookupMaybe(URI, PDFString, PDFHexString);
-			if (!uriObject) {
-				continue;
-			}
-
-			const text = uriObject.decodeText();
-			if (!text.startsWith("file:")) {
-				continue;
-			}
-
-			let mapped =
-				fileOfflineUriToPublicDocsUrl(text, publicDocsOrigin) ??
-				pathnameOnlyOfflineFileToPublicDocsUrl(text, publicDocsOrigin);
-			if (!mapped) {
-				continue;
-			}
-
-			action.set(URI, PDFString.of(mapped));
-			rewrittenCount++;
+		if (!uri.startsWith("file:")) {
+			continue;
 		}
+
+		const mapped =
+			fileOfflineUriToPublicDocsUrl(uri, publicDocsOrigin) ??
+			pathnameOnlyOfflineFileToPublicDocsUrl(uri, publicDocsOrigin);
+		if (!mapped) {
+			continue;
+		}
+
+		action.set(URI, PDFString.of(mapped));
+		rewrittenCount++;
 	}
 
 	return rewrittenCount;
@@ -560,74 +590,43 @@ export function rewriteRemainingOfflineFileUrisToPublicDocsSite(
 
 export function rewritePdfInternalLinks(
 	pdfDoc: PDFDocument,
-	pageIndexByUrl: Map<string, number | PDFDestinationTarget>,
+	pageIndexByUrl: Map<string, PDFDestinationTarget>,
 ): number {
 	let rewrittenCount = 0;
 
-	for (const page of pdfDoc.getPages()) {
-		const annots = page.node.lookupMaybe(ANNOTS, PDFArray);
-		if (!annots) {
+	for (const { annot, uri } of iterateLinkUriAnnotations(pdfDoc)) {
+		const target = findDestinationForUrl(uri, pageIndexByUrl);
+		if (!target) {
 			continue;
 		}
 
-		for (let index = 0; index < annots.size(); index++) {
-			const annot = annots.lookup(index, PDFDict);
-			const subtype = annot.lookupMaybe(SUBTYPE, PDFName);
-			if (!subtype || subtype.asString() !== LINK.asString()) {
-				continue;
-			}
+		const targetPage = pdfDoc.getPage(target.pageIndex);
+		// PDF /XYZ with null y means "keep current vertical position" — for
+		// doc-level targets (no heading anchor) we want the top of the page.
+		const topY = target.y ?? targetPage.getHeight();
+		const destination = PDFArray.withContext(pdfDoc.context);
+		destination.push(targetPage.ref);
+		destination.push(XYZ);
+		destination.push(PDFNumber.of(0));
+		destination.push(PDFNumber.of(topY));
+		destination.push(PDFNull);
 
-			const action = annot.lookupMaybe(ACTION, PDFDict);
-			if (!action) {
-				continue;
-			}
+		// Use a GoTo action instead of a /Dest key — Acrobat reliably follows
+		// intra-document navigation for /A/S/GoTo; a bare /Dest is sometimes ignored.
+		const gotoAction = pdfDoc.context.register(
+			pdfDoc.context.obj({
+				Type: PDFName.of("Action"),
+				S: GOTO,
+				D: destination,
+			}),
+		);
 
-			const actionType = action.lookupMaybe(ACTION_TYPE, PDFName);
-			if (!actionType || actionType.asString() !== URI_ACTION.asString()) {
-				continue;
-			}
-
-			const uriObject = action.lookupMaybe(URI, PDFString, PDFHexString);
-			if (!uriObject) {
-				continue;
-			}
-
-			const target = findDestinationForUrl(
-				uriObject.decodeText(),
-				pageIndexByUrl,
-			);
-			if (!target) {
-				continue;
-			}
-
-			const targetPage = pdfDoc.getPage(target.pageIndex);
-			// PDF /XYZ with null y means "keep current vertical position" — for
-			// doc-level targets (no heading anchor) we want the top of the page.
-			const topY = target.y ?? targetPage.getHeight();
-			const destination = PDFArray.withContext(pdfDoc.context);
-			destination.push(targetPage.ref);
-			destination.push(XYZ);
-			destination.push(PDFNumber.of(0));
-			destination.push(PDFNumber.of(topY));
-			destination.push(PDFNull);
-
-			// Use a GoTo action instead of a /Dest key — Acrobat reliably follows
-			// intra-document navigation for /A/S/GoTo; a bare /Dest is sometimes ignored.
-			const gotoAction = pdfDoc.context.register(
-				pdfDoc.context.obj({
-					Type: PDFName.of("Action"),
-					S: GOTO,
-					D: destination,
-				}),
-			);
-
-			annot.delete(ACTION);
-			annot.set(ACTION, gotoAction);
-			if (annot.get(DEST) !== undefined) {
-				annot.delete(DEST);
-			}
-			rewrittenCount++;
+		annot.delete(ACTION);
+		annot.set(ACTION, gotoAction);
+		if (annot.get(DEST) !== undefined) {
+			annot.delete(DEST);
 		}
+		rewrittenCount++;
 	}
 
 	return rewrittenCount;
@@ -672,7 +671,7 @@ function buildUrlVariants(url: string, preserveFragment: boolean): string[] {
 
 function findDestinationForUrl(
 	url: string,
-	destinations: Map<string, number | PDFDestinationTarget>,
+	destinations: Map<string, PDFDestinationTarget>,
 ): PDFDestinationTarget | null {
 	const seeds = new Set<string>([url, canonicalizeFileUrlForPdfMatching(url)]);
 
@@ -683,7 +682,7 @@ function findDestinationForUrl(
 				continue;
 			}
 
-			return typeof value === "number" ? { pageIndex: value } : value;
+			return value;
 		}
 	}
 

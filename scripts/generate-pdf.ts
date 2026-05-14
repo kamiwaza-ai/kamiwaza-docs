@@ -470,6 +470,31 @@ class PDFGenerator {
 			}
 
 			if (item.type === "link") {
+				// Versioned SDK sidebars are committed in their canonical link form
+				// (`/sdk/api/` opens the live Redocusaurus reference), and the offline
+				// build mutator (scripts/transform-versioned-sdk-sidebars.cjs) only
+				// rewrites them to a `type: "doc"` referencing the api-reference
+				// placeholder once the offline Docusaurus build starts — which
+				// happens after discovery. Without this branch, every versioned PDF
+				// (`--version latest` or a specific version) would silently drop the
+				// REST API Reference page from its TOC and leave that link
+				// resolving to the public docs site instead of an in-PDF GoTo.
+				if (
+					this.isOfflineBuildMode() &&
+					namespace === "sdk" &&
+					typeof item.href === "string" &&
+					item.href.replace(/\/+$/, "") === "/sdk/api"
+				) {
+					this.addSidebarDocument(
+						"api-reference",
+						item.label || "REST API Reference",
+						documents,
+						seenIds,
+						excludeSet,
+						namespace,
+						sectionLabel,
+					);
+				}
 				continue;
 			}
 
@@ -1159,16 +1184,32 @@ class PDFGenerator {
 
 	private parseLengthToPoints(value: string): number {
 		const trimmed = value.trim();
-		if (trimmed.endsWith("mm")) {
-			return parseFloat(trimmed) * 2.83465;
+		// The number portion is everything before the trailing unit letters; capture
+		// it explicitly so an unknown suffix can't fall through to a silent
+		// `parseFloat(trimmed)` that drops the unit and quietly miscalculates page
+		// Y. Page-Y math feeds GoTo destinations and TOC headings, so a typoed
+		// `cm`/`px`/`em` margin in pdf-config.yaml needs to fail loudly rather than
+		// scroll the reader half a page off-target.
+		const match = /^(-?\d*\.?\d+)\s*([a-zA-Z]*)$/.exec(trimmed);
+		if (!match) {
+			throw new Error(
+				`Invalid length value '${value}' (expected '<number>[mm|in|pt]').`,
+			);
 		}
-		if (trimmed.endsWith("in")) {
-			return parseFloat(trimmed) * 72;
+		const numeric = parseFloat(match[1]);
+		const unit = match[2].toLowerCase();
+		if (unit === "" || unit === "pt") {
+			return numeric;
 		}
-		if (trimmed.endsWith("pt")) {
-			return parseFloat(trimmed);
+		if (unit === "mm") {
+			return numeric * 2.83465;
 		}
-		return parseFloat(trimmed);
+		if (unit === "in") {
+			return numeric * 72;
+		}
+		throw new Error(
+			`Unsupported length unit '${match[2]}' in '${value}'. Use 'mm', 'in', or 'pt'.`,
+		);
 	}
 
 	private getPageSizeInPoints(): { width: number; height: number } {

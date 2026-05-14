@@ -111,6 +111,32 @@ test("idShapedAliasesForDocSourceUrl ignores docs whose source url has no hash r
 	);
 });
 
+test("idShapedAliasesForDocSourceUrl returns no extras when Docusaurus did NOT collapse /intro", () => {
+	// The extensions plugin keeps /intro in the route (no `slug: '/'`), so the
+	// id form `extensions/intro` already matches the route `/extensions/intro`.
+	// Generating an alias here would only add a redundant entry.
+	assert.deepEqual(
+		idShapedAliasesForDocSourceUrl(
+			"file:///tmp/docs/build-offline/index.html#/extensions/intro",
+			"extensions/intro",
+		),
+		[],
+	);
+});
+
+test("idShapedAliasesForDocSourceUrl returns no extras when Docusaurus did NOT collapse /index", () => {
+	// Most non-home docs that happen to be named `index` keep the literal
+	// segment in their route — only docs whose plugin sets `slug: '/'` get the
+	// collapse. Match the actual route, not the id-suffix shape.
+	assert.deepEqual(
+		idShapedAliasesForDocSourceUrl(
+			"file:///tmp/docs/build-offline/index.html#/foo/index",
+			"foo/index",
+		),
+		[],
+	);
+});
+
 test("publicHttpsAliasesForFileLinkTarget preserves the heading fragment", () => {
 	const file =
 		"file:///tmp/docs/build-offline/index.html#/0.12.0/quickstart#section-a";
@@ -277,7 +303,9 @@ test("rewritePdfInternalLinks converts local doc URLs into internal destinations
 
 	const replacements = rewritePdfInternalLinks(
 		pdfDoc,
-		new Map([["http://localhost:9003/installation/process", 1]]),
+		new Map([
+			["http://localhost:9003/installation/process", { pageIndex: 1 }],
+		]),
 	);
 
 	assert.equal(replacements, 1);
@@ -321,7 +349,12 @@ test("rewritePdfInternalLinks converts offline file URLs into internal destinati
 
 	const replacements = rewritePdfInternalLinks(
 		pdfDoc,
-		new Map([["file:///tmp/docs/build-offline/index.html#/0.12.0/quickstart", 1]]),
+		new Map([
+			[
+				"file:///tmp/docs/build-offline/index.html#/0.12.0/quickstart",
+				{ pageIndex: 1 },
+			],
+		]),
 	);
 
 	assert.equal(replacements, 1);

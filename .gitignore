@@ -6,7 +6,10 @@
 # Docusaurus offline build output (created by docs/scripts/build-offline.cjs).
 # Anchored so it does not match docs/scripts/build-offline.cjs itself.
 docs/build-offline/
-dist
+# Anchored so it only matches the repo-root dist/ output (where PDF generation
+# writes), not any sub-tree directory accidentally named "dist". The more
+# specific dist/pdf/*vcurrent.pdf rule below still gets a chance to apply.
+/dist/
 
 # Generated files
 .docusaurus

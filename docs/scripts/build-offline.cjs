@@ -15,12 +15,15 @@
  *
  * Restore robustness:
  *   - try/finally covers normal completion and build-time exceptions.
- *   - SIGINT/SIGTERM handlers cover Ctrl+C from a TTY and orchestrated kills,
- *     because a signal delivered while spawnSync is blocking would otherwise
- *     bypass the finally block (Node's default handler exits before the
- *     synchronous call returns).
- *   - SIGKILL and process crashes are not recoverable; if the working tree
- *     ends up with mutated sidebar JSON, run
+ *   - SIGINT/SIGTERM handlers cover signal cases the finally block alone does
+ *     not handle: when a TTY's Ctrl+C delivers SIGINT to the whole process
+ *     group, the docusaurus child often dies but Node's default SIGINT
+ *     behaviour terminates this process before control returns from
+ *     spawnSync, skipping finally. The handler intercepts both signals,
+ *     restores sidebars, then explicitly exits (130 for SIGINT, 143 for
+ *     SIGTERM) so the parent shell sees the conventional code.
+ *   - SIGKILL and hard process crashes are not recoverable; if the working
+ *     tree ends up with mutated sidebar JSON, run
  *       node scripts/transform-versioned-sdk-sidebars.cjs --restore
  *     manually from the repo root.
  *
