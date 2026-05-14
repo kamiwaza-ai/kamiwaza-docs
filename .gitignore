@@ -3,7 +3,9 @@
 
 # Production
 /build
-build-offline*
+# Docusaurus offline build output (created by docs/scripts/build-offline.cjs).
+# Anchored so it does not match docs/scripts/build-offline.cjs itself.
+docs/build-offline/
 dist
 
 # Generated files

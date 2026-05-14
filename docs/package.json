@@ -8,7 +8,7 @@
     "start": "docusaurus start",
     "start:federal": "INCLUDE_FEDERAL_DOCS=true docusaurus start",
     "build": "docusaurus build",
-    "build:offline": "cross-env DOCUSAURUS_OFFLINE_BUILD=true docusaurus build --out-dir build-offline",
+    "build:offline": "node scripts/build-offline.cjs",
     "build:federal": "INCLUDE_FEDERAL_DOCS=true docusaurus build",
     "swizzle": "docusaurus swizzle",
     "serve": "docusaurus serve",
