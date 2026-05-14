@@ -186,21 +186,28 @@ class PDFGenerator {
 		}
 		console.log(`📌 Version: ${targetVersion}`);
 
-		// If includeAll is enabled, discover all documents
-		if (profile.includeAll) {
-			profile.documents = await this.discoverAllDocuments(
-				profile.excludeDocs || [],
-				targetVersion,
-			);
-		}
-
 		// Ensure output directory exists
 		const outputDir = this.safePath(this.config.settings.outputDir);
 		await fs.ensureDir(outputDir);
 
 		try {
-			// Prepare the document source (offline build or local server)
+			// Prepare the document source (offline build or local server) BEFORE
+			// discovery: when docs/build-offline is missing, prepareDocumentSource
+			// auto-runs `npm run build:offline`, which in turn runs sync-sdk and
+			// writes docs/sdk-services.generated.json + docs/sdk/current/services/.
+			// `sidebars-sdk.ts` `require()`s the generated JSON at module-load
+			// time, so discovery has to read the sidebar AFTER the auto-build —
+			// otherwise freshly synced SDK service pages render in the offline
+			// site but get silently dropped from the merged PDF.
 			await this.prepareDocumentSource();
+
+			// If includeAll is enabled, discover all documents
+			if (profile.includeAll) {
+				profile.documents = await this.discoverAllDocuments(
+					profile.excludeDocs || [],
+					targetVersion,
+				);
+			}
 
 			// Launch browser
 			this.browser = await puppeteer.launch({
@@ -561,16 +568,20 @@ class PDFGenerator {
 			return;
 		}
 
-		const id = docId === "intro" ? "" : docId;
+		// Keep the original sidebar id (including "intro") so it flows through
+		// to `GeneratedPDFPart.docId` and `idShapedAliasesForDocSourceUrl` can
+		// register the `/intro` alias when Docusaurus collapses it to `/`.
+		// Route normalization (`intro` → ``) happens in {@link normalizeDocRouteId}
+		// at URL build time.
 		const title =
 			label || (docId === "intro" ? "Introduction" : this.generateTitleFromId(docId));
 
 		if (sectionLabel) {
-			documents.push({ id, title, section: sectionLabel });
+			documents.push({ id: docId, title, section: sectionLabel });
 			return;
 		}
 
-		documents.push({ id, title });
+		documents.push({ id: docId, title });
 	}
 
 	private generateTitleFromId(docId: string): string {
@@ -603,6 +614,16 @@ class PDFGenerator {
 	}
 
 	private normalizeDocRouteId(docId: string): string {
+		// Main-docs root has slug `/`, so its sidebar id collapses to the empty
+		// route. Map it here (instead of in addSidebarDocument) so the original
+		// id form survives onto `GeneratedPDFPart.docId` and reaches
+		// {@link idShapedAliasesForDocSourceUrl}, where it picks up the
+		// `#/intro` alias that `<a href="../intro.md#need-help">` style links
+		// in troubleshooting/GPU/Windows guides match against.
+		if (docId === "intro") {
+			return "";
+		}
+
 		if (docId === "sdk/intro") {
 			return "sdk";
 		}

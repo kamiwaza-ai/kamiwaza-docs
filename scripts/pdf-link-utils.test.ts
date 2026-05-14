@@ -14,7 +14,7 @@ import {
 	buildDocumentUrlVariants,
 	buildLinkTargetUrlVariants,
 	canonicalizeFileUrlForPdfMatching,
-	fileOfflineUriToPublicDocsUrl,
+	fileHashUriToPublicDocsHttps,
 	idShapedAliasesForDocSourceUrl,
 	pathnameOnlyOfflineFileToPublicDocsUrl,
 	publicHttpsAliasesForFileDocUrl,
@@ -135,6 +135,25 @@ test("idShapedAliasesForDocSourceUrl returns no extras when Docusaurus did NOT c
 	);
 });
 
+test("idShapedAliasesForDocSourceUrl re-adds /intro for the main-docs root", () => {
+	// Regression for the intro alias drop: the main-docs intro doc has a
+	// route of `#/` (or `#/<version>/` for versioned snapshots), but
+	// `<a href="../intro.md#need-help">` style links inside other docs
+	// resolve to `/intro` after `..` traversal. Without this alias the
+	// merge map misses the link and the rewriter falls back to an external
+	// public-docs URL.
+	const aliases = idShapedAliasesForDocSourceUrl(
+		"file:///tmp/docs/build-offline/index.html#/",
+		"intro",
+	);
+	assert.ok(
+		aliases.some(
+			(a) => a === "file:///tmp/docs/build-offline/index.html#/intro",
+		),
+		`expected #/intro alias, got: ${aliases.join(", ")}`,
+	);
+});
+
 test("publicHttpsAliasesForFileLinkTarget preserves the heading fragment", () => {
 	const file =
 		"file:///tmp/docs/build-offline/index.html#/0.12.0/quickstart#section-a";
@@ -160,16 +179,16 @@ test("pathnameOnlyOfflineFileToPublicDocsUrl maps filesystem paths under build-o
 	);
 });
 
-test("fileOfflineUriToPublicDocsUrl maps hash routes to the public docs origin", () => {
+test("fileHashUriToPublicDocsHttps maps hash routes to the public docs origin", () => {
 	assert.equal(
-		fileOfflineUriToPublicDocsUrl(
+		fileHashUriToPublicDocsHttps(
 			"file:///tmp/proj/docs/build-offline/index.html#/0.12.0/quickstart",
 			"https://docs.kamiwaza.ai",
 		),
 		"https://docs.kamiwaza.ai/0.12.0/quickstart",
 	);
 	assert.equal(
-		fileOfflineUriToPublicDocsUrl(
+		fileHashUriToPublicDocsHttps(
 			"file:///tmp/index.html#/0.12.0/system_requirements#special-considerations",
 			"https://docs.kamiwaza.ai",
 		),

@@ -91,6 +91,34 @@ function getCurrentCommit(repoPath: string): string {
 	}
 }
 
+/**
+ * Strip user-info (e.g. `https://<token>@github.com/...`) from the remote URL
+ * before persisting it to tracked metadata. Git lets users embed access
+ * tokens directly in `remote.origin.url`, and a previous fix that swapped a
+ * leaky absolute path for the remote URL would otherwise re-introduce a
+ * different leak. SSH-style URLs (`git@github.com:org/repo.git`) don't
+ * contain secrets and survive untouched.
+ */
+function sanitizeRemoteUrl(raw: string): string {
+	if (!raw) {
+		return raw;
+	}
+	if (/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(raw)) {
+		try {
+			const parsed = new URL(raw);
+			parsed.username = "";
+			parsed.password = "";
+			return parsed.toString();
+		} catch {
+			// Fall through and return the raw value if URL parsing failed —
+			// better to skip sanitization than to drop the field entirely on
+			// an unexpectedly shaped URL.
+			return raw;
+		}
+	}
+	return raw;
+}
+
 function getOriginUrl(repoPath: string): string {
 	try {
 		const result = execFileSync(
@@ -102,7 +130,7 @@ function getOriginUrl(repoPath: string): string {
 				stdio: ["pipe", "pipe", "pipe"],
 			},
 		);
-		return result.trim();
+		return sanitizeRemoteUrl(result.trim());
 	} catch {
 		return "unknown";
 	}

@@ -264,13 +264,6 @@ export function fileHashUriToPublicDocsHttps(
 	}
 }
 
-export function fileOfflineUriToPublicDocsUrl(
-	uri: string,
-	publicDocsOrigin: string,
-): string | null {
-	return fileHashUriToPublicDocsHttps(uri, publicDocsOrigin);
-}
-
 /**
  * For merge: every `file:///…/index.html#/route` key should also match absolute
  * `https://docs…/route` link annotations (Docusaurus sets `url` in config).
@@ -475,7 +468,7 @@ export function rewriteRemainingOfflineFileUrisToPublicDocsSite(
 		}
 
 		const mapped =
-			fileOfflineUriToPublicDocsUrl(uri, publicDocsOrigin) ??
+			fileHashUriToPublicDocsHttps(uri, publicDocsOrigin) ??
 			pathnameOnlyOfflineFileToPublicDocsUrl(uri, publicDocsOrigin);
 		if (!mapped) {
 			continue;

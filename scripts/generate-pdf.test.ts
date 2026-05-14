@@ -39,3 +39,29 @@ test("buildDocumentUrl maps sdk intro to the version root route", () => {
 
 	assert.equal(url, `${offlineIndexHref}#/sdk/0.12.0`);
 });
+
+test("buildDocumentUrl maps the main-docs intro id to the versioned root route", () => {
+	// Regression for the intro alias bug: addSidebarDocument used to coerce
+	// `id` to "" before reaching mergePDFs, dropping the doc id needed by
+	// idShapedAliasesForDocSourceUrl. The fix collapses `intro` → "" inside
+	// normalizeDocRouteId so the URL still resolves to the version root, but
+	// the original "intro" id stays on DocumentConfig.
+	const generator = new PDFGenerator(configPath) as any;
+
+	assert.equal(
+		generator.buildDocumentUrl({ id: "intro", title: "Introduction" }, "0.12.0"),
+		`${offlineIndexHref}#/0.12.0/`,
+	);
+	assert.equal(
+		generator.buildDocumentUrl({ id: "intro", title: "Introduction" }, "current"),
+		`${offlineIndexHref}#/`,
+	);
+});
+
+test("normalizeDocRouteId collapses main intro to empty route", () => {
+	const generator = new PDFGenerator(configPath) as any;
+	assert.equal(generator.normalizeDocRouteId("intro"), "");
+	assert.equal(generator.normalizeDocRouteId("sdk/intro"), "sdk");
+	assert.equal(generator.normalizeDocRouteId("foo/index"), "foo");
+	assert.equal(generator.normalizeDocRouteId("quickstart"), "quickstart");
+});
