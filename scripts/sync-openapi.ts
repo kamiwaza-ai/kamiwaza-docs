@@ -31,10 +31,11 @@
  *
  * Environment variables:
  *   KAMIWAZA_REPO_PATH - Path to local kamiwaza repo (default: ../platform/kamiwaza)
- *   KAMIWAZA_API_URL   - URL to fetch OpenAPI spec from (default: https://kamiwaza.test/api/openapi.json)
+ *   KAMIWAZA_API_URL   - URL to fetch OpenAPI spec from (default: http://localhost:7777/openapi.json)
  */
 
 import { execFileSync } from "child_process";
+import crypto from "crypto";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
@@ -77,9 +78,67 @@ function getCurrentBranch(repoPath: string): string {
 	}
 }
 
+function getCurrentCommit(repoPath: string): string {
+	try {
+		const result = execFileSync("git", ["rev-parse", "HEAD"], {
+			cwd: repoPath,
+			encoding: "utf-8",
+			stdio: ["pipe", "pipe", "pipe"],
+		});
+		return result.trim();
+	} catch {
+		return "unknown";
+	}
+}
+
+/**
+ * Strip user-info (e.g. `https://<token>@github.com/...`) from the remote URL
+ * before persisting it to tracked metadata. Git lets users embed access
+ * tokens directly in `remote.origin.url`, and a previous fix that swapped a
+ * leaky absolute path for the remote URL would otherwise re-introduce a
+ * different leak. SSH-style URLs (`git@github.com:org/repo.git`) don't
+ * contain secrets and survive untouched.
+ */
+function sanitizeRemoteUrl(raw: string): string {
+	if (!raw) {
+		return raw;
+	}
+	if (/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(raw)) {
+		try {
+			const parsed = new URL(raw);
+			parsed.username = "";
+			parsed.password = "";
+			return parsed.toString();
+		} catch {
+			// Fall through and return the raw value if URL parsing failed —
+			// better to skip sanitization than to drop the field entirely on
+			// an unexpectedly shaped URL.
+			return raw;
+		}
+	}
+	return raw;
+}
+
+function getOriginUrl(repoPath: string): string {
+	try {
+		const result = execFileSync(
+			"git",
+			["config", "--get", "remote.origin.url"],
+			{
+				cwd: repoPath,
+				encoding: "utf-8",
+				stdio: ["pipe", "pipe", "pipe"],
+			},
+		);
+		return sanitizeRemoteUrl(result.trim());
+	} catch {
+		return "unknown";
+	}
+}
+
 async function fetchFromRunningPlatform(): Promise<string> {
 	const apiUrl =
-		process.env.KAMIWAZA_API_URL || "https://kamiwaza.test/api/openapi.json";
+		process.env.KAMIWAZA_API_URL || "http://localhost:7777/openapi.json";
 	console.log(`Fetching OpenAPI spec from running platform: ${apiUrl}`);
 
 	try {
@@ -159,9 +218,10 @@ print(json.dumps(app.openapi()))
 					`sqlite:///${path.join(tempDir, "cluster.db")}`,
 				AUTH_DATABASE_URL:
 					process.env.AUTH_DATABASE_URL || `sqlite:///${path.join(tempDir, "auth.db")}`,
+				// Ephemeral per-invocation secret so no literal is committed.
 				AUTH_FORWARD_HEADER_SECRET:
 					process.env.AUTH_FORWARD_HEADER_SECRET ||
-					"dev-secret-for-openapi-generation-123456",
+					crypto.randomBytes(32).toString("hex"),
 			},
 		});
 	} catch (error: any) {
@@ -317,12 +377,19 @@ async function main() {
 	await fs.writeFile(TARGET_FILE, JSON.stringify(spec, null, 2));
 	console.log(`\nWritten to: ${TARGET_FILE}`);
 
-	// Get source branch for metadata
 	const sourceBranch = getCurrentBranch(repoPath);
+	const sourceCommit = getCurrentCommit(repoPath);
+	const sourceRemote = getOriginUrl(repoPath);
 
-	// Create a metadata file for tracking
+	// Identify the SDK source by stable, machine-independent fields rather than
+	// the absolute checkout path. The path leaks the developer / CI workspace
+	// location (often including a username) into a tracked metadata file, which
+	// then ends up in commits / image layers consumed elsewhere.
 	const metadata = {
 		syncedAt: new Date().toISOString(),
+		sourceRemote,
+		sourceBranch,
+		sourceCommit,
 		originalApiVersion: originalVersion,
 		patchedApiVersion: docsVersion,
 		endpoints: pathCount,

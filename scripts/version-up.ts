@@ -87,6 +87,44 @@ function runSdkSync() {
     console.error('Failed to sync SDK docs. Sync output should be above.');
     process.exit(1);
   }
+
+  // sync-sdk-docs.ts is intentionally non-fatal when no kamiwaza-sdk repo is
+  // available — that lets `npm run build:offline` and the PDF auto-build run
+  // on a clean checkout. The release path is the opposite: snapshotting an
+  // SDK version that contains only the checked-in intro/api-reference
+  // placeholder (because no service `.md`s exist) is a silent regression
+  // for any consumer pinning that release tag. Hard-fail here when sync
+  // produced no service docs, so the operator goes and sets KW_SDK_DOCS or
+  // places a sibling kamiwaza-sdk before they cut a release.
+  const servicesDir = path.join(DOCS_DIR, 'sdk', 'current', 'services');
+  const generatedJson = path.join(DOCS_DIR, 'sdk-services.generated.json');
+  let syncedServiceCount = 0;
+  if (fs.existsSync(servicesDir)) {
+    syncedServiceCount = fs
+      .readdirSync(servicesDir)
+      .filter((entry) => entry.endsWith('.md')).length;
+  }
+  let generatedSidebarCount = 0;
+  if (fs.existsSync(generatedJson)) {
+    try {
+      const list = readJsonFile(generatedJson);
+      generatedSidebarCount = Array.isArray(list) ? list.length : 0;
+    } catch {
+      generatedSidebarCount = 0;
+    }
+  }
+  if (syncedServiceCount === 0 || generatedSidebarCount === 0) {
+    console.error(
+      '❌ Error: SDK sync produced no service documents (sdk/current/services/ is empty or sdk-services.generated.json is empty/missing).',
+    );
+    console.error(
+      '   Versioning would snapshot an empty SDK release. Set KW_SDK_DOCS or place kamiwaza-sdk as a sibling directory and re-run.',
+    );
+    process.exit(1);
+  }
+  console.log(
+    `Verified ${syncedServiceCount} synced SDK service doc(s) and ${generatedSidebarCount} generated sidebar entry(s) before snapshot.`,
+  );
 }
 
 function runOpenApiSync() {
