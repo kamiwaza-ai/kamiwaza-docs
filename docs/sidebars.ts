@@ -39,7 +39,16 @@ const sidebars: SidebarsConfig = {
 		{
 			type: "category",
 			label: "Configuration",
-			items: ["configuration", "routing-modes"],
+			items: [
+				"configuration",
+				"workroom-storage-s3",
+				"routing-modes",
+			],
+		},
+		{
+			type: "category",
+			label: "Workrooms",
+			items: ["workrooms/runtime-contract"],
 		},
 		{
 			type: "category",
@@ -76,18 +85,31 @@ const sidebars: SidebarsConfig = {
 				"models/deployment",
 				"models/bedrock",
 				"models/aws-transcribe",
+				"models/openai-compatible-chat",
+				"models/openai-compatible-transcribe",
 				"models/troubleshooting",
 			],
 		},
 		{
-			type: "doc",
-			id: "app-garden",
-			label: "App Garden",
-		},
-		{
-			type: "doc",
-			id: "tool-garden",
-			label: "Tool Garden",
+			type: "category",
+			label: "Extensions",
+			items: [
+				{
+					type: "doc",
+					id: "app-garden",
+					label: "App Garden",
+				},
+				{
+					type: "doc",
+					id: "tool-garden",
+					label: "Tool Garden",
+				},
+				{
+					type: "link",
+					label: "Developer Guide",
+					href: "/extensions/developer-guide",
+				},
+			],
 		},
 		{
 			type: "category",
@@ -130,6 +152,11 @@ const sidebars: SidebarsConfig = {
 			type: "doc",
 			id: "help-and-fixes",
 			label: "Help & Fixes",
+		},
+		{
+			type: "category",
+			label: "Runbooks",
+			items: ["runbooks/ontology-graph-viewer"],
 		},
 		{
 			type: "category",

@@ -1,6 +1,6 @@
 {
   "name": "kamiwaza-docs",
-  "version": "0.9.3",
+  "version": "0.13.0",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
@@ -65,7 +65,7 @@
     ]
   },
   "engines": {
-    "node": ">=18.0"
+    "node": ">=22.0"
   },
   "overrides": {
     "fast-xml-parser": "5.3.6",

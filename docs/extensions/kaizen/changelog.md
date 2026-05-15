@@ -28,7 +28,7 @@ This document tracks major changes, feature additions, and improvements in the K
 
 #### 4. Workroom-Aware and App Garden-Ready Deployment
 - **Workroom preservation**: Kaizen now preserves workroom context across deployments and related API calls.
-- **App Garden compatibility**: Improved App Garden operator compatibility, runtime defaults, and route/base-path behavior in packaged deployments.
+- **App Garden compatibility**: Improved App Garden deployment compatibility, runtime defaults, and route/base-path behavior in packaged deployments.
 - **Release metadata**: Updated extension metadata, preview image handling, and compatibility to target Kamiwaza `>=0.10.0`.
 
 #### 5. Sandbox and Runtime Controls

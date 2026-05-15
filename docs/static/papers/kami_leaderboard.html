@@ -1067,7 +1067,8 @@
 
 
             <!-- Bottom Section: Performance Heatmap -->
-            <div class="section">
+            <!-- TODO: Heatmap hidden — incompatible with mixed v0.1 (30 samples) and v0.5 (10 samples) per-question scales -->
+            <div class="section" style="display:none">
                 <div class="section-title">
                     <i class="fas fa-th"></i>
                     Performance Heatmap
@@ -1276,6 +1277,119 @@
             return data;
         }
 
+        // Model display name lookup table
+        // Maps internal CSV model names to human-friendly display names.
+        // If a model is not in this table, the raw CSV name is shown as-is.
+        const MODEL_DISPLAY_NAMES = {
+            // Alibaba - Qwen 2.5 series
+            "qwen2_5_7b_instruct": "Qwen2.5-7B-Instruct",
+            "qwen2_5_14b_instruct": "Qwen2.5-14B-Instruct",
+            "qwen2_5_32b_instruct": "Qwen2.5-32B-Instruct",
+            "qwen2_5_72b_instruct": "Qwen2.5-72B-Instruct",
+            // Alibaba - Qwen 3 series
+            "qwen3_4b": "Qwen3-4B",
+            "qwen3_4b_instruct_2507": "Qwen3-4B-Instruct-2507",
+            "qwen3_4b_thinkmode": "Qwen3-4B (Thinking)",
+            "qwen3_8b": "Qwen3-8B",
+            "qwen3_8b_thinkmode": "Qwen3-8B (Thinking)",
+            "qwen3_14b": "Qwen3-14B",
+            "qwen3_14b_fp8": "Qwen3-14B-FP8",
+            "qwen3_14b_thinkmode": "Qwen3-14B (Thinking)",
+            "qwen3_30b_a3b": "Qwen3-30B-A3B",
+            "qwen3_30b_a3b_thinkmode": "Qwen3-30B-A3B (Thinking)",
+            "qwen3_30b_a3b_instruct_2507": "Qwen3-30B-A3B-Instruct-2507",
+            "qwen3_32b": "Qwen3-32B",
+            "qwen3_32b_fp8": "Qwen3-32B-FP8",
+            "qwen3_32b_thinkmode": "Qwen3-32B (Thinking)",
+            "qwen3_235b_a22b": "Qwen3-235B-A22B",
+            "qwen3_235b_a22b_instruct_2507": "Qwen3-235B-A22B-Instruct-2507",
+            "qwen3_235b_a22b_instruct_2507_fp8": "Qwen3-235B-A22B-Instruct-2507-FP8",
+            "qwen3_max_2025_09_23": "Qwen3-Max (2025-09-23)",
+            "qwen3_max_preview": "Qwen3-Max-Preview",
+            "qwen3_coder_480b_a35b_instruct": "Qwen3-Coder-480B-A35B-Instruct",
+            "qwen3_coder_30b_a3b_instruct": "Qwen3-Coder-30B-A3B-Instruct",
+            "qwen3_next_80b_a3b_instruct": "Qwen3-Next-80B-A3B-Instruct",
+            // Alibaba - Qwen 3.5 series
+            "qwen3_5_0_8b": "Qwen3.5-0.8B",
+            "qwen3_5_2b": "Qwen3.5-2B",
+            "qwen3_5_4b": "Qwen3.5-4B",
+            "qwen3_5_9b": "Qwen3.5-9B",
+            "qwen3_5_27b": "Qwen3.5-27B",
+            "qwen3_5_35b_a3b": "Qwen3.5-35B-A3B",
+            "qwen3_5_122b_a10b": "Qwen3.5-122B-A10B",
+            "qwen3_5_397b_a17b": "Qwen3.5-397B-A17B",
+            // Alibaba - Qwen API models
+            "qwen_flash_2025_07_28": "Qwen-Flash (2025-07-28)",
+            "qwen_plus_2025_09_11": "Qwen-Plus (2025-09-11)",
+            // Anthropic - Claude
+            "claude_3_5_haiku_20241022": "Claude 3.5 Haiku",
+            "claude_haiku35": "Claude 3.5 Haiku",
+            "claude_haiku45": "Claude 4.5 Haiku",
+            "claude_sonnet45": "Claude 4.5 Sonnet",
+            // DeepSeek
+            "deepseek_v3": "DeepSeek-V3",
+            "deepseek_v3_1": "DeepSeek-V3.1",
+            // Google - Gemini
+            "gemini_2_0_flash": "Gemini 2.0 Flash",
+            "gemini_2_0_flashlite": "Gemini 2.0 Flash-Lite",
+            "gemini_2_5_flash": "Gemini 2.5 Flash",
+            "gemini_2_5_flashlite": "Gemini 2.5 Flash-Lite",
+            "gemini_2_5_pro": "Gemini 2.5 Pro",
+            "gemini_3_pro_preview": "Gemini 3 Pro Preview",
+            // Google - Gemma
+            "gemma_4_31b_it": "Gemma4-31B",
+            "gemma_4_31b_it_thinkmode": "Gemma4-31B (Thinking)",
+            "gemma_4_26b_a4b_it": "Gemma4-26B-A4B",
+            "gemma_4_26b_a4b_it_thinkmode": "Gemma4-26B-A4B (Thinking)",
+            "gemma_4_e4b_it": "Gemma4-E4B",
+            "gemma_4_e4b_it_thinkmode": "Gemma4-E4B (Thinking)",
+            // Zhipu - GLM
+            "glm_4_5": "GLM-4.5",
+            "glm_4_5_air": "GLM-4.5 Air",
+            "glm_4_6": "GLM-4.6",
+            "glm_4_7": "GLM-4.7",
+            // OpenAI - GPT
+            "gpt_4_1": "GPT-4.1",
+            "gpt_5_1": "GPT-5.1",
+            "gpt_5_medreason": "GPT-5 (Medium Reasoning)",
+            "gpt_5_1_medreason": "GPT-5.1 (Medium Reasoning)",
+            "gpt_5_2_medreason": "GPT-5.2 (Medium Reasoning)",
+            "gpt_5_mini_medreason": "GPT-5 Mini (Medium Reasoning)",
+            "gpt_5_nano_medreason": "GPT-5 Nano (Medium Reasoning)",
+            // IBM - Granite
+            "granite_4_0_h_tiny": "Granite 4.0H Tiny",
+            "granite_4_0_h_micro": "Granite 4.0H Micro",
+            "granite_4_0_h_small": "Granite 4.0H Small",
+            // Moonshot - Kimi
+            "kimi_k2_thinking": "Kimi K2 (Thinking)",
+            // Meta - Llama
+            "llama_3_1_8b_instruct": "Llama-3.1-8B-Instruct",
+            "llama_3_1_70b_instruct": "Llama-3.1-70B-Instruct",
+            "llama_3_3_70b_instruct": "Llama-3.3-70B-Instruct",
+            "llama_3_3_70b_instruct_fp8_kv": "Llama-3.3-70B-Instruct-FP8-KV",
+            "llama_4_scout_17b_16e_instruct": "Llama 4 Scout 17Bx16E",
+            "llama_4_maverick_17b_128e_instruct": "Llama 4 Maverick 17Bx128E",
+            "llama_4_maverick_17b_128e_instruct_fp8": "Llama 4 Maverick 17Bx128E FP8",
+            // MiniMax
+            "minimax_m2": "MiniMax-M2",
+            "minimax_m2_1": "MiniMax-M2.1",
+            // Mistral
+            "mistral_large_instruct_2411": "Mistral Large Instruct 2411",
+            "mistral_large_3_675b_instruct_2512": "Mistral Large 3 675B-Instruct-2512",
+            // AWS - Nova
+            "nova_lite": "Nova Lite",
+            "nova_2_lite": "Nova 2 Lite",
+            "nova_micro": "Nova Micro",
+            "nova_pro": "Nova Pro",
+            "nova_premier": "Nova Premier",
+            // Microsoft - Phi
+            "phi_4": "Phi-4",
+        };
+
+        function displayName(model) {
+            return MODEL_DISPLAY_NAMES[model] || model;
+        }
+
         // Global data variables (populated after fetch)
         let rawBenchmarkData = [];
         let statisticalData = [];
@@ -1283,6 +1397,10 @@
         let filteredHeatmapData = [];
 
         // Sorting state
+        // Note: The statistical table and chart use normalized accuracy (0.0-1.0 / percentage),
+        // NOT raw per-question scores. This means v0.1 (30 samples/question) and v0.5
+        // (10 samples/question) results are directly comparable in all visible UI elements.
+        // Only the heatmap used raw scores (hidden, incompatible with mixed sample counts).
         let currentSort = { column: 'percentage_score', direction: 'desc' }; // Used by heatmap
         let statisticalSort = { column: 'mean_run_accuracy', direction: 'desc' };
         let selectedQuestions = ['q101', 'q102', 'q201', 'q202', 'q301', 'q302', 'q303', 'q304', 'q401', 'q402', 'q403', 'q501', 'q502', 'q503', 'q601', 'q602', 'q701', 'q702', 'q703'];
@@ -1458,6 +1576,7 @@
                 // If no search terms, match all; otherwise match ANY term
                 const matchesSearch = searchTerms.length === 0 || searchTerms.some(term =>
                     item.model.toLowerCase().includes(term) ||
+                    displayName(item.model).toLowerCase().includes(term) ||
                     item.provider.toLowerCase().includes(term)
                 );
                 
@@ -1537,7 +1656,7 @@
                         <td class="provider-cell">
                             <span class="provider-badge ${getProviderClass(item.provider)}">${item.provider}</span>
                         </td>
-                        <td class="model-cell" title="${item.model}">${item.model}</td>
+                        <td class="model-cell" title="${item.model}">${displayName(item.model)}</td>
                         <td class="metric-cell">${item.n_runs}</td>
                         <td class="accuracy-cell">
                             ${accuracy}%
@@ -1572,6 +1691,7 @@
                 // If no search terms, match all; otherwise match ANY term
                 const matchesSearch = searchTerms.length === 0 || searchTerms.some(term =>
                     item.model.toLowerCase().includes(term) ||
+                    displayName(item.model).toLowerCase().includes(term) ||
                     item.provider.toLowerCase().includes(term)
                 );
                 
@@ -1673,14 +1793,14 @@
                         <td class="info-cell">
                             <span class="provider-badge ${getProviderClass(item.provider)}">${item.provider}</span>
                         </td>
-                        <td class="info-cell">${item.model}</td>
+                        <td class="info-cell">${displayName(item.model)}</td>
                         ${selectedQuestions.map(q => {
                             const score = item[q];
                             const scoreClass = getHeatmapScoreClass(score);
                             return `
                                 <td>
                                     <div class="heatmap-cell ${scoreClass}" 
-                                         onmouseover="showTooltip(event, '${item.model}', '${q.toUpperCase()}', ${score})"
+                                         onmouseover="showTooltip(event, '${displayName(item.model)}', '${q.toUpperCase()}', ${score})"
                                          onmouseout="hideTooltip(event)">
                                         ${score}
                                     </div>
@@ -1816,7 +1936,7 @@
                             callbacks: {
                                 title: function(context) {
                                     const data = context[0].raw;
-                                    return `${data.provider} - ${data.model}`;
+                                    return `${data.provider} - ${displayName(data.model)}`;
                                 },
                                 label: function(context) {
                                     const data = context.raw;

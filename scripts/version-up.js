@@ -21,7 +21,7 @@ function writeJsonFile(filePath, data) {
     fs_1.default.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n');
 }
 function getDocusaurusEnv() {
-    const env = Object.assign({}, process.env);
+    const env = { ...process.env };
     delete env.DEBUG;
     return env;
 }

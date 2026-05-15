@@ -9,6 +9,10 @@ Welcome to **Kaizen**, an AI agent platform built by Kamiwaza. Kaizen lets you c
 
 Instead of writing code to configure agents, you get a visual interface. Instead of terminal output, you get a real-time chat where you can watch your agent work and download what it produces.
 
+If you launch Kaizen from **Workroom Manager**, the conversation runs inside that workroom context. That lets analysts keep their agent activity aligned to a specific mission or case while still using the same Kaizen workflows described here.
+
+In a shared non-global workroom, Kaizen agents, conversations, uploads, and generated outputs are visible to authorized workroom members according to role. Owners and Contributors can continue shared conversations, while Viewers can open them read-only. The **Global Workroom** keeps legacy personal visibility behavior and is not treated as a shared Kaizen workspace.
+
 ---
 
 ## Launch Kaizen
@@ -38,6 +42,13 @@ Each agent you create is a persistent configuration. Choose its AI model, attach
 
 Click **Create Your First Agent** to get started.
 
+The top navigation bar provides access to all sections of Kaizen:
+
+- **Agents** — create and manage your AI agents (home view)
+- **Conversations** — browse and filter past conversations across all agents
+- **Search** — search across conversation messages, tool calls, and results
+- **Metrics** — model health and inference metrics for your Kaizen environment
+
 ---
 
 ## Creating Your First Agent
@@ -57,28 +68,36 @@ The agent builder walks you through configuration in six steps.
 
 ### Step 2: Adding Skills
 
-Skills are modular knowledge components that inject domain expertise and business context into your agent. Create them through the in-app editor with a name, content, and trigger type.
+Kaizen uses the AgentSkills model. In practice, you can give an agent skills in two ways:
+
+- **From Skills Library**: Attach published, reusable skills from your shared library.
+- **Custom Skills**: Create agent-specific skills directly in Kaizen.
 
 ![Skills configuration](/img/extensions/kaizen/onboarding-03-skills.png)
 
-**Skill types:**
+Library skills are best for reusable capabilities your team wants to standardize across many agents. Custom skills are best for local instructions, business context, and lightweight workflows specific to one agent.
 
-- **Repository Skills** (always active): Business context, policies, and data source references that your agent always needs.
-- **Knowledge Skills** (keyword-triggered): Domain expertise that activates when relevant keywords appear in conversation.
-- **Task Skills** (workflow-oriented): Multi-step processes with inputs, triggered by commands like `/sales-report` or natural phrases.
+**Custom skill trigger options:**
 
-> **Pro tip:** Show Kaizen how to do something once, or just describe the process, and then ask it to create a skill for it. Kaizen can build reusable skills on the fly so the next time that workflow is needed, it is already packaged and ready to go.
+- **Always Active**: The skill is always available to the agent.
+- **Keyword Triggered**: The skill activates when matching keywords appear in the conversation.
+- **Task Triggered**: The skill activates from explicit commands or workflow phrases and can include structured inputs.
 
-### Step 3: Adding Bundles
+> **Tip:** Start with a few small custom skills for instructions and domain context, then attach shared library skills for heavier packaged capabilities your team wants to reuse.
 
-Bundles are prebuilt capability packages that give your agent specific output formats. Select from the available bundles or upload your own as a `.zip` file.
+### Step 3: Attaching Packaged Skills
 
-**Available bundles:**
+Many advanced capabilities are delivered as packaged skills from the Skills Library rather than a separate "bundle" system. You can browse the library and attach the skills your agent needs.
 
-- **chart-generator**: Bar, line, pie, and scatter charts from CSV or JSON data
-- **map-generator**: Interactive HTML maps with markers and coordinates
-- **pdf-generator**: Professional PDF documents from Markdown content
-- **pptx-exporter**: PowerPoint presentations from structured data
+Common examples include skills for:
+
+- **Charts and visualizations**
+- **Maps and geospatial outputs**
+- **PDF generation**
+- **PowerPoint export**
+- **Document ingestion and context processing**
+
+Some Kaizen environments also include built-in default skills automatically, so your agent may already have baseline capabilities without any extra setup.
 
 ### Step 4: Connecting Tools (MCP Integrations)
 
@@ -108,11 +127,11 @@ The **Risk Threshold** (`Low`, `Medium`, or `High`) determines the cutoff. With 
 
 ### Step 6: Review & Create
 
-Before creating your agent, review the full configuration summary. Verify your model, skills, connected tools, and security policy.
+Before creating your agent, review the full configuration summary. Verify your model, custom skills, attached library skills, connected tools, and security policy.
 
 ![Review & Create](/img/extensions/kaizen/onboarding-06-review.png)
 
-The summary badges give you an at-a-glance view of your skills count, MCP servers, and security policy. Once satisfied, click **Create Agent**.
+The summary badges give you an at-a-glance view of custom skills, library skills, MCP servers, and security policy. Once satisfied, click **Create Agent**.
 
 ---
 
@@ -123,13 +142,13 @@ After creation, your agent appears in the library. Each agent card shows its nam
 ![Agent Library](/img/extensions/kaizen/onboarding-07-agent-library.png)
 
 - **Chat**: Start a new conversation with this agent.
-- **Private Session**: Start an ephemeral conversation that is automatically deleted when you leave. This is useful for sensitive or one-off tasks.
+- **Private Session**: Start an ephemeral conversation that is automatically deleted when you leave. This is available in personal/global scope and is intended for sensitive or one-off tasks.
 - **Configure**: Edit the agent's model, skills, bundles, tools, or security policy.
 - **Delete**: Remove the agent and its conversations.
 
-Create as many agents as you need, such as a research agent, a data analyst, or a report writer. Each agent keeps its own configuration and conversation history.
+Create as many agents as you need, such as a research agent, a data analyst, or a report writer. Each agent keeps its own configuration. In a shared non-global workroom, that agent and its conversations are visible to other authorized workroom members, while the creator remains recorded for attribution and auditing. Shared visibility does not automatically grant reuse of the creator's private credentials; collaborator runs continue to use the acting user's own credentials or an explicitly shared workroom credential path.
 
-The left sidebar shows your recent conversations across all agents. Click any conversation to resume where you left off.
+The left sidebar shows recent conversations across all visible agents. In a shared non-global workroom, that means shared workroom history by default, with a list-level filter for items created by you. Click any conversation to resume where work left off.
 
 ---
 
@@ -147,9 +166,49 @@ Click the **+** button in the message input to attach files. You can upload from
 
 > **Note:** The Microsoft 365 connector must be configured by an administrator in the Kamiwaza UI before it is available to users. Once configured, you can browse and attach OneDrive and SharePoint files directly in your conversations.
 
+When Kaizen is opened from a workroom, use these uploads and connected sources to support that workroom's analysis workflow.
+
+### Grounded Answers and Citations
+
+Depending on your deployment and the tools attached to your agent, Kaizen can produce grounded answers that include citations back to source material such as uploaded files, connected document stores, or web results.
+
+To get the best results:
+
+- attach the files or tools your agent should use before asking the question
+- ask explicitly for citations when you need traceable answers
+- verify that the cited sources actually support the claim before sharing the output
+
+If a response should be grounded but comes back without citations, check whether the relevant data source, skill, or retrieval path is configured in your environment.
+
+### Related Data Suggestions
+
+Current Kaizen builds can show a **Related Data Suggestions** card around an active conversation.
+This panel aggregates likely useful:
+
+- workspace files
+- published or attached skills
+- Microsoft 365 results
+
+Each suggestion includes a score and a short reason so you can decide whether to pull that source
+into the conversation. Kaizen keeps partial results visible even if one source is degraded. For
+example, if an M365 connector is unavailable or a search times out, the panel can still show file
+or skill suggestions together with a diagnostic note instead of failing the entire suggestion pass.
+
+Use this panel when you want to ground the next turn, find the right file faster, or understand why
+Kaizen thinks a specific skill or document may help with the current task.
+
 ### Downloading Results
 
 Any files created by the agent, including reports, charts, code, and presentations, appear in the workspace panel on the right side of the chat. You can preview and download them directly.
+
+Preview behavior depends on file type. In current releases, Kaizen can render:
+
+- presentations as slide previews
+- DOCX files as extracted inline text
+- images such as SVG and WEBP inline in the browser
+- CSV and Excel files in a table view
+
+If a file type is not previewable in place, use the same panel to download it.
 
 ---
 
@@ -165,6 +224,110 @@ Here is a real example: a user asked their agent to find expense reports in OneD
 The generated PDF is viewable and downloadable directly in the right panel.
 
 ![Agent in action - expense report analysis](/img/extensions/kaizen/onboarding-09-conversation.png)
+
+---
+
+## Conversations
+
+The **Conversations** tab gives you a dedicated view of all visible conversations across every agent.
+
+Use the filters at the top of the page to narrow down what you're looking for:
+
+- **Filter by Agent** — select a specific agent to see only its conversations, or choose All Agents.
+- **Visibility** — switch between all workroom-visible conversations and only the ones you created.
+- **Sort By** — order conversations by most recent or other criteria.
+
+In a shared non-global workroom, this view is designed for handoff as well as recall. Click any conversation to resume where work left off, even if another Owner or Contributor created the earlier turns.
+
+---
+
+## Search
+
+The **Search** tab lets you search across all your past conversations to find specific messages, tool calls, and results.
+
+### Searching Conversations
+
+Enter a search term to find matching content across all conversations. You can refine results with filters:
+
+- **Tool Name** — filter by a specific tool (e.g., web search, code execution, file access).
+- **Event Type** — filter by the type of event (messages, tool calls, results).
+- **Date Range** — narrow results to a specific time window using the From and To date fields.
+
+Click **Search** to run your query. Results show matching content with context so you can quickly locate what you need.
+
+### Recipes
+
+The **Recipes** tab (next to Search) lets you save useful tool call patterns that you discover while searching. Recipes capture a reusable pattern so you can reference it later without having to search for it again.
+
+To create a recipe, find a tool call pattern in your search results and save it. Your saved recipes appear in the left sidebar for quick access.
+
+Recipes are useful for:
+
+- Capturing effective tool call sequences that produced good results
+- Building a personal library of proven patterns for common tasks
+- Sharing approaches across sessions without recreating them from scratch
+
+---
+
+## Metrics
+
+The **Metrics** tab shows model health information for your Kaizen environment.
+
+The view displays inference performance and model availability metrics. Use the time range selector (**24h**, **7d**, **30d**) to adjust the reporting window.
+
+The Metrics view is most useful once you have active agents running conversations and processing data.
+
+---
+
+## Workroom Collaboration
+
+When Kaizen is launched from a workroom, a **workroom info bar** appears at the top of the page showing the workroom name and classification banner. Click it to expand the workroom status summary.
+
+![Workroom Collaboration panel](/img/extensions/kaizen/kaizen-workroom-collaboration.png)
+
+The expanded bar shows:
+
+| Field | Description |
+| :--- | :--- |
+| **Workroom** | The name of the workroom this Kaizen session belongs to. |
+| **Role** | Your role in the workroom (Owner, Contributor, or Viewer). |
+| **Members** | Total number of members with access to this workroom. |
+| **Live Now** | How many members are currently active in the workroom. |
+
+Click **Collaboration** to open the full collaboration panel on the right side. The panel includes:
+
+### Active Now
+
+Shows which members are currently active or idle in the workroom. This is a live view from the collaboration stream — use it to see who else is working in the same workroom at the same time.
+
+### Shared History
+
+In a shared non-global workroom, Kaizen keeps conversation history as shared workroom history. Later Owners and Contributors can open the same thread and continue it without losing prior context. Viewers can read that history but cannot add turns, upload files, or mutate agent settings.
+
+### Turn Attribution
+
+Kaizen attributes each human or agent-triggering turn to the acting user who initiated it. That attribution stays with the turn for later handoff and review; it is not inferred from the original conversation creator.
+
+### Member Roster
+
+Lists all workroom members with their roles and online status. Owners can click **Manage members** to open the membership management panel from within Kaizen. Workroom Manager remains the standard place for workroom administration, including sharing, role changes, member removal, and ownership transfer.
+
+![Workroom Members management panel](/img/extensions/kaizen/kaizen-workroom-members.png)
+
+The **Workroom Members** panel lets owners:
+
+- **Invite a member** — enter an email address, select a role (Viewer or Contributor), and confirm the attestation: *"I confirm the invited user has need-to-know for this workroom's content."*
+- **Change a member's role** — use the role dropdown on any non-owner member and click **Save role**.
+- **Remove a member** — click **Remove** to revoke access. If the member has an active session, you may be asked to confirm.
+- **Transfer ownership** — click **Transfer ownership** to make another member the primary owner of the workroom.
+
+### Audit Log
+
+Tracks recent lifecycle, membership, credential, and access activity for the workroom. Click **Open log** to view the audit timeline. Use the audit log to verify who changed membership, delegated credentials, or modified workroom lifecycle state during the current collaboration window.
+
+### Shared Credentials
+
+Shared visibility does not automatically grant access to another member's private credentials. If a shared agent depends on a connector, API key, or OAuth session, the acting user must use their own credentials or an explicitly workroom-shared credential binding when that capability is enabled in your environment.
 
 ---
 
@@ -188,7 +351,7 @@ The generated PDF is viewable and downloadable directly in the right panel.
 
 - **Start Simple**: Create your first agent without complex skills or tools, then add them as needed.
 - **Be Specific**: Clear, detailed prompts yield better results.
-- **Use Bundles**: Attach prebuilt bundles for common outputs like charts, PDFs, and presentations, and teach Kaizen to build new ones.
+- **Use the Skills Library**: Attach published skills for common outputs like charts, PDFs, presentations, and document processing.
 - **Check Connections**: If you use MCP tools, verify connections before saving.
 - **Monitor Status**: Watch for "Waiting for Confirmation" states if you have strict security policies.
 
@@ -201,7 +364,28 @@ The generated PDF is viewable and downloadable directly in the right panel.
 
 ---
 
+## Troubleshooting Kaizen
+
+### The agent is waiting for confirmation
+
+Your agent's security policy may require approval before it can run tools or commands. Approve the pending step, or update the policy in the agent configuration if the current threshold is too strict for the workflow.
+
+### I cannot access Microsoft 365 files
+
+The Microsoft 365 connector must be configured by an administrator before it appears to end users. If the option is missing or authentication fails, confirm the platform configuration with your administrator.
+
+### I expected citations, but none appeared
+
+Make sure the agent has access to the documents or tools it needs, and ask for citations explicitly when traceability matters. If the issue persists, verify the data source or retrieval configuration in your deployment.
+
+### I need logs for a failed deployment or broken conversation
+
+Start with the Kaizen deployment logs in the Kamiwaza log viewer, then review the platform-level guidance in [Observability](/observability). That is the fastest path for diagnosing extension startup failures, connector issues, or model-side errors.
+
+---
+
 ## Learn More
 
 - [Models Overview](/models/overview)
 - [Tool Garden](/tool-garden)
+- [Observability](/observability)
