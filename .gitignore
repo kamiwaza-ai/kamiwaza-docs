@@ -8,12 +8,11 @@
 .docusaurus
 .cache-loader
 
-# SDK docs (copied from kamiwaza-sdk)
-/docs/sdk/current/services
-/docs/sdk/current/api
+# SDK docs (synced from kamiwaza-sdk repo)
+/docs/sdk/current/
+/docs/sdk-services.generated.json
 
 # Misc
-.DS_Store
 .env.local
 .env.development.local
 .env.test.local
@@ -24,10 +23,9 @@ yarn-debug.log*
 yarn-error.log*
 docs/package-lock.json
 package-lock.json
-package-lock.json
 
 # PDF generation output - only save numbered versions
 dist/pdf/*vcurrent.pdf
+.DS_Store
 *.DS_Store
-
 .venv/

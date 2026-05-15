@@ -2,7 +2,7 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
 const sidebars: SidebarsConfig = {
   research: [
-    'intro',
+    'index',
     {
       type: 'category',
       label: 'Agentic Merit Index',
@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'papers/index',
+        'papers/riker2',
         'papers/riker',
         'papers/llm-agentic-failures',
         'papers/kami-v0-1',
@@ -37,6 +38,8 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'blogs/index',
+        'blogs/tokenizer-efficiency-hidden-cost',
+        'blogs/qwen35-9b-small-model-big-leagues',
         'blogs/hallucination-resistance-long-context',
         'blogs/reducing-llm-hallucinations-enterprise-lora-finetuning',
         'blogs/qwen3-next-80b-long-context-champion',
