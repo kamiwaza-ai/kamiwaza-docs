@@ -24,6 +24,8 @@ This guide assumes:
 
 > **Note:** The RHEL offline install flow now includes `dnsmasq` alignment and natively supports App Garden extension traffic routing out-of-the-box (per the 0.12.1 release).
 
+> **Network admin coordination:** End users on separate workstations need `<domain>` (and feature subdomains such as `docs.<domain>`) configured in your corporate DNS, plus a TLS certificate their browsers trust. See [Network Prerequisites](../network_prerequisites.md) for the checklist your network and security admins need.
+
 ## Inputs You Need
 
 Before you start, decide these values:

@@ -27,6 +27,7 @@ Use these guides together:
 
 - [System Requirements](installation/system_requirements)
 - [Installing Kamiwaza](installation/installation_process)
+- [Network Prerequisites](network_prerequisites)
 - [Quickstart](quickstart)
 - [Administrator Guide](security/admin-guide)
 - [AWS S3 Workroom Storage](workroom-storage-s3)

@@ -41,8 +41,9 @@ const sidebars: SidebarsConfig = {
 			label: "Configuration",
 			items: [
 				"configuration",
-				"workroom-storage-s3",
+				"network_prerequisites",
 				"routing-modes",
+				"workroom-storage-s3",
 			],
 		},
 		{

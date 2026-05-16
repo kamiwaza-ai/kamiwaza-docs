@@ -476,6 +476,8 @@ The table below provides real-world GPU memory requirement estimates for represe
 - 443/tcp: HTTPS primary access
 - 51100-51199/tcp: Deployment ports for model instances (will also be used for 'App Garden' in the future)
 
+**Outbound (online installs):** during an online install, the install host pulls container images from `registry-1.docker.io`, `quay.io`, and `ghcr.io` over HTTPS (port 443). Enterprise firewall policies that block outbound HTTPS to these hostnames will fail the install. Offline installs have no outbound requirement.
+
 #### Windows Edition
 - 443/tcp: HTTPS primary access (via WSL)
 - 61100-61299/tcp: Reserved ports for Windows installation
