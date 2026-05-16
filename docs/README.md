@@ -133,10 +133,10 @@ npm run version-update -- <version>  # Update specific version (e.g., 0.7.0)
 Generate PDF documentation for offline installations:
 
 ```bash
-# Generate offline installation PDF (essential docs only)
+# Generate offline installation PDF (full platform docs in the offline bundle)
 npm run pdf:offline
 
-# Generate complete documentation PDF
+# Generate complete platform documentation PDF
 npm run pdf:full
 
 # Generate specific profile with version
@@ -146,8 +146,12 @@ npm run pdf -- --profile full-docs --version 0.5.1
 ```
 
 **PDF Profiles:**
-- **offline-install**: System requirements, RHEL installation and uninstall guides, quickstart, admin guide, help/fixes, release notes
-- **full-docs**: Complete platform documentation
+- **offline-install**: Full platform documentation (`includeAll: true`) for air-gapped customers — every in-site link resolves inside the PDF. Configured in `pdf-config.yaml`.
+- **full-docs**: Complete platform documentation aimed at the public docs site.
+
+By default, PDF generation targets the in-development trunk content (`defaultVersion: "current"` in `pdf-config.yaml`). Override per invocation with `--version latest` for the most recent release snapshot, or `--version 0.12.0` for a specific snapshot listed in `docs/versions.json`.
+
+PDF generation reads from the offline build at `docs/build-offline/`. If that directory is missing (clean checkout, CI, or after `npm run clear`), the script runs `npm run build:offline` automatically before producing the PDF. Set `PDF_SKIP_AUTO_BUILD=1` to disable auto-build and surface a hard error instead — useful when you want to ensure CI ran the build step explicitly.
 
 **Requirements:**
 After adding PDF dependencies, run:
