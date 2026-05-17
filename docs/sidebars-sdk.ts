@@ -1,5 +1,7 @@
 import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
 
+const offlineBuild = process.env.DOCUSAURUS_OFFLINE_BUILD === "true";
+
 let serviceItems: string[];
 try {
 	serviceItems = require("./sdk-services.generated.json");
@@ -12,11 +14,21 @@ try {
 const sidebars: SidebarsConfig = {
 	sdk: [
 		"intro",
-		{
-			type: "link",
-			label: "REST API Reference",
-			href: "/sdk/api/",
-		},
+		...(offlineBuild
+			? [
+					{
+						type: "doc" as const,
+						label: "REST API Reference",
+						id: "api-reference",
+					},
+				]
+			: [
+					{
+						type: "link" as const,
+						label: "REST API Reference",
+						href: "/sdk/api/",
+					},
+				]),
 		...(serviceItems.length > 0
 			? [
 					{

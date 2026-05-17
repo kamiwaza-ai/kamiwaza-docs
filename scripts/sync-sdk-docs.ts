@@ -179,11 +179,19 @@ async function main() {
             process.exit(0);
         }
 
-        console.error(
-            'SDK repo not found and no synced SDK docs are available. ' +
-            'Set KW_SDK_DOCS or place kamiwaza-sdk as a sibling directory before building or versioning docs.'
+        // Soft-fail on a clean checkout without a sibling SDK repo: docs/sidebars-sdk.ts
+        // tolerates a missing sdk-services.generated.json (empty Python SDK Services
+        // section), and the offline build's REST API placeholder is unrelated to the
+        // SDK sync. Hard-failing here would chain through `npm run build:offline`
+        // (and the PDF auto-build path that calls it), blocking contributors and CI
+        // from running the docs build at all on a fresh clone. The version-up script
+        // and any release-time SDK refresh still need a real SDK repo, but they fail
+        // explicitly with their own messages downstream.
+        console.warn(
+            'SDK repo not found and no synced SDK docs present. Continuing without SDK content.\n' +
+            'Set KW_SDK_DOCS or place kamiwaza-sdk as a sibling directory to populate the Python SDK Services section.'
         );
-        process.exit(1);
+        process.exit(0);
     }
 
     console.log(`  SDK repo: ${sdkRepoPath}`);
