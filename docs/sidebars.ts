@@ -65,6 +65,17 @@ const sidebars: SidebarsConfig = {
 		...(includeFederal ? [federalCategory] : []),
 		{
 			type: "category",
+			label: "Federation",
+			items: [
+				"federation/overview",
+				"federation/setup",
+				"federation/retrieval",
+				"federation/job-submission",
+				"federation/operations",
+			],
+		},
+		{
+			type: "category",
 			label: "Models",
 			items: [
 				"models/overview",
@@ -141,6 +152,11 @@ const sidebars: SidebarsConfig = {
 			type: "doc",
 			id: "help-and-fixes",
 			label: "Help & Fixes",
+		},
+		{
+			type: "category",
+			label: "Runbooks",
+			items: ["runbooks/ontology-graph-viewer"],
 		},
 		{
 			type: "category",

@@ -38,6 +38,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'blogs/index',
+        'blogs/tokenizer-efficiency-hidden-cost',
         'blogs/qwen35-9b-small-model-big-leagues',
         'blogs/hallucination-resistance-long-context',
         'blogs/reducing-llm-hallucinations-enterprise-lora-finetuning',
