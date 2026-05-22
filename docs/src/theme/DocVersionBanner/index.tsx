@@ -7,6 +7,7 @@ import type {Props} from '@theme/DocVersionBanner';
 
 export default function DocVersionBanner({className}: Props): React.ReactNode {
   const versionMetadata = useDocsVersion();
+  const currentGaRelease = '0.13.0';
 
   if (versionMetadata.banner === 'unreleased') {
     return (
@@ -20,7 +21,7 @@ export default function DocVersionBanner({className}: Props): React.ReactNode {
         <div>
           This is documentation for Kamiwaza <b>{versionMetadata.label}</b>, which
           is the next release of Kamiwaza. For the current GA release, see{' '}
-          <Link to="/"><b>0.9.3</b></Link>.
+          <Link to="/"><b>{currentGaRelease}</b></Link>.
         </div>
       </div>
     );
@@ -38,7 +39,7 @@ export default function DocVersionBanner({className}: Props): React.ReactNode {
         <div>
           This is documentation for Kamiwaza <b>{versionMetadata.label}</b>, which
           is no longer actively maintained. For the current GA release, see{' '}
-          <Link to="/"><b>0.9.3</b></Link>.
+          <Link to="/"><b>{currentGaRelease}</b></Link>.
         </div>
       </div>
     );
