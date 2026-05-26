@@ -9,7 +9,7 @@ ai_review_status: pending
 
 Gate packages let you install custom **ExecutionGate** and **AttributeGate** classes onto a paired cluster from a Python package index — without rebuilding the platform image. Shipped in `kamiwaza-mesh-v1.0.0`.
 
-A gate package is an ordinary Python package whose modules contribute one or more gate classes (subclasses of `ExecutionGate` or `AttributeGate`). The cluster's `kamiwaza.gates.packages` API installs the package into an isolated per-package directory, makes its classes reachable from `kamiwaza.gates.discover`, and persists the install record. The classes are then bindable via the existing `cluster.set_execution_gate(...)` and `datasets.set_gate(...)` APIs covered in [Execution Gates](./execution-gates.md).
+A gate package is an ordinary Python package whose modules contribute one or more gate classes (subclasses of `ExecutionGate` or `AttributeGate`). The cluster's `kz.gates.packages` API (Python module: `kamiwaza_sdk.gates.packages`) installs the package into an isolated per-package directory, makes its classes reachable from `kz.gates.discover`, and persists the install record. The classes are then bindable via the existing `cluster.set_execution_gate(...)` and `datasets.set_gate(...)` APIs covered in [Execution Gates](./execution-gates.md).
 
 :::info AI-drafted content
 This page was drafted with AI assistance and is pending human review. Specific behavioral claims are verifiable against the canonical design at [`docs/specifications/core/federation-api-and-sdk/design.md`](https://github.com/kamiwaza-internal/kamiwaza-docs-engineering-internal/blob/main/docs/specifications/core/federation-api-and-sdk/design.md) §6.2 WS-M5. Procedural code examples are derived directly from the M5 smoke playbook.
@@ -48,7 +48,7 @@ Each lifecycle action is an SDK call:
 | Uninstall | `kz.gates.packages.uninstall(name)` | admin (refused if any active binding references the package's classpaths) |
 | Discover a class | `kz.gates.discover(classpath)` | viewer or above |
 | Bind as ExecutionGate | `kz.cluster.set_execution_gate(type=..., config=...)` | admin |
-| Bind as AttributeGate | `kz.datasets.set_gate(urn=..., classpath=..., config=...)` | admin |
+| Bind as AttributeGate | `kz.datasets.set_gate(urn=..., type=..., config=...)` | admin |
 
 ## Installing a gate package
 
@@ -72,7 +72,7 @@ The install path:
 
 1. Resolves the wheel from `index_url` (any PEP 503 simple index is acceptable, including PyPI, a private mirror, or a local file index served over HTTP)
 2. Validates the SHA-256 digest against the supplied `hash_digest` via `pip install --require-hashes` — if pip can't verify, install fails before any files are written
-3. Installs into a per-package directory under the gate-packages PVC (mounted on both the Ray head and the Ray Serve replica that handles the API)
+3. Installs into a per-package directory under the gate-packages PVC (mounted on the Ray head, the scheduler, and the API server pods)
 4. Scans the installed package for `ExecutionGate`/`AttributeGate` subclasses and records the resulting classpaths in the `cluster_gate_packages` table
 5. Extends the API server's classpath allowlist and `sys.path` so `kz.gates.discover` sees the new gate immediately
 
@@ -136,14 +136,14 @@ The gate-packages feature ships with several boundaries:
 
 - **Hash pinning** is required on every install and replace. The platform does not allow unhashed installs.
 - **Admin-only API**: the install/replace/uninstall endpoints require the `admin` role on the local cluster. Federation peers cannot install gate packages remotely.
-- **NetworkPolicy isolation**: when the optional `worker.networkPolicy.enabled` chart value is set to `true`, the Ray worker pods running gate code are blocked from arbitrary internet egress. The Ray head pod has a similar policy under `rayHead.networkPolicy.enabled`. Both are opt-in; default off.
+- **NetworkPolicy isolation**: when the optional top-level chart value `workerNetworkPolicy.enabled` is set to `true`, the Ray worker pods running gate code are blocked from arbitrary internet egress. The Ray head pod has a similar policy under the top-level `rayHeadNetworkPolicy.enabled`. Both are opt-in; default off. (Note the chart keys are top-level, not nested under `worker.networkPolicy` or `rayHead.networkPolicy` — a common operator override mistake that silently no-ops.)
 - **Audit trail**: every install/replace/uninstall emits a `gate_package_lifecycle` audit event with `actor`, `action`, `name`, `version`, `hash_digest`, and (for replace) `prior_hash`.
 
 ## Limits and trade-offs
 
 - A gate-package install affects the local cluster only. Federated peers must install the same package on their side if they want to bind it locally.
 - The classpath-superset guarantee means rollback to an older package version is an *install* (of the older version) plus an *unbind/rebind*, not an automatic operation. Plan upgrades to be additive when possible.
-- The PVC backing gate-packages-venv is `ReadWriteOnce` by default in single-node clusters. Multi-node clusters need a `ReadWriteMany` storage class — see your install team's helm overrides documentation.
+- The PVC backing gate-packages-venv ships **disabled by default** (`authz.gatePackages.pvc.enabled: false` in the platform chart) — operators must explicitly opt in before any gate-package install will succeed. Once enabled, the PVC falls through to `ReadWriteOnce`, which is sufficient on single-node clusters. Multi-node clusters must override **both** `authz.gatePackages.pvc.accessModes` to `[ReadWriteMany]` AND `authz.gatePackages.pvc.storageClassName` to a RWX-Filesystem class (CephFS / NFS / similar) — overriding only one silently no-ops. See your install team's helm overrides documentation.
 
 ## Reference
 
