@@ -63,7 +63,7 @@ Common patterns for integrating Kamiwaza with existing systems, including webhoo
 
 If you're looking for a specific use case that isn't covered yet:
 - Join our [Discord community](https://discord.gg/cVGBS5rD2U) to ask questions
-- Explore the [SDK documentation](/sdk/intro) for programmatic approaches
+- Explore the [SDK documentation](/sdk) for programmatic approaches
 - Check out the [Models](../models/overview.md) and [App Garden](../app-garden.md) sections for additional patterns
 
 ---

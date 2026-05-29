@@ -1,6 +1,6 @@
 {
   "name": "kamiwaza-docs",
-  "version": "0.9.3",
+  "version": "0.13.0",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
@@ -27,12 +27,12 @@
     "build:federal": "INCLUDE_FEDERAL_DOCS=true npm run build"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.9.2",
-    "@docusaurus/plugin-content-blog": "^3.9.2",
-    "@docusaurus/preset-classic": "^3.9.2",
-    "@docusaurus/theme-classic": "^3.9.2",
-    "@docusaurus/theme-common": "^3.9.2",
-    "@docusaurus/theme-mermaid": "^3.9.2",
+    "@docusaurus/core": "^3.10.1",
+    "@docusaurus/plugin-content-blog": "^3.10.1",
+    "@docusaurus/preset-classic": "^3.10.1",
+    "@docusaurus/theme-classic": "^3.10.1",
+    "@docusaurus/theme-common": "^3.10.1",
+    "@docusaurus/theme-mermaid": "^3.10.1",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
     "docusaurus-plugin-openapi-docs": "^4.6.0",
@@ -43,9 +43,9 @@
     "yarn": "^1.22.22"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "^3.9.2",
-    "@docusaurus/tsconfig": "^3.9.2",
-    "@docusaurus/types": "^3.9.2",
+    "@docusaurus/module-type-aliases": "^3.10.1",
+    "@docusaurus/tsconfig": "^3.10.1",
+    "@docusaurus/types": "^3.10.1",
     "@types/fs-extra": "^11.0.0",
     "@types/js-yaml": "^4.0.5",
     "@types/puppeteer": "^7.0.4",
@@ -70,6 +70,12 @@
     ]
   },
   "engines": {
-    "node": ">=18.0"
+    "node": ">=22.0"
+  },
+  "overrides": {
+    "sitemap": "9.0.0"
+  },
+  "resolutions": {
+    "sitemap": "9.0.0"
   }
 }

@@ -27,19 +27,29 @@ fi
 
 echo "Updating version: $DOCS_VERSION"
 
+if [[ ! "$DOCS_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Error: version must match x.y.z"
+    exit 1
+fi
+
+if [[ -n "${DEBUG:-}" ]]; then
+    echo "Unsetting DEBUG for Docusaurus commands."
+    unset DEBUG
+fi
+
 # Verify version exists in versions.json
 VERSION_EXISTS=$(node -e "const v=JSON.parse(require('fs').readFileSync('versions.json'));console.log(v.includes('$DOCS_VERSION'))")
 if [[ "$VERSION_EXISTS" != "true" ]]; then
-    echo "Error: Version $DOCS_VERSION not found in versions.json"
-    echo "Available versions:"
-    cat versions.json
-    exit 1
+    echo "Warning: Version $DOCS_VERSION not found in versions.json"
+    echo "Continuing in repair mode to recreate the snapshot and restore the version entry."
 fi
 
 # Remove existing version snapshot
 echo "Removing existing version snapshot..."
 rm -rf "versioned_docs/version-$DOCS_VERSION"
 rm -f "versioned_sidebars/version-$DOCS_VERSION-sidebars.json"
+rm -rf "sdk_versioned_docs/version-$DOCS_VERSION"
+rm -f "sdk_versioned_sidebars/version-$DOCS_VERSION-sidebars.json"
 
 # Remove version from versions.json
 echo "Updating versions.json..."
@@ -50,6 +60,14 @@ const filtered = versions.filter(v => v !== '$DOCS_VERSION');
 fs.writeFileSync('versions.json', JSON.stringify(filtered, null, 2) + '\n');
 "
 
+echo "Updating sdk_versions.json..."
+node -e "
+const fs = require('fs');
+const versions = JSON.parse(fs.readFileSync('sdk_versions.json'));
+const filtered = versions.filter(v => v !== '$DOCS_VERSION');
+fs.writeFileSync('sdk_versions.json', JSON.stringify(filtered, null, 2) + '\n');
+"
+
 # Clear Docusaurus cache
 echo "Clearing Docusaurus cache..."
 npm run clear
@@ -57,6 +75,15 @@ npm run clear
 # Create new version snapshot
 echo "Creating new version snapshot..."
 npm run docusaurus -- docs:version "$DOCS_VERSION"
+echo "Creating new SDK version snapshot..."
+npm run docusaurus -- docs:version:sdk "$DOCS_VERSION"
+
+# Refresh the OpenAPI spec metadata so the published REST API reference stays in
+# sync with the current docs release/version.
+echo "Syncing OpenAPI spec..."
+cd "$REPO_ROOT"
+npm run sync-openapi
+cd "$DOCS_DIR"
 
 # Build to verify
 echo "Building to verify..."

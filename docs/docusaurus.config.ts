@@ -1,9 +1,26 @@
+import fs from "fs";
+import path from "path";
 import type * as Preset from "@docusaurus/preset-classic";
 import type { Config } from "@docusaurus/types";
 import { themes as prismThemes } from "prism-react-renderer";
 
 // Check if federal docs should be included (excluded by default)
 const includeFederal = process.env.INCLUDE_FEDERAL_DOCS === "true";
+const readTrunkVersion = (fallback: string) => {
+	try {
+		const pkg = JSON.parse(
+			fs.readFileSync(path.join(__dirname, "package.json"), "utf8")
+		);
+		return typeof pkg.version === "string" && pkg.version ? pkg.version : fallback;
+	} catch {
+		return fallback;
+	}
+};
+
+const latestMainVersion = readTrunkVersion("current");
+const latestSdkVersion = latestMainVersion;
+const latestMainLabel = `${latestMainVersion} (Latest)`;
+const latestSdkLabel = `${latestSdkVersion} (Latest)`;
 
 const config: Config = {
 	title: "Kamiwaza Docs",
@@ -16,6 +33,9 @@ const config: Config = {
 
 	markdown: {
 		mermaid: true,
+		hooks: {
+			onBrokenMarkdownLinks: "warn",
+		},
 	},
 
 	themes: ["@docusaurus/theme-mermaid"],
@@ -31,7 +51,6 @@ const config: Config = {
 	},
 
 	onBrokenLinks: "warn",
-	onBrokenMarkdownLinks: "warn",
 	onBrokenAnchors: "ignore",
 
 	i18n: {
@@ -101,7 +120,7 @@ const config: Config = {
 				lastVersion: "current",
 				versions: {
 					current: {
-						label: "0.9.3 (Latest)",
+						label: latestMainLabel,
 					},
 				},
 				sidebarCollapsible: true,
@@ -119,7 +138,22 @@ const config: Config = {
 				lastVersion: "current",
 				versions: {
 					current: {
-						label: "0.9.3 (Latest)",
+						label: latestSdkLabel,
+					},
+				},
+			},
+		],
+		// Extensions docs plugin
+		[
+			"@docusaurus/plugin-content-docs",
+			{
+				id: "extensions",
+				path: "extensions",
+				routeBasePath: "extensions",
+				sidebarPath: require.resolve("./sidebars-extensions.ts"),
+				versions: {
+					current: {
+						label: "Latest",
 					},
 				},
 			},
@@ -134,7 +168,7 @@ const config: Config = {
 				sidebarPath: require.resolve("./sidebars-research.ts"),
 				versions: {
 					current: {
-						label: "0.9.3 (Latest)",
+						label: latestMainLabel,
 					},
 				},
 			},
@@ -154,7 +188,7 @@ const config: Config = {
 				indexBlog: true,
 				indexDocs: true,
 				indexPages: false,
-				searchContextByPaths: ["docs", "sdk", "research"],
+				searchContextByPaths: ["docs", "sdk", "extensions", "research"],
 				searchBarShortcut: true,
 				searchBarShortcutHint: false,
 				// Exclude underscore-prefixed files; also exclude federal/ when not in federal mode
@@ -185,6 +219,12 @@ const config: Config = {
 					position: "left",
 					label: "SDK",
 					activeBasePath: "/sdk",
+				},
+				{
+					to: "/extensions/intro",
+					position: "left",
+					label: "Extensions",
+					activeBasePath: "/extensions",
 				},
 				{
 					to: "/blog",
