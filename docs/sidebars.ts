@@ -55,6 +55,7 @@ const sidebars: SidebarsConfig = {
 			label: "Security",
 			items: [
 				"security/admin-guide",
+				"security/ca-trust-external-tls",
 				"security/consent-and-classification",
 				"security/rebac-overview",
 				"security/rebac-deployment-guide",
