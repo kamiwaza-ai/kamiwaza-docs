@@ -87,6 +87,10 @@ core:
         value: /etc/ssl/certs/ca-certificates.crt
 ```
 
+You don't set `REQUESTS_CA_BUNDLE` here — the platform already points it at the same bundle
+for the Python `requests` library. That's why the verification step in §3 checks all three
+variables even though you only configure two.
+
 :::warning
 Use `core.trustManager`, not a top-level `trustManager:` key — only the `core`-scoped value
 takes effect, and it is off by default. (This mirrors the `core.security` rule for banners.)
