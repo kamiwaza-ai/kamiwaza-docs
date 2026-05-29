@@ -57,6 +57,18 @@ set) to its pods; you add your CA to that bundle and point the TLS-consuming var
 > Adding your CA is **additive** — the public CA set and the platform's own CA are preserved,
 > so calls to public services keep working.
 
+:::warning Bedrock needs §1.4 (the certifi overlay)
+The platform's Python clients split into two camps:
+- **Env-driven** (stdlib, `requests`, `boto3` sigv4 transport, `aiohttp`) — read `SSL_CERT_FILE` /
+  `REQUESTS_CA_BUNDLE` / `AWS_CA_BUNDLE`. Covered by step 1.2.
+- **certifi-pinned** (`httpx`, and therefore **LiteLLM**, which is how Kamiwaza calls **AWS
+  Bedrock** and most external chat models) — ignore env vars; pin `certifi.where()`. **Require
+  the §1.4 certifi overlay.**
+
+If you're trusting your CA for **Bedrock** (or any LiteLLM-routed model), §1.4 is part of the
+recipe — not an optional extra. Skip §1.4 only if you have no httpx-based outbound path.
+:::
+
 **1.1 Create the CA Secret** in the `kamiwaza` namespace (root + any intermediates as PEM):
 
 ```bash
@@ -81,11 +93,16 @@ core:
     enabled: true
   scheduler:
     extraEnv:
-      - name: AWS_CA_BUNDLE                       # boto3 / AWS SDK (the Bedrock path)
+      - name: AWS_CA_BUNDLE                       # boto3 sigv4 transport, urllib3
         value: /etc/ssl/certs/ca-certificates.crt
-      - name: SSL_CERT_FILE                       # OpenSSL-default consumers
+      - name: SSL_CERT_FILE                       # stdlib / aiohttp / OpenSSL defaults
         value: /etc/ssl/certs/ca-certificates.crt
 ```
+
+> **Note:** These env vars cover env-driven HTTP clients only. They do **not** cover `httpx`,
+> which the **AWS Bedrock** path and most external chat connectors use via LiteLLM. Configure
+> §1.4 (certifi overlay) **in addition to** the above whenever any of those endpoints must
+> trust your CA.
 
 You don't set `REQUESTS_CA_BUNDLE` here — the platform already points it at the same bundle
 for the Python `requests` library. That's why the verification step in §3 checks all three
@@ -111,10 +128,14 @@ kubectl rollout restart deployment/core-scheduler -n kamiwaza
 kubectl delete pod -n kamiwaza -l ray.io/cluster=core-raycluster   # recreated automatically
 ```
 
-**1.4 (Optional) extend trust to `httpx`-based fetches.** The variables above cover the AWS
-SDK and most clients. If a model-fetch path that uses `httpx` (e.g. a private model mirror)
-must trust your CA, overlay the bundle onto the `certifi` store. Discover the path, then add a
-volume mount under `core.scheduler`:
+**1.4 Extend trust to `httpx` (certifi overlay) — REQUIRED for Bedrock and LiteLLM paths.**
+The variables in 1.2 cover env-driven clients. They do **not** cover `httpx`, which is what
+LiteLLM uses for AWS Bedrock chat and most external chat connectors. Skip this step only if
+you have no httpx-based outbound path that must trust your CA — for Bedrock, this step is
+mandatory.
+
+Overlay the trust bundle onto the `certifi` store. The path is image-specific — discover it,
+then add a volume mount under `core.scheduler`:
 
 ```bash
 kubectl exec deploy/core-scheduler -n kamiwaza -- python -c "import certifi; print(certifi.where())"
@@ -170,7 +191,34 @@ network:
 Make sure the certificate covers your domain and its subdomains (`<domain>` and `*.<domain>`).
 In `byo` mode the platform issues no certificate of its own — it serves only your Secret. If
 `secretName` is missing, the install **stops with a clear error** rather than serving an empty
-certificate. To rotate, replace the Secret and `kubectl rollout restart deployment/traefik -n kamiwaza`.
+certificate.
+
+:::warning Renewal is your responsibility in `byo` mode
+The platform's cert-manager does **not** manage this certificate. Nothing in the cluster
+watches `notAfter` or renews automatically. **If you do not replace the Secret before the
+certificate expires, the platform ingress will break** — every client gets a TLS handshake
+error. Add the certificate's expiry to your standard PKI monitoring and rotate well before
+the renewal lead time.
+:::
+
+To rotate:
+
+```bash
+# Inspect current expiry
+kubectl get secret <secretName> -n kamiwaza -o jsonpath='{.data.tls\.crt}' \
+  | base64 -d | openssl x509 -noout -enddate
+
+# Replace the Secret in place (idempotent — smaller blast radius than delete + create)
+kubectl create secret tls <secretName> \
+  --cert=fullchain.pem --key=privkey.pem -n kamiwaza \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Reload Traefik so it picks up the new chain
+kubectl rollout restart deployment/traefik -n kamiwaza
+```
+
+If you want automatic renewal instead, use §2.2 (`customerCA` mode) — the platform's
+cert-manager owns rotation there, at the cost of holding your CA's private key in-cluster.
 
 ### 2.2 `mode=customerCA` — let the platform issue from your CA
 
@@ -183,6 +231,19 @@ subordinate CA to Kamiwaza is acceptable to your security office — otherwise p
 (§2.1), which never exposes a signing key.
 :::
 
+:::warning Apply §1 outbound trust with the same CA when you use `customerCA`
+When the platform serves a certificate chained to your CA, **in-cluster clients calling the
+platform's public hostname will fail TLS verification unless they also trust your CA.** The
+chart does not auto-link this — `network.tls.customerCASecretName` is a `kubernetes.io/tls`
+Secret (cert + key), and §1's `ca.trustBundle.customerCASecret` is a generic Secret (cert
+PEM). You need both. Apply §1 with the same CA whenever you set
+`network.tls.mode=customerCA`. The same coupling applies in `byo` mode if your
+operator-issued leaf chains to a CA the platform does not already trust.
+:::
+
+The Secret type **must** be `kubernetes.io/tls`, with `tls.crt` (your CA cert) and `tls.key`
+(your CA private key) — that is, `kubectl create secret tls`:
+
 ```bash
 kubectl create secret tls acme-corp-ca \
   --cert=/path/to/your-ca.pem --key=/path/to/your-ca-key.pem -n kamiwaza
@@ -193,6 +254,18 @@ network:
     mode: customerCA
     customerCASecretName: acme-corp-ca
 ```
+
+:::warning A generic Secret with only `ca.crt` is NOT enough
+cert-manager's CA Issuer reads `tls.crt` + `tls.key` from a `kubernetes.io/tls` Secret. If
+you point `customerCASecretName` at a generic Secret (or a TLS Secret missing the key), the
+Issuer comes up `Ready=False` and **silently never reissues** the platform certificate — the
+previous one keeps serving until it expires. Confirm the type before installing:
+```bash
+kubectl get secret acme-corp-ca -n kamiwaza -o jsonpath='{.type}'
+# expect: kubernetes.io/tls
+```
+After applying, also check that the Issuer is `Ready=True` (§3 verification).
+:::
 
 The platform creates an issuer from your CA and reissues its wildcard certificate from it,
 rotating on the normal schedule. If `customerCASecretName` is missing, the install stops with
@@ -213,9 +286,24 @@ kubectl get configmap kamiwaza-trust-bundle -n kamiwaza \
 kubectl exec deploy/core-scheduler -n kamiwaza -- \
   printenv AWS_CA_BUNDLE SSL_CERT_FILE REQUESTS_CA_BUNDLE
 
+# Outbound (Bedrock/LiteLLM path): the certifi store contains your CA. AWS_CA_BUNDLE does
+# NOT cover this layer — if this check fails, §1.4 (certifi overlay) has not been applied:
+kubectl exec deploy/core-scheduler -n kamiwaza -- python -c "
+import ssl, certifi
+print(any('<CA-NAME>' in str(c) for c in ssl.create_default_context(cafile=certifi.where()).get_ca_certs()))
+"
+# expect: True
+
 # Inbound: the served certificate chains to your CA:
 echo | openssl s_client -connect <your-domain>:443 -servername <your-domain> 2>/dev/null \
   | openssl x509 -noout -issuer
+
+# Inbound (customerCA mode only): the CA Issuer is Ready=True. If False, your Secret is the
+# wrong type (must be kubernetes.io/tls with tls.crt + tls.key) and the platform certificate
+# is silently NOT being reissued from your CA:
+kubectl get issuer kamiwaza-customer-ca-issuer -n kamiwaza \
+  -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+# expect: True
 ```
 
 ---
