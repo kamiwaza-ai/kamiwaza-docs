@@ -37,11 +37,34 @@ installer:
 ```
 
 After editing it, re-run the installer you used to deploy — it is idempotent and re-syncs the
-platform with your updated values:
+platform with your updated values. **Use the same invocation form as your initial install** —
+online and offline installs take different flags:
+
+**Online install:**
 
 ```bash
 sudo -E /opt/kamiwaza/scripts/install-prod.sh --domain "<your-domain-or-ip>" -y
 ```
+
+**Offline / air-gapped install** — match Step 9 of the
+[RHEL offline install guide](../installation/redhat_offline_install.md). The same `--offline`
+and `--wrap-*` flags you used at install time must be present on every re-run:
+
+```bash
+sudo -E /opt/kamiwaza/scripts/install-prod.sh \
+  --offline \
+  --skip-prereq-bootstrap \
+  --domain "${DOMAIN}" \
+  --admin-password "${ADMIN_PASSWORD}" \
+  --wrap-bundle '/opt/kamiwaza/prereqs/kamiwaza-helm.*.tar' \
+  --wrap-sha256 /opt/kamiwaza/prereqs/kamiwaza-helm.sha256 \
+  --wrap-signature /opt/kamiwaza/prereqs/kamiwaza-helm.asc \
+  --wrap-pubkey /opt/kamiwaza/prereqs/kamiwaza-tools-rpm.pub.gpg \
+  -e helm_timeout=12m \
+  -y
+```
+
+Keep the `--wrap-bundle` glob quoted exactly as shown.
 
 You'll also use `kubectl` against the platform's Kubernetes cluster to create Secrets and to
 verify results.
@@ -57,16 +80,16 @@ set) to its pods; you add your CA to that bundle and point the TLS-consuming var
 > Adding your CA is **additive** — the public CA set and the platform's own CA are preserved,
 > so calls to public services keep working.
 
-:::warning Bedrock needs §1.4 (the certifi overlay)
+:::warning Bedrock needs §1.3 (the certifi overlay)
 The platform's Python clients split into two camps:
 - **Env-driven** (stdlib, `requests`, `boto3` sigv4 transport, `aiohttp`) — read `SSL_CERT_FILE` /
   `REQUESTS_CA_BUNDLE` / `AWS_CA_BUNDLE`. Covered by step 1.2.
 - **certifi-pinned** (`httpx`, and therefore **LiteLLM**, which is how Kamiwaza calls **AWS
   Bedrock** and most external chat models) — ignore env vars; pin `certifi.where()`. **Require
-  the §1.4 certifi overlay.**
+  the §1.3 certifi overlay.**
 
-If you're trusting your CA for **Bedrock** (or any LiteLLM-routed model), §1.4 is part of the
-recipe — not an optional extra. Skip §1.4 only if you have no httpx-based outbound path.
+If you're trusting your CA for **Bedrock** (or any LiteLLM-routed model), §1.3 is part of the
+recipe — not an optional extra. Skip §1.3 only if you have no httpx-based outbound path.
 :::
 
 **1.1 Create the CA Secret** in the `kamiwaza` namespace (root + any intermediates as PEM):
@@ -101,7 +124,7 @@ core:
 
 > **Note:** These env vars cover env-driven HTTP clients only. They do **not** cover `httpx`,
 > which the **AWS Bedrock** path and most external chat connectors use via LiteLLM. Configure
-> §1.4 (certifi overlay) **in addition to** the above whenever any of those endpoints must
+> §1.3 (certifi overlay) **in addition to** the above whenever any of those endpoints must
 > trust your CA.
 
 You don't set `REQUESTS_CA_BUNDLE` here — the platform already points it at the same bundle
@@ -119,22 +142,18 @@ Use `core.trustManager`, not a top-level `trustManager:` key — only the `core`
 takes effect, and it is off by default. (This mirrors the `core.security` rule for banners.)
 :::
 
-**1.3 Apply and restart.** Re-run the installer (see [How to apply changes](#how-to-apply-changes)).
-The trust bundle is mounted in a way that does **not** hot-reload, so after the first enable —
-and after any later change to the CA Secret — restart the backend to pick it up:
-
-```bash
-kubectl rollout restart deployment/core-scheduler -n kamiwaza
-kubectl delete pod -n kamiwaza -l ray.io/cluster=core-raycluster   # recreated automatically
-```
-
-**1.4 Extend trust to `httpx` (certifi overlay) — REQUIRED for Bedrock and LiteLLM paths.**
+**1.3 Extend trust to `httpx` (certifi overlay) — REQUIRED for Bedrock and LiteLLM paths.**
 The variables in 1.2 cover env-driven clients. They do **not** cover `httpx`, which is what
 LiteLLM uses for AWS Bedrock chat and most external chat connectors. Skip this step only if
 you have no httpx-based outbound path that must trust your CA — for Bedrock, this step is
 mandatory.
 
-Overlay the trust bundle onto the `certifi` store. The path is image-specific — discover it,
+> ℹ️ Do this step **before** 1.4 (Apply and restart). Otherwise you'll apply once with only
+> env-driven trust, discover Bedrock still fails verification, then have to apply and restart
+> again. Add both 1.2 and 1.3 to the overrides file, then apply once.
+
+Overlay the trust bundle onto the `certifi` store. The path is image-specific — discover it
+against the currently-running scheduler (this works pre-install — same image either way),
 then add a volume mount under `core.scheduler`:
 
 ```bash
@@ -156,6 +175,23 @@ core:
         subPath: ca-certificates.crt
         readOnly: true
 ```
+
+> ⚠️ Same `subPath` no-hot-reload caveat as 1.4 — when the trust bundle is later refreshed
+> (CA rotation, additional CA added), this mount does not pick the new bundle up automatically.
+> Restart the same pods as 1.4 to roll it forward.
+
+**1.4 Apply and restart.** Re-run the installer (see [How to apply changes](#how-to-apply-changes))
+**after** you've added both 1.2 and (for Bedrock) 1.3 to the overrides file. The trust bundle
+is mounted via `subPath`, which does **not** hot-reload, so after the first enable — and after
+any later change to the CA Secret or the bundle — restart the backend to pick it up:
+
+```bash
+kubectl rollout restart deployment/core-scheduler -n kamiwaza
+kubectl delete pod -n kamiwaza -l ray.io/cluster=core-raycluster   # operator recreates them
+```
+
+> ℹ️ The Ray pod-delete is an **immediate drop** — it bypasses graceful draining of any
+> in-flight Ray work. Do it inside a change window, or drain workloads first.
 
 ---
 
@@ -287,7 +323,7 @@ kubectl exec deploy/core-scheduler -n kamiwaza -- \
   printenv AWS_CA_BUNDLE SSL_CERT_FILE REQUESTS_CA_BUNDLE
 
 # Outbound (Bedrock/LiteLLM path): the certifi store contains your CA. AWS_CA_BUNDLE does
-# NOT cover this layer — if this check fails, §1.4 (certifi overlay) has not been applied:
+# NOT cover this layer — if this check fails, §1.3 (certifi overlay) has not been applied:
 kubectl exec deploy/core-scheduler -n kamiwaza -- python -c "
 import ssl, certifi
 print(any('<CA-NAME>' in str(c) for c in ssl.create_default_context(cafile=certifi.where()).get_ca_certs()))
@@ -300,7 +336,9 @@ echo | openssl s_client -connect <your-domain>:443 -servername <your-domain> 2>/
 
 # Inbound (customerCA mode only): the CA Issuer is Ready=True. If False, your Secret is the
 # wrong type (must be kubernetes.io/tls with tls.crt + tls.key) and the platform certificate
-# is silently NOT being reissued from your CA:
+# is silently NOT being reissued from your CA. Default Issuer name is
+# kamiwaza-customer-ca-issuer; if your chart prefixes Issuer names with the release, swap in
+# the actual name shown by `kubectl get issuer -n kamiwaza`:
 kubectl get issuer kamiwaza-customer-ca-issuer -n kamiwaza \
   -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
 # expect: True
@@ -313,7 +351,7 @@ kubectl get issuer kamiwaza-customer-ca-issuer -n kamiwaza \
 All recovery paths take minutes and need no reinstall.
 
 - **Wrong/expired outbound CA:** replace the `kamiwaza-customer-ca` Secret, then restart the
-  backend (§1.3). To back out entirely, remove the §1.2 values and re-run the installer.
+  backend (§1.4). To back out entirely, remove the §1.2 and §1.3 values and re-run the installer.
 - **Bad ingress certificate** (browsers fail on the platform domain): set `network.tls.mode`
   back to `cert-manager` (or remove the `network.tls` block), re-run the installer, and
   `kubectl rollout restart deployment/traefik -n kamiwaza`. Only the ingress restarts.
