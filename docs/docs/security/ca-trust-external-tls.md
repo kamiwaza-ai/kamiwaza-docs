@@ -91,6 +91,12 @@ You don't set `REQUESTS_CA_BUNDLE` here — the platform already points it at th
 for the Python `requests` library. That's why the verification step in §3 checks all three
 variables even though you only configure two.
 
+:::note
+If your `overrides.yaml` already has a `core.scheduler.extraEnv` list (for example a
+`LICENSE_KEY` or ReBAC entry from install time), **append** these two entries to that existing
+list — don't add a second `core.scheduler.extraEnv`, which would replace it.
+:::
+
 :::warning
 Use `core.trustManager`, not a top-level `trustManager:` key — only the `core`-scoped value
 takes effect, and it is off by default. (This mirrors the `core.security` rule for banners.)
