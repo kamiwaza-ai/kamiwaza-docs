@@ -476,7 +476,13 @@ The table below provides real-world GPU memory requirement estimates for represe
 - 443/tcp: HTTPS primary access
 - 51100-51199/tcp: Deployment ports for model instances (will also be used for 'App Garden' in the future)
 
-**Outbound (online installs):** during an online install, the install host pulls container images from `registry-1.docker.io`, `quay.io`, and `ghcr.io` over HTTPS (port 443). Enterprise firewall policies that block outbound HTTPS to these hostnames will fail the install. Offline installs have no outbound requirement.
+**Outbound (online installs):** during an online install, the install host pulls container images over HTTPS (port 443) from several registries and their backing content-delivery hosts. Allow-listing only the registry front-ends is not sufficient — image manifests, auth tokens, and layer blobs are served from separate hosts:
+
+- **Docker Hub:** `registry-1.docker.io`, `auth.docker.io`, `production.cloudflare.docker.com`, and the layer CDN (`*.cloudfront.net`)
+- **Quay:** `quay.io` and `cdn.quay.io` (and `cdn0N.quay.io`)
+- **GHCR:** `ghcr.io` and `pkg-containers.githubusercontent.com`
+
+Enterprise firewall policies that block outbound HTTPS to any of these hosts will fail the install. Verify the exact set against your install's image list, as backing CDN hosts can change. Offline installs have no outbound requirement.
 
 #### Windows Edition
 - 443/tcp: HTTPS primary access (via WSL)
