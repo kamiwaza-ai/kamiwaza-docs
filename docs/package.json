@@ -1,6 +1,6 @@
 {
   "name": "kamiwaza-docs",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
@@ -8,6 +8,7 @@
     "start": "docusaurus start",
     "start:federal": "INCLUDE_FEDERAL_DOCS=true docusaurus start",
     "build": "docusaurus build",
+    "build:offline": "node scripts/build-offline.cjs",
     "build:federal": "INCLUDE_FEDERAL_DOCS=true docusaurus build",
     "swizzle": "docusaurus swizzle",
     "serve": "docusaurus serve",
