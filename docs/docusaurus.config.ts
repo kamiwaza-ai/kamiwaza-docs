@@ -1,9 +1,27 @@
+import fs from "fs";
+import path from "path";
 import type * as Preset from "@docusaurus/preset-classic";
 import type { Config } from "@docusaurus/types";
 import { themes as prismThemes } from "prism-react-renderer";
 
 // Check if federal docs should be included (excluded by default)
 const includeFederal = process.env.INCLUDE_FEDERAL_DOCS === "true";
+const offlineBuild = process.env.DOCUSAURUS_OFFLINE_BUILD === "true";
+const readTrunkVersion = (fallback: string) => {
+	try {
+		const pkg = JSON.parse(
+			fs.readFileSync(path.join(__dirname, "package.json"), "utf8")
+		);
+		return typeof pkg.version === "string" && pkg.version ? pkg.version : fallback;
+	} catch {
+		return fallback;
+	}
+};
+
+const latestMainVersion = readTrunkVersion("current");
+const latestSdkVersion = latestMainVersion;
+const latestMainLabel = `${latestMainVersion} (Latest)`;
+const latestSdkLabel = `${latestSdkVersion} (Latest)`;
 
 const config: Config = {
 	title: "Kamiwaza Docs",
@@ -16,6 +34,9 @@ const config: Config = {
 
 	markdown: {
 		mermaid: true,
+		hooks: {
+			onBrokenMarkdownLinks: "warn",
+		},
 	},
 
 	themes: ["@docusaurus/theme-mermaid"],
@@ -28,11 +49,15 @@ const config: Config = {
 	// Force HTTPS for deployment
 	customFields: {
 		useSSH: false,
+		offlineBuild,
 	},
 
 	onBrokenLinks: "warn",
-	onBrokenMarkdownLinks: "warn",
-	onBrokenAnchors: "ignore",
+	onBrokenAnchors: "warn",
+
+	future: {
+		experimental_router: offlineBuild ? "hash" : "browser",
+	},
 
 	i18n: {
 		defaultLocale: "en",
@@ -55,12 +80,15 @@ const config: Config = {
 					blogSidebarTitle: "All Posts",
 					// Additional settings
 					showReadingTime: true,
-					// For better debugging
-					feedOptions: {
-						type: "all",
-						copyright: `Copyright © ${new Date().getFullYear()} Kamiwaza AI.`,
-					},
+					// Blog feeds are disabled for the hash-router offline build.
+					feedOptions: offlineBuild
+						? { type: null }
+						: {
+								type: "all",
+								copyright: `Copyright © ${new Date().getFullYear()} Kamiwaza AI.`,
+							},
 				},
+				sitemap: offlineBuild ? false : undefined,
 				theme: {
 					customCss: [
 						require.resolve("./src/css/custom.css"),
@@ -70,21 +98,24 @@ const config: Config = {
 				},
 			} satisfies Preset.Options,
 		],
-		// Redocusaurus preset for OpenAPI docs
-		[
-			"redocusaurus",
-			{
-				specs: [
-					{
-						spec: "api/openapi.json",
-						route: "/sdk/api/",
-					},
-				],
-				theme: {
-					primaryColor: "#1890ff",
-				},
-			},
-		],
+		...(offlineBuild
+			? []
+			: [
+					[
+						"redocusaurus",
+						{
+							specs: [
+								{
+									spec: "api/openapi.json",
+									route: "/sdk/api/",
+								},
+							],
+							theme: {
+								primaryColor: "#1890ff",
+							},
+						},
+					],
+				]),
 	],
 
 	// ... rest of config remains the same (plugins, themeConfig, etc.)
@@ -101,7 +132,7 @@ const config: Config = {
 				lastVersion: "current",
 				versions: {
 					current: {
-						label: "0.9.3 (Latest)",
+						label: latestMainLabel,
 					},
 				},
 				sidebarCollapsible: true,
@@ -119,7 +150,32 @@ const config: Config = {
 				lastVersion: "current",
 				versions: {
 					current: {
-						label: "0.9.3 (Latest)",
+						label: latestSdkLabel,
+					},
+				},
+				// `api-reference.mdx` is the offline-build placeholder that the
+				// SDK sidebar swap script targets when DOCUSAURUS_OFFLINE_BUILD
+				// is set. Drop it from hosted builds so it never appears in the
+				// hosted sitemap, search index, or as a stranded URL with
+				// offline-only language. The glob is applied per version, so
+				// it covers `sdk/api-reference.mdx` and any
+				// `sdk_versioned_docs/version-*/api-reference.mdx`. Older
+				// versions ship `api-reference.md` (no `x`) with legitimate
+				// content and are unaffected.
+				exclude: offlineBuild ? [] : ["api-reference.mdx"],
+			},
+		],
+		// Extensions docs plugin
+		[
+			"@docusaurus/plugin-content-docs",
+			{
+				id: "extensions",
+				path: "extensions",
+				routeBasePath: "extensions",
+				sidebarPath: require.resolve("./sidebars-extensions.ts"),
+				versions: {
+					current: {
+						label: "Latest",
 					},
 				},
 			},
@@ -134,36 +190,39 @@ const config: Config = {
 				sidebarPath: require.resolve("./sidebars-research.ts"),
 				versions: {
 					current: {
-						label: "0.9.3 (Latest)",
+						label: latestMainLabel,
 					},
 				},
 			},
 		],
-		// Local search plugin
-		[
-			require.resolve("@easyops-cn/docusaurus-search-local"),
-			{
-				hashed: true,
-				language: ["en"],
-				highlightSearchTermsOnTargetPage: true,
-				explicitSearchResultPath: true,
-				searchBarPosition: "auto",
-				docsRouteBasePath: "/",
-				blogRouteBasePath: "blog",
-				docsPluginIdForPreferredVersion: "default",
-				indexBlog: true,
-				indexDocs: true,
-				indexPages: false,
-				searchContextByPaths: ["docs", "sdk", "research"],
-				searchBarShortcut: true,
-				searchBarShortcutHint: false,
-				// Exclude underscore-prefixed files; also exclude federal/ when not in federal mode
-				ignoreFiles: includeFederal ? /(?:^|\/)_/ : /(?:^|\/)(_|federal\/)/,
-				removeDefaultStopWordFilter: false,
-				searchResultLimits: 8,
-				searchResultContextMaxLength: 50,
-			},
-		],
+		...(offlineBuild
+			? []
+			: [
+					[
+						require.resolve("@easyops-cn/docusaurus-search-local"),
+						{
+							hashed: true,
+							language: ["en"],
+							highlightSearchTermsOnTargetPage: true,
+							explicitSearchResultPath: true,
+							searchBarPosition: "auto",
+							docsRouteBasePath: "/",
+							blogRouteBasePath: "blog",
+							docsPluginIdForPreferredVersion: "default",
+							indexBlog: true,
+							indexDocs: true,
+							indexPages: false,
+							searchContextByPaths: ["docs", "sdk", "extensions", "research"],
+							searchBarShortcut: true,
+							searchBarShortcutHint: false,
+							// Exclude underscore-prefixed files; also exclude federal/ when not in federal mode
+							ignoreFiles: includeFederal ? /(?:^|\/)_/ : /(?:^|\/)(_|federal\/)/,
+							removeDefaultStopWordFilter: false,
+							searchResultLimits: 8,
+							searchResultContextMaxLength: 50,
+						},
+					],
+				]),
 	],
 
 	themeConfig: {
@@ -187,6 +246,12 @@ const config: Config = {
 					activeBasePath: "/sdk",
 				},
 				{
+					to: "/extensions/intro",
+					position: "left",
+					label: "Extensions",
+					activeBasePath: "/extensions",
+				},
+				{
 					to: "/blog",
 					label: "Blog",
 					position: "left",
@@ -197,18 +262,22 @@ const config: Config = {
 					label: "Research",
 					activeBasePath: "/research",
 				},
-				{
-					type: "search",
-					position: "right",
-				},
+				...(offlineBuild
+					? []
+					: [
+							{
+								type: "search" as const,
+								position: "right" as const,
+							},
+						]),
 				{
 					type: "docsVersionDropdown",
-					position: "right",
+					position: "right" as const,
 					docsPluginId: "default",
 				},
 				{
 					type: "docsVersionDropdown",
-					position: "right",
+					position: "right" as const,
 					docsPluginId: "sdk",
 				},
 			],

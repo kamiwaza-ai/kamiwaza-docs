@@ -61,7 +61,7 @@ When deploying an app, you can enable **Ephemeral session** mode. This automatic
 This is useful for demo environments or when you want automatic cleanup of test deployments.
 
 :::tip Administrator Configuration
-Administrators can force all deployments to be ephemeral by setting `KAMIWAZA_EPHEMERAL_EXTENSIONS=true`. See the [Administrator Guide](/docs/security/admin-guide#55-ephemeral-sessions-for-app-garden) for details.
+Administrators can force all deployments to be ephemeral by setting `KAMIWAZA_EPHEMERAL_EXTENSIONS=true`. See the [Administrator Guide](security/admin-guide#55-ephemeral-sessions-for-app-garden) for details.
 :::
 
 ## Advanced Options

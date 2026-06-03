@@ -8,9 +8,10 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "strict": false,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noEmit": true
   },
   "include": [
     "scripts/**/*"
   ]
-} 
+}
