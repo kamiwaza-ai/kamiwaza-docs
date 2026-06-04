@@ -8,8 +8,8 @@ The model deployment process in Kamiwaza is designed to be simple and robust.
 
 1.  **Initiate Deployment**: When you request to deploy a model, Kamiwaza's `Models Service` takes over.
 2.  **Engine Selection**: The platform automatically determines the best engine based on your hardware, operating system, and the model's file format. For example, on a Mac with an M2 chip, a `.gguf` file will be deployed with `llama.cpp`, while `.safetensors` will use `MLX`. You can also override this and specify an engine manually.
-3.  **Resource Allocation**: The system allocates the compute resources needed for the selected runtime and configures the model's public route.
-4.  **Launch**: The selected engine is started in the environment appropriate for that deployment. In current Kubernetes deployments, this is typically a managed runtime workload exposed through the platform gateway.
+3.  **Resource Allocation**: The system allocates a network port and configures the load balancer (Traefik) to route requests to the new model endpoint.
+4.  **Launch**: The selected engine is started. For `vLLM` on Linux, this is a Docker container. For `MLX` on macOS, it's a native process.
 5.  **Health Check**: Kamiwaza monitors the model until it is healthy and ready to serve traffic.
 
 Once deployed, your model is available via a standard API endpoint.
@@ -63,7 +63,17 @@ If a deployment shows ERROR or FAILED, the UI may show a short error code and me
 
 ## How routing works
 
-Current Kamiwaza deployments use path-based routing as the standard public access model. Routes can be created immediately after launch while the runtime continues its readiness checks. This is why you may see `INITIALIZING` briefly before `DEPLOYED`.
+Kamiwaza supports port-based routing, path-based routing, or both. Routes can be created immediately after launch; Ray Serve handles readiness internally. This is why you may see INITIALIZING briefly before DEPLOYED.
+
+### Port-based routing
+
+Each deployment gets a dedicated load balancer port. OpenAI-compatible base URL:
+
+```
+https://<host>:<lb_port>/v1
+```
+
+### Path-based routing
 
 Deployments are exposed on a single host using path prefixes. OpenAI-compatible base URL:
 
@@ -71,4 +81,4 @@ Deployments are exposed on a single host using path prefixes. OpenAI-compatible 
 https://<host>/runtime/models/<deployment_id>/v1
 ```
 
-Some older environments may still expose legacy port-based routes, but path-based URLs are the canonical pattern for current customer-facing documentation. See [Routing & URLs](../routing-modes) for details.
+Routing mode and prefixes are configurable. See [Routing & URLs](../routing-modes) for details.

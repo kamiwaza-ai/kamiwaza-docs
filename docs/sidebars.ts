@@ -38,24 +38,9 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: "category",
-			label: "Configuration",
-			items: [
-				"configuration",
-				"workroom-storage-s3",
-				"routing-modes",
-			],
-		},
-		{
-			type: "category",
-			label: "Workrooms",
-			items: ["workrooms/runtime-contract"],
-		},
-		{
-			type: "category",
 			label: "Security",
 			items: [
 				"security/admin-guide",
-				"security/ca-trust-external-tls",
 				"security/consent-and-classification",
 				"security/rebac-overview",
 				"security/rebac-deployment-guide",
@@ -66,17 +51,6 @@ const sidebars: SidebarsConfig = {
 		...(includeFederal ? [federalCategory] : []),
 		{
 			type: "category",
-			label: "Federation",
-			items: [
-				"federation/overview",
-				"federation/setup",
-				"federation/retrieval",
-				"federation/job-submission",
-				"federation/operations",
-			],
-		},
-		{
-			type: "category",
 			label: "Models",
 			items: [
 				"models/overview",
@@ -85,46 +59,38 @@ const sidebars: SidebarsConfig = {
 				"models/downloading-models",
 				"models/deployment",
 				"models/bedrock",
-				"models/aws-transcribe",
-				"models/openai-compatible-chat",
-				"models/openai-compatible-transcribe",
 				"models/troubleshooting",
 			],
 		},
 		{
-			type: "category",
-			label: "Extensions",
-			items: [
-				{
-					type: "doc",
-					id: "app-garden",
-					label: "App Garden",
-				},
-				{
-					type: "doc",
-					id: "tool-garden",
-					label: "Tool Garden",
-				},
-				{
-					type: "link",
-					label: "Developer Guide",
-					href: "/extensions/developer-guide",
-				},
-			],
+			type: "doc",
+			id: "app-garden",
+			label: "App Garden",
 		},
 		{
-			type: "category",
+			type: "doc",
+			id: "tool-garden",
+			label: "Tool Garden",
+		},
+		{
+			type: "doc",
+			id: "data-engine",
 			label: "Distributed Data Engine",
-			items: [
-				{
-					type: "doc",
-					id: "data-engine",
-					label: "Overview",
-				},
-				"data-connectors",
-				"data-catalog",
-				"retrieval-service",
-			],
+		},
+		{
+			type: "doc",
+			id: "data-catalog",
+			label: "Data Catalog",
+		},
+		{
+			type: "doc",
+			id: "retrieval-service",
+			label: "Retrieval Service",
+		},
+		{
+			type: "doc",
+			id: "routing-modes",
+			label: "Routing & URLs",
 		},
 		{
 			type: "doc",
@@ -153,11 +119,6 @@ const sidebars: SidebarsConfig = {
 			type: "doc",
 			id: "help-and-fixes",
 			label: "Help & Fixes",
-		},
-		{
-			type: "category",
-			label: "Runbooks",
-			items: ["runbooks/ontology-graph-viewer"],
 		},
 		{
 			type: "category",

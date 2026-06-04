@@ -1,24 +1,7 @@
 ---
 sidebar_class_name: hidden
-slug: /
 ---
 
-import React from "react";
-import Link from "@docusaurus/Link";
-import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
+import {Redirect} from '@docusaurus/router';
 
-export const ApiReferenceLink = () => {
-  const { siteConfig } = useDocusaurusContext();
-  const offlineBuild = Boolean(siteConfig.customFields?.offlineBuild);
-  // <Link> is required so the hash router resolves under file://.
-  const apiReferenceUrl = offlineBuild ? "/sdk/api-reference" : "/sdk/api/";
-
-  return <Link to={apiReferenceUrl}>REST API Reference</Link>;
-};
-
-# Kamiwaza SDK
-
-Build against Kamiwaza using the Python SDK and the REST API reference.
-
-- Use the sidebar to browse Python SDK services.
-- Open the <ApiReferenceLink /> for endpoint-level details.
+<Redirect to="/sdk" />

@@ -6,7 +6,7 @@ sidebar_position: 1
 
 # Welcome to Kamiwaza AI Docs
 
-Welcome to the official documentation for the Kamiwaza AI Platform, the solution for building, deploying, and scaling production-grade AI applications.
+Welcome to the official documentation for the Kamiwaza AI Platform, the enterprise solution for building, deploying, and scaling production-grade AI applications.
 
 ## Kamiwaza Overview
 
@@ -30,10 +30,10 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
       <h3>⚡ Quickstart</h3>
     </div>
     <div className="card__body">
-      <p>Validate your platform, storage, security, and key user workflows before rollout.</p>
+      <p>Get up and running with a real application from the App Garden.</p>
     </div>
     <div className="card__footer">
-      <a href="quickstart" className="button button--primary button--block">Open the Quickstart →</a>
+      <a href="quickstart" className="button button--primary button--block">Launch an App →</a>
     </div>
   </div>
   <div className="doc-card">
@@ -41,7 +41,7 @@ Check out our **[Use Cases](use-cases/index.md)** section to see practical imple
       <h3>🚀 Installation Guide</h3>
     </div>
     <div className="card__body">
-      <p>Review supported installation paths, prerequisites, and system requirements.</p>
+      <p>Set up your local environment and get Kamiwaza running in minutes.</p>
     </div>
     <div className="card__footer">
       <a href="installation/installation_process" className="button button--primary button--block">Start the Installation →</a>

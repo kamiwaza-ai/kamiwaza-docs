@@ -73,4 +73,3 @@ Access the web console at `https://localhost`
 
 - Check the [Kamiwaza Community Edition releases](https://github.com/kamiwaza-ai/kamiwaza-community-edition) for the latest available version.
 - The installer automatically sets up Python virtual environments, Node.js, and required packages.
-- **Local Dev Alternative:** For developers building from source using the deploy repository scripts, an experimental `k0s` runtime via Podman VM (`--k0s-podman`) or Lima VM (`--k0s-lima`) is available as an alternative to Docker Desktop for local deployments. See [`scripts/k0s-dev-install.sh`](https://github.com/kamiwaza-ai/deploy/blob/develop/scripts/k0s-dev-install.sh) and [`scripts/k0s-lima-install.sh`](https://github.com/kamiwaza-ai/deploy/blob/develop/scripts/k0s-lima-install.sh) in the deploy repo for details and performance benchmarks.
