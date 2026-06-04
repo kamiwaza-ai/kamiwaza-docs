@@ -59,31 +59,3 @@ Kamiwaza intelligently routes model deployment requests to the most appropriate 
 
 *   **Purpose**: A specialized variant of `llama.cpp` optimized for Ampere arm-based CPU architectures.
 *   **Best For**: Running GGUF models on Ampere CPUs, such as the AmpereOne M servers.
-
-## External Endpoints
-
-In addition to running models locally, Kamiwaza can register external inference endpoints — either cloud-hosted services or customer-operated proxies — and expose them through the same deployment, audit, and access-control surfaces as local models.
-
-Supported integrations:
-
-- [**AWS Bedrock**](./bedrock.md) — Anthropic Claude, Meta Llama, Amazon Nova, and other Bedrock-hosted families.
-- [**AWS Transcribe**](./aws-transcribe.md) — managed batch and streaming speech-to-text.
-- [**OpenAI-compatible chat**](./openai-compatible-chat.md) — OpenAI directly, Azure OpenAI Service, Azure AI Foundry, customer-hosted LiteLLM proxies, and any other provider whose chat API matches the OpenAI shape.
-- [**OpenAI-compatible transcription**](./openai-compatible-transcribe.md) — OpenAI Whisper, Azure Whisper / gpt-4o-transcribe, and any other provider whose transcription API matches the OpenAI shape.
-
-Registration is an admin action: an operator pastes provider credentials into the registration form, and once deployed, the endpoint is invoked the same way as any local deployment. The Source step of the wizard offers four hosting options — AWS, Azure, OpenAI, and Other (OpenAI-compatible) — and routes to a provider-specific Setup form from there. See each provider page for the exact wizard fields.
-
-![Add Model wizard with the four hosting options](/img/models/external/wizard-source-options.png)
-
-### Credentials catalog
-
-Credentials registered through any of the four flows above are encrypted on save and stored in the Kamiwaza secret catalog under a deterministic key derived from the provider and target — AWS region for Bedrock and Transcribe, base URL for OpenAI-compatible chat and transcription.
-
-When you register a second endpoint that targets the same key — a second Bedrock model in the same region, or a second OpenAI-compatible model on the same base URL — Kamiwaza recognizes the existing credential and offers:
-
-- **Use existing credential** — keep the stored value. No new entry is created.
-- **Use a different credential** — overwrite. The replacement propagates to every endpoint sharing that credential within the engine credential cache window (roughly five minutes), without restarting any deployment.
-
-You can rotate the credential later from any model's **Edit** form; rotation propagates the same way. When a model is deleted, Kamiwaza cleans up secrets that no other model still references.
-
-> **Use long-lived credentials.** Temporary or session credentials expire while a deployment is running and lead to silent authentication failures partway through use.

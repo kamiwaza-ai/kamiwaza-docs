@@ -3,139 +3,178 @@ title: ReBAC Validation Checklist
 sidebar_label: ReBAC Validation Checklist
 ---
 
-# ReBAC Validation Checklist
+After completing the ReBAC Deployment Guide, run this validation checklist to confirm tuple enforcement, audit logging, and session controls match the current Kamiwaza artifacts. The flow mirrors what we run internally before shipping daily builds.
+## Platform assumptions
 
-Use this checklist after enabling authentication and ReBAC in a customer environment. It is designed for public, customer-facing deployments and avoids internal bootstrap helpers, seeded demo users, and local compose workflows.
+- Environment meets the published Kamiwaza system requirements for this release (minimum RHEL 9.6+). See [System Requirements](../installation/system_requirements.md) for details.
+- The ReBAC Deployment Guide steps completed successfully on the same host, including seeding with `run_oidc_uat.sh`.
+- You can reach the Traefik gateway (`https://<gateway-host>`) from your workstation to run curl commands.
 
-## Before You Begin
+---
 
-Confirm these prerequisites:
+## Prerequisites
 
-- the environment is reachable at its customer-facing HTTPS hostname
-- authentication is enabled and users can reach the sign-in flow
-- ReBAC is enabled in the deployment
-- at least two test accounts exist in the identity provider:
-  - one account that should be allowed to manage or view the target resource
-  - one account that should be denied for the same protected action
-- you have access to the approved log or observability path for the environment
+- Kamiwaza environment with the current Auth/ReBAC services running (RPM or compose stack).
+- Deployment guide steps completed, including seeding with `run_oidc_uat.sh` and service restarts.
+- Tuple bootstrap applied:
+  ```bash
+  uv run python scripts/rebac_tenant.py bootstrap configs/rebac/tenants/__default__.yaml
+  ```
+- CLI utilities: `curl`, `jq`, and access to `docker compose` or `journalctl` for logs.
 
-If you still need to configure the environment, start with the [ReBAC Deployment Guide](./rebac-deployment-guide.md).
+The helper script seeds demo users in Keycloak (credentials are printed when the script finishes and stored in `runtime/oidc-uat.env`):
 
-## 1. Browser Sign-In
+| Username | Password | Role |
+|----------|----------|------|
+| `admin` | `kamiwaza` | Owner (full control) |
+| `testuser` | `testpass` | Viewer |
+| `testadmin` | `testpass` | Admin (session purge) |
 
-1. Open the Kamiwaza web application.
-2. Sign in with a known-good administrator or authorized user account.
-3. Confirm you are returned to the application without an auth error or redirect loop.
+---
 
-Expected result:
-
-- sign-in completes successfully
-- the UI loads normally
-
-## 2. Session Validation
-
-Confirm that the environment recognizes an authenticated session.
-
-One common check is:
+## Capture bearer tokens
 
 ```bash
-curl -i https://<your-domain>/api/auth/validate
+OWNER_TOKEN=$(
+  curl -sS https://<gateway-host>/api/auth/token \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    -d 'grant_type=password' \
+    -d 'username=admin' \
+    -d 'password=kamiwaza' \
+    -d 'client_id=kamiwaza-platform' \
+    | jq -r '.access_token'
+)
+
+VIEWER_TOKEN=$(
+  curl -sS https://<gateway-host>/api/auth/token \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    -d 'grant_type=password' \
+    -d 'username=testuser' \
+    -d 'password=testpass' \
+    -d 'client_id=kamiwaza-platform' \
+    | jq -r '.access_token'
+)
+
+ADMIN_TOKEN=$(
+  curl -sS https://<gateway-host>/api/auth/token \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    -d 'grant_type=password' \
+    -d 'username=testadmin' \
+    -d 'password=testpass' \
+    -d 'client_id=kamiwaza-platform' \
+    | jq -r '.access_token'
+)
+
+for token in OWNER_TOKEN VIEWER_TOKEN ADMIN_TOKEN; do
+  test -n "${!token}" || { echo "failed to fetch ${token}" >&2; exit 1; }
+done
 ```
 
-Run this with the session or bearer-token method approved for your environment.
+If token retrieval fails, double-check that the deployment guide variables are sourced and that Keycloak is reachable from the gateway host.
 
-Expected result:
+---
 
-- HTTP `200`
-- authenticated user context is returned
+## Authentication checkpoints
 
-## 3. Allow Path
+1. Browser login: visit `https://<gateway-host>/api/auth/login`, sign in with the seeded `admin` credentials, and confirm you are redirected back without errors.
+2. Session validation:
+   ```bash
+   curl -i https://<gateway-host>/api/auth/validate \
+     -H "Authorization: Bearer ${OWNER_TOKEN}"
+   ```
+   Expect HTTP `200` with `X-User-*` headers populated.
+3. Session purge (admin):
+   ```bash
+   curl -s https://<gateway-host>/api/auth/sessions/purge \
+     -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+     -H "Content-Type: application/json" \
+     -d '{"tenant_id":"__default__","subject_namespace":"user","subject_id":"testuser"}'
+   ```
+   Response should include `{"revoked": <count>}`.
 
-Using an account that should have access:
+---
 
-1. open a representative protected workflow, such as a model, dataset, or other managed resource
-2. confirm read access succeeds
-3. if the role is expected to write or administer the resource, confirm one representative change also succeeds
+## Authorization checks
 
-Expected result:
+Fetch resource identifiers for the demo tenant:
 
-- the permitted action completes successfully
+```bash
+MODEL_ID=$(
+  curl -s "https://<gateway-host>/api/models?limit=1" \
+    -H "Authorization: Bearer ${OWNER_TOKEN}" \
+    | jq -r '.items[0].id'
+)
 
-## 4. Deny Path
+DATASET_URN=$(
+  curl -s "https://<gateway-host>/api/catalog/datasets?limit=1" \
+    -H "Authorization: Bearer ${OWNER_TOKEN}" \
+    | jq -r '.items[0].urn'
+)
 
-Using an account that should not have access to that same action:
+echo "MODEL_ID=${MODEL_ID}"
+echo "DATASET_URN=${DATASET_URN}"
+```
 
-1. attempt the same protected operation
-2. confirm the request is denied
+1. **Owner delete succeeds**
+   ```bash
+   curl -s -X DELETE "https://<gateway-host>/api/models/${MODEL_ID}" \
+     -H "Authorization: Bearer ${OWNER_TOKEN}" \
+     -o /dev/null -w "%{http_code}\n"
+   ```
+   Expect `200`. Tail logs for `rebac_decision` with `result="allow"`.
 
-Expected result:
+2. **Viewer delete denied**
+   ```bash
+   curl -s -X DELETE "https://<gateway-host>/api/models/${MODEL_ID}" \
+     -H "Authorization: Bearer ${VIEWER_TOKEN}" \
+     -o /dev/null -w "%{http_code}\n"
+   ```
+   Expect `403` and a deny log with `relation="owner"`.
 
-- the user receives a deny response or equivalent UI error
-- the request does not silently succeed
+3. **Dataset delete (owner)**
+   ```bash
+   curl -s -X DELETE "https://<gateway-host>/api/catalog/datasets/by-urn?urn=${DATASET_URN}" \
+     -H "Authorization: Bearer ${OWNER_TOKEN}" \
+     -H "Content-Type: application/json" \
+     -o /dev/null -w "%{http_code}\n"
+   ```
+   Expect `204` and corresponding allow logs.
 
-## 5. Tenant and Role Scope
+4. **Dataset delete (viewer denied)**
+   ```bash
+   curl -s -X DELETE "https://<gateway-host>/api/catalog/datasets/by-urn?urn=${DATASET_URN}" \
+     -H "Authorization: Bearer ${VIEWER_TOKEN}" \
+     -H "Content-Type: application/json" \
+     -o /dev/null -w "%{http_code}\n"
+   ```
+   Expect `403`.
 
-If the environment is multi-tenant or uses tenant-scoped policy:
+---
 
-1. sign in as a user from the intended tenant
-2. confirm that tenant-scoped resources are visible as expected
-3. sign in as a user from a different tenant or role scope
-4. confirm those resources are not exposed outside the allowed scope
+## Observability
 
-Expected result:
+1. **Logs**
+   ```bash
+   docker compose logs auth | grep rebac_decision
+   ```
+   Or, if using the RPM systemd units:
+   ```bash
+   journalctl -u kamiwaza-auth.service | grep rebac_decision
+   ```
+   Confirm allow/deny entries include `deployment_id`, `relation`, and correlation IDs.
 
-- users see only the resources and actions granted to their tenant and role context
+2. **Redis**
+   Verify TLS configuration matches your security policy (`rediss://` for production). Document any `AUTH_REBAC_SESSION_ALLOW_INSECURE=true` exceptions for development environments.
 
-## 6. Logging and Auditability
+---
 
-Review the environment's approved logging path, such as:
+## Success criteria
 
-- the Kamiwaza UI log viewer
-- platform observability dashboards
-- Kubernetes logs collected by your normal operations tooling
+✅ Login flow completes and issues session cookies.  
+✅ Tuple enforcement allows owners and blocks viewers.  
+✅ Decision logs capture both allow/deny outcomes.  
+✅ Session purge responds with revoked counts.
 
-Confirm you can find records associated with:
+Archive the curl outputs and log excerpts alongside the RPM build you validated for auditability.
 
-- successful authentication
-- denied access decisions
-- the relevant correlation or request identifiers, if your environment exposes them
-
-Expected result:
-
-- logs are available for both allow and deny scenarios
-- security and operations teams can trace the request outcome
-
-## 7. Session Controls
-
-If the deployment uses session revocation, inactivity timeout, or ephemeral-session behavior:
-
-1. verify the expected timeout or logout behavior with a test account
-2. confirm the user must re-authenticate after the session expires or is revoked
-
-Expected result:
-
-- session policy behaves as configured for the environment
-
-## 8. Federal or CAC Validation
-
-For CAC-enabled federal deployments, also validate:
-
-- the client certificate is accepted through the ingress path
-- the mapped user is correctly identified by the identity provider
-- certificate-related failures produce clear deny behavior
-
-Use:
-
-- [CAC Overview](../federal/cac-overview.md)
-
-## Success Criteria
-
-Mark the environment validated when all of the following are true:
-
-- sign-in works for intended users
-- authorized actions succeed
-- unauthorized actions are denied
-- tenant boundaries behave as expected
-- security-relevant logs are visible through the approved operations path
-
-Capture the evidence your organization requires, such as screenshots, log excerpts, or ticket references, as part of deployment sign-off.
+Return to the [ReBAC Deployment Guide](./rebac-deployment-guide.md) if you need to reconfigure environment variables.

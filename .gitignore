@@ -3,25 +3,18 @@
 
 # Production
 /build
-# Docusaurus offline build output (created by docs/scripts/build-offline.cjs).
-# Anchored so it does not match docs/scripts/build-offline.cjs itself.
-docs/build-offline/
-# Anchored so it only matches the repo-root dist/ output (where PDF generation
-# writes), not any sub-tree directory accidentally named "dist".
-/dist/
 
 # Generated files
 .docusaurus
 .cache-loader
 
-# Compiled TypeScript outputs (npm scripts run the .ts sources via ts-node).
-/scripts/*.js
-
-# SDK docs (synced from kamiwaza-sdk repo)
-/docs/sdk/current/
-/docs/sdk-services.generated.json
+# SDK docs (copied from kamiwaza-sdk)
+/docs/sdk/current/services
+/docs/sdk/current/api
 
 # Misc
+.DS_Store
+.venv
 .env.local
 .env.development.local
 .env.test.local
@@ -32,7 +25,8 @@ yarn-debug.log*
 yarn-error.log*
 docs/package-lock.json
 package-lock.json
+package-lock.json
 
-.DS_Store
+# PDF generation output - only save numbered versions
+dist/pdf/*vcurrent.pdf
 *.DS_Store
-.venv/

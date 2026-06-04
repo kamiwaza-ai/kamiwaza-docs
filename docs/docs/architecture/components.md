@@ -4,35 +4,35 @@ sidebar_position: 2
 
 # Core Components & Concepts
 
-The Kamiwaza platform is composed of several key components and conceptual systems that work together to provide model serving, governed data access, and managed application runtimes. This page describes the most important of those building blocks in the current platform.
+The Kamiwaza platform is composed of several key components and conceptual systems that work together to provide a comprehensive AI orchestration solution. This page describes the most important of these building blocks.
 
 ## Model & Data Handling
 
 ### Vector Databases
--   **What it is:** A specialized database for storing and retrieving high-dimensional vector data, such as embeddings generated from text or images. Kamiwaza can integrate with vector backends such as **Milvus** and **Qdrant**.
--   **Why it matters:** Vector databases are the engine behind similarity search, Retrieval-Augmented Generation (RAG), and other semantic retrieval workflows. Kamiwaza's abstraction layer lets deployments adopt supported backends without changing user-facing workflows.
+-   **What it is:** A specialized database for storing and retrieving high-dimensional vector data, such as embeddings generated from text or images. Kamiwaza integrates with industry-standard vector databases like **Milvus** and **Qdrant**.
+-   **Why it matters:** Vector databases are the engine behind powerful similarity searches, which are essential for Retrieval-Augmented Generation (RAG), recommendation engines, and other advanced AI applications. Kamiwaza's abstraction layer lets you choose the right database for your needs without changing your application code.
 
 ### Embeddings Management
--   **What it is:** The process of generating, storing, and managing vector embeddings for your data. Kamiwaza provides platform services that automate embedding generation using a dedicated, standalone OpenAI-compatible `llama.cpp` embedding service deployed via Helm (replacing legacy in-process fallbacks).
--   **Why it matters:** Consistent and efficient embedding management is fundamental to vector search quality and retrieval performance. A dedicated embedding service reduces container footprint and improves service decoupling compared to in-process fallbacks.
+-   **What it is:** The process of generating, storing, and managing the vector embeddings for your data. Kamiwaza provides built-in services to automate the creation of embeddings using various open-source or custom models.
+-   **Why it matters:** Consistent and efficient embedding management is fundamental to the performance of any vector search-based application. By handling this automatically, Kamiwaza reduces a major source of complexity in building RAG pipelines.
 
 ### Data Catalog
--   **What it is:** A centralized inventory of data assets, containers, and secret metadata. Kamiwaza integrates with **DataHub**-backed catalog workflows and uses URN-based references across the platform.
--   **Why it matters:** As AI systems grow, so does the data they consume. A data catalog improves discoverability, governance, and access control across models, retrieval flows, connectors, applications, and tools.
+-   **What it is:** A centralized inventory of all your data assets. Kamiwaza integrates with **Acryl DataHub** to provide a single place to discover, understand, and govern your data.
+-   **Why it matters:** As AI systems grow, so does the data they consume. A data catalog provides crucial lineage tracking ("where did this data come from?") and discoverability, which is vital for enterprise governance, security, and scalability.
 
 ## Orchestration & Serving
 
 ### Orchestration Engine
--   **What it is:** The control and execution layer that manages model launches, runtime coordination, and distributed work. Kamiwaza uses **Ray** and related serving runtimes to handle that workload.
--   **Why it matters:** This layer keeps inference, background work, and runtime routing coordinated across cluster resources.
+-   **What it is:** The "brain" of the platform that manages the flow of requests and coordinates tasks between different services. Kamiwaza uses frameworks like **Ray Serve** to handle this complex, distributed workload.
+-   **Why it matters:** The orchestrator ensures that AI requests are processed efficiently, scaled according to demand, and routed to the correct models and services. This is the key to building resilient, production-grade AI applications.
 
 ### Model Serving
--   **What it is:** The process of taking a model and making it available for real-time inference via a managed API route. Kamiwaza supports multiple serving engines such as **vLLM**, **llama.cpp**, and **MLX**, depending on environment and model type.
--   **Why it matters:** Different models have different hardware and runtime requirements. Multi-engine support helps the platform balance compatibility, performance, and cost.
+-   **What it is:** The process of taking a trained AI model and making it available for real-time inference via an API. Kamiwaza supports multiple high-performance serving engines like **vLLM**, **llama.cpp**, and **MLX**.
+-   **Why it matters:** Different models have different hardware needs (CPU vs. GPU). Kamiwaza's multi-engine support ensures you can run a diverse range of models and optimize for both performance and cost.
 
 ### API Gateway
--   **What it is:** A single, unified entry point for platform APIs. Kamiwaza uses **FastAPI** plus ingress routing to expose those services through a consistent customer-facing interface.
--   **Why it matters:** A gateway simplifies development by providing one access surface for models, retrieval, apps, tools, logging, and administration. It is also the natural place to enforce authentication, rate limiting, and logging.
+-   **What it is:** A single, unified entry point for all API requests to the platform. Kamiwaza uses **FastAPI** to create this gateway, which then routes requests to the appropriate internal microservice.
+-   **Why it matters:** A gateway simplifies development by providing a consistent interface for all platform services. It's also the ideal place to enforce cross-cutting concerns like authentication, rate limiting, and logging.
 
 ## Security & Operations
 
@@ -41,5 +41,5 @@ The Kamiwaza platform is composed of several key components and conceptual syste
 -   **Why it matters:** Robust security is non-negotiable in an enterprise setting. Kamiwaza's IAM services ensure that only authorized users and applications can access sensitive data and models.
 
 ### Caching
--   **What it is:** A high-speed storage layer used for session state, temporary runtime coordination, and frequently accessed data.
+-   **What it is:** A high-speed storage layer (e.g., **Redis**, **Valkey**) that keeps frequently accessed data readily available, reducing the need to re-compute or re-fetch it from slower databases.
 -   **Why it matters:** Caching dramatically improves the performance and responsiveness of AI applications, especially those with high request volumes, leading to a better user experience and lower operational costs. 

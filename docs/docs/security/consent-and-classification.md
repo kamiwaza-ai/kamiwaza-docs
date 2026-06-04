@@ -42,9 +42,9 @@ Consent is tracked in session storage for the browser session and is also record
 
 ## Configuration
 
-### Deployment settings
+### Environment variables
 
-Set these through your deployment values, ConfigMaps, or equivalent environment configuration workflow:
+Set these in `env.sh` (or your deployment environment) and restart the services:
 
 | Variable | Description | Default |
 | --- | --- | --- |
@@ -64,10 +64,12 @@ Consent HTML is loaded from:
 $KAMIWAZA_ROOT/config/security/consent.html
 ```
 
-If the file is missing, a default short message is used. In customer deployments, manage any custom consent content through the supported configuration and release process for your environment rather than editing files directly in running containers.
+If the file is missing, a default short message is used. You can start from the packaged example in
+`config/security/consent-long.html` in the platform repo and copy it to the path above.
 
 ## Operational notes
 
 - Consent and banners are purely UI-level controls. They do not replace API authentication or authorization.
 - For system-high or CAPCO-aligned deployments, keep banner text aligned with your site classification policy.
 - If you embed the script in external apps, make sure those apps are reachable through the same gateway so the script can resolve the correct API origin.
+
