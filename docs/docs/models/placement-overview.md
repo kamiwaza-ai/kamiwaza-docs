@@ -49,7 +49,7 @@ The class is detected automatically from node labels — you never select it. [G
 
 Every deployment's details surface where it landed and what it reserved:
 
-- **Topology** — managed cluster, standalone cluster, or macOS.
+- **Topology** — managed cluster or standalone cluster (macOS installs appear as standalone with the `metal_spawner` sharing class).
 - **Node and GPU** — the node name and GPU index (where applicable).
 - **Hardware class and sharing class** — for example `unified_memory`, or `mig_2g_20gb` for a model placed in a MIG slice.
 - **Allocated capacity (MB)** — the memory budget reserved for this deployment.

@@ -16,7 +16,7 @@ Fractional serving is governed by the [hardware class](./placement-hardware-clas
 | MIG / hardware partitions | No | One model per partition; the partition itself is the unit of sharing |
 | Any GPU with fractional placement disabled | No | Whole-GPU exclusive — one model per card |
 
-Fractional placement is enabled by default. Installations with stricter compliance requirements can disable it at install time with the chart setting `serving.placement.vram_plugin_v2.enabled=false`, which falls back to whole-GPU exclusive placement: the first model claims the card, and a second model on the same card is rejected with `insufficient_capacity`.
+Fractional placement is enabled by default. Installations with stricter compliance requirements can disable it at install time with the Helm value `placement.vramPluginV2.enabled=false` on the placement-operator chart, which falls back to whole-GPU exclusive placement: the first model claims the card, and a second model on the same card is rejected with `insufficient_capacity`.
 
 ## How the VRAM budget works
 
@@ -28,7 +28,7 @@ Details worth knowing:
 
 - **One budget per physical GPU.** A node with four cards exposes four independent budgets (`...-gpu-0` through `...-gpu-3`); each model lands on exactly one card's budget.
 - **Unified-memory machines expose a single budget** (`kamiwaza.ai/vram-mb-gpu-0`) sized to the shared memory pool, since the CPU and GPU draw from the same pool.
-- **A per-node system reserve (4 GiB) is held back** before budgets are computed, so deployments cannot starve the node itself.
+- **Unified-memory machines hold back an 8 GiB operating-system reserve** from the shared pool before the budget is advertised, so deployments cannot starve the host. Discrete-GPU budgets are sized to the card's detected VRAM.
 
 On a standalone cluster you can see the advertised budgets directly:
 
@@ -56,30 +56,37 @@ When no eligible GPU (or set of GPUs) can satisfy a request, the deploy API retu
 
 ```json
 {
-  "error": "placement_no_fit",
-  "topology": "managed_cluster",
-  "sharing_class": "whole_gpu",
-  "requested_capacity_mb": 40000,
-  "largest_available_capacity_mb": 24000,
-  "largest_available_location": "node-3 GPU#0",
+  "error": "no_fit",
   "reason": "insufficient_capacity",
-  "candidates_filtered": 4,
-  "candidates_remaining": 4
+  "requested": {
+    "capacity_mb": 40000,
+    "gpu_count": 1
+  },
+  "largest_available": {
+    "capacity_mb": 24000,
+    "location": "node-3 GPU#0"
+  },
+  "candidates": {
+    "total": 8,
+    "filtered": 4,
+    "remaining": 4
+  },
+  "runbook_url": ""
 }
 ```
 
-The `reason` field tells you why, and the capacity fields tell you how close the cluster was:
+The `reason` field tells you why, and the `requested` and `largest_available` objects tell you how close the cluster was:
 
 | Reason | Meaning | Common causes and what to do |
 |---|---|---|
-| `insufficient_capacity` | No single GPU (or partition) has enough free budget for the request | The model is too large for the hardware, or other deployments hold the budget. Choose a smaller or more quantized variant, reduce context length, or stop an unused deployment. Compare `requested_capacity_mb` against `largest_available_capacity_mb`. |
+| `insufficient_capacity` | No single GPU (or partition) has enough free budget for the request | The model is too large for the hardware, or other deployments hold the budget. Choose a smaller or more quantized variant, reduce context length, or stop an unused deployment. Compare `requested.capacity_mb` against `largest_available.capacity_mb`. |
 | `insufficient_system_memory` | Unified-memory budget exhausted | The shared memory pool is fully reserved. Stop another deployment or pick a smaller model. |
 | `insufficient_gpu_count` | A tensor-parallel request needs N GPUs but no node has N free | Lower the tensor-parallel size or free GPUs on a multi-GPU node. |
 | `vendor_mismatch` | The selected engine requires a GPU vendor the cluster does not have | For example, an engine that requires CUDA on an AMD-only cluster. Pick a model/engine variant that matches your hardware. |
 | `accel_version_unmet` | No node satisfies the engine's minimum accelerator version (for example, a required CUDA version) | Upgrade GPU drivers, or choose an engine/model variant built for your driver generation. |
 | `sharing_not_configured` | A managed cluster has no GPU sharing configured and the model cannot fit as whole-GPU | Ask your cluster admin to enable a sharing strategy (the error includes a runbook link), or free a GPU. |
 
-`candidates_filtered` and `candidates_remaining` show how many GPUs were ruled out and for what stage — useful for telling "everything was too small" apart from "nothing matched the vendor filter."
+The `candidates` object summarizes the search: how many GPUs were considered (`total`), how many the filters ruled out in aggregate (`filtered`), and how many passed the filters but could not satisfy the request (`remaining`). Read together with `reason`, this tells "everything was too small" apart from "nothing matched the filters at all."
 
 ## Limits to know
 

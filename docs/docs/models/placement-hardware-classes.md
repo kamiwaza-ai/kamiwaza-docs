@@ -11,7 +11,7 @@ If you have not read it yet, start with the [Model Placement Overview](./placeme
 
 | Class | Members | Placement primitive | Isolation |
 |---|---|---|---|
-| **Hardware-isolated** | NVIDIA MIG-capable cards (A100, H100, H200, B100/B200, GH200, L4) with MIG enabled; AMD Instinct MI300+ with partitioning enabled | One model per hardware partition (for example, a MIG slice requested as `nvidia.com/mig-2g.20gb`) | Hardware: dedicated memory and fault isolation per partition |
+| **Hardware-isolated** | NVIDIA MIG-capable cards (A100, H100, B100) with MIG enabled; AMD Instinct MI300+ with partitioning enabled | One model per hardware partition (for example, a MIG slice requested as `nvidia.com/mig-2g.20gb`) | Hardware: dedicated memory and fault isolation per partition |
 | **Software-shared** | Discrete-memory GPUs without hardware partitioning: T4, L4, A100/H100 with MIG disabled, and similar; also covers admin-configured time-slicing or MPS on managed clusters | Fractional per-GPU memory budgets in MB, or the cluster's configured sharing strategy, or whole-GPU exclusive | Software: memory budgets are enforced when the model is scheduled; co-located models share compute and faults |
 | **Unified memory** | Apple Silicon (M-series), AMD Strix Halo, NVIDIA DGX Spark (GB10 Grace-Blackwell) | Budget against the aggregate system memory pool | Process-level only: concurrent models share the GPU through the OS scheduler |
 
@@ -63,7 +63,6 @@ Detection is automatic, driven by node labels — you never set the class yourse
 | `kamiwaza.ai/gpu-memory-class` | `unified` or `discrete` — the unified-memory signal |
 | `kamiwaza.ai/gpu-memory-mb` | Detected GPU (or shared-pool) memory in MB |
 | `kamiwaza.ai/gpu-vendor` | GPU vendor |
-| `kamiwaza.ai/gpu-sharing-class` | `metal_spawner` on macOS hosts |
 
 On a standalone cluster you can inspect the labels directly:
 
@@ -71,7 +70,7 @@ On a standalone cluster you can inspect the labels directly:
 kubectl get node <node-name> -o jsonpath='{.metadata.labels}' | tr ',' '\n' | grep gpu
 ```
 
-If a node's GPU labels are incomplete, the deployment surfaces a `PartialDiscovery` notice and that node is not considered for placement until its labels are complete.
+If a node's GPU labels are incomplete, the deployment surfaces a `PartialDiscovery` notice naming the missing labels, and placement proceeds with conservative assumptions (for example, sharing is treated as not configured). A node whose capacity labels are missing cannot be budgeted, so it will not win placement until those labels are present.
 
 ## See also
 
