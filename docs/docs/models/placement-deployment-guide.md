@@ -29,10 +29,17 @@ from kamiwaza_sdk import KamiwazaClient
 
 client = KamiwazaClient(base_url="https://<your-host>/api")
 
-# Deploy by model ID (a model already in your catalog) or by Hugging Face repo ID.
-# Placement is automatic; the default model configuration is used unless you
-# pass m_config_id or other deployment parameters.
+# Deploy by model ID (a model already in your catalog). If m_config_id is
+# omitted, the SDK resolves the model's default configuration for you.
+# Placement is automatic.
 deployment_id = client.serving.deploy_model(model_id=model_id)
+
+# Or deploy by Hugging Face repo ID (the SDK looks up the catalog entry),
+# pinning an explicit configuration with m_config_id.
+deployment_id = client.serving.deploy_model(
+    repo_id="Qwen/Qwen3-8B",
+    m_config_id=config_id,
+)
 
 status = client.serving.get_deployment_status(deployment_id)
 ```
