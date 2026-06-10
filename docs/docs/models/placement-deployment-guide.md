@@ -20,7 +20,7 @@ For background on how placement decides, read the [Model Placement Overview](./p
 3. Kamiwaza estimates the model's footprint, picks a GPU (or memory pool) with enough free budget, and starts the deployment. No placement input is required.
 4. Watch the status move through `DEPLOYING` and `INITIALIZING` to `DEPLOYED`. The statuses are described in [Model Deployment](./deployment.md#deployment-lifecycle-statuses).
 
-To run a second model on the same hardware, just deploy it the same way. If the combined budgets fit, both models run side by side; if not, the second deploy is rejected immediately with a [NoFit error](./placement-fractional-serving.md#what-a-nofit-error-means).
+To run a second model on the same hardware, just deploy it the same way. If the combined budgets fit, both models run side by side; if not, the second deployment fails fast with a [NoFit error](./placement-fractional-serving.md#what-a-nofit-error-means).
 
 ## Deploy a model with the SDK
 
@@ -44,7 +44,9 @@ deployment_id = client.serving.deploy_model(
 status = client.serving.get_deployment_status(deployment_id)
 ```
 
-A request that cannot be placed fails synchronously with HTTP 409 and the structured no-fit envelope — catch it and read the `reason` field rather than polling for a deployment that will never start.
+The deploy API is asynchronous: the server accepts the request and returns the deployment ID immediately. By default the SDK blocks client-side (`wait=True`), polling until the deployment reaches `DEPLOYED`; it raises `DeploymentFailedError` if the deployment reaches a terminal failure state (`FAILED`, `ERROR`, or `MUST_REDOWNLOAD`) and `TimeoutError` if the deployment is not ready within `timeout_seconds`. Pass `wait=False` to get the deployment ID back as soon as the server accepts the request, then observe progress with `get_deployment_status` or `wait_deployment_ready`.
+
+A model that cannot be placed fails fast with the no-fit reason recorded on the deployment (`last_error_code`, `last_error_message`) — see [What a NoFit error means](./placement-fractional-serving.md#what-a-nofit-error-means).
 
 ## Monitor placement
 
@@ -67,14 +69,14 @@ Open a deployment's details to see where it landed:
 
 ## Troubleshooting
 
-### The deploy request is rejected immediately (HTTP 409)
+### The deployment fails immediately with a placement (NoFit) error
 
-This is placement telling you the model does not fit anywhere, before anything starts. Read the `reason` field in the response — the [NoFit reference table](./placement-fractional-serving.md#what-a-nofit-error-means) lists every reason with common causes and fixes. The quick version:
+This is placement telling you the model does not fit anywhere, before any pod starts. The deployment shows `FAILED` with `last_error_code` set to `NoFitError` and the no-fit reason in `last_error_message` (the SDK raises `DeploymentFailedError` when waiting). The [NoFit reference table](./placement-fractional-serving.md#what-a-nofit-error-means) lists every reason with common causes and fixes. The quick version:
 
 - `insufficient_capacity` / `insufficient_system_memory` — pick a smaller or more quantized variant, reduce context length, or stop an unused deployment to free budget.
 - `vendor_mismatch` / `accel_version_unmet` — the engine does not match your hardware or driver generation; pick a matching variant.
 - `insufficient_gpu_count` — lower the tensor-parallel size or free GPUs on a multi-GPU node.
-- `sharing_not_configured` — ask your cluster admin to enable GPU sharing; the error includes a runbook link.
+- `sharing_not_configured` — ask your cluster admin to enable GPU sharing.
 
 ### A SharingNotConfigured notice appears
 

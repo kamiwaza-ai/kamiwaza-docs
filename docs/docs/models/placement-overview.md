@@ -11,7 +11,7 @@ The goal of placement is safe GPU coexistence: running more than one model on th
 
 A GPU is usually much larger than any single model you put on it. A 6 GB model deployed exclusively on an 80 GB card leaves 74 GB idle. Without placement, every deployment claims a whole GPU, so a second small model on the same card is refused even though there is plenty of room.
 
-With placement, Kamiwaza estimates each model's memory footprint, reserves that amount on a specific GPU, and lets additional models use the remaining capacity. A model that does not fit anywhere is rejected immediately with a structured error that names the largest available capacity — not left silently pending. See [Fractional GPU Serving](./placement-fractional-serving.md) for how the budgeting works.
+With placement, Kamiwaza estimates each model's memory footprint, reserves that amount on a specific GPU, and lets additional models use the remaining capacity. A model that does not fit anywhere fails fast with a structured placement error recorded on the deployment — it is never left silently pending. See [Fractional GPU Serving](./placement-fractional-serving.md) for how the budgeting works.
 
 ## Where Kamiwaza runs
 

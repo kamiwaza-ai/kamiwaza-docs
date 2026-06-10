@@ -16,7 +16,7 @@ Fractional serving is governed by the [hardware class](./placement-hardware-clas
 | MIG / hardware partitions | No | One model per partition; the partition itself is the unit of sharing |
 | Any GPU with fractional placement disabled | No | Whole-GPU exclusive — one model per card |
 
-Fractional placement is enabled by default. Installations with stricter compliance requirements can disable it at install time with the Helm value `placement.vramPluginV2.enabled=false` on the placement-operator chart, which falls back to whole-GPU exclusive placement: the first model claims the card, and a second model on the same card is rejected with `insufficient_capacity`.
+Fractional placement is enabled by default. Installations with stricter compliance requirements can disable it at install time with the Helm value `placement.vramPluginV2.enabled=false` on the placement-operator chart, which falls back to whole-GPU exclusive placement: the first model claims the card, and a second model on the same card fails with reason `insufficient_capacity`.
 
 ## How the VRAM budget works
 
@@ -42,7 +42,7 @@ A 16 GB NVIDIA T4 with two 6 GB models:
 
 1. Deploy model A (estimated 6,000 MB). It reserves 6,000 MB on `gpu-0`. Remaining budget ≈ 10,000 MB.
 2. Deploy model B (estimated 6,000 MB). It fits the remaining budget and lands on the same card. Both deployments reach `DEPLOYED` and serve traffic concurrently.
-3. Deploy model C (estimated 6,000 MB). The remaining budget (≈ 4,000 MB) is too small. The deploy request is rejected immediately with a structured `insufficient_capacity` error — no pending pod, no partial deployment.
+3. Deploy model C (estimated 6,000 MB). The remaining budget (≈ 4,000 MB) is too small. The deployment fails fast with the structured no-fit reason `insufficient_capacity` — no pending pod, no partial deployment.
 
 On a node with mixed cards (say, an 8 GB and a 24 GB GPU), placement picks a card whose remaining budget fits the request, so a 10 GB model goes to the 24 GB card even if the 8 GB card is idle.
 
@@ -52,41 +52,18 @@ A model whose footprint exceeds any single GPU can be deployed with tensor paral
 
 ## What a NoFit error means
 
-When no eligible GPU (or set of GPUs) can satisfy a request, the deploy API returns HTTP 409 with a structured envelope rather than creating a stuck deployment:
+The deploy API is asynchronous: it accepts the request and returns the deployment ID immediately. When no eligible GPU (or set of GPUs) can satisfy the request, the deployment then fails fast — before any pod is created — instead of sitting pending. The deployment shows status `FAILED` with `last_error_code` set to `NoFitError` and the no-fit reason recorded in `last_error_message`. (When deploying through the SDK with the default `wait=True`, this surfaces as a `DeploymentFailedError`; see the [Placement Deployment Guide](./placement-deployment-guide.md#deploy-a-model-with-the-sdk).)
 
-```json
-{
-  "error": "no_fit",
-  "reason": "insufficient_capacity",
-  "requested": {
-    "capacity_mb": 40000,
-    "gpu_count": 1
-  },
-  "largest_available": {
-    "capacity_mb": 24000,
-    "location": "node-3 GPU#0"
-  },
-  "candidates": {
-    "total": 8,
-    "filtered": 4,
-    "remaining": 4
-  },
-  "runbook_url": ""
-}
-```
-
-The `reason` field tells you why, and the `requested` and `largest_available` objects tell you how close the cluster was:
+The reason tells you why the model did not fit:
 
 | Reason | Meaning | Common causes and what to do |
 |---|---|---|
-| `insufficient_capacity` | No single GPU (or partition) has enough free budget for the request | The model is too large for the hardware, or other deployments hold the budget. Choose a smaller or more quantized variant, reduce context length, or stop an unused deployment. Compare `requested.capacity_mb` against `largest_available.capacity_mb`. |
+| `insufficient_capacity` | No single GPU (or partition) has enough free budget for the request | The model is too large for the hardware, or other deployments hold the budget. Choose a smaller or more quantized variant, reduce context length, or stop an unused deployment. |
 | `insufficient_system_memory` | Unified-memory budget exhausted | The shared memory pool is fully reserved. Stop another deployment or pick a smaller model. |
 | `insufficient_gpu_count` | A tensor-parallel request needs N GPUs but no node has N free | Lower the tensor-parallel size or free GPUs on a multi-GPU node. |
 | `vendor_mismatch` | The selected engine requires a GPU vendor the cluster does not have | For example, an engine that requires CUDA on an AMD-only cluster. Pick a model/engine variant that matches your hardware. |
 | `accel_version_unmet` | No node satisfies the engine's minimum accelerator version (for example, a required CUDA version) | Upgrade GPU drivers, or choose an engine/model variant built for your driver generation. |
-| `sharing_not_configured` | A managed cluster has no GPU sharing configured and the model cannot fit as whole-GPU | Ask your cluster admin to enable a sharing strategy (the error includes a runbook link), or free a GPU. |
-
-The `candidates` object summarizes the search: how many GPUs were considered (`total`), how many the filters ruled out in aggregate (`filtered`), and how many passed the filters but could not satisfy the request (`remaining`). Read together with `reason`, this tells "everything was too small" apart from "nothing matched the filters at all."
+| `sharing_not_configured` | A managed cluster has no GPU sharing configured and the model cannot fit as whole-GPU | Ask your cluster admin to enable a sharing strategy, or free a GPU. |
 
 ## Limits to know
 

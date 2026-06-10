@@ -33,6 +33,7 @@ const sidebars: SidebarsConfig = {
 				"installation/redhat_online_install",
 				"installation/redhat_offline_install",
 				"installation/gpu_setup_guide",
+				"installation/nvidia-secure-boot",
 				"installation/two-node-deployment",
 			],
 		},

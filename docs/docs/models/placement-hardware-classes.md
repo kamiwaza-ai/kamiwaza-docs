@@ -25,7 +25,7 @@ What to expect:
 
 - **One model per partition.** Each deployment gets a whole slice to itself. Kamiwaza does not pack multiple models into one slice.
 - **True isolation.** A crash, memory leak, or GPU fault in one partition does not affect models in other partitions.
-- **Capacity is the partition size**, not the whole card. A model that needs more than the largest configured partition will not fit — the deploy request is rejected with a structured error naming the largest available capacity (see [What a NoFit error means](./placement-fractional-serving.md#what-a-nofit-error-means)).
+- **Capacity is the partition size**, not the whole card. A model that needs more than the largest configured partition will not fit — the deployment fails with a structured no-fit error (see [What a NoFit error means](./placement-fractional-serving.md#what-a-nofit-error-means)).
 - The sharing class on deployment details names the partition, for example `mig_2g_20gb`.
 
 ## Software-shared
@@ -61,7 +61,7 @@ Detection is automatic, driven by node labels — you never set the class yourse
 | Label | Meaning |
 |---|---|
 | `kamiwaza.ai/gpu-memory-class` | `unified` or `discrete` — the unified-memory signal |
-| `kamiwaza.ai/gpu-memory-mb` | Detected GPU (or shared-pool) memory in MB |
+| `kamiwaza.ai/gpu-memory-mb` | Detected GPU (or shared-pool) memory. The value is in MiB, despite the label name |
 | `kamiwaza.ai/gpu-vendor` | GPU vendor |
 
 On a standalone cluster you can inspect the labels directly:
