@@ -25,7 +25,7 @@
  *   npx ts-node scripts/sync-openapi.ts --generate         # Prefers the running platform, then falls back to local source generation
  *
  * To sync from a specific release:
- *   cd ../platform/kamiwaza && git checkout release/0.9.3
+ *   cd ../platform/kamiwaza && git checkout release/0.13.0
  *   # Ensure openapi.json is generated (run platform or use existing)
  *   cd ../docs/kamiwaza-docs && npm run sync-openapi
  *

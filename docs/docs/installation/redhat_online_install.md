@@ -85,9 +85,12 @@ The installation steps typically include:
 
 Download and install the Kamiwaza RPM package for RHEL 9:
 
+Replace `<current-version>` below with the installer version currently published for RHEL 9.
+
 ```bash
 # Download the package
-curl -LO https://packages.kamiwaza.ai/rpm/kamiwaza_v0.9.3_rhel9_x86_64.rpm
+export KAMIWAZA_VERSION="<current-version>"
+curl -LO "https://packages.kamiwaza.ai/rpm/kamiwaza_v${KAMIWAZA_VERSION}_rhel9_x86_64.rpm"
 ```
 
 **IMPORTANT:** You must accept the Kamiwaza License Agreement to install Kamiwaza. By including `KAMIWAZA_ACCEPT_LICENSE=yes` in the installation command, you are agreeing to the Kamiwaza License Agreement.
@@ -96,10 +99,10 @@ To review the full license terms, visit: https://www.kamiwaza.ai/license
 
 ```bash
 # Option A: Install the package (Community Edition)
-sudo -E KAMIWAZA_ACCEPT_LICENSE=yes dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes dnf install "./kamiwaza_v${KAMIWAZA_VERSION}_rhel9_x86_64.rpm"
 
 # Option B: Install the package (Enterprise Mode with License Key)
-sudo -E KAMIWAZA_ACCEPT_LICENSE=yes KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY_HERE" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY_HERE" dnf install "./kamiwaza_v${KAMIWAZA_VERSION}_rhel9_x86_64.rpm"
 ```
 
 **Note:** Omit the `KAMIWAZA_LICENSE_KEY` option if you are installing the Community Edition without an enterprise license.

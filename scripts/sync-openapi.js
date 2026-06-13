@@ -20,7 +20,7 @@
  *   npx ts-node scripts/sync-openapi.ts --generate         # Generates fresh spec from running platform
  *
  * To sync from a specific release:
- *   cd ../platform/kamiwaza && git checkout release/0.9.3
+ *   cd ../platform/kamiwaza && git checkout release/0.13.0
  *   # Ensure openapi.json is generated (run platform or use existing)
  *   cd ../docs/kamiwaza-docs && npm run sync-openapi
  *
@@ -96,10 +96,10 @@ function getDocsVersion() {
     const packageJsonPath = path_1.default.resolve(__dirname, "../package.json");
     try {
         const packageJson = JSON.parse(fs_extra_1.default.readFileSync(packageJsonPath, "utf-8"));
-        return packageJson.version || "0.9.3";
+        return packageJson.version || "0.13.0";
     }
     catch {
-        return "0.9.2";
+        return "0.13.0";
     }
 }
 async function main() {
