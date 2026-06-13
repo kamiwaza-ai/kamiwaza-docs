@@ -35,13 +35,11 @@ docker --version && docker compose version
 ### 3) Download and install Kamiwaza
 
 The installer automatically handles Python (via pyenv), Node.js (via nvm), and other dependencies.
-Replace `<current-version>` below with the installer version currently published for macOS.
 
 ```bash
 mkdir -p ~/kamiwaza && cd ~/kamiwaza
-export KAMIWAZA_VERSION="<current-version>"
-curl -L -O "https://packages.kamiwaza.ai/macos/kamiwaza-community-${KAMIWAZA_VERSION}-OSX.tar.gz"
-tar -xvf "kamiwaza-community-${KAMIWAZA_VERSION}-OSX.tar.gz"
+curl -L -O https://packages.kamiwaza.ai/macos/kamiwaza-community-0.9.3-OSX.tar.gz
+tar -xvf kamiwaza-community-0.9.3-OSX.tar.gz
 bash install.sh --community
 ```
 

@@ -13,19 +13,17 @@
 
 ### Linux
 
-Replace `<current-version>` below with the installer version currently published for your platform before running the download commands.
-
 #### Ubuntu .deb Package Installation
 
 Download the appropriate package for your Ubuntu version and architecture:
 
 | Ubuntu Version | Architecture | Download |
 |---------------|--------------|----------|
-| 24.04 (Noble) | x86_64 | `kamiwaza_v<current-version>_noble_x86_64.deb` |
-| 24.04 (Noble) | ARM64 | `kamiwaza_v<current-version>_noble_arm64.deb` |
-| 24.04 (Noble) | ARM64 (DGX Spark) | `kamiwaza_v<current-version>_noble_arm64_dgx.deb` |
-| 22.04 (Jammy) | x86_64 | `kamiwaza_v<current-version>_jammy_x86_64.deb` |
-| 22.04 (Jammy) | ARM64 | `kamiwaza_v<current-version>_jammy_arm64.deb` |
+| 24.04 (Noble) | x86_64 | [kamiwaza_v0.9.3_noble_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_x86_64.deb) |
+| 24.04 (Noble) | ARM64 | [kamiwaza_v0.9.3_noble_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64.deb) |
+| 24.04 (Noble) | ARM64 (DGX Spark) | [kamiwaza_v0.9.3_noble_arm64_dgx.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_arm64_dgx.deb) |
+| 22.04 (Jammy) | x86_64 | [kamiwaza_v0.9.3_jammy_x86_64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_x86_64.deb) |
+| 22.04 (Jammy) | ARM64 | [kamiwaza_v0.9.3_jammy_arm64.deb](https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_jammy_arm64.deb) |
 
 **ARM64 Package Selection:**
 - **ARM64** - For generic ARM64 systems (AWS Graviton, Ampere Altra, etc.)
@@ -34,11 +32,10 @@ Download the appropriate package for your Ubuntu version and architecture:
 Install using dpkg:
 ```bash
 # Download the package (example for Ubuntu 24.04 x86_64)
-export KAMIWAZA_VERSION="<current-version>"
-curl -LO "https://packages.kamiwaza.ai/deb/kamiwaza_v${KAMIWAZA_VERSION}_noble_x86_64.deb"
+curl -LO https://packages.kamiwaza.ai/deb/kamiwaza_v0.9.3_noble_x86_64.deb
 
 # Install the package
-sudo dpkg -i "kamiwaza_v${KAMIWAZA_VERSION}_noble_x86_64.deb"
+sudo dpkg -i kamiwaza_v0.9.3_noble_x86_64.deb
 
 # Install any missing dependencies
 sudo apt-get install -f
@@ -56,15 +53,14 @@ Verify service starts (see [Quickstart](quickstart.md))
 
 ```bash
 # Download the package
-export KAMIWAZA_VERSION="<current-version>"
-curl -LO "https://packages.kamiwaza.ai/rpm/kamiwaza_v${KAMIWAZA_VERSION}_rhel9_x86_64.rpm"
+curl -LO https://packages.kamiwaza.ai/rpm/kamiwaza_v0.9.3_rhel9_x86_64.rpm
 
 # Install the package
-sudo -E KAMIWAZA_ACCEPT_LICENSE=yes dnf install "./kamiwaza_v${KAMIWAZA_VERSION}_rhel9_x86_64.rpm"
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 
 
 # Alternatively, for Enterprise Mode, Install the package with Kamiwaza License Key
-sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY" dnf install "./kamiwaza_v${KAMIWAZA_VERSION}_rhel9_x86_64.rpm"
+sudo -E KAMIWAZA_ACCEPT_LICENSE=yes -E KAMIWAZA_LICENSE_KEY="YOUR_LICENSE_KEY" dnf install ./kamiwaza_v0.9.3_rhel9_x86_64.rpm
 ```
 
 ### Community Edition on macOS
