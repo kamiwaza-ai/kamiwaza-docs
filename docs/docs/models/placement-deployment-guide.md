@@ -59,7 +59,7 @@ Open a deployment's details to see where it landed:
 | `gpu_index`, `gpu_vendor` | Which GPU on the node, and its vendor |
 | `hardware_class` | `hardware_isolated`, `software_shared`, or `unified_memory` — see [GPU Hardware Classes](./placement-hardware-classes.md) |
 | `sharing_class` | How the device is shared, for example `mig_2g_20gb`, `whole_gpu`, `unified_memory`, `metal_spawner` |
-| `allocated_capacity_mb` | The memory budget reserved for this deployment |
+| `allocated_capacity_gb` | The memory budget reserved for this deployment, in GB |
 
 ## Verify
 
