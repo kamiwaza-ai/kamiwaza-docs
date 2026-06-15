@@ -31,7 +31,7 @@ Placement treats GPUs differently depending on how their memory is built and sha
 
 **A datacenter card with hardware partitioning.** An NVIDIA H100 with MIG (Multi-Instance GPU) enabled is carved into hardware slices, each with its own dedicated memory. Kamiwaza places one model per slice. A crash or memory spike in one slice cannot touch a model in another — the isolation is enforced by the hardware itself.
 
-**A discrete card without partitioning.** An NVIDIA T4, L4, or an A100 with MIG disabled has one fixed pool of VRAM on the card. There is no hardware fence, so Kamiwaza shares the card by accounting: each model reserves a memory budget in MB, and models coexist as long as their combined budgets fit the card. Two 6 GB models fit comfortably on a 16 GB T4.
+**A discrete card without partitioning.** An NVIDIA T4, L4, or an A100 with MIG disabled has one fixed pool of VRAM on the card. There is no hardware fence, so Kamiwaza shares the card by accounting: each model reserves a memory budget in GB, and models coexist as long as their combined budgets fit the card. Two 6 GB models fit comfortably on a 16 GB T4.
 
 **A machine with unified memory.** A MacBook, an AMD Strix Halo workstation, or an NVIDIA DGX Spark has no separate VRAM at all — the CPU and GPU share one system memory pool. Kamiwaza budgets model deployments against that shared pool (leaving headroom for the operating system) and lets concurrent models share the GPU through the OS scheduler.
 
@@ -52,7 +52,7 @@ Every deployment's details surface where it landed and what it reserved:
 - **Topology** — managed cluster or standalone cluster (macOS installs appear as standalone with the `metal_spawner` sharing class).
 - **Node and GPU** — the node name and GPU index (where applicable).
 - **Hardware class and sharing class** — for example `unified_memory`, or `mig_2g_20gb` for a model placed in a MIG slice.
-- **Allocated capacity (MB)** — the memory budget reserved for this deployment.
+- **Allocated capacity (GB)** — the memory budget reserved for this deployment.
 
 See the [Placement Deployment Guide](./placement-deployment-guide.md) for reading these fields and troubleshooting placement.
 

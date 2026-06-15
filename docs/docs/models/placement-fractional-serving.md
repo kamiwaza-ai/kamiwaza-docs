@@ -3,7 +3,7 @@ title: Fractional GPU Serving
 sidebar_label: Fractional GPU Serving
 ---
 
-Fractional GPU serving lets multiple models share one GPU, each with its own reserved memory budget. Instead of claiming a whole card, a deployment reserves the number of megabytes it is estimated to need; the remaining capacity stays available for other models. This page explains when fractional serving applies, how the budgeting works, and how to read the error you get when a model does not fit.
+Fractional GPU serving lets multiple models share one GPU, each with its own reserved memory budget. Instead of claiming a whole card, a deployment reserves the number of gigabytes it is estimated to need; the remaining capacity stays available for other models. This page explains when fractional serving applies, how the budgeting works, and how to read the error you get when a model does not fit.
 
 ## When fractional serving applies
 
@@ -11,7 +11,7 @@ Fractional serving is governed by the [hardware class](./placement-hardware-clas
 
 | Hardware | Fractional? | How sharing works |
 |---|---|---|
-| Discrete GPU without partitioning (T4, L4, A100/H100 with MIG disabled) | Yes | Per-GPU memory budgets in MB |
+| Discrete GPU without partitioning (T4, L4, A100/H100 with MIG disabled) | Yes | Per-GPU memory budgets in GB |
 | Unified memory (Apple Silicon, Strix Halo, DGX Spark) | Yes | Budget against the shared system memory pool |
 | MIG / hardware partitions | No | One model per partition; the partition itself is the unit of sharing |
 | Any GPU with fractional placement disabled | No | Whole-GPU exclusive — one model per card |
@@ -40,9 +40,9 @@ kubectl get node <node-name> -o jsonpath='{.status.allocatable}' | tr ',' '\n' |
 
 A 16 GB NVIDIA T4 with two 6 GB models:
 
-1. Deploy model A (estimated 6,000 MB). It reserves 6,000 MB on `gpu-0`. Remaining budget ≈ 10,000 MB.
-2. Deploy model B (estimated 6,000 MB). It fits the remaining budget and lands on the same card. Both deployments reach `DEPLOYED` and serve traffic concurrently.
-3. Deploy model C (estimated 6,000 MB). The remaining budget (≈ 4,000 MB) is too small. The deployment fails fast with the structured no-fit reason `insufficient_capacity` — no pending pod, no partial deployment.
+1. Deploy model A (estimated 6 GB). It reserves 6 GB on `gpu-0`. Remaining budget ≈ 10 GB.
+2. Deploy model B (estimated 6 GB). It fits the remaining budget and lands on the same card. Both deployments reach `DEPLOYED` and serve traffic concurrently.
+3. Deploy model C (estimated 6 GB). The remaining budget (≈ 4 GB) is too small. The deployment fails fast with the structured no-fit reason `insufficient_capacity` — no pending pod, no partial deployment.
 
 On a node with mixed cards (say, an 8 GB and a 24 GB GPU), placement picks a card whose remaining budget fits the request, so a 10 GB model goes to the 24 GB card even if the 8 GB card is idle.
 

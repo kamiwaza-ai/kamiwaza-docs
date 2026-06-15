@@ -104,7 +104,7 @@ On a standalone cluster you can inspect what placement sees:
 # GPU labels detected on a node
 kubectl get node <node-name> -o jsonpath='{.metadata.labels}' | tr ',' '\n' | grep gpu
 
-# Per-GPU memory budgets advertised on a node (MB)
+# Per-GPU memory budgets advertised on a node (GB)
 kubectl get node <node-name> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep vram-gb-gpu
 ```
 

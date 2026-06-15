@@ -12,7 +12,7 @@ If you have not read it yet, start with the [Model Placement Overview](./placeme
 | Class | Members | Placement primitive | Isolation |
 |---|---|---|---|
 | **Hardware-isolated** | NVIDIA MIG-capable cards (A100, H100, B100) with MIG enabled; AMD Instinct MI300+ with partitioning enabled | One model per hardware partition (for example, a MIG slice requested as `nvidia.com/mig-2g.20gb`) | Hardware: dedicated memory and fault isolation per partition |
-| **Software-shared** | Discrete-memory GPUs without hardware partitioning: T4, L4, A100/H100 with MIG disabled, and similar; also covers admin-configured time-slicing or MPS on managed clusters | Fractional per-GPU memory budgets in MB, or the cluster's configured sharing strategy, or whole-GPU exclusive | Software: memory budgets are enforced when the model is scheduled; co-located models share compute and faults |
+| **Software-shared** | Discrete-memory GPUs without hardware partitioning: T4, L4, A100/H100 with MIG disabled, and similar; also covers admin-configured time-slicing or MPS on managed clusters | Fractional per-GPU memory budgets in GB, or the cluster's configured sharing strategy, or whole-GPU exclusive | Software: memory budgets are enforced when the model is scheduled; co-located models share compute and faults |
 | **Unified memory** | Apple Silicon (M-series), AMD Strix Halo, NVIDIA DGX Spark (GB10 Grace-Blackwell) | Budget against the aggregate system memory pool | Process-level only: concurrent models share the GPU through the OS scheduler |
 
 In deployment details these appear as the `hardware_class` values `hardware_isolated`, `software_shared`, and `unified_memory`.
@@ -32,7 +32,7 @@ What to expect:
 
 A discrete GPU without hardware partitioning has one VRAM pool and no hardware fences. Kamiwaza shares it by accounting:
 
-- **Fractional memory budgets.** Each deployment reserves an estimated footprint in MB on a specific GPU. Models coexist on a card as long as their combined budgets fit. This is the default on standalone clusters and is described in detail in [Fractional GPU Serving](./placement-fractional-serving.md).
+- **Fractional memory budgets.** Each deployment reserves an estimated footprint in GB on a specific GPU. Models coexist on a card as long as their combined budgets fit. This is the default on standalone clusters and is described in detail in [Fractional GPU Serving](./placement-fractional-serving.md).
 - **Cluster-configured sharing.** On a managed cluster where the admin has configured time-slicing or MPS through the GPU Operator, Kamiwaza requests the shared resource the cluster advertises and the configured strategy governs sharing.
 - **Whole-GPU exclusive.** When neither of the above applies (or fractional placement is disabled), a deployment claims the entire GPU and no other model can join it.
 
