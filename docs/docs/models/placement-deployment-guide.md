@@ -105,7 +105,7 @@ On a standalone cluster you can inspect what placement sees:
 kubectl get node <node-name> -o jsonpath='{.metadata.labels}' | tr ',' '\n' | grep gpu
 
 # Per-GPU memory budgets advertised on a node (MB)
-kubectl get node <node-name> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep vram-mb-gpu
+kubectl get node <node-name> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep vram-gb-gpu
 ```
 
 If a node shows no `kamiwaza.ai/gpu-*` labels, hardware detection has not labeled it and it will not receive placements.

@@ -22,18 +22,18 @@ Fractional placement is enabled by default. Installations with stricter complian
 
 When you deploy a model, Kamiwaza estimates its memory footprint — weights, context/KV cache, and per-deployment overhead. (The SDK exposes this same estimator as `client.serving.estimate_model_vram()` if you want to preview a deployment request's footprint.)
 
-The estimate becomes a reservation against a specific GPU. Each GPU on a node exposes its capacity as a per-device resource named `kamiwaza.ai/vram-mb-gpu-<i>` (where `<i>` is the GPU index), measured in MB. Kubernetes enforces these budgets when the model is scheduled, so an over-budget model is refused **before** anything starts — it is never left half-running or silently pending.
+The estimate becomes a reservation against a specific GPU. Each GPU on a node exposes its capacity as a per-device resource named `kamiwaza.ai/vram-gb-gpu-<i>` (where `<i>` is the GPU index), measured in GB. Kubernetes enforces these budgets when the model is scheduled, so an over-budget model is refused **before** anything starts — it is never left half-running or silently pending.
 
 Details worth knowing:
 
 - **One budget per physical GPU.** A node with four cards exposes four independent budgets (`...-gpu-0` through `...-gpu-3`); each model lands on exactly one card's budget.
-- **Unified-memory machines expose a single budget** (`kamiwaza.ai/vram-mb-gpu-0`) sized to the shared memory pool, since the CPU and GPU draw from the same pool.
+- **Unified-memory machines expose a single budget** (`kamiwaza.ai/vram-gb-gpu-0`) sized to the shared memory pool, since the CPU and GPU draw from the same pool.
 - **Unified-memory machines hold back an 8 GiB operating-system reserve** from the shared pool before the budget is advertised, so deployments cannot starve the host. Discrete-GPU budgets are sized to the card's detected VRAM.
 
 On a standalone cluster you can see the advertised budgets directly:
 
 ```bash
-kubectl get node <node-name> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep vram-mb-gpu
+kubectl get node <node-name> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep vram-gb-gpu
 ```
 
 ## Example: packing models on one GPU
