@@ -3,7 +3,7 @@ title: Fractional GPU Serving
 sidebar_label: Fractional GPU Serving
 ---
 
-Fractional GPU serving lets multiple models share one GPU, each with its own reserved memory budget. Instead of claiming a whole card, a deployment reserves the number of megabytes it is estimated to need; the remaining capacity stays available for other models. This page explains when fractional serving applies, how the budgeting works, and how to read the error you get when a model does not fit.
+Fractional GPU serving lets multiple models share one GPU, each with its own reserved memory budget. Instead of claiming a whole card, a deployment reserves the number of gigabytes it is estimated to need; the remaining capacity stays available for other models. This page explains when fractional serving applies, how the budgeting works, and how to read the error you get when a model does not fit.
 
 ## When fractional serving applies
 
@@ -11,7 +11,7 @@ Fractional serving is governed by the [hardware class](./placement-hardware-clas
 
 | Hardware | Fractional? | How sharing works |
 |---|---|---|
-| Discrete GPU without partitioning (T4, L4, A100/H100 with MIG disabled) | Yes | Per-GPU memory budgets in MB |
+| Discrete GPU without partitioning (T4, L4, A100/H100 with MIG disabled) | Yes | Per-GPU memory budgets in GB |
 | Unified memory (Apple Silicon, Strix Halo, DGX Spark) | Yes | Budget against the shared system memory pool |
 | MIG / hardware partitions | No | One model per partition; the partition itself is the unit of sharing |
 | Any GPU with fractional placement disabled | No | Whole-GPU exclusive — one model per card |
@@ -22,27 +22,27 @@ Fractional placement is enabled by default. Installations with stricter complian
 
 When you deploy a model, Kamiwaza estimates its memory footprint — weights, context/KV cache, and per-deployment overhead. (The SDK exposes this same estimator as `client.serving.estimate_model_vram()` if you want to preview a deployment request's footprint.)
 
-The estimate becomes a reservation against a specific GPU. Each GPU on a node exposes its capacity as a per-device resource named `kamiwaza.ai/vram-mb-gpu-<i>` (where `<i>` is the GPU index), measured in MB. Kubernetes enforces these budgets when the model is scheduled, so an over-budget model is refused **before** anything starts — it is never left half-running or silently pending.
+The estimate becomes a reservation against a specific GPU. Each GPU on a node exposes its capacity as a per-device resource named `kamiwaza.ai/vram-gb-gpu-<i>` (where `<i>` is the GPU index), measured in GB. Kubernetes enforces these budgets when the model is scheduled, so an over-budget model is refused **before** anything starts — it is never left half-running or silently pending.
 
 Details worth knowing:
 
 - **One budget per physical GPU.** A node with four cards exposes four independent budgets (`...-gpu-0` through `...-gpu-3`); each model lands on exactly one card's budget.
-- **Unified-memory machines expose a single budget** (`kamiwaza.ai/vram-mb-gpu-0`) sized to the shared memory pool, since the CPU and GPU draw from the same pool.
+- **Unified-memory machines expose a single budget** (`kamiwaza.ai/vram-gb-gpu-0`) sized to the shared memory pool, since the CPU and GPU draw from the same pool.
 - **Unified-memory machines hold back an 8 GiB operating-system reserve** from the shared pool before the budget is advertised, so deployments cannot starve the host. Discrete-GPU budgets are sized to the card's detected VRAM.
 
 On a standalone cluster you can see the advertised budgets directly:
 
 ```bash
-kubectl get node <node-name> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep vram-mb-gpu
+kubectl get node <node-name> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep vram-gb-gpu
 ```
 
 ## Example: packing models on one GPU
 
 A 16 GB NVIDIA T4 with two 6 GB models:
 
-1. Deploy model A (estimated 6,000 MB). It reserves 6,000 MB on `gpu-0`. Remaining budget ≈ 10,000 MB.
-2. Deploy model B (estimated 6,000 MB). It fits the remaining budget and lands on the same card. Both deployments reach `DEPLOYED` and serve traffic concurrently.
-3. Deploy model C (estimated 6,000 MB). The remaining budget (≈ 4,000 MB) is too small. The deployment fails fast with the structured no-fit reason `insufficient_capacity` — no pending pod, no partial deployment.
+1. Deploy model A (estimated 6 GB). It reserves 6 GB on `gpu-0`. Remaining budget ≈ 10 GB.
+2. Deploy model B (estimated 6 GB). It fits the remaining budget and lands on the same card. Both deployments reach `DEPLOYED` and serve traffic concurrently.
+3. Deploy model C (estimated 6 GB). The remaining budget (≈ 4 GB) is too small. The deployment fails fast with the structured no-fit reason `insufficient_capacity` — no pending pod, no partial deployment.
 
 On a node with mixed cards (say, an 8 GB and a 24 GB GPU), placement picks a card whose remaining budget fits the request, so a 10 GB model goes to the 24 GB card even if the 8 GB card is idle.
 

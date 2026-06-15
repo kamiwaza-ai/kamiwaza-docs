@@ -59,7 +59,7 @@ Open a deployment's details to see where it landed:
 | `gpu_index`, `gpu_vendor` | Which GPU on the node, and its vendor |
 | `hardware_class` | `hardware_isolated`, `software_shared`, or `unified_memory` — see [GPU Hardware Classes](./placement-hardware-classes.md) |
 | `sharing_class` | How the device is shared, for example `mig_2g_20gb`, `whole_gpu`, `unified_memory`, `metal_spawner` |
-| `allocated_capacity_mb` | The memory budget reserved for this deployment |
+| `allocated_capacity_gb` | The memory budget reserved for this deployment, in GB |
 
 ## Verify
 
@@ -104,8 +104,8 @@ On a standalone cluster you can inspect what placement sees:
 # GPU labels detected on a node
 kubectl get node <node-name> -o jsonpath='{.metadata.labels}' | tr ',' '\n' | grep gpu
 
-# Per-GPU memory budgets advertised on a node (MB)
-kubectl get node <node-name> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep vram-mb-gpu
+# Per-GPU memory budgets advertised on a node (GB)
+kubectl get node <node-name> -o jsonpath='{.status.allocatable}' | tr ',' '\n' | grep vram-gb-gpu
 ```
 
 If a node shows no `kamiwaza.ai/gpu-*` labels, hardware detection has not labeled it and it will not receive placements.
