@@ -27,6 +27,7 @@ Use these guides together:
 
 - [System Requirements](installation/system_requirements)
 - [Installing Kamiwaza](installation/installation_process)
+- [Database Schema Lifecycle](database-schema-lifecycle)
 - [Network Prerequisites](network_prerequisites)
 - [Quickstart](quickstart)
 - [Administrator Guide](security/admin-guide)
