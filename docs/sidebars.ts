@@ -42,6 +42,7 @@ const sidebars: SidebarsConfig = {
 			label: "Configuration",
 			items: [
 				"configuration",
+				"database-schema-lifecycle",
 				"network_prerequisites",
 				"routing-modes",
 				"workroom-storage-s3",
