@@ -154,13 +154,13 @@ curl -sk "https://kamiwaza.test/api/mesh/studio-1/api/serving/deployments" \
 
 **Diagnosis:**
 
-1. Check the `authorization_relations` table on the **target** cluster:
+1. Check the `authorization_relations` table on the **target** cluster. Note the relevant `subject_id` is the **local brokered KC UUID** (auto-provisioned on first mesh request), **not** the source cluster's user UUID — query by relation/object, or list the brokered user's local UUID first via `GET /api/cluster/federations/{id}/users`:
 
    ```bash
    kubectl exec core-postgres-0 -n kamiwaza -- psql -U core -d kamiwaza -c \
      "SELECT subject_namespace, subject_id, relation, object_namespace, object_id
       FROM authorization_relations
-      WHERE subject_id = '<remote-user-uuid>';"
+      WHERE object_namespace = 'dataset' AND object_id = '<dataset-urn>';"
    ```
 
 2. For catalog/retrieval operations, the remote user needs a `viewer` relation on the `dataset` namespace for each dataset they access.
@@ -169,21 +169,23 @@ curl -sk "https://kamiwaza.test/api/mesh/studio-1/api/serving/deployments" \
 
 **Resolution:**
 
-Seed the required ReBAC relation on the target cluster:
+Seed the per-dataset grant through the brokered-user allowlist's `initial_tuples` field. Do **not** use `/api/auth/tuples` for a brokered user: that user has no local account on the target cluster until their first mesh request, when brokering auto-provisions a local Keycloak user with a freshly-minted UUID. The check authorizes against **that local UUID**, so a tuple written against the source UUID returns `204` but never matches (access stays `404`). `initial_tuples` resolves the `{{user_id}}` placeholder to the local UUID at provision time.
 
 ```bash
-# Grant viewer access to a specific dataset
-curl -sk -X POST "https://192.168.50.13/api/auth/tuples" \
+# Grant viewer on a dataset to a brokered user, via the allowlist. Re-POSTing
+# the entry for an already-provisioned user is idempotent.
+curl -sk -X POST "https://<TARGET_IP>/api/cluster/federations/<FEDERATION_ID>/users" \
   -H "Authorization: Bearer $REMOTE_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "subject": {"namespace": "user", "id": "<remote-user-uuid>"},
-    "relation": "viewer",
-    "object": {"namespace": "dataset", "id": "<dataset-urn>"}
+    "external_id": "<source-user-uuid>@<source-cluster-uuid>",
+    "initial_tuples": [
+      {"subject": "user:{{user_id}}", "relation": "viewer", "object": "dataset:<dataset-urn>"}
+    ]
   }'
 ```
 
-For federation operator access on the source cluster (needed to use the mesh proxy at all):
+For federation **operator** access on the **source** cluster (needed to use the mesh proxy at all) — this is a local user on its home cluster, so `/api/auth/tuples` is the correct path here:
 
 ```bash
 # Grant operator on federation namespace (normally seeded during pairing)
