@@ -171,5 +171,6 @@ Disconnecting immediately blocks new mesh proxy requests. Running operations on 
 | 401 on remote cluster | Mesh HMAC verification failed | Check PSK matches; check Istio `includeRequestHeadersInCheck` includes `x-kz-mesh-*` headers |
 | 403 `rebac_denied` on source | User lacks `federation:operator` relation | Re-pair the federation (seeding happens at pair time) |
 | 403 `namespace_unsupported` | `federation` namespace not registered | Ensure `authz/constants.py` includes `federation` in `ALLOWED_OBJECT_NAMESPACES` |
-| 404 `mesh_target_not_found` | No PAIRED federation for that cluster selector | Check federation status; selector matches by name, UUID, or prefix |
+| 400 `missing_object_id` | Cluster selector did not resolve to a PAIRED federation — unknown name/UUID, a local-cluster selector, or a non-PAIRED federation. The mesh request guard returns this *before* the route runs, so the service-layer `mesh_target_not_found` (404) / `mesh_target_is_local` (400) codes are not reached on this path (ENG-7520). | Check federation status; selector must match a PAIRED federation by name, UUID, or prefix |
+| 403 `not_authorized_to_probe_cluster` on `/cluster_capabilities` | Mesh-origin capabilities probe lacks a `cluster:<local_uuid>` viewer grant — federation pairing seeds `federation:operator` only, **not** `cluster:viewer` (ENG-7892) | Grant the federated subject the `cluster:<local_uuid>` viewer relation explicitly before probing |
 | 307 redirect | Missing trailing slash | Add `/` to the API path |
