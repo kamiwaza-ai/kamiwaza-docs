@@ -1344,7 +1344,7 @@
           "auth"
         ],
         "summary": "Saml Sls",
-        "operationId": "saml_sls_auth_saml_sls_get",
+        "operationId": "saml_sls_auth_saml_sls_get_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1363,7 +1363,7 @@
           "auth"
         ],
         "summary": "Saml Sls",
-        "operationId": "saml_sls_auth_saml_sls_get",
+        "operationId": "saml_sls_auth_saml_sls_get_post",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3815,6 +3815,14 @@
               ],
               "title": "X-Forwarded-Proto"
             }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3926,6 +3934,14 @@
                 }
               ],
               "title": "X-Forwarded-Proto"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -4039,6 +4055,14 @@
               ],
               "title": "X-Forwarded-Proto"
             }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -4150,6 +4174,14 @@
                 }
               ],
               "title": "X-Forwarded-Proto"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -4263,6 +4295,14 @@
               ],
               "title": "X-Forwarded-Proto"
             }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -4374,6 +4414,14 @@
                 }
               ],
               "title": "X-Forwarded-Proto"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -14921,7 +14969,7 @@
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_options",
         "security": [
           {
             "BearerAuth": []
@@ -14978,7 +15026,7 @@
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_head",
         "security": [
           {
             "BearerAuth": []
@@ -15035,7 +15083,7 @@
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_post",
         "security": [
           {
             "BearerAuth": []
@@ -15092,7 +15140,7 @@
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_get",
         "security": [
           {
             "BearerAuth": []
@@ -15149,7 +15197,7 @@
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_patch",
         "security": [
           {
             "BearerAuth": []
@@ -15206,7 +15254,7 @@
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_delete",
         "security": [
           {
             "BearerAuth": []
@@ -15263,7 +15311,7 @@
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_put",
         "security": [
           {
             "BearerAuth": []
@@ -27749,7 +27797,7 @@
         ],
         "summary": "Proxy With Resource",
         "description": "Proxy request with a resource identifier (e.g., message_id, file_id).",
-        "operationId": "proxy_with_resource_oauth_broker_proxy__provider___service___operation___resource_id__get",
+        "operationId": "proxy_with_resource_oauth_broker_proxy__provider___service___operation___resource_id__get_get",
         "parameters": [
           {
             "name": "provider",
@@ -27852,7 +27900,7 @@
         ],
         "summary": "Proxy With Resource",
         "description": "Proxy request with a resource identifier (e.g., message_id, file_id).",
-        "operationId": "proxy_with_resource_oauth_broker_proxy__provider___service___operation___resource_id__get",
+        "operationId": "proxy_with_resource_oauth_broker_proxy__provider___service___operation___resource_id__get_post",
         "parameters": [
           {
             "name": "provider",
@@ -27957,7 +28005,7 @@
         ],
         "summary": "Proxy Request",
         "description": "Proxy request to an external API operation.",
-        "operationId": "proxy_request_oauth_broker_proxy__provider___service___operation__get",
+        "operationId": "proxy_request_oauth_broker_proxy__provider___service___operation__get_get",
         "parameters": [
           {
             "name": "provider",
@@ -28051,7 +28099,7 @@
         ],
         "summary": "Proxy Request",
         "description": "Proxy request to an external API operation.",
-        "operationId": "proxy_request_oauth_broker_proxy__provider___service___operation__get",
+        "operationId": "proxy_request_oauth_broker_proxy__provider___service___operation__get_post",
         "parameters": [
           {
             "name": "provider",
