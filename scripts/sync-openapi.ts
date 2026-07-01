@@ -211,6 +211,14 @@ print(json.dumps(app.openapi()))
 				KAMIWAZA_ENV: process.env.KAMIWAZA_ENV || "dev",
 				KAMIWAZA_LITE: process.env.KAMIWAZA_LITE || "true",
 				KAMIWAZA_ROOT: process.env.KAMIWAZA_ROOT || tempRoot,
+				// create_app() -> init_auth() requires the RBAC policy file; its
+				// default derives from KAMIWAZA_ROOT (<root>/runtime/auth_gateway_policy.yaml),
+				// which the ephemeral tempRoot does not have. Point at the policy
+				// shipped in the kamiwaza repo so from-source generation is
+				// self-contained (no running platform, no manual staging).
+				AUTH_GATEWAY_POLICY_FILE:
+					process.env.AUTH_GATEWAY_POLICY_FILE ||
+					path.join(repoPath, "config", "auth_gateway_policy.yaml"),
 				DATABASE_URL:
 					process.env.DATABASE_URL || `sqlite:///${path.join(tempDir, "main.db")}`,
 				CLUSTER_DATABASE_URL:
