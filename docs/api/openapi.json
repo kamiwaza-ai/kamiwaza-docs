@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Kamiwaza REST API",
-    "version": "0.13.0"
+    "version": "1.0.0"
   },
   "servers": [
     {
@@ -12569,7 +12569,7 @@
           "cluster"
         ],
         "summary": "Get Cluster Capabilities",
-        "description": "Endpoint to retrieve cluster capabilities for model deployment and platform selection.\n\nReturns hardware information, system type, available platforms, and tool availability\nincluding whether llamacpp is installed and what inference engines are supported.\n\nAuth widened by ENG-4697 / T5.20: viewer or owner on cluster:<local_uuid>\n(admin's install-seeded owner relation still passes). Mesh-origin probes\nwith the baseline federation grant can reach this endpoint per design\n`system-design.md` §4.4.3.\n\nReturns:\n    Dict[str, Any]: A dictionary containing cluster capabilities information.",
+        "description": "Endpoint to retrieve cluster capabilities for model deployment and platform selection.\n\nReturns hardware information, system type, available platforms, and tool availability\nincluding whether llamacpp is installed and what inference engines are supported.\n\nAuth widened by ENG-4697 / T5.20: viewer or owner on cluster:<local_uuid>\n(admin's install-seeded owner relation still passes). NB pairing does NOT\nseed a cluster-viewer grant (ENG-7892): a mesh-origin peer must be granted\ncluster:<local_uuid> viewer explicitly to probe, else 403.\n\nReturns:\n    Dict[str, Any]: A dictionary containing cluster capabilities information.",
         "operationId": "get_cluster_capabilities_cluster_cluster_capabilities_get",
         "responses": {
           "200": {
@@ -13148,7 +13148,7 @@
           "cluster"
         ],
         "summary": "List Federation Users",
-        "description": "List all brokered users on a federation's allowlist.",
+        "description": "List all brokered users on a federation's allowlist.\n\nCarries ``NativeRealmRequired`` (ENG-7890): the allowlist (external IDs,\ninitial tuples) is cross-relationship data a mesh-origin peer admin must\nnot be able to enumerate for an arbitrary federation_id.",
         "operationId": "list_federation_users_cluster_federations__federation_id__users_get",
         "security": [
           {
@@ -13383,7 +13383,7 @@
           "cluster"
         ],
         "summary": "Ping Federation",
-        "description": "Health check a federated cluster.\n\nArgs:\n    federation_id: UUID of the federation to ping\n\nReturns:\n    Ping status",
+        "description": "Health check a federated cluster.\n\nCarries ``NativeRealmRequired`` (ENG-7890): ping triggers an outbound\naction against a peer, so a mesh-origin caller must not be able to invoke\nit.\n\nArgs:\n    federation_id: UUID of the federation to ping\n\nReturns:\n    Ping status",
         "operationId": "ping_federation_cluster_federations__federation_id__ping_post",
         "security": [
           {
@@ -14963,241 +14963,13 @@
       }
     },
     "/mesh/{cluster_selector}/{path}": {
-      "options": {
+      "put": {
         "tags": [
           "mesh",
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_options",
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "OAuth2Login": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cluster_selector",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cluster Selector"
-            }
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Path"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "x-auth-role": "authenticated"
-      },
-      "head": {
-        "tags": [
-          "mesh",
-          "mesh"
-        ],
-        "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_head",
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "OAuth2Login": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cluster_selector",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cluster Selector"
-            }
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Path"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "x-auth-role": "authenticated"
-      },
-      "post": {
-        "tags": [
-          "mesh",
-          "mesh"
-        ],
-        "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_post",
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "OAuth2Login": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cluster_selector",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cluster Selector"
-            }
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Path"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "x-auth-role": "authenticated"
-      },
-      "get": {
-        "tags": [
-          "mesh",
-          "mesh"
-        ],
-        "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_get",
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "OAuth2Login": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cluster_selector",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cluster Selector"
-            }
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Path"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "x-auth-role": "authenticated"
-      },
-      "patch": {
-        "tags": [
-          "mesh",
-          "mesh"
-        ],
-        "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_patch",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__put_put",
         "security": [
           {
             "BearerAuth": []
@@ -15254,7 +15026,7 @@
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_delete",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__put_delete",
         "security": [
           {
             "BearerAuth": []
@@ -15305,13 +15077,241 @@
         },
         "x-auth-role": "authenticated"
       },
-      "put": {
+      "post": {
         "tags": [
           "mesh",
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__options_put",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__put_post",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cluster_selector",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cluster Selector"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "options": {
+        "tags": [
+          "mesh",
+          "mesh"
+        ],
+        "summary": "Proxy Mesh",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__put_options",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cluster_selector",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cluster Selector"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "head": {
+        "tags": [
+          "mesh",
+          "mesh"
+        ],
+        "summary": "Proxy Mesh",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__put_head",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cluster_selector",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cluster Selector"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "get": {
+        "tags": [
+          "mesh",
+          "mesh"
+        ],
+        "summary": "Proxy Mesh",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__put_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cluster_selector",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cluster Selector"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "patch": {
+        "tags": [
+          "mesh",
+          "mesh"
+        ],
+        "summary": "Proxy Mesh",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__put_patch",
         "security": [
           {
             "BearerAuth": []
