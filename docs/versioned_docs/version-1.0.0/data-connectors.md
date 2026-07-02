@@ -27,11 +27,12 @@ Connectors are managed through the Kamiwaza web UI at **Settings** → **Data Co
 1. Navigate to **Settings** → **Data Connectors**
 2. You'll see available connector types:
    - **Microsoft 365** - Connect to SharePoint, OneDrive, Outlook, and Calendar
-   - **Google Workspace** - Connect to Drive, Gmail, and Calendar (Coming Soon)
+   - **Google Workspace** - Connect to Drive, Gmail, and Calendar (read-only)
    - **Dropbox** - Connect to Dropbox storage
 3. Click **Configure** on the connector you want to set up
 4. Fill in the required configuration details:
    - For Microsoft 365: Azure AD application credentials (Client ID, Client Secret, Tenant ID)
+   - For Google Workspace: Google Cloud OAuth credentials (Client ID, Client Secret, Redirect URI) plus the read-only capabilities (Gmail, Drive, Calendar) to request — see [Google Workspace Connector](#google-workspace-connector) for the full walkthrough
    - Service-specific settings and permissions
 5. Click **Save** to complete the configuration
 
@@ -126,7 +127,7 @@ View connector status on the **Settings** → **Data Connectors** page. The stat
 | Connector | Services | Status |
 |-----------|----------|--------|
 | **Microsoft 365** | SharePoint, OneDrive, Outlook, Calendar | Available |
-| **Google Workspace** | Drive, Gmail, Calendar | Coming Soon |
+| **Google Workspace** | Drive, Gmail, Calendar (read-only) | Available |
 | **Dropbox** | Dropbox storage | Coming Soon |
 
 ### Microsoft 365 Connector
@@ -142,6 +143,52 @@ The Microsoft 365 connector allows users to connect their Microsoft accounts to 
 - Client ID and Client Secret
 - Tenant ID (for single-tenant apps)
 - Required API permissions configured in Azure AD
+
+### Google Workspace Connector
+
+The Google Workspace connector lets users connect their Google accounts to access, **read-only**:
+- **Google Drive**: files and folders
+- **Gmail**: email messages
+- **Google Calendar**: calendar events
+
+Administrators register a Google Cloud OAuth client once; each user then connects their own Google account through Google's consent screen. The connector requests **read-only** scopes only — it cannot send mail, modify files, or change calendar events.
+
+**Configuration Requirements**:
+- A Google Cloud project
+- An **OAuth 2.0 Client ID** of type **Web application** (provides the Client ID and Client Secret)
+- The required Google APIs **enabled** in that project: **Gmail API**, **Google Drive API**, **Google Calendar API**
+- An **Authorized redirect URI** that exactly matches Kamiwaza's callback (see Step 2)
+- A configured **OAuth consent screen** (the requested scopes are *sensitive/restricted*, so external apps may require Google verification — see the note below)
+
+#### Step 1 — Create the OAuth client in Google Cloud Console
+
+1. Open the [Google Cloud Console](https://console.cloud.google.com/) and create or select a project.
+2. **Enable the APIs** under **APIs & Services → Library** — enable each capability you plan to offer:
+   - **Gmail API**, **Google Drive API**, **Google Calendar API**
+   - *(If an API is not enabled, that capability fails permanently and affected users are told to reconnect after the admin enables it.)*
+3. Configure the **OAuth consent screen** (**APIs & Services → OAuth consent screen**):
+   - Choose **Internal** (recommended for a single Google Workspace organization) or **External** (requires adding test users, or publishing the app + Google verification).
+   - Add the scopes you will request: `gmail.readonly`, `drive.readonly`, `calendar.readonly`, plus the basic `userinfo.email` and `userinfo.profile` sign-in scopes.
+4. Create the credential under **APIs & Services → Credentials → Create credentials → OAuth client ID**:
+   - **Application type: Web application.**
+   - Under **Authorized redirect URIs**, add Kamiwaza's callback URL (exact match — see Step 2).
+5. Copy the **Client ID** (ends with `.apps.googleusercontent.com`) and the **Client Secret** (starts with `GOCSPX-`).
+
+#### Step 2 — Configure the connector in Kamiwaza
+
+1. Go to **Settings → Data Connectors** and click **Configure** on **Google Workspace**.
+2. Fill in:
+   - **Display Name** — a friendly label for the connector.
+   - **Client ID** and **Client Secret** — from Step 1.
+   - **Redirect URI** — prefilled from your current browser origin as `https://<host>/api/connectors/public/google/callback`. The path `/api/connectors/public/google/callback` is fixed; set the **scheme and host** to the address your end users will use. **This value must exactly match an Authorized redirect URI in your Google Cloud OAuth client** (scheme, host, and path).
+3. Under **Google Workspace Capabilities**, check the services to request — **Gmail (read-only)**, **Google Drive (read-only)**, **Google Calendar (read-only)**. Only check capabilities whose APIs you enabled in Step 1; each checkbox maps to the OAuth scope requested when a user connects their account.
+4. Click **Save**. The connector status changes to **Configured** and users can connect their Google accounts.
+
+> **The Redirect URI must match exactly.** The most common setup error is a mismatch between the Redirect URI entered here and the Authorized redirect URI in Google Cloud Console. If your users reach Kamiwaza at more than one hostname, add each one as an Authorized redirect URI in Google Cloud and set this field to the host they actually use.
+
+> **Sensitive/restricted scopes.** Gmail and Drive read-only are *restricted* Google scopes. With an **Internal** consent screen (same Workspace org) this is fine; for an **External** app, Google may require app verification before users outside your test-user list can grant access.
+
+**Rotating credentials**: To change the Client Secret (or Client ID), open **Configure**, enter the new value(s), and **Save** — leave a field blank to keep its stored value. The non-secret Redirect URI is always saved, so you can rebind the hostname without re-entering secrets.
 
 > Need a connector that isn't listed? Contact Kamiwaza Support to discuss roadmap status or professional-services extensions.
 
@@ -178,6 +225,17 @@ The Microsoft 365 connector allows users to connect their Microsoft accounts to 
 - Verify the redirect URI in Azure AD matches Kamiwaza's callback URL
 - Ensure the Azure AD application permissions are properly configured
 - Check if the application requires admin consent for certain permissions
+
+### Google Workspace: a capability needs reconnect after enabling an API
+
+If users connect successfully but a capability (Drive, Gmail, or Calendar) does not work — or the connection reports that it needs re-authentication with a message naming a Google API — the corresponding API is not enabled in the Google Cloud project:
+
+1. In Google Cloud Console, open **APIs & Services → Library** and enable the named API (**Gmail API**, **Google Drive API**, or **Google Calendar API**).
+2. Ask affected users to **reconnect** their account — re-enabling the API alone does not retroactively repair an existing connection.
+
+### Google Workspace: `redirect_uri_mismatch`
+
+A `redirect_uri_mismatch` error during the Google consent flow means the connector's **Redirect URI** does not exactly match an **Authorized redirect URI** on the Google Cloud OAuth client. Confirm both are identical — scheme, host, and the `/api/connectors/public/google/callback` path — and that you edited the correct OAuth client.
 
 ## Related Documentation
 
