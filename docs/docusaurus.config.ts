@@ -132,6 +132,12 @@ const config: Config = {
 				path: "docs",
 				routeBasePath: "/",
 				sidebarPath: require.resolve("./sidebars.ts"),
+				// Exclude federal docs from the default build entirely. The
+				// includeFederal flag only gates the sidebar + search index, so
+				// without this, federal/ pages still build as reachable URLs
+				// (public site + air-gapped container). build:federal
+				// (INCLUDE_FEDERAL_DOCS=true) re-includes them for fed customers.
+				exclude: includeFederal ? [] : ["federal/**"],
 				lastVersion: "current",
 				versions: {
 					current: {
