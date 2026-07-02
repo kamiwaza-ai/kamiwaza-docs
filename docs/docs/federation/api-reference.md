@@ -219,28 +219,35 @@ Fine-grained authorization. All mesh and federation operations go through ReBAC 
 ### Grant a Relation
 
 ```
-POST /api/auth/relations/
+POST /api/auth/tuples
 ```
 
 **Request:**
 ```json
 {
-  "object_namespace": "federation" | "dataset" | "model" | "cluster_jobs",
-  "object_id": "string",
+  "subject": {"namespace": "user", "id": "<uuid>"},
   "relation": "operator" | "viewer" | "owner" | "executor",
-  "subject_namespace": "user",
-  "subject_id": "uuid"
+  "object": {
+    "namespace": "federation" | "dataset" | "model" | "cluster_jobs",
+    "id": "string"
+  }
 }
 ```
+
+This grants a relation to a **local** user — one with an account on the cluster you call. It does **not** work for brokered mesh users (see the note below).
 
 ### Common Grant Patterns
 
 | Scenario | Namespace | Relation | Notes |
 |----------|-----------|----------|-------|
-| User can use a federation | `federation` | `operator` | Required to call `/api/mesh/{fed}/*` |
-| User can query a dataset | `dataset` | `viewer` | Required for local and mesh retrieval |
+| User can use a federation | `federation` | `operator` | Required to call `/api/mesh/{fed}/*`; granted to a local user on the **source** cluster |
+| Local user can query a dataset | `dataset` | `viewer` | For native (non-mesh) retrieval on this cluster |
 | User can submit jobs | `cluster_jobs` | `executor` | Object id is the constant `"__all__"` |
 | User can own a dataset | `dataset` | `owner` | Can write and manage |
+
+:::warning Brokered mesh users
+A federated caller has **no local account** on the target cluster until their first mesh request, when brokering auto-provisions a local Keycloak user with a freshly-minted UUID. The per-dataset check authorizes against that local UUID, so granting `dataset:viewer` via `/api/auth/tuples` with the source UUID returns `204` but never matches (retrieval stays `404`). Grant cross-mesh dataset access through the federation allowlist's `initial_tuples` instead — see [Retrieval → Access Control](./retrieval.md#access-control).
+:::
 
 ---
 

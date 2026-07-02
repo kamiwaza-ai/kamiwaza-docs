@@ -59,7 +59,24 @@ Cluster A (source)                          Cluster B (target)
 - Network connectivity between clusters on port 443
 - Each cluster's Istio gateway TLS cert must include its node IP in SANs
 
+## Federation lifecycle at a glance
+
+| Step | What | Where it's documented |
+|------|------|----------------------|
+| Pair two clusters | Exchange PSK + CA certs; provision the federation record on both sides | [Setup](./setup.md) |
+| Allowlist federated users | Decide which remote users can act on this cluster | [Setup](./setup.md) |
+| Query remote data | Federated retrieval over the mesh proxy | [Retrieval](./retrieval.md) |
+| Submit remote jobs | Cluster-job execution with on-behalf-of (OBO) identity | [Job Submission](./job-submission.md) |
+| Apply policy gates | Cluster `ExecutionGate` and per-dataset `AttributeGate` bindings | [Execution Gates](./execution-gates.md) |
+| Install custom gates | Ship custom policy code as Python packages | [Gate Packages](./gate-packages.md) |
+| Day-2 operations | Diagnose, cancel, revoke, audit | [Operations](./operations.md) |
+
 ## Next Steps
 
 - [Federation Setup Guide](./setup.md) — Create and pair federations
 - [Federated Retrieval](./retrieval.md) — Query remote data through the mesh proxy
+- [Job Submission](./job-submission.md) — Submit federated jobs with OBO identity
+- [Execution Gates](./execution-gates.md) — Cluster `ExecutionGate` + dataset `AttributeGate` policy bindings
+- [Gate Packages](./gate-packages.md) — Install custom gate classes as hash-pinned Python packages
+- [Operations & Troubleshooting](./operations.md) — Day-2 federation operations
+- [API Reference](./api-reference.md) — Endpoint catalog

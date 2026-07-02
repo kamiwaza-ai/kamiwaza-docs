@@ -27,6 +27,8 @@ Use these guides together:
 
 - [System Requirements](installation/system_requirements)
 - [Installing Kamiwaza](installation/installation_process)
+- [Database Schema Lifecycle](database-schema-lifecycle)
+- [Network Prerequisites](network_prerequisites)
 - [Quickstart](quickstart)
 - [Administrator Guide](security/admin-guide)
 - [AWS S3 Workroom Storage](workroom-storage-s3)
@@ -73,15 +75,15 @@ If you are deploying a federal CAC-enabled environment, also use:
 
 ## Object Storage
 
-If users will upload files, preserve workroom context, or use the Skills Library, configure object storage before rollout.
+If users will upload files, preserve workroom context, or use the Skills Library, object storage must be available before rollout.
 
-Use:
+Default self-managed installs (the `rook-rgw` storage lane) provision in-cluster object storage automatically; no action is needed. When workroom content must live in external AWS S3, use:
 
 - [AWS S3 Workroom Storage](workroom-storage-s3)
 
 Best practice:
 
-- set bucket, region, and secret references through your deployment values (`install-prod.sh` or standard Helm overrides)
+- set bucket, region, and secret references through your deployment values (`cluster/values/storage-overrides.yaml` on deploy-repo installs)
 - prefer secret references or ambient cloud identity over inline credentials
 
 ## Logging and Observability

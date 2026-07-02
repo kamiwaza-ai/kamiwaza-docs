@@ -17,15 +17,24 @@ If object storage is not configured, file-backed user workflows can fail with er
 Workroom storage is not configured for Skills Library.
 ```
 
-Use this guide when your deployment stores workroom content in AWS S3.
+Use this guide when your deployment stores workroom content in **external AWS S3** instead of the default in-cluster object storage.
+
+:::warning Default RGW installs need no configuration — do not apply this page to them
+
+Default self-managed installs (the `rook-rgw` storage lane, including the k0s dev paths) provision in-cluster Ceph RGW object storage and wire workroom storage automatically: core consumes the installer-managed `kamiwaza-rgw-credentials` Secret. On those installs workroom storage already works, and applying this page's overrides without a real external-S3 requirement — or leaving them behind after one — will break it.
+
+In particular, a `core.context.objectStorage` override pointing at a `core-s3` Secret — for example, left over in `deploy/cluster/values/overrides.yaml` from an earlier external-S3 setup — silently overrides the automatic wiring, and core then references a Secret the installer never creates. A fresh install never completes: the deploy blocks on the kamiwaza release's post-install hooks while core pods sit in `CreateContainerConfigError: secret "core-s3" not found`. See [Troubleshooting](#secret-core-s3-not-found) for diagnosis and cleanup.
+:::
 
 ## When You Need This
 
-Configure AWS S3 if you want any of the following to work reliably:
+Configure AWS S3 if your workroom content must live in an external AWS S3 bucket and you want the following to work reliably:
 
 - context file upload and persistence
 - Skills Library package import
 - Skills Library package download
+
+If you are on the default `rook-rgw` storage lane and have no requirement to move workroom content to AWS, you do not need this page.
 
 ## Prerequisites
 
@@ -43,15 +52,27 @@ The IAM identity should be allowed to perform at least:
 - `s3:PutObject`
 - `s3:DeleteObject`
 
+## Choose a Configuration Surface
+
+There are two ways to configure external S3 workroom storage, depending on how you deploy:
+
+| Deployment | Configure via |
+|---|---|
+| `deploy` repo Helmfile install (v1.0 storage platform) | `storage.workrooms` in `deploy/cluster/values/storage-overrides.yaml` — **preferred** |
+| Direct `core` chart values (no umbrella chart / no Helmfile) | `context.objectStorage` in your core values file |
+
+On Helmfile installs, the storage platform materializes `storage.workrooms.*` into the core chart's `context.objectStorage` block for you and keeps the rest of the storage stack (Rook, registry) consistent with it. This applies to `install-prod.sh` installs too: they deploy through the same Helmfile environments, so a storage block in `cluster/values/storage-overrides.yaml` is honored there as well.
+
+Do not use `deploy/cluster/values/overrides.yaml` for storage configuration. It is a late umbrella-chart override that takes precedence over the storage platform's automatic wiring (see the warning above), it deep-merges per key — so a partial block silently mixes with the storage platform's rendered values — and it does not reconfigure Rook or the registry. Deployments configured on 0.13.x used `overrides.yaml` for this purpose; when upgrading to a storage-platform release, migrate the block to `storage-overrides.yaml` — or remove it entirely if you are returning to the default RGW lane. The only supported `overrides.yaml` use on this page is the minimal session-token fragment in Option 1, step 2a.
+
 ## Configuration Model
 
-*(Note: `install-prod.sh` natively supports configuring these values during deployment via standard Helm values overrides.)*
-
-The `core` chart exposes a single object-storage configuration block:
+Under the hood, the `core` chart exposes a single object-storage configuration block. The storage platform fills it in from `storage.workrooms.*`; direct chart consumers set it themselves:
 
 ```yaml
 context:
   objectStorage:
+    enabled: true
     defaultBucket: ""
     defaultRegion: ""
     defaultPrefix: "context/raw"
@@ -63,11 +84,14 @@ context:
       sessionTokenKey: "session_token"
 ```
 
+When `enabled` is omitted, the chart infers it: object storage turns on only when **both** `defaultBucket` and `credentialsSecretRef.name` are non-empty. Set `enabled: true` explicitly whenever you configure this block directly — the ambient-credentials path (empty Secret name) does not work without it.
+
 This configuration is rendered into:
 
 - the `core-config` ConfigMap for non-secret S3 settings
 - the `core-scheduler` deployment for secret-backed AWS credentials
 - the Ray head and worker pods for the same credentials
+- the storage-janitor CronJob (picks up changes on its next run; no restart needed)
 
 ## Option 1: Static AWS Access Keys
 
@@ -75,7 +99,15 @@ Use this option when your cluster does not already provide AWS credentials to th
 
 ### 1. Create a Kubernetes Secret
 
-Create a Secret in the `kamiwaza` namespace:
+Core pods wait on this Secret, so create it before deploying — or, on installer-bootstrapped paths where the cluster does not exist yet (for example k0s-lima / k0s-podman), as soon as the `kamiwaza` namespace appears during the install. The kubelet retries automatically and stuck pods recover once the Secret exists.
+
+On an existing cluster, create the namespace first if it is not there yet (idempotent and safe — the installer adopts a pre-existing namespace):
+
+```bash
+kubectl create namespace kamiwaza --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Then create the Secret:
 
 ```bash
 kubectl create secret generic core-s3 \
@@ -84,7 +116,7 @@ kubectl create secret generic core-s3 \
   --from-literal=secret_access_key="<aws-secret-access-key>"
 ```
 
-If you are using temporary session credentials, include the session token:
+If you are using temporary session credentials, include the session token (and read the session-token note under step 2a):
 
 ```bash
 kubectl create secret generic core-s3 \
@@ -94,60 +126,103 @@ kubectl create secret generic core-s3 \
   --from-literal=session_token="<aws-session-token>"
 ```
 
-### 2. Prepare a Configuration Override
+### 2a. Helmfile installs: configure `storage.workrooms` (preferred)
 
-If you deploy Kamiwaza through the `deploy` repo Helmfile workflow, add this to
-`deploy/cluster/values/overrides.yaml`.
+Add this to `deploy/cluster/values/storage-overrides.yaml`. Create the file if it does not exist — it is intentionally not tracked in git; see `cluster/values/storage-overrides.yaml.example` for a template:
 
-The umbrella chart passes these values to the `core` subchart, so the override
-must be nested under `core.context.objectStorage`:
+```yaml
+storage:
+  workrooms:
+    backend: s3
+    s3:
+      region: "us-west-2"
+      bucket: "my-kamiwaza-artifacts"
+      prefix: "context/raw"
+      endpoint: ""
+      existingSecret: "core-s3"
+```
+
+Notes:
+
+- `region` and `bucket` are required; the render fails if either is empty. `prefix` is also required by render validation but defaults to `context/raw` — do not set it to an empty string.
+- The Secret key names default to `access_key_id` / `secret_access_key`, matching the Secret created in step 1. If your Secret uses different key names, set `accessKeyIdKey` / `secretAccessKeyKey` alongside `existingSecret`.
+- Leave `endpoint` empty for AWS S3. Set it only for S3-compatible endpoints.
+- This changes the **workroom** backend only; model/registry storage keeps its configured backend.
+
+**Session tokens.** `storage.workrooms` cannot express a session-token key. If you must use temporary session credentials, keep the block above and add only this minimal fragment to `deploy/cluster/values/overrides.yaml` — it merges onto the storage platform's rendered values and restores just the session-token key:
 
 ```yaml
 core:
   context:
     objectStorage:
-      defaultBucket: "my-kamiwaza-artifacts"
-      defaultRegion: "us-west-2"
-      defaultPrefix: "context/raw"
       credentialsSecretRef:
-        name: "core-s3"
-        accessKeyIdKey: "access_key_id"
-        secretAccessKeyKey: "secret_access_key"
         sessionTokenKey: "session_token"
 ```
 
-If you are applying values directly to the `core` chart instead of the umbrella
-chart, use the same structure without the top-level `core:` wrapper.
+Do not put the full `objectStorage` block in `overrides.yaml`: values deep-merge per key, so a partial block mixes with the storage platform's rendered settings (for example, the in-cluster RGW `endpointUrl` would survive underneath your AWS bucket settings). Also note that session credentials expire and must be rotated, and remove the fragment when you no longer need it.
 
-For AWS S3, leave `endpointUrl` empty.
+### 2b. Direct core chart values (no Helmfile)
+
+If you apply values directly to the `core` chart — outside the deploy-repo Helmfile workflow — set the object-storage block in your core values. Set `enabled` and `endpointUrl` explicitly:
+
+```yaml
+context:
+  objectStorage:
+    enabled: true
+    defaultBucket: "my-kamiwaza-artifacts"
+    defaultRegion: "us-west-2"
+    defaultPrefix: "context/raw"
+    endpointUrl: ""
+    credentialsSecretRef:
+      name: "core-s3"
+      accessKeyIdKey: "access_key_id"
+      secretAccessKeyKey: "secret_access_key"
+      sessionTokenKey: "session_token"
+```
+
+When applying through the umbrella chart directly (not via the deploy-repo Helmfile), nest the same structure under a top-level `core:` key. On deploy-repo Helmfile installs, do not use this form — use step 2a (plus the session-token fragment if needed).
 
 ### 3. Apply the Updated Configuration
 
-Apply the updated values through your standard Helm or cluster release workflow.
+- Deploy-repo Helmfile installs: re-run your usual deploy target — `make install` (or the matching environment target), which wraps `helmfile -f cluster/helmfile.yaml.gotmpl -e <env> sync`.
+- Direct chart consumers: `helm upgrade --install <release> <chart> -n kamiwaza -f <your-values>.yaml`.
 
 ## Option 2: Ambient AWS Credentials
 
 Use this option if your cluster already provides AWS credentials to pods through
 IAM roles or another AWS-native mechanism.
 
-In this case, do not create a Secret. If you deploy through the `deploy` repo,
-add this to `deploy/cluster/values/overrides.yaml`:
+In this case, do not create a Secret.
+
+On Helmfile installs, add this to `deploy/cluster/values/storage-overrides.yaml` — leaving `existingSecret` empty means no credential environment variables are rendered and the AWS SDK falls back to ambient credentials:
 
 ```yaml
-core:
-  context:
-    objectStorage:
-      defaultBucket: "my-kamiwaza-artifacts"
-      defaultRegion: "us-west-2"
-      defaultPrefix: "context/raw"
-      credentialsSecretRef:
-        name: ""
+storage:
+  workrooms:
+    backend: s3
+    s3:
+      region: "us-west-2"
+      bucket: "my-kamiwaza-artifacts"
+      prefix: "context/raw"
+      endpoint: ""
+      existingSecret: ""
 ```
 
-If you are applying values directly to the `core` chart instead of the umbrella
-chart, use the same structure without the top-level `core:` wrapper.
+If you are applying values directly to the `core` chart, set the same shape with an empty Secret name. `enabled: true` is **required** here — with an empty Secret name the chart cannot infer it, and omitting it silently disables workroom storage:
 
-Apply the updated values through your standard Helm or cluster release workflow.
+```yaml
+context:
+  objectStorage:
+    enabled: true
+    defaultBucket: "my-kamiwaza-artifacts"
+    defaultRegion: "us-west-2"
+    defaultPrefix: "context/raw"
+    endpointUrl: ""
+    credentialsSecretRef:
+      name: ""
+```
+
+Apply the updated values as in Option 1, step 3.
 
 ## Restart Existing Deployments
 
@@ -179,26 +254,28 @@ CONTEXT_SERVICE_S3_DEFAULT_REGION: us-west-2
 CONTEXT_SERVICE_S3_DEFAULT_PREFIX: context/raw
 ```
 
-### Check the Scheduler Pod
+### Check the Scheduler
 
-Verify the scheduler sees the expected environment variables:
+If you are using Secret-backed credentials, verify the rendered credential reference without echoing any secret values:
+
+```bash
+kubectl get deploy core-scheduler -n kamiwaza -o yaml | grep -A4 CONTEXT_SERVICE_S3_ACCESS_KEY_ID
+```
+
+The `secretKeyRef` should name your Secret (`core-s3`) and key (`access_key_id`).
+
+You can also inspect the live environment, although `kubectl exec` may fail on production images (they are distroless, without a shell):
 
 ```bash
 kubectl exec -n kamiwaza deploy/core-scheduler -- env | grep CONTEXT_SERVICE_S3
 ```
 
-If you are using Secret-backed credentials, also verify the credential variables exist:
-
-```bash
-kubectl exec -n kamiwaza deploy/core-scheduler -- env | grep '^CONTEXT_SERVICE_S3_'
-```
-
 ### Check the Ray Head Pod
 
-Verify the Ray head pod also has the S3 configuration:
+Verify the Ray head pod carries the same configuration:
 
 ```bash
-kubectl exec -n kamiwaza "$(kubectl get pod -n kamiwaza -l ray.io/node-type=head -o name | head -1)" -- env | grep CONTEXT_SERVICE_S3
+kubectl get pod -n kamiwaza -l ray.io/node-type=head -o yaml | grep -A4 CONTEXT_SERVICE_S3_ACCESS_KEY_ID
 ```
 
 ### Validate in the Product
@@ -211,14 +288,40 @@ Retry a workflow that depends on workroom storage:
 
 ## Troubleshooting
 
+### Error: secret "core-s3" not found (CreateContainerConfigError) {#secret-core-s3-not-found}
+
+Core pods (`core-scheduler`, `core-raycluster-head`) are stuck in `CreateContainerConfigError` (shown as `0/1`, or `1/2` on Istio-injected installs), the pod events show `secret "core-s3" not found`, and a fresh install never completes — the deploy blocks on the kamiwaza release's post-install hooks while most other pods run normally.
+
+This means core was configured to read S3 credentials from a Secret that does not exist in the `kamiwaza` namespace. On `rook-rgw`-lane installs it almost always means a stale `core.context.objectStorage` override — for example in `deploy/cluster/values/overrides.yaml`, left over from a pre-storage-platform external-S3 setup — is redirecting core away from the installer-managed `kamiwaza-rgw-credentials` Secret.
+
+Check which Secret and key names core actually references:
+
+```bash
+kubectl get deploy core-scheduler -n kamiwaza -o yaml | grep -A4 CONTEXT_SERVICE_S3_ACCESS_KEY_ID
+```
+
+- `key: access_key_id` with `name: core-s3` — this page's external-S3 override is in effect
+- `key: AccessKey` with `name: kamiwaza-rgw-credentials` — the default RGW wiring is in effect
+
+Fix:
+
+- If you intended the default RGW storage: remove the `core.context.objectStorage` block from your overrides and re-apply the release.
+- If you intended external S3: create the Secret (Option 1, step 1). The kubelet retries automatically and the pods recover within a few minutes (container-creation backoff caps at 5 minutes). To force an immediate retry, delete the stuck pods:
+
+```bash
+kubectl delete pod -n kamiwaza -l app.kubernetes.io/name=core-scheduler
+kubectl delete pod -n kamiwaza -l ray.io/node-type=head
+```
+
 ### Error: Workroom storage is not configured for Skills Library
 
 This usually means core does not see `CONTEXT_SERVICE_S3_DEFAULT_BUCKET`.
 
 Check:
 
-- your Helm values file includes `context.objectStorage.defaultBucket`
-- if you are using the `deploy` repo umbrella chart, make sure the override is nested under `core.context.objectStorage`, not top-level `context.objectStorage`
+- your Helm values file includes `context.objectStorage.defaultBucket` (or, on Helmfile installs, `storage.workrooms.s3.bucket`)
+- if you configured the block directly with an empty `credentialsSecretRef.name` (ambient credentials), `enabled: true` is set explicitly — without it the chart disables object storage
+- if you are using the `deploy` repo umbrella chart, make sure any direct override is nested under `core.context.objectStorage`, not top-level `context.objectStorage`
 - the `core-config` ConfigMap contains `CONTEXT_SERVICE_S3_DEFAULT_BUCKET`
 - the scheduler and Ray pods were restarted after the config change
 
@@ -229,7 +332,7 @@ This means the bucket settings are present but AWS authentication is not.
 Check:
 
 - the Secret exists in the `kamiwaza` namespace
-- `credentialsSecretRef.name` matches the Secret name
+- `credentialsSecretRef.name` (or `storage.workrooms.s3.existingSecret`) matches the Secret name
 - the Secret keys match the configured key names
 - the scheduler and Ray pods were restarted after the Secret was created
 

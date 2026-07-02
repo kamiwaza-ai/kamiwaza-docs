@@ -219,3 +219,8 @@ graph TD
 - **SDK sync failures**: Check that kamiwaza-sdk repository is available in expected location
 - **Build failures**: Try `npm run clear` from docs/ directory to clear cache
 - **Version conflicts**: Ensure version numbers are consistent across package.json files and docusaurus.config.ts
+<!-- quality-gates:ai-context START — managed by /quality-gates:install; do not edit between markers (version=1, source=quality-gates) -->
+## Code Health
+When a CodeScene gate reports a degraded/declined verdict, or when weighing a
+Code-Health refactor, read `.ai/quality-gates.md` before deciding.
+<!-- quality-gates:ai-context END -->
