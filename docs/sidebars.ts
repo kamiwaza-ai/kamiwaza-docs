@@ -32,6 +32,7 @@ const sidebars: SidebarsConfig = {
 				"installation/windows_installation_guide",
 				"installation/redhat_online_install",
 				"installation/redhat_offline_install",
+				"installation/redhat_uninstall",
 				"installation/gpu_setup_guide",
 				"installation/nvidia-secure-boot",
 				"installation/two-node-deployment",
@@ -75,6 +76,9 @@ const sidebars: SidebarsConfig = {
 				"federation/retrieval",
 				"federation/job-submission",
 				"federation/operations",
+				"federation/execution-gates",
+				"federation/gate-packages",
+				"federation/api-reference",
 			],
 		},
 		{
