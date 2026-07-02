@@ -95,19 +95,33 @@ On Istio clusters with the `extauthz` trust model, admin users bypass per-resour
 
 Non-admin users require explicit per-dataset ReBAC grants on the target cluster. The admin bypass is suppressed for mesh-originated requests — federated callers must have explicit `viewer` access to each dataset they query or browse. The catalog listing endpoint filters results so federated users only see datasets they have grants for.
 
-To grant access:
+Grant access **at federation-pairing time** through the brokered-user allowlist's `initial_tuples` field — **not** through `/api/auth/tuples`.
+
+:::warning Why not `/api/auth/tuples`?
+A federated caller has no local user account on the target cluster until their *first* mesh request, when the brokering service auto-provisions a local Keycloak user with a freshly-minted UUID. The per-dataset check authorizes against **that local UUID**, which isn't known ahead of time — so a tuple written against the source cluster's user UUID via `/api/auth/tuples` never matches, and the call returns `204` while access stays denied (`404 Dataset not found`). The allowlist's `initial_tuples` solves this with a `{{user_id}}` placeholder that renders to the local UUID at provision time.
+:::
 
 ```bash
-# On the TARGET cluster, seed a relation for the remote user
-curl -sk -X POST "https://<TARGET_IP>/api/auth/tuples" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
+# On the TARGET cluster, add the source user to the federation allowlist
+# WITH the dataset grant. `{{user_id}}` renders to the local brokered KC
+# UUID when the user is auto-provisioned on first mesh request, so the
+# viewer relation lands on the subject the per-dataset check looks up.
+curl -sk -X POST "https://<TARGET_IP>/api/cluster/federations/<FEDERATION_ID>/users" \
+  -H "Authorization: Bearer $REMOTE_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "subject": {"namespace": "user", "id": "<remote-user-uuid>"},
-    "relation": "viewer",
-    "object": {"namespace": "dataset", "id": "<dataset-urn>"}
+    "external_id": "<source-user-uuid>@<source-cluster-uuid>",
+    "initial_tuples": [
+      {
+        "subject": "user:{{user_id}}",
+        "relation": "viewer",
+        "object": "dataset:<dataset-urn>"
+      }
+    ]
   }'
 ```
+
+`initial_tuples` entries use namespaced `"<namespace>:<id>"` strings; `{{user_id}}` (local brokered UUID) and `{{external_id}}` (`<source-user-uuid>@<source-cluster-uuid>`) are substituted at provision time. To add a grant for an *already-provisioned* brokered user, re-POST the allowlist entry — seeding is idempotent.
 
 ## Mesh Proxy Endpoint Reference
 
