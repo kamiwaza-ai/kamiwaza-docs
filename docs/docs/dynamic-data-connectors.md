@@ -3,12 +3,12 @@
 Dynamic data connectors let you turn an external REST or JSON data source
 into a **governed Kamiwaza dataset** without writing any connector code.
 You describe the source declaratively — its URL, endpoint, authentication,
-and the attribute fields that drive access control — and the connector‑spec
+and the attribute fields that drive access control — and the connector-spec
 engine materializes it as a catalog dataset that every caller reads through
-a single, authoritative, fail‑closed attribute gate.
+a single, authoritative, fail-closed attribute gate.
 
 :::note
-This page covers the **declarative connector‑spec engine** and the Data
+This page covers the **declarative connector-spec engine** and the Data
 Connector Builder's *Register Governed Dataset* action. It is distinct from
 [Data Connectors](./data-connectors.md), which covers the OAuth account
 connectors for Microsoft 365 and Google Workspace.
@@ -16,9 +16,9 @@ connectors for Microsoft 365 and Google Workspace.
 
 ## What you get
 
-- **One generic engine, no per‑vendor code.** A new source is a *spec*, not
-  a new plugin. The same in‑core engine interprets every spec.
-- **Authoritative per‑record gating.** An attribute gate runs *after fetch*
+- **One generic engine, no per-vendor code.** A new source is a *spec*, not
+  a new plugin. The same in-core engine interprets every spec.
+- **Authoritative per-record gating.** An attribute gate runs *after fetch*
   on every retrieval and decides, per record and per field, what each caller
   sees — based on the caller's verified attributes. The gate fails closed: a
   record is dropped unless the caller is explicitly entitled to it.
@@ -37,11 +37,11 @@ connectors for Microsoft 365 and Google Workspace.
 | **Attribute gate** | An installed gate class, referenced by classpath in the spec, that filters and redacts records based on the caller's attributes. |
 | **Register from spec** | The API that persists a spec as a standing catalog dataset, binds its gate, and creates its owner relationship — without pulling any records. |
 | **Data Connector Builder** | The authoring app that maps a builder definition onto a connector spec and calls *register from spec* for you. |
-| **Publisher** | The role (or per‑cluster relationship) authorized to register governed datasets. |
+| **Publisher** | The role (or per-cluster relationship) authorized to register governed datasets. |
 
 ## Authoring a governed dataset (Data Connector Builder)
 
-The Data Connector Builder is the no‑code path. From a connector definition
+The Data Connector Builder is the no-code path. From a connector definition
 that already pulls records from a REST or JSON source, the **Register
 Governed Dataset** action:
 
@@ -68,12 +68,12 @@ action disables with that reason before you submit.
 
 Pagination is bounded by the spec (`max_pages`, `page_size`). The engine
 injects the source's native offset window; sources whose pagination differs
-are registered single‑page for now (broader pagination is on the roadmap).
+are registered single-page for now (broader pagination is on the roadmap).
 
 ## Registering a governed dataset (API)
 
 You can register a spec directly — useful for sources the builder runtime
-cannot author end‑to‑end (for example, SigV4 signing), or for automation.
+cannot author end-to-end (for example, SigV4 signing), or for automation.
 
 ### `POST /api/catalog/datasets/register-from-spec`
 
@@ -124,11 +124,17 @@ Common error responses:
 | `403` | No publish authority, or a registration request that originated from a peer cluster. |
 | `409` | A dataset with the same derived URN is already registered. |
 | `412` | Gate binding attempted while authentication is disabled. |
-| `422` | `credential_ref` does not resolve, or resolves to a workroom‑scoped secret. |
+| `422` | `credential_ref` does not resolve, or resolves to a workroom-scoped secret. |
 
-### `DELETE /api/catalog/datasets/register-from-spec`
+### Deregistering
 
-Deregisters a governed dataset by URN.
+There is no dedicated deregistration endpoint: a governed dataset is
+removed with the standard catalog delete, passing the URN as a query
+parameter:
+
+```
+DELETE /api/catalog/datasets/by-urn?urn=<dataset-urn>
+```
 
 ### Publishers
 
@@ -145,7 +151,7 @@ A spec never carries a secret value. Create a credential, then reference its
 URN from the spec:
 
 ```
-POST /api/catalog/secrets/   { "name": "example-aws", "value": "<secret>", "owner": "<user-id>" }
+POST /api/catalog/secrets/   { "name": "example-aws", "value": "<secret>", "owner": "urn:li:corpuser:<user-id>" }
 ```
 
 For `basic`, the value is `user:password`. For `bearer`, the token. For
@@ -166,10 +172,10 @@ POST /api/retrieval/jobs
 }
 ```
 
-The inline response carries the gate‑released records plus a gate audit
+The inline response carries the gate-released records plus a gate audit
 footer (`included` / `redacted` / `total`). Caller narrowing rides
 `options.narrowing_filter` only — it can shrink the result (by time range or
-allow‑listed terms) but never widen it.
+allow-listed terms) but never widen it.
 
 ### Across a cluster mesh
 
@@ -181,13 +187,14 @@ POST /api/mesh/{cluster}/api/retrieval/jobs
 
 The gate fires on the **peer**, under your originating verified attributes,
 so records are redacted before they cross the mesh. Federated consumption of
-a governed dataset is constrained to this retrieval path; the cross‑cluster
-job‑execution path is rejected for governed datasets so there is no route
+a governed dataset is constrained to this retrieval path; the cross-cluster
+job-execution path is rejected for governed datasets so there is no route
 that returns ungated records.
 
 ## API reference page
 
 The full request/response schema for these routes is published in the
-[API Reference](/sdk/api/). The connector‑spec routes appear once the docs
-build's OpenAPI sync (`npm run sync-openapi`) runs against a Kamiwaza
-checkout that includes the connector‑spec engine, then `npm run build`.
+[API Reference](/sdk/api/). The connector-spec routes appear once the docs
+build's OpenAPI sync (`npm run sync-openapi`, run from the repository
+root — the script lives in the root `package.json`, not `docs/`) runs against a Kamiwaza
+checkout that includes the connector-spec engine, then `npm run build`.
