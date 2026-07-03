@@ -21,8 +21,6 @@ Before installing Kamiwaza, ensure you have:
 
 Review the full [System Requirements](system_requirements.md) for hardware, storage, and GPU requirements.
 
-> **Network admin coordination:** End users on separate workstations need your install's `<domain>` (and feature subdomains such as `docs.<domain>`) configured in your corporate DNS, plus a TLS certificate their browsers trust. See [Network Prerequisites](../network_prerequisites.md) for the checklist your network and security admins need.
-
 ---
 
 ## Step 1: Install System Dependencies
