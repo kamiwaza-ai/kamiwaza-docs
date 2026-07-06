@@ -4,7 +4,7 @@
   "sourceBranch": "develop",
   "sourceCommit": "9b6e16a98f5adc2dee635953a3831905fe30fe2a",
   "originalApiVersion": "0.1.0",
-  "patchedApiVersion": "0.13.0",
+  "patchedApiVersion": "1.0.0",
   "endpoints": 366,
   "schemas": 459
 }
