@@ -123,12 +123,21 @@ On success, both clusters transition to `PAIRED`. The receiver seeds
 Cross-cluster mesh egress is **authenticated-only** — no `federation:operator`
 relation is required to use the mesh proxy.
 
-:::note Choosing an identity mode
-This pairing uses the default source-trusted `peer_kc` mode. To pair with the
-receiver-controlled **`shared_idp`** mode instead, supply `shared_issuer_url`
-(plus `shared_jwks_url` / `shared_ca_pem`) when you **create** the federation
-(Step 2). The mode cannot be changed later without re-pairing. See
-[Identity Trust Modes](./identity-trust-modes.md).
+:::warning Choose an identity mode before pairing
+The steps above create a source-trusted **`peer_kc`** federation. On a stock
+cluster that is **refused with HTTP 400** unless the operator has set
+`ALLOW_UNTRUSTED_FEDERATION=true` (it defaults to `false`).
+
+To pair in the receiver-controlled **`shared_idp`** mode instead, the **receiver**
+supplies `shared_issuer_url` (plus `shared_jwks_url` / `shared_ca_pem`) when it
+**creates its own federation row** — each cluster stamps its mode from what it was
+given at create, and the mode is grantor-decided. The receiver must **also** have
+the shared realm's issuer enrolled in its trusted-shared-issuers list
+(`scheduler.trustedSharedIssuers`), which is empty and fail-closed by default —
+otherwise the caller's token is rejected with `403`.
+
+The identity mode cannot be changed later without deleting and re-pairing. Full
+details and the recommended flow: [Identity Trust Modes](./identity-trust-modes.md).
 :::
 
 ## Step 4: Store Remote CA Certificate

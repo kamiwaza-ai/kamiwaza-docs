@@ -83,20 +83,33 @@ The mesh proxy forwards requests to remote federated clusters. Every request is 
 
 The `{federation_name}` is the `remote_cluster_name` from the federation record. The `{remote_path}` is the path on the remote cluster (without the `/api` prefix — it's re-added by the proxy).
 
-**Authorization:** The caller must have `operator` relation on the federation (seeded automatically when the federation is paired by an admin; can be granted to other users via the ReBAC API).
+**Authorization:** Mesh egress is **authenticated-only** — any authenticated local
+user may call `/api/mesh/{fed}/*`. There is **no** `federation:operator` gate on the
+egress path (it was removed in 1.1). Cross-cluster authorization is decided entirely
+by the **receiving** cluster (its allowlist, per-resource ReBAC, and per-record gates).
 
 **Request headers forwarded upstream:**
 
 | Header | Source | Purpose |
 |--------|--------|---------|
 | `X-KZ-Mesh-Source-Cluster-Id` | Local cluster ID | Identifies the originating cluster |
-| `X-KZ-Mesh-User-Id` | Local user's `sub` claim | Remote identity resolution |
-| `X-KZ-Mesh-User-Roles` | Local user's roles (CSV) | Remote role-based checks |
+| `X-KZ-Mesh-User-Id` | Local user's `sub` claim | Source-asserted user id (see note) |
+| `X-KZ-Mesh-User-Roles` | Local user's roles (CSV) | Source-asserted roles (see note) |
 | `X-KZ-Mesh-Route` | `{method} {path}` | Bound into the HMAC signature |
 | `X-KZ-Mesh-Signature` | HMAC-SHA256 | Verified on the remote cluster |
 | `X-KZ-Mesh-Signature-Ts` | Unix timestamp | Replay protection (5-minute window) |
 | `X-KZ-Mesh-Correlation-Id` | Per-request UUID | Observability tracing |
-| `X-KZ-Mesh-User-Attributes` | `X-User-Attributes` from source | Passed through to attribute gates |
+| `X-KZ-Mesh-User-Attributes` | Source's `X-User-Attributes` | Source-asserted attributes (see note) |
+
+:::warning Identity-mode-dependent trust
+Whether the receiver **trusts** the source-asserted identity headers
+(`X-KZ-Mesh-User-Id` / `-Roles` / `-Attributes`) depends on the federation's
+[identity mode](./identity-trust-modes.md). In **`shared_idp`** (receiver-controlled)
+the receiver establishes identity and attributes from the caller's **own validated
+shared-realm token**, strips source-asserted cluster roles, and **ignores** the source
+attribute header (F10 — "shared identity ≠ shared authority"). The source-asserted
+headers are trusted only in source-trusted **`peer_kc`** / grandfathered mode.
+:::
 
 **Stripped before forwarding:**
 - `Authorization` (the local token is not valid on the remote cluster)
@@ -118,7 +131,7 @@ The `{federation_name}` is the `remote_cluster_name` from the federation record.
 | Status | Condition |
 |--------|-----------|
 | `401` | Local auth failed (invalid JWT / PAT) |
-| `403` `rebac_denied` | Caller lacks operator on the federation or remote ReBAC blocks the operation |
+| `403` `rebac_denied` | The **receiver's** per-resource ReBAC blocks the operation (there is no source-side `federation:operator` egress gate in 1.1) |
 | `503` | Remote cluster unreachable or HMAC verification failed on the remote side |
 | `504` | Remote request exceeded the proxy timeout |
 
@@ -240,7 +253,7 @@ This grants a relation to a **local** user — one with an account on the cluste
 
 | Scenario | Namespace | Relation | Notes |
 |----------|-----------|----------|-------|
-| User can use a federation | `federation` | `operator` | Required to call `/api/mesh/{fed}/*`; granted to a local user on the **source** cluster |
+| Manage a federation (admin) | `federation` | `operator` | Federation **management** endpoints. **Not** required to call `/api/mesh/{fed}/*` — mesh egress is authenticated-only in 1.1 |
 | Local user can query a dataset | `dataset` | `viewer` | For native (non-mesh) retrieval on this cluster |
 | User can submit jobs | `cluster_jobs` | `executor` | Object id is the constant `"__all__"` |
 | User can own a dataset | `dataset` | `owner` | Can write and manage |
@@ -254,6 +267,14 @@ A federated caller has **no local account** on the target cluster until their fi
 ## Attribute Headers
 
 User attributes flow through ext-authz from JWT claims to domain gates on the retrieval service.
+
+:::note Cross-cluster attributes
+On a **cross-cluster (mesh)** call, the receiver does not blindly forward the
+source's attributes. In `shared_idp` mode it derives `X-User-Attributes` from the
+caller's **own validated shared-realm token** and ignores the source's forwarded
+`X-KZ-Mesh-User-Attributes` (F10); the source-forwarded header is trusted only in
+source-trusted `peer_kc` mode. See [Identity Trust Modes](./identity-trust-modes.md).
+:::
 
 ### X-User-Attributes
 
