@@ -185,19 +185,12 @@ curl -sk -X POST "https://<TARGET_IP>/api/cluster/federations/<FEDERATION_ID>/us
   }'
 ```
 
-For federation **operator** access on the **source** cluster (needed to use the mesh proxy at all) — this is a local user on its home cluster, so `/api/auth/tuples` is the correct path here:
-
-```bash
-# Grant operator on federation namespace (normally seeded during pairing)
-curl -sk -X POST "https://kamiwaza.test/api/auth/tuples" \
-  -H "Authorization: Bearer $LOCAL_ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "subject": {"namespace": "user", "id": "<user-uuid>"},
-    "relation": "operator",
-    "object": {"namespace": "federation", "id": "<federation-id>"}
-  }'
-```
+:::note No longer needed in 1.1
+Earlier releases required a `federation:operator` relation on the source cluster to
+use the mesh proxy. In 1.1 the mesh egress is **authenticated-only** — that grant is
+no longer required, and a mesh `403` now originates from the **receiver's**
+per-resource ReBAC or per-record gate, not a missing source-side operator relation.
+:::
 
 ### CA Trust Errors (TLS)
 
@@ -442,12 +435,20 @@ All cross-cluster mesh requests include these headers. They are set by the mesh 
 | Header | Purpose |
 |--------|---------|
 | `X-KZ-Mesh-Source-Cluster-Id` | UUID of the originating cluster. Used to look up the federation record and PSK on the receiving side. |
-| `X-KZ-Mesh-User-Id` | Authenticated user ID from the source cluster. Becomes the identity for ReBAC checks on the target. |
-| `X-KZ-Mesh-User-Roles` | Comma-separated roles of the authenticated user (e.g., `admin,editor`). |
+| `X-KZ-Mesh-User-Id` | Source-asserted user id. Whether the target adopts it as the identity is identity-mode-dependent (see note). |
+| `X-KZ-Mesh-User-Roles` | Source-asserted roles (e.g., `admin,editor`). Source-asserted cluster roles are stripped for receiver-controlled modes. |
 | `X-KZ-Mesh-Signature` | HMAC-SHA256 signature over the canonical payload (cluster ID, user ID, roles, route, method, URI). |
 | `X-KZ-Mesh-Signature-Ts` | Unix timestamp (seconds) when the signature was issued. Must be within TTL window (default 300s). |
 | `X-KZ-Mesh-Route` | Comma-separated list of cluster IDs this request has traversed. Used for loop detection (max 8 hops). |
 | `X-KZ-Mesh-Correlation-Id` | UUID for cross-cluster request tracing. Preserved across hops; generated on the first hop if absent. |
+
+:::note Identity-mode-dependent trust
+In `shared_idp` (receiver-controlled) mode the target establishes identity from the
+caller's **own validated shared-realm token**, not the source-asserted
+`X-KZ-Mesh-User-Id`/`-Roles`. The source-asserted values are the identity only in
+source-trusted `peer_kc`/grandfathered mode. See
+[Identity Trust Modes](./identity-trust-modes.md).
+:::
 
 ### Signature Payload
 

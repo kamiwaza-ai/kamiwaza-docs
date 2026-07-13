@@ -71,6 +71,7 @@ const sidebars: SidebarsConfig = {
 			label: "Federation",
 			items: [
 				"federation/overview",
+				"federation/identity-trust-modes",
 				"federation/setup",
 				"federation/retrieval",
 				"federation/job-submission",
