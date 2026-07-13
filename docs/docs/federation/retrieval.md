@@ -151,3 +151,10 @@ The mesh proxy adds these headers to cross-cluster requests:
 | `X-KZ-Mesh-Signature` | HMAC-SHA256 signature |
 | `X-KZ-Mesh-Correlation-Id` | Request correlation ID for cross-cluster tracing |
 | `X-KZ-Mesh-Route` | Hop trace for loop detection |
+
+:::note Identity-mode-dependent trust
+`X-KZ-Mesh-User-Id`/`-Roles` are **source-asserted**. In `shared_idp` (receiver-controlled)
+mode the receiver establishes identity from the caller's own validated shared-realm
+token and strips source-asserted cluster roles; the forwarded values are the identity
+only in source-trusted `peer_kc` mode. See [Identity Trust Modes](./identity-trust-modes.md).
+:::
