@@ -118,9 +118,18 @@ curl -sk -X POST "https://<LOCAL_IP>/api/cluster/federations/<FEDERATION_ID>/pai
 # Response: status should be "PAIRED"
 ```
 
-On success, both clusters transition to `PAIRED` and ReBAC relations are seeded:
-- **Source cluster**: `federation:{id}:operator` for the admin who paired
-- **Target cluster**: `cluster_jobs:__all__:executor` for the remote admin
+On success, both clusters transition to `PAIRED`. The receiver seeds
+`cluster_jobs:__all__:executor` for the remote admin so federated jobs can run.
+Cross-cluster mesh egress is **authenticated-only** — no `federation:operator`
+relation is required to use the mesh proxy.
+
+:::note Choosing an identity mode
+This pairing uses the default source-trusted `peer_kc` mode. To pair with the
+receiver-controlled **`shared_idp`** mode instead, supply `shared_issuer_url`
+(plus `shared_jwks_url` / `shared_ca_pem`) when you **create** the federation
+(Step 2). The mode cannot be changed later without re-pairing. See
+[Identity Trust Modes](./identity-trust-modes.md).
+:::
 
 ## Step 4: Store Remote CA Certificate
 
@@ -169,8 +178,8 @@ Disconnecting immediately blocks new mesh proxy requests. Running operations on 
 |---------|-------|-----|
 | 502 `mesh_proxy_bad_gateway` | TLS verification failed | Store remote CA cert (Step 4) or add IP to gateway cert SANs |
 | 401 on remote cluster | Mesh HMAC verification failed | Check PSK matches; check Istio `includeRequestHeadersInCheck` includes `x-kz-mesh-*` headers |
-| 403 `rebac_denied` on source | User lacks `federation:operator` relation | Re-pair the federation (seeding happens at pair time) |
+| 403 on source before the request forwards | Cross-cluster egress is authenticated-only in 1.1 — there is no `federation:operator` gate; a 403 here means the caller is not authenticated | Ensure the caller presents a valid token to the source cluster |
 | 403 `namespace_unsupported` | `federation` namespace not registered | Ensure `authz/constants.py` includes `federation` in `ALLOWED_OBJECT_NAMESPACES` |
 | 400 `missing_object_id` | Cluster selector did not resolve to a PAIRED federation (unknown name/UUID, a local-cluster selector, or a non-PAIRED federation). The mesh guard's id-resolver (`mesh/guards.py resolve_federation_id`) returns `None`, so `@guarded` raises this *before* the route runs — the service-layer `mesh_target_not_found` (404) / `mesh_target_is_local` (400) codes are never reached on this path (ENG-7520). | Check federation status; selector must match a PAIRED federation by name, UUID, or prefix |
-| 403 `not_authorized_to_probe_cluster` on `/api/cluster/cluster_capabilities` | Mesh-origin capabilities probe lacks a `cluster:<local_uuid>` viewer grant — federation pairing seeds `federation:operator` only, **not** `cluster:viewer` (ENG-7892) | Grant the federated subject the `cluster:<local_uuid>` viewer relation explicitly before probing |
+| 403 `not_authorized_to_probe_cluster` on `/api/cluster/cluster_capabilities` | Mesh-origin capabilities probe lacks a `cluster:<local_uuid>` viewer grant, which federation pairing does not seed (ENG-7892) | Grant the federated subject the `cluster:<local_uuid>` viewer relation explicitly before probing |
 | 307 redirect | Missing trailing slash | Add `/` to the API path |
