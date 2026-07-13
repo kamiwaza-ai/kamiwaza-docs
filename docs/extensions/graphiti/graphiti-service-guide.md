@@ -1,0 +1,148 @@
+---
+title: Graphiti Service Guide
+description: Deploy and operate the Graphiti knowledge graph service in Kamiwaza.
+---
+
+# Graphiti Service Guide
+
+Graphiti is Kamiwaza's temporal knowledge graph service for agent memory, contextual retrieval, and
+fact-oriented search. It accepts messages, extracts entities and relationships, and returns graph
+context for downstream agent or RAG flows.
+
+For version-specific release notes, see the [Graphiti Changelog](./changelog.md).
+
+If you are upgrading an existing Graphiti deployment, read both the changelog and the migration
+section before reusing old data volumes.
+
+## Before You Deploy
+
+Graphiti is installed as an extension and requires:
+
+- a deployment-time secret for `NEO4J_PASSWORD`
+- persistent storage for Neo4j data
+- a reachable LLM or OpenAI-compatible endpoint for message processing
+
+Without an LLM endpoint, Graphiti can still accept requests, but message processing, extraction,
+and memory/search results will be incomplete or fail.
+
+In App Garden, the install flow prompts for `NEO4J_PASSWORD`. In declarative or Helm-based
+deployments, supply the same value through your normal secret path (for example a Kubernetes
+`Secret`, `SealedSecret`, or equivalent env-injection mechanism) instead of hard-coding it in the
+checked-in manifest.
+
+## Runtime Layout
+
+| Service | Port | Purpose |
+|--------|--------|--------|
+| `graphiti` | `8000` | FastAPI API for ingest, search, memory, and episode queries |
+| `neo4j` | `7687` | Neo4j Bolt endpoint used by the Graphiti API |
+
+Common Graphiti API paths include:
+
+- `GET /healthcheck`
+- `POST /messages`
+- `POST /search`
+- `POST /get-memory`
+- `GET /episodes/{group_id}`
+- `POST /clear`
+
+## Key Configuration
+
+| Variable | Purpose |
+|--------|--------|
+| `NEO4J_URI` | Neo4j Bolt URI, usually `bolt://neo4j:7687` |
+| `NEO4J_USER` | Neo4j username, usually `neo4j` |
+| `NEO4J_PASSWORD` | Neo4j password seeded at first boot |
+| `OPENAI_BASE_URL` | Preferred OpenAI-compatible LLM endpoint override |
+| `LLM_BASE_URL` | Graphiti-specific LLM override when you need one |
+| `KAMIWAZA_ENDPOINT` | Fallback model endpoint supplied by Kamiwaza |
+| `EMBEDDING_BASE_URL` | Optional embedding endpoint override |
+| `MODEL_NAME` / `EMBEDDING_MODEL_NAME` | Explicit model selection when auto-selection is not enough |
+
+Operational notes:
+
+- In local Compose, Graphiti can fall back between `OPENAI_BASE_URL`, `LLM_BASE_URL`, and
+  `KAMIWAZA_ENDPOINT`.
+- In platform deployments, `OPENAI_BASE_URL` is treated as the primary injection point so the
+  platform-managed model endpoint wins by default.
+- Neo4j password seeding happens when the data volume is first initialized. Rotating
+  `NEO4J_PASSWORD` later does not rewrite an existing database automatically. See
+  [Neo4j authentication changes do not take effect](#neo4j-authentication-changes-do-not-take-effect)
+  for the in-place rotation workflow.
+
+## Migration from FalkorDB
+
+:::caution
+0.12.1 replaces FalkorDB with Neo4j. Existing FalkorDB data is not compatible with the new backend,
+and rollback depends on preserving the pre-upgrade FalkorDB state before you switch the deployment.
+:::
+
+Plan upgrades accordingly:
+
+1. Snapshot or otherwise preserve the existing FalkorDB volume before you upgrade.
+2. Treat the migration as a storage break.
+3. Start Graphiti with a fresh Neo4j data volume.
+4. Rebuild the graph from source documents or other canonical inputs.
+5. Remove the old FalkorDB volume only after you confirm the new Neo4j-backed service is healthy.
+
+The Graphiti service also uses a different volume naming convention for Neo4j-backed storage to
+avoid accidental cross-use of FalkorDB data.
+
+## Rollback
+
+If you must roll back to the older FalkorDB-backed release:
+
+1. Revert the extension deployment to the last FalkorDB-compatible version.
+2. Restore the previous FalkorDB volume or snapshot.
+3. Remove or archive the Neo4j volume before retrying the older release.
+4. Rebuild graph state from source if no compatible FalkorDB data survives.
+
+## Troubleshooting
+
+### Search or memory calls fail
+
+Check whether Graphiti can reach a valid LLM endpoint. Missing or invalid model connectivity is the
+most common reason message ingestion succeeds while retrieval or search fails later.
+
+### Neo4j authentication changes do not take effect
+
+Neo4j only seeds credentials on first initialization. If you change `NEO4J_PASSWORD` after the
+database already exists, either recreate the volume or rotate the password in place inside Neo4j and
+update the deployment secret/env to match.
+
+For an already-initialized database, rotate it with `cypher-shell` using stdin for the statement
+body instead of placing both passwords directly on the command line.
+
+Local Docker Compose example:
+
+```bash
+printf 'ALTER CURRENT USER SET PASSWORD FROM "%s" TO "%s";\n' \
+  "$OLD_NEO4J_PASSWORD" "$NEW_NEO4J_PASSWORD" \
+  | docker compose exec -T \
+      -e NEO4J_USERNAME=neo4j \
+      -e NEO4J_PASSWORD="$OLD_NEO4J_PASSWORD" \
+      neo4j \
+      cypher-shell -a bolt://localhost:7687
+```
+
+Kubernetes/App Garden example:
+
+```bash
+printf 'ALTER CURRENT USER SET PASSWORD FROM "%s" TO "%s";\n' \
+  "$OLD_NEO4J_PASSWORD" "$NEW_NEO4J_PASSWORD" \
+  | kubectl exec -i -n <namespace> <neo4j-pod> -- \
+      env NEO4J_USERNAME=neo4j NEO4J_PASSWORD="$OLD_NEO4J_PASSWORD" \
+      cypher-shell -a bolt://localhost:7687
+```
+
+This env-driven pattern matches the shipped Graphiti Neo4j health check, which already invokes
+`cypher-shell` with `NEO4J_USERNAME` and `NEO4J_PASSWORD` on the pinned Neo4j `v5.26.21` runtime.
+
+If you are seeding a fresh volume before first startup, `neo4j-admin dbms set-initial-password` is
+the one-time alternative, but it does not replace the in-place rotation flow above for existing
+databases.
+
+### Local testing with custom Graphiti images
+
+Use a `docker-compose.override.yml` file locally to point the `graphiti` service at a custom image
+without changing the checked-in deployment manifest.

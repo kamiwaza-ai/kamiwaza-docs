@@ -1,133 +1,209 @@
 import fs from 'fs-extra';
 import path from 'path';
-import yaml from 'js-yaml';
 
-function resolveSdkDocsPath(): string {
+const GITHUB_SDK_BASE = 'https://github.com/kamiwaza-ai/kamiwaza-sdk/blob/main';
+
+function resolveSdkRepoPath(): string | null {
     const override = process.env.KW_SDK_DOCS || process.env.KAMIWAZA_SDK_DOCS;
+    // When an env var is set, treat it as the repo root (or docs/ subdir)
+    // For sibling/monorepo candidates, point at the repo root
     const candidates = [
         override,
-        // sibling repo (common setup): ../kamiwaza-sdk/docs
-        path.resolve(__dirname, '../kamiwaza-sdk/docs'),
-        // sibling repo (alternate): ../../kamiwaza-sdk/docs
-        path.resolve(__dirname, '../../kamiwaza-sdk/docs'),
-        // monorepo nested layout: ../../kamiwaza/kamiwaza-sdk/docs
-        path.resolve(__dirname, '../../kamiwaza/kamiwaza-sdk/docs'),
+        path.resolve(__dirname, '../kamiwaza-sdk'),
+        path.resolve(__dirname, '../../kamiwaza-sdk'),
+        path.resolve(__dirname, '../../kamiwaza/kamiwaza-sdk'),
     ].filter(Boolean) as string[];
 
     for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) {
+        // Accept either a repo root (has docs/services/) or a docs dir directly
+        if (fs.existsSync(path.join(candidate, 'docs', 'services'))) {
             return candidate;
         }
-    }
-
-    const tried = candidates.map(c => `- ${c}`).join('\n');
-    throw new Error(
-        `Unable to locate SDK docs. Set KW_SDK_DOCS to the SDK docs path, or place the repo in one of the expected locations. Tried:\n${tried}`
-    );
-}
-
-const SDK_DOCS_PATH = resolveSdkDocsPath();
-const TARGET_SDK_DOCS = path.resolve(__dirname, '../docs/sdk/current');
-
-async function generateServiceDoc(servicePath: string, serviceName: string) {
-    const serviceDir = path.join(SDK_DOCS_PATH, 'services', servicePath);
-    const files = await fs.readdir(serviceDir);
-    
-    let content = `# ${serviceName} Service\n\n`;
-    
-    for (const file of files) {
-        if (file.endsWith('.md')) {
-            const fileContent = await fs.readFile(path.join(serviceDir, file), 'utf8');
-            content += `\n${fileContent}\n`;
+        if (fs.existsSync(path.join(candidate, 'services'))) {
+            // Env var pointed at the docs/ subdir
+            return path.dirname(candidate);
         }
     }
-    
-    return content;
+
+    return null;
 }
 
-async function generateAPIReference() {
-    const todoPath = path.join(SDK_DOCS_PATH, 'todo.txt');
-    if (!(await fs.pathExists(todoPath))) {
-        return '# API Reference\n\n';
+const TARGET_CURRENT = path.resolve(__dirname, '../docs/sdk/current');
+const TARGET_SERVICES = path.join(TARGET_CURRENT, 'services');
+const TARGET_API_REFERENCE = path.join(TARGET_CURRENT, 'api', 'reference.md');
+const TARGET_SIDEBAR_JSON = path.resolve(__dirname, '../docs/sdk-services.generated.json');
+
+function titleCase(name: string): string {
+    return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function addFrontmatter(content: string, position: number, title: string): string {
+    // If file already has frontmatter, replace sidebar_position
+    if (content.startsWith('---')) {
+        return content.replace(
+            /sidebar_position:\s*\d+/,
+            `sidebar_position: ${position}`
+        );
     }
+    const frontmatter = [
+        '---',
+        `sidebar_position: ${position}`,
+        `title: "${title}"`,
+        '---',
+        '',
+    ].join('\n');
+    return frontmatter + content;
+}
+
+function rewriteServiceLinks(content: string): string {
+    // Rewrite examples/ links (relative paths from service docs) → GitHub links
+    // Match any number of ../ prefixes before examples/
+    let result = content.replace(
+        /\]\((?:\.\.\/)*examples\/([^)]+)\)/g,
+        `](${GITHUB_SDK_BASE}/examples/$1)`
+    );
+    // Rewrite old README-style cross-service links to the generated flat docs layout.
+    result = result.replace(
+        /\]\(\.\.\/([a-z0-9-]+)\/README\.md\)/gi,
+        '](./$1)'
+    );
+    // Normalize package/module references from the old client name used in
+    // earlier SDK docs snapshots.
+    result = result.replace(/kamiwaza_client\/services\//g, 'kamiwaza_sdk/services/');
+    result = result.replace(/\bkamiwaza_client\b/g, 'kamiwaza_sdk');
+    // Normalize a couple of known stale examples while the source docs catch up.
+    result = result.replace(/Owen2\.5-72B-Instruct-GPTQ-Int4/g, 'Qwen2.5-72B-Instruct-GPTQ-Int4');
+    result = result.replace(
+        /http:\/\/hostname:port\/v1/g,
+        'https://your-kamiwaza.example/runtime/models/<deployment-id>/v1'
+    );
+    return result;
+}
+
+async function hasExistingSyncedDocs(): Promise<boolean> {
+    if (!await fs.pathExists(TARGET_SERVICES) || !await fs.pathExists(TARGET_SIDEBAR_JSON)) {
+        return false;
+    }
+
+    const entries = await fs.readdir(TARGET_SERVICES);
+    return entries.some(entry => entry.endsWith('.md'));
+}
+
+async function generateApiReference(sdkRepoPath: string): Promise<void> {
+    const todoPath = path.join(sdkRepoPath, 'docs', 'todo.txt');
+    await fs.ensureDir(path.dirname(TARGET_API_REFERENCE));
+
+    if (!await fs.pathExists(todoPath)) {
+        await fs.writeFile(TARGET_API_REFERENCE, '# API Reference\n');
+        return;
+    }
+
     const todoContent = await fs.readFile(todoPath, 'utf8');
     const sections = todoContent.split('\n## ');
-    
     let mdContent = '# API Reference\n\n';
-    
+
     for (const section of sections) {
         if (!section.trim()) continue;
-        
+
         const [title, ...items] = section.split('\n');
-        mdContent += `## ${title}\n\n`;
-        
+        mdContent += `## ${title.replace(/^#+\s*/, '')}\n\n`;
+
         for (const item of items) {
-            if (item.trim().startsWith('- [x]')) {
-                const methodName = item.replace('- [x] ', '').split(' - ')[0];
-                mdContent += `### \`${methodName}\`\n\n`;
-                mdContent += `${item.split(' - ')[1]}\n\n`;
+            const trimmed = item.trim();
+            if (!trimmed.startsWith('- [x]')) continue;
+
+            const [methodName, description] = trimmed.replace('- [x] ', '').split(' - ', 2);
+            mdContent += `### \`${methodName}\`\n\n`;
+            if (description) {
+                mdContent += `${description}\n\n`;
             }
         }
     }
-    
-    return mdContent;
+
+    await fs.writeFile(TARGET_API_REFERENCE, mdContent);
+    console.log('  Synced: current/api/reference.md');
 }
 
-async function copyServiceDocs() {
-    // Create target directories
-    await fs.ensureDir(path.join(TARGET_SDK_DOCS, 'services'));
-    await fs.ensureDir(path.join(TARGET_SDK_DOCS, 'api'));
-    
-    // Copy and transform service docs
-    const servicesRoot = path.join(SDK_DOCS_PATH, 'services');
-    const services = (await fs.pathExists(servicesRoot)) ? await fs.readdir(servicesRoot) : [] as string[];
-    
-    for (const service of services) {
-        const serviceName = service.charAt(0).toUpperCase() + service.slice(1);
-        const content = await generateServiceDoc(service, serviceName);
-        await fs.writeFile(
-            path.join(TARGET_SDK_DOCS, 'services', `${service}.md`),
-            content
-        );
+async function syncServiceDocs(sdkRepoPath: string): Promise<string[]> {
+    const servicesRoot = path.join(sdkRepoPath, 'docs', 'services');
+    if (!await fs.pathExists(servicesRoot)) {
+        console.warn('  No services directory found at', servicesRoot);
+        return [];
     }
-    
-    // Generate API reference from todo.txt
-    const apiReference = await generateAPIReference();
-    await fs.writeFile(
-        path.join(TARGET_SDK_DOCS, 'api', 'reference.md'),
-        apiReference
-    );
-    
-    // Create intro doc if it doesn't exist
-    const introPath = path.join(TARGET_SDK_DOCS, 'intro.md');
-    if (!await fs.pathExists(introPath)) {
-        await fs.writeFile(introPath, `---
-id: intro
-title: Kamiwaza SDK Documentation
-sidebar_position: 1
----
 
-# Kamiwaza SDK
+    const services = (await fs.readdir(servicesRoot, { withFileTypes: true }))
+        .filter(d => d.isDirectory())
+        .map(d => d.name)
+        .sort();
 
-The Kamiwaza SDK provides a Python interface to interact with the Kamiwaza AI Platform. This documentation covers:
+    const sidebarItems: string[] = [];
 
-- [API Reference](api/reference.md) - Complete API documentation
-- [Services](services) - Detailed documentation for each service
-- Installation and usage guides
-- Examples and tutorials
-`);
+    for (let i = 0; i < services.length; i++) {
+        const service = services[i];
+        const srcFile = path.join(servicesRoot, service, 'README.md');
+        if (!await fs.pathExists(srcFile)) {
+            console.warn(`  Skipping ${service}: no README.md found`);
+            continue;
+        }
+
+        let content = await fs.readFile(srcFile, 'utf8');
+        content = rewriteServiceLinks(content);
+        const title = `${titleCase(service)} Service`;
+        const withFrontmatter = addFrontmatter(content, i + 1, title);
+
+        await fs.ensureDir(TARGET_SERVICES);
+        await fs.writeFile(path.join(TARGET_SERVICES, `${service}.md`), withFrontmatter);
+
+        sidebarItems.push(`current/services/${service}`);
+        console.log(`  Synced: ${service}`);
     }
+
+    return sidebarItems;
+}
+
+async function writeSidebarJson(items: string[]): Promise<void> {
+    await fs.writeFile(TARGET_SIDEBAR_JSON, JSON.stringify(items, null, 2) + '\n');
+    console.log(`  Generated: sdk-services.generated.json (${items.length} services)`);
 }
 
 async function main() {
-    try {
-        console.log('Syncing SDK documentation...');
-        await copyServiceDocs();
-        console.log('SDK documentation sync complete!');
-    } catch (error) {
-        console.error('Error syncing SDK docs:', error);
-        process.exit(1);
+    console.log('Syncing SDK documentation...');
+
+    const sdkRepoPath = resolveSdkRepoPath();
+    if (!sdkRepoPath) {
+        if (await hasExistingSyncedDocs()) {
+            console.warn(
+                'SDK repo not found. Set KW_SDK_DOCS or place kamiwaza-sdk as a sibling directory.\n' +
+                'Using existing synced SDK docs from docs/sdk/current.'
+            );
+            process.exit(0);
+        }
+
+        // Soft-fail on a clean checkout without a sibling SDK repo: docs/sidebars-sdk.ts
+        // tolerates a missing sdk-services.generated.json (empty Python SDK Services
+        // section), and the offline build's REST API placeholder is unrelated to the
+        // SDK sync. Hard-failing here would chain through `npm run build:offline`
+        // (and the PDF auto-build path that calls it), blocking contributors and CI
+        // from running the docs build at all on a fresh clone. The version-up script
+        // and any release-time SDK refresh still need a real SDK repo, but they fail
+        // explicitly with their own messages downstream.
+        console.warn(
+            'SDK repo not found and no synced SDK docs present. Continuing without SDK content.\n' +
+            'Set KW_SDK_DOCS or place kamiwaza-sdk as a sibling directory to populate the Python SDK Services section.'
+        );
+        process.exit(0);
     }
+
+    console.log(`  SDK repo: ${sdkRepoPath}`);
+
+    const sidebarItems = await syncServiceDocs(sdkRepoPath);
+    await generateApiReference(sdkRepoPath);
+    await writeSidebarJson(sidebarItems);
+
+    console.log(`SDK docs sync complete: ${sidebarItems.length} services synced.`);
 }
 
-main();
+main().catch(error => {
+    console.error('Error syncing SDK docs:', error);
+    process.exit(1);
+});

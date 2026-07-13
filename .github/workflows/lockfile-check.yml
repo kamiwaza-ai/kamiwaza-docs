@@ -1,0 +1,139 @@
+name: Lockfile Check
+
+# Guards against package-lock.json drift before merge. The downstream
+# kamiwaza-internal/kamiwaza-docs-builder image build runs `npm ci` under
+# Chainguard's node:22-dev (npm 11), which strict-checks optional
+# dependencies in the lockfile. Older npm 10 (Debian node:22) is lenient
+# and lets drift slip through, so we run on a node that ships with npm 11
+# by default (node 24) to match the consumer's strictness.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lockfile-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-locks:
+    name: Validate package locks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Node 24 ships with npm 11.x by default, matching the strict
+      # behavior of Chainguard's node:22-dev (npm 11) used downstream.
+      # Self-upgrading npm via `npm i -g npm@11` on node 22 is fragile —
+      # npm shuffles its own files mid-execution and the require graph
+      # breaks (MODULE_NOT_FOUND on promise-retry).
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            docs/package-lock.json
+
+      # Mirrors `RUN npm ci --omit=dev --ignore-scripts` in
+      # kamiwaza-docs-builder/Dockerfile (root install, prod-only).
+      - name: Validate root lockfile (npm ci)
+        run: npm ci --omit=dev --ignore-scripts
+
+      # Catches orphaned/extraneous lockfile entries that `npm ci`
+      # alone misses — `npm ci` succeeds even when nodes in the lock
+      # are no longer reachable from package.json. `npm ls
+      # --package-lock-only` exits non-zero on extraneous, invalid,
+      # or missing entries.
+      - name: Check root lockfile graph (no extraneous entries)
+        run: npm ls --package-lock-only
+
+      # Mirrors `RUN npm ci --ignore-scripts` in
+      # kamiwaza-docs-builder/Dockerfile (docs/ install, includes dev for
+      # the Docusaurus build).
+      - name: Validate docs lockfile (npm ci)
+        working-directory: docs
+        run: npm ci --ignore-scripts
+
+      - name: Check docs lockfile graph (no extraneous entries)
+        working-directory: docs
+        run: npm ls --package-lock-only
+
+      # Catches cross-package version skew that `npm ci` alone misses.
+      # Each `npm ci` succeeds independently even if root and docs/ resolve
+      # to different versions of @docusaurus/*; the failure only surfaces
+      # at build time, when the root-installed `docusaurus` binary loads
+      # plugins from docs/node_modules and the two halves disagree on
+      # internal APIs (e.g. mdxCrossCompilerCache).
+      #
+      # Asserts every top-level @docusaurus/* entry across the *union* of
+      # both locks resolves to the same version. Union (not intersection)
+      # is intentional: a docs/-only plugin pinned below a bumped root
+      # @docusaurus/core would crash the build the same way as direct
+      # cross-tree skew, but an intersection-only check would silently
+      # pass since the two halves share no entry. Packages legitimately
+      # present on only one side (e.g. root devDeps `module-type-aliases`,
+      # `tsconfig`, `types`) still pass as long as their version matches
+      # everything else in the family.
+      - name: Detect @docusaurus/* version skew between root and docs/
+        run: |
+          node <<'EOF'
+          const root = require("./package-lock.json").packages;
+          const docs = require("./docs/package-lock.json").packages;
+
+          const entries = {};
+          const collect = (pkgs, label) => {
+            for (const [k, v] of Object.entries(pkgs)) {
+              const m = k.match(/^node_modules\/(@docusaurus\/[^/]+)$/);
+              if (m) {
+                entries[m[1]] = entries[m[1]] || {};
+                entries[m[1]][label] = v.version;
+              }
+            }
+          };
+          collect(root, "root");
+          collect(docs, "docs");
+
+          const names = Object.keys(entries).sort();
+
+          // Precondition: a future refactor that drops @docusaurus/* from
+          // both locks must not silently pass — the guard would otherwise
+          // be reporting "OK" on an empty set.
+          if (names.length === 0) {
+            console.error("ERROR: no @docusaurus/* packages found in either lockfile.");
+            console.error("If Docusaurus was deliberately removed, update or remove this guard step.");
+            process.exit(1);
+          }
+
+          const versions = new Set();
+          for (const name of names) {
+            const e = entries[name];
+            if (e.root) versions.add(e.root);
+            if (e.docs) versions.add(e.docs);
+          }
+
+          if (versions.size === 1) {
+            const v = [...versions][0];
+            console.log(`OK: ${names.length} @docusaurus/* package(s) across root and docs/ all at ${v}`);
+            process.exit(0);
+          }
+
+          console.error("ERROR: @docusaurus/* version skew across root and docs/ lockfiles:");
+          for (const name of names) {
+            const e = entries[name];
+            console.error(`  ${name}: root=${e.root || "(absent)"} docs=${e.docs || "(absent)"}`);
+          }
+          console.error("");
+          console.error("All @docusaurus/* packages across both locks must resolve to the same version.");
+          console.error("Different versions sharing a single Node process at build time crash plugin");
+          console.error("init on internal-API mismatch (e.g. mdxCrossCompilerCache).");
+          console.error("Re-align by regenerating one or both locks under the same registry snapshot.");
+          process.exit(1);
+          EOF

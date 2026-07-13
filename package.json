@@ -1,12 +1,14 @@
 {
   "name": "kamiwaza-docs",
-  "version": "0.9.3",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "cd docs && docusaurus start",
     "build:docs": "cd docs && docusaurus build",
+    "build:docs:offline": "npm --prefix docs run build:offline",
     "build": "npm run sync-sdk && npm run build:docs",
+    "build:offline": "npm run sync-sdk && npm run build:docs:offline",
     "swizzle": "docusaurus swizzle",
     "deploy": "cd docs && docusaurus deploy",
     "clear": "cd docs && docusaurus clear",
@@ -14,6 +16,7 @@
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
     "typecheck": "tsc",
+    "test": "node --require ts-node/register --test scripts/*.test.ts",
     "sync-sdk": "node -r ts-node/register scripts/sync-sdk-docs.ts",
     "sync-openapi": "node -r ts-node/register scripts/sync-openapi.ts",
     "version-docs": "node -r ts-node/register scripts/version.ts",
@@ -27,12 +30,12 @@
     "build:federal": "INCLUDE_FEDERAL_DOCS=true npm run build"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.9.2",
-    "@docusaurus/plugin-content-blog": "^3.9.2",
-    "@docusaurus/preset-classic": "^3.9.2",
-    "@docusaurus/theme-classic": "^3.9.2",
-    "@docusaurus/theme-common": "^3.9.2",
-    "@docusaurus/theme-mermaid": "^3.9.2",
+    "@docusaurus/core": "^3.10.1",
+    "@docusaurus/plugin-content-blog": "^3.10.1",
+    "@docusaurus/preset-classic": "^3.10.1",
+    "@docusaurus/theme-classic": "^3.10.1",
+    "@docusaurus/theme-common": "^3.10.1",
+    "@docusaurus/theme-mermaid": "^3.10.1",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
     "docusaurus-plugin-openapi-docs": "^4.6.0",
@@ -43,9 +46,9 @@
     "yarn": "^1.22.22"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "^3.9.2",
-    "@docusaurus/tsconfig": "^3.9.2",
-    "@docusaurus/types": "^3.9.2",
+    "@docusaurus/module-type-aliases": "^3.10.1",
+    "@docusaurus/tsconfig": "^3.10.1",
+    "@docusaurus/types": "^3.10.1",
     "@types/fs-extra": "^11.0.0",
     "@types/js-yaml": "^4.0.5",
     "@types/puppeteer": "^7.0.4",
@@ -70,6 +73,12 @@
     ]
   },
   "engines": {
-    "node": ">=18.0"
+    "node": ">=22.0"
+  },
+  "overrides": {
+    "sitemap": "9.0.0"
+  },
+  "resolutions": {
+    "sitemap": "9.0.0"
   }
 }

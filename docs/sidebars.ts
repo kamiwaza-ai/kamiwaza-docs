@@ -32,9 +32,26 @@ const sidebars: SidebarsConfig = {
 				"installation/windows_installation_guide",
 				"installation/redhat_online_install",
 				"installation/redhat_offline_install",
+				"installation/redhat_uninstall",
 				"installation/gpu_setup_guide",
+				"installation/nvidia-secure-boot",
 				"installation/two-node-deployment",
 			],
+		},
+		{
+			type: "category",
+			label: "Configuration",
+			items: [
+				"configuration",
+				"database-schema-lifecycle",
+				"routing-modes",
+				"workroom-storage-s3",
+			],
+		},
+		{
+			type: "category",
+			label: "Workrooms",
+			items: ["workrooms/runtime-contract"],
 		},
 		{
 			type: "category",
@@ -51,6 +68,20 @@ const sidebars: SidebarsConfig = {
 		...(includeFederal ? [federalCategory] : []),
 		{
 			type: "category",
+			label: "Federation",
+			items: [
+				"federation/overview",
+				"federation/setup",
+				"federation/retrieval",
+				"federation/job-submission",
+				"federation/operations",
+				"federation/execution-gates",
+				"federation/gate-packages",
+				"federation/api-reference",
+			],
+		},
+		{
+			type: "category",
 			label: "Models",
 			items: [
 				"models/overview",
@@ -58,39 +89,51 @@ const sidebars: SidebarsConfig = {
 				"models/gui-walkthrough",
 				"models/downloading-models",
 				"models/deployment",
+				"models/placement-overview",
+				"models/placement-hardware-classes",
+				"models/placement-fractional-serving",
+				"models/placement-deployment-guide",
 				"models/bedrock",
+				"models/aws-transcribe",
+				"models/openai-compatible-chat",
+				"models/openai-compatible-transcribe",
 				"models/troubleshooting",
 			],
 		},
 		{
-			type: "doc",
-			id: "app-garden",
-			label: "App Garden",
+			type: "category",
+			label: "Extensions",
+			items: [
+				{
+					type: "doc",
+					id: "app-garden",
+					label: "App Garden",
+				},
+				{
+					type: "doc",
+					id: "tool-garden",
+					label: "Tool Garden",
+				},
+				{
+					type: "link",
+					label: "Developer Guide",
+					href: "/extensions/developer-guide",
+				},
+			],
 		},
 		{
-			type: "doc",
-			id: "tool-garden",
-			label: "Tool Garden",
-		},
-		{
-			type: "doc",
-			id: "data-engine",
+			type: "category",
 			label: "Distributed Data Engine",
-		},
-		{
-			type: "doc",
-			id: "data-catalog",
-			label: "Data Catalog",
-		},
-		{
-			type: "doc",
-			id: "retrieval-service",
-			label: "Retrieval Service",
-		},
-		{
-			type: "doc",
-			id: "routing-modes",
-			label: "Routing & URLs",
+			items: [
+				{
+					type: "doc",
+					id: "data-engine",
+					label: "Overview",
+				},
+				"data-connectors",
+				"data-catalog",
+				"retrieval-service",
+			],
 		},
 		{
 			type: "doc",
@@ -119,6 +162,11 @@ const sidebars: SidebarsConfig = {
 			type: "doc",
 			id: "help-and-fixes",
 			label: "Help & Fixes",
+		},
+		{
+			type: "category",
+			label: "Runbooks",
+			items: ["runbooks/ontology-graph-viewer"],
 		},
 		{
 			type: "category",
