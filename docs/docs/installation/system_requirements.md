@@ -62,7 +62,7 @@ Storage requirements are the same across all platforms.
 | Component | Minimum | Recommended | Notes |
 |-----------|---------|-------------|-------|
 | **Operating System** | 20GB | 50GB | Ubuntu/RHEL base + dependencies |
-| **Kamiwaza Platform** | 50GB | 50GB | Python environment, Ray, services |
+| **Kamiwaza** | 50GB | 50GB | Python environment, Ray, services |
 | **Model Storage** | 50GB | 500GB+ | Depends on number and size of models |
 | **Database** | 10GB | 50GB | CockroachDB for metadata |
 | **Vector Database** | 10GB | 100GB+ | For embeddings (if enabled) |
@@ -135,7 +135,7 @@ Install the appropriate driver for your GPU hardware:
 | Component | Requirement | Installation Guide |
 |-----------|-------------|-------------------|
 | ROCm | 7.1.1+ (see note for gfx1151) | [ROCm Installation](https://rocm.docs.amd.com/en/latest/deploy/linux/index.html) |
-| Docker ROCm support | `--device /dev/kfd --device /dev/dri` | [ROCm Docker Guide](https://rocm.docs.amd.com/en/latest/how-to/docker.html) |
+| Container GPU access | `/dev/kfd` and `/dev/dri` exposed to the container runtime | [ROCm containers guide](https://rocm.docs.amd.com/en/latest/how-to/docker.html) |
 
 > **Note:** AMD Strix Halo (gfx1151) requires ROCm 7.10.0 preview or later. See [ROCm 7.10.0 Preview](https://rocm.docs.amd.com/en/7.10.0-preview/) - this is a preview release and not intended for production use.
 
@@ -536,7 +536,6 @@ AMD's Strix Halo platform provides powerful AI inference in a compact form facto
 
 ## Version Compatibility
 
-- Docker Engine: 24.0 or later with Compose 2.23+
 - NVIDIA Driver: 450.80.02 or later
 - ETCD: 3.5 or later
 
