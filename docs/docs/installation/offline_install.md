@@ -10,7 +10,12 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
 
 - A **Kamiwaza Prod license key**, used to download the bundle artifacts from Keygen.
 - A RHEL-compatible 9.x host (x86_64) that meets the [System Requirements](system_requirements.md).
-- Adequate free space on the filesystems used during installation. The offline flow stages large artifacts under `/`, `/tmp`, and `/var/lib`; confirm each has room before you begin (a small default `/tmp` or `/var` is a common cause of install failure).
+- **Free disk space, on the right filesystems.** The offline flow stages large artifacts and provisions cluster storage under `/`, `/tmp`, and `/var/lib`. Confirm each path has room on the **volume that actually backs it** — on hosts with LVM or separate partitions (most cloud RHEL images ship this way), a large total disk does **not** help if `/var` is a small separate volume. Recommended free space:
+  - **`/var/lib` ≥ 140 GB** — the largest consumer. Holds the Rook/Ceph storage OSD image (80 GB by default, set via `KAMIWAZA_ROOK_OSD_IMAGE_SIZE`), the container images under `/var/lib/k0s` and `/var/lib/containers`, and the extracted extension bundle staged under `/var/lib/kajiya-reports`.
+  - **`/tmp` ≥ 25 GB** — bundle extraction and install scratch space.
+  - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
+
+  A small default `/tmp` or `/var` is the most common cause of install failure — the preflight aborts at `storage_host_prep` if `/var/lib` cannot fit the storage image. Grow the backing LV or partition (or mount adequate storage at `/var/lib`) **before** you begin.
 - A machine with internet access to download the bundle, and a way to transfer files to the target host.
 
 Throughout this guide, replace the placeholders:
