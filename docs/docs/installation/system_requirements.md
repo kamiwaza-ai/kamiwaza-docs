@@ -158,7 +158,7 @@ Use these commands to verify your system meets the requirements before installat
 ```bash
 # Check NVIDIA driver
 nvidia-smi
-# Expected: Driver version 450.80.02 or later (550+ recommended)
+# Expected: Driver version 550 or later
 # Should display GPU name, driver version, and CUDA version
 
 # Check NVIDIA Container Toolkit
@@ -536,7 +536,7 @@ AMD's Strix Halo platform provides powerful AI inference in a compact form facto
 
 ## Version Compatibility
 
-- NVIDIA Driver: 450.80.02 or later
+- NVIDIA Driver: 550-server or later
 - ETCD: 3.5 or later
 
 ---

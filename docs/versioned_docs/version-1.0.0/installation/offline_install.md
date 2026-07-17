@@ -181,8 +181,8 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
 Set the image tags for the bundle and run the offline installer. The tag and image-override values below match the published 1.0.0 bundle; if `release_origination.md` lists different values for your build, use those instead.
 
 ```bash
-export DOMAIN=<domain>
-export ADMIN_PASSWORD=<admin-password>
+export DOMAIN="<domain>"
+export ADMIN_PASSWORD="<admin-password>"
 
 export APP_TAG="release-1.0.0"
 export FRONTEND_TAG="${APP_TAG}"
@@ -222,8 +222,8 @@ sudo -E /opt/kamiwaza/scripts/install-prod.sh \
 Make sure `${DOMAIN}` resolves from the install host, then install the extensions from the pre-staged bundle:
 
 ```bash
-export DOMAIN=<domain>
-export ADMIN_PASSWORD=<admin-password>
+export DOMAIN="<domain>"
+export ADMIN_PASSWORD="<admin-password>"
 
 # Add a hosts-file entry if the domain does not already resolve locally
 if ! curl -ksS "https://${DOMAIN}/api/health" >/dev/null; then
