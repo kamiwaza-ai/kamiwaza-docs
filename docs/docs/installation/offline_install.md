@@ -226,8 +226,6 @@ if ! curl -ksS "https://${DOMAIN}/api/health" >/dev/null; then
   echo "${NODE_IP:-127.0.0.1} ${DOMAIN}" | sudo tee -a /etc/hosts
 fi
 
-curl -k "https://${DOMAIN}/api/health"
-
 BUNDLE_ROOT="$(sudo find /var/lib/kajiya-reports/extensions-bundle-preinstall \
   -maxdepth 1 -type d -name 'kamiwaza-extensions-bundle-*' | head -1)"
 
@@ -247,10 +245,9 @@ printf '%s\n' "${ADMIN_PASSWORD}" | sudo "${BUNDLE_ROOT}/scripts/install-extensi
 ```bash
 sudo kubectl get pods -A
 sudo kubectl get kamiwazaextensions -A
-curl -k "https://${DOMAIN}/api/health"
 ```
 
-All pods should be `Running`, `Ready`, or `Completed`. Then log in at `https://<domain>/login` with `admin` and the password you set. The installer serves the site with a self-signed certificate by default, so your browser will show a security warning on first access — continue past it to reach the login page.
+All pods should be `Running`, `Ready`, or `Completed`. On a fresh install `kubectl get kamiwazaextensions -A` reports `No resources found` — the extension templates are cataloged but none is deployed until you launch one, so this is expected. Then log in at `https://<domain>/login` with `admin` and the password you set. The installer serves the site with a self-signed certificate by default, so your browser will show a security warning on first access — continue past it to reach the login page.
 
 ## Troubleshooting
 
