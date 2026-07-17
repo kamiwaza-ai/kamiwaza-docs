@@ -14,10 +14,10 @@
 
 #### System RAM
 
-| Mode | Minimum | Recommended | Notes |
-|------|---------|-------------|-------|
-| **Lite Mode** | 16GB | 32GB | SQLite database; limited capacity for apps/tools |
-| **Full Mode** | 32GB | 64GB+ | CockroachDB + DataHub; production workloads |
+| Deployment | Minimum | Recommended | Notes |
+|------------|---------|-------------|-------|
+| **Standard** | 16GB | 32GB | Baseline install; limited capacity for apps and tools |
+| **Production** | 32GB | 64GB+ | Production workloads |
 | **GPU Workloads** | 32GB | 64GB+ | System RAM alongside GPU vRAM |
 
 #### GPU Memory (vRAM)
@@ -64,7 +64,7 @@ Storage requirements are the same across all platforms.
 | **Operating System** | 20GB | 50GB | Ubuntu/RHEL base + dependencies |
 | **Kamiwaza** | 50GB | 50GB | Python environment, Ray, services |
 | **Model Storage** | 50GB | 500GB+ | Depends on number and size of models |
-| **Database** | 10GB | 50GB | CockroachDB for metadata |
+| **Database** | 10GB | 50GB | PostgreSQL for metadata |
 | **Vector Database** | 10GB | 100GB+ | For embeddings (if enabled) |
 | **Logs & Metrics** | 10GB | 50GB | Rotated logs, Ray dashboard data |
 | **Scratch Space** | 20GB | 100GB | Temporary files, downloads, builds |
@@ -235,7 +235,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 **Hardware Specifications:**
 - **CPU:** 8-16 cores / 16-32 threads
-- **RAM:** 32GB (16GB minimum for lite mode only)
+- **RAM:** 32GB (16GB minimum for development only)
 - **Storage:** 200GB NVMe SSD (100GB minimum)
 - **GPU:** Optional - Single GPU with 16-24GB VRAM
   - NVIDIA RTX 4090 (24GB)
@@ -405,13 +405,13 @@ The table below provides real-world GPU memory requirement estimates for represe
 - 443/tcp: HTTPS primary access
 - 51100-51199/tcp: Deployment ports for model instances (will also be used for 'App Garden' in the future)
 
-**Outbound (online installs):** during an online install, the install host pulls container images over HTTPS (port 443) from several registries and their backing content-delivery hosts. Allow-listing only the registry front-ends is not sufficient — image manifests, auth tokens, and layer blobs are served from separate hosts:
+**Outbound (online installs):** the online installer pulls all platform container images from Keygen over HTTPS (port 443). Allow outbound DNS and HTTPS access to:
 
-- **Docker Hub:** `registry-1.docker.io`, `auth.docker.io`, `production.cloudflare.docker.com`, and the layer CDN (`*.cloudfront.net`)
-- **Quay:** `quay.io` and `cdn.quay.io` (and `cdn0N.quay.io`)
-- **GHCR:** `ghcr.io` and `pkg-containers.githubusercontent.com`
+- your OS package repositories,
+- `raw.pkg.keygen.sh` (installer and fallback artifacts),
+- `oci.pkg.keygen.sh` (platform images).
 
-Enterprise firewall policies that block outbound HTTPS to any of these hosts will fail the install. Verify the exact set against your install's image list, as backing CDN hosts can change. Offline installs have no outbound requirement.
+The online install path does not pull from Docker Hub, Quay, or GHCR — the installer rewrites every image reference to Keygen and fails if any non-Keygen registry reference remains, so you do not need to allow-list those registries or provide credentials for them. Enterprise firewall policies that block outbound HTTPS to the Keygen hosts will fail the install. Offline installs have no outbound requirement. See [Online Installation](online_install.md) for details.
 
 ### Required Kernel Modules (Linux)
 
