@@ -23,12 +23,12 @@ Throughout this guide, replace the placeholders:
 
 The 1.0.0 offline bundle is published to Keygen as a set of split, checksummed artifacts. Download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
 
-The extension-bundle filename is release-specific; take the exact name from the Keygen 1.0.0 release listing and set `EXT_BUNDLE` accordingly.
+The extension-bundle filename is release-specific. The value below matches the published 1.0.0 bundle; if `release_origination.md` lists a different name for your build, use that instead.
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
 export RELEASE="1.0.0"
-export EXT_BUNDLE="<kamiwaza-extensions-bundle-...tar.gz>"   # exact name from the 1.0.0 release
+export EXT_BUNDLE="kamiwaza-extensions-bundle-20260710-133916.tar.gz"
 export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs
