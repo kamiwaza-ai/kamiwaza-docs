@@ -28,14 +28,11 @@ const sidebars: SidebarsConfig = {
 			items: [
 				"installation/installation_process",
 				"installation/system_requirements",
-				"installation/macos_tarball",
-				"installation/windows_installation_guide",
-				"installation/redhat_online_install",
-				"installation/redhat_offline_install",
-				"installation/redhat_uninstall",
-				"installation/gpu_setup_guide",
-				"installation/nvidia-secure-boot",
+				"installation/online_install",
+				"installation/offline_install",
 				"installation/two-node-deployment",
+				"installation/nvidia-secure-boot",
+				"installation/uninstall",
 			],
 		},
 		{
