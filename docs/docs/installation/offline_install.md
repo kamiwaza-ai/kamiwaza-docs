@@ -26,14 +26,14 @@ Throughout this guide, replace the placeholders:
 
 ## Step 1: Download the Bundle Artifacts
 
-The 1.0.1 offline bundle is published to Keygen as a set of split, checksummed artifacts. Download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
+The 1.0.2 offline bundle is published to Keygen as a set of split, checksummed artifacts. Download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
 
-The extension-bundle filename is release-specific. The value below matches the published 1.0.1 bundle; if `release_origination.md` lists a different name for your build, use that instead.
+The extension-bundle filename is release-specific. **The `EXT_BUNDLE` value below is a placeholder** — the 1.0.2 bundle is not published yet. Replace it with the exact name from `release_origination.md` for your build before downloading.
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
-export RELEASE="1.0.1"
-export EXT_BUNDLE="kamiwaza-extensions-bundle-20260715-151239.tar.gz"
+export RELEASE="1.0.2"
+export EXT_BUNDLE="kamiwaza-extensions-bundle-<1.0.2-BUILD-TIMESTAMP>.tar.gz"  # placeholder — see release_origination.md
 export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs
@@ -51,7 +51,7 @@ for file in \
   kamiwaza-helm.00.tar.part-002 \
   kamiwaza-helm.00.tar.part-002.sha256 \
   kamiwaza-helm.00.tar.parts.json \
-  kamiwaza-prod-1.0.1-1.el9.x86_64.rpm \
+  kamiwaza-prod-1.0.2-1.el9.x86_64.rpm \
   "${EXT_BUNDLE}.sha256" \
   "${EXT_BUNDLE}.part-000" \
   "${EXT_BUNDLE}.part-000.sha256" \
@@ -178,16 +178,16 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
 
 ## Step 5: Install Kamiwaza
 
-Set the image tags for the bundle and run the offline installer. The tag and image-override values below match the published 1.0.1 bundle; if `release_origination.md` lists different values for your build, use those instead.
+Set the image tags for the bundle and run the offline installer. The tag and image-override values below are the 1.0.2 release-scheme tags; the pinned dependency versions in `KAMIWAZA_IMAGE_OVERRIDES` are carried over from 1.0.1 pending the published 1.0.2 build. If `release_origination.md` lists different values for your build, use those instead.
 
 ```bash
 export DOMAIN="<domain>"
 export ADMIN_PASSWORD="<admin-password>"
 
-export APP_TAG="release-1.0.1"
+export APP_TAG="release-1.0.2"
 export FRONTEND_TAG="${APP_TAG}"
-export CONTAINERS_TAG="release-1.0.1"
-export EXTENSION_OPERATOR_TAG="release-1.0.1"
+export CONTAINERS_TAG="release-1.0.2"
+export EXTENSION_OPERATOR_TAG="release-1.0.2"
 
 export KAMIWAZA_VERSION="${APP_TAG}"
 export KAMIWAZA_IMAGE_TAG="${APP_TAG}"

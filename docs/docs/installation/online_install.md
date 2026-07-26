@@ -1,6 +1,6 @@
 # Online Installation
 
-The online installer is the recommended way to install Kamiwaza 1.0.1 on an internet-connected host. It is a single self-contained script that bundles the deploy payload, playbooks, and Helm chart dependencies. Host tools are installed from your OS package manager, and the Kamiwaza platform images are pulled from Keygen.
+The online installer is the recommended way to install Kamiwaza 1.0.2 on an internet-connected host. It is a single self-contained script that bundles the deploy payload, playbooks, and Helm chart dependencies. Host tools are installed from your OS package manager, and the Kamiwaza platform images are pulled from Keygen.
 
 **Supported hosts:**
 
@@ -27,7 +27,7 @@ The online installer is the recommended way to install Kamiwaza 1.0.1 on an inte
 Download the installer and its checksum, verify the checksum, then make the installer executable:
 
 ```bash
-base_url="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-online-installer/@kamiwaza-online-installer/1.0.1"
+base_url="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-online-installer/@kamiwaza-online-installer/1.0.2"
 
 for file in kamiwaza-online-install.sh kamiwaza-online-install.sh.sha256; do
   curl -fsSLO "${base_url}/${file}"
