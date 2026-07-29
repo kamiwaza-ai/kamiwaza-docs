@@ -26,9 +26,11 @@ Throughout this guide, replace the placeholders:
 
 ## Step 1: Download the Bundle Artifacts
 
-The 1.0.2 offline bundle is published to Keygen as a set of split, checksummed artifacts. Download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
+The 1.0.2 offline bundle will be published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
 
-The extension-bundle filename is release-specific. **The `EXT_BUNDLE` value below is a placeholder** — the 1.0.2 bundle is not published yet. Replace it with the exact name from `release_origination.md` for your build before downloading.
+> **The 1.0.2 bundle is not published to Keygen yet.** The artifact names in Step 1 are forward-referenced to the 1.0.2 build and resolve only once it ships: the `RELEASE=1.0.2` bundle path (`@bundles/1.0.2`), the `kamiwaza-prod-1.0.2-*.rpm`, and the `EXT_BUNDLE` filename (marked below with a placeholder token). Take the exact values from the build's `release_origination.md` when it is published.
+
+The extension-bundle filename is release-specific — the `EXT_BUNDLE` value below is a placeholder; replace it with the exact name from `release_origination.md` for your build before downloading.
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"

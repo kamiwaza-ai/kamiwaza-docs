@@ -2,6 +2,8 @@
 
 The online installer is the recommended way to install Kamiwaza 1.0.2 on an internet-connected host. It is a single self-contained script that bundles the deploy payload, playbooks, and Helm chart dependencies. Host tools are installed from your OS package manager, and the Kamiwaza platform images are pulled from Keygen.
 
+> **1.0.2 is not published to Keygen yet.** This page is staged for the 1.0.2 release. The installer at the `base_url` in [Step 1](#step-1-download-and-verify-the-installer) publishes at 1.0.2 GA; until then the download commands will fail with a 404.
+
 **Supported hosts:**
 
 - Ubuntu 22.04
