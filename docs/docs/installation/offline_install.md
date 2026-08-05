@@ -26,16 +26,14 @@ Throughout this guide, replace the placeholders:
 
 ## Step 1: Download the Bundle Artifacts
 
-The 1.0.2 offline bundle will be published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
+The 1.0.2 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
 
-> **The 1.0.2 bundle is not published to Keygen yet.** The artifact names in Step 1 are forward-referenced to the 1.0.2 build and resolve only once it ships: the `RELEASE=1.0.2` bundle path (`@bundles/1.0.2`), the `kamiwaza-prod-1.0.2-*.rpm`, and the `EXT_BUNDLE` filename (marked below with a placeholder token). Take the exact values from the build's `release_origination.md` when it is published.
-
-The extension-bundle filename is release-specific — the `EXT_BUNDLE` value below is a placeholder; replace it with the exact name from `release_origination.md` for your build before downloading.
+The extension-bundle filename is release-specific. The value below matches the published 1.0.2 bundle; if `release_origination.md` lists a different name for your build, use that instead.
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
 export RELEASE="1.0.2"
-export EXT_BUNDLE="kamiwaza-extensions-bundle-<1.0.2-BUILD-TIMESTAMP>.tar.gz"  # placeholder — see release_origination.md
+export EXT_BUNDLE="kamiwaza-extensions-bundle-20260804-232618.tar.gz"
 export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs

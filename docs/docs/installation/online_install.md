@@ -2,8 +2,6 @@
 
 The online installer is the recommended way to install Kamiwaza 1.0.2 on an internet-connected host. It is a single self-contained script that bundles the deploy payload, playbooks, and Helm chart dependencies. Host tools are installed from your OS package manager, and the Kamiwaza platform images are pulled from Keygen.
 
-> **1.0.2 is not published to Keygen yet.** This page is staged for the 1.0.2 release. The installer at the `base_url` in [Step 1](#step-1-download-and-verify-the-installer) publishes at 1.0.2 GA; until then the download commands will fail with a 404.
-
 **Supported hosts:**
 
 - Ubuntu 22.04
@@ -15,6 +13,24 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
 
 - A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
 - A host that meets the [System Requirements](system_requirements.md).
+- **Free disk space, on the right filesystem.** The installer provisions cluster storage under `/var/lib` as **preallocated** loopback images, so the space is consumed at install time rather than as you use it. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. At default settings a single-node host needs:
+  - **`/var` ≥ 900 GB** — the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`.
+  - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
+
+  **On a smaller host, reduce the OSD image** rather than provisioning 900 GB. Passing `-e storage_host_prep_virtual_block_size=80G` — the size the offline installer uses by default — brings the requirement down to roughly **250 GB free on `/var`**:
+
+  ```bash
+  KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
+  ./kamiwaza-online-install.sh \
+    --domain <domain> \
+    --admin-password "<initial-admin-password>" \
+    -y \
+    -e storage_host_prep_virtual_block_size=80G
+  ```
+
+  Size the OSD image for the models you intend to store — it backs the in-cluster model registry.
+
+  If `/var` is too small, the install fails early at `storage_host_prep` with an `fs-virtual-block free space` error, or later during image import with `no space left on device`. Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
 - Outbound DNS and HTTPS access to:
   - your OS package repositories,
   - `raw.pkg.keygen.sh` (installer and fallback artifacts),
