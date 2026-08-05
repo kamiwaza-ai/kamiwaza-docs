@@ -1,0 +1,10 @@
+{
+  "sdk": [
+    "intro",
+    {
+      "type": "link",
+      "label": "REST API Reference",
+      "href": "/sdk/api/"
+    }
+  ]
+}
