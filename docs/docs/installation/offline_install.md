@@ -11,11 +11,11 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
 - A **Kamiwaza Prod license key**, used to download the bundle artifacts from Keygen.
 - A RHEL-compatible 9.x host (x86_64) that meets the [System Requirements](system_requirements.md).
 - **Free disk space, on the right filesystems.** The offline flow stages large artifacts and provisions cluster storage under `/`, `/tmp`, and `/var/lib`. Confirm each path has room on the **volume that actually backs it** — on hosts with LVM or separate partitions (most cloud RHEL images ship this way), a large total disk does **not** help if `/var` is a small separate volume. Recommended free space:
-  - **`/var/lib` ≥ 140 GB** — the largest consumer. Holds the Rook/Ceph storage OSD image (80 GB by default, set via `KAMIWAZA_ROOK_OSD_IMAGE_SIZE`), the container images under `/var/lib/k0s` and `/var/lib/containers`, and the extracted extension bundle staged under `/var/lib/kajiya-reports`.
+  - **`/var/lib` ≥ 350 GB** — the largest consumer, and mostly **preallocated**: the Rook/Ceph OSD image (80 GB by default, set via `KAMIWAZA_ROOK_OSD_IMAGE_SIZE`) and the TopoLVM volume group backing stateful PVCs (150 GB) are both created up front, before any container image is pulled. Add the container images under `/var/lib/k0s` and `/var/lib/containers` and the extension bundle staged under `/var/lib/kajiya-reports` and a single-node install consumes roughly 270 GB. Leave headroom above that — Kubernetes begins evicting pods once the filesystem passes ~85% full.
   - **`/tmp` ≥ 25 GB** — bundle extraction and install scratch space.
-  - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
+  - **`/` ≥ 50 GB** — the downloaded bundle and its recombined tarballs under `/opt/kamiwaza/prereqs` (~25 GB), plus installed tooling under `/opt` and `/usr/local`.
 
-  A small default `/tmp` or `/var` is the most common cause of install failure — the preflight aborts at `storage_host_prep` if `/var/lib` cannot fit the storage image. Grow the backing LV or partition (or mount adequate storage at `/var/lib`) **before** you begin.
+  A small default `/tmp` or `/var` is the most common cause of install failure. It surfaces in one of three ways, none of which mentions disk space directly: the preflight aborts at `storage_host_prep` with an `fs-virtual-block free space` error; an image import fails with `no space left on device`; or the helmfile sync fails roughly ten minutes in with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods — that last one is the kubelet disk-pressure taint, not a cert-manager fault. Grow the backing LV or partition (or mount adequate storage at `/var/lib`) **before** you begin.
 - A machine with internet access to download the bundle, and a way to transfer files to the target host.
 
 Throughout this guide, replace the placeholders:
