@@ -17,7 +17,7 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
   - **`/var` ≥ 900 GB** — the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`.
   - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
 
-  **On a smaller host, reduce the OSD image** rather than provisioning 900 GB. Passing `-e storage_host_prep_virtual_block_size=80G` — the size the offline installer uses by default — brings the requirement down to roughly **250 GB free on `/var`**:
+  **On a smaller host, reduce the OSD image** rather than provisioning 900 GB. Passing `-e storage_host_prep_virtual_block_size=80G` — the size the offline installer uses by default — brings the requirement down to **350 GB on `/var`**:
 
   ```bash
   KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
@@ -28,9 +28,24 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
     -e storage_host_prep_virtual_block_size=80G
   ```
 
-  Size the OSD image for the models you intend to store — it backs the in-cluster model registry.
+  Size the OSD image for the models you intend to store — it backs the in-cluster model registry. With the 80 GB override a single-node install consumes roughly 270 GB of `/var`; leave headroom above that, because Kubernetes starts evicting pods once the filesystem passes ~85% full.
 
-  If `/var` is too small, the install fails early at `storage_host_prep` with an `fs-virtual-block free space` error, or later during image import with `no space left on device`. Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
+  **Most cloud RHEL and Ubuntu images need their volumes grown first** — they commonly ship `/` at 2 GB and `/var` at 10 GB with the bulk of the disk unpartitioned. Check `lsblk` for your device name, then:
+
+  ```bash
+  sudo growpart /dev/nvme0n1 4
+  sudo pvresize /dev/nvme0n1p4
+  sudo lvextend -r -L 100G /dev/rootvg/rootlv
+  sudo lvextend -r -L 400G /dev/rootvg/varlv
+  ```
+
+  If `/var` is too small the install fails in one of three ways, none of which mentions disk space directly:
+
+  - early, at `storage_host_prep` with an `fs-virtual-block free space` error;
+  - during image import, with `no space left on device`;
+  - or roughly ten minutes in, with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods. That last one is the kubelet disk-pressure taint, not a cert-manager fault.
+
+  Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
 - Outbound DNS and HTTPS access to:
   - your OS package repositories,
   - `raw.pkg.keygen.sh` (installer and fallback artifacts),
