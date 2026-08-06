@@ -14,10 +14,10 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
 - A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
 - A host that meets the [System Requirements](system_requirements.md).
 - **Free disk space, on the right filesystem.** The installer provisions cluster storage under `/var/lib` as **preallocated** loopback images, so the space is consumed at install time rather than as you use it. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. At default settings a single-node host needs:
-  - **`/var` ≥ 900 GB** — the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`.
+  - **`/var` ≥ 1 TB** — at default settings a single-node install consumes roughly **890 GB**: the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`. Provision **≥ 1 TB** so the filesystem stays under the ~85% disk-pressure threshold described below — 890 GB on a 900 GB volume is already past it.
   - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
 
-  **On a smaller host, reduce the OSD image** rather than provisioning 900 GB. Passing `-e storage_host_prep_virtual_block_size=80G` — the size the offline installer uses by default — brings the requirement down to **350 GB on `/var`**:
+  **On a smaller host, reduce the OSD image** rather than provisioning 1 TB. Passing `-e storage_host_prep_virtual_block_size=80G` — the size the offline installer uses by default — brings the requirement down to **350 GB on `/var`**:
 
   ```bash
   KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
@@ -30,14 +30,16 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
 
   Size the OSD image for the models you intend to store — it backs the in-cluster model registry. With the 80 GB override a single-node install consumes roughly 270 GB of `/var`; leave headroom above that, because Kubernetes starts evicting pods once the filesystem passes ~85% full.
 
-  **Most cloud RHEL and Ubuntu images need their volumes grown first** — they commonly ship `/` at 2 GB and `/var` at 10 GB with the bulk of the disk unpartitioned. Check `lsblk` for your device name, then:
+  **Most cloud images need their volumes grown first** — they commonly ship `/` and `/var` small (often 2 GB / 10 GB) with the bulk of the disk unpartitioned. Check `lsblk` for your device, partition index, and volume-group names before running the commands below. The example uses the **RHEL-compatible** cloud-image layout (`rootvg`/`rootlv`/`varlv`):
 
   ```bash
   sudo growpart /dev/nvme0n1 4
   sudo pvresize /dev/nvme0n1p4
   sudo lvextend -r -L 100G /dev/rootvg/rootlv
-  sudo lvextend -r -L 400G /dev/rootvg/varlv
+  sudo lvextend -r -L 400G /dev/rootvg/varlv   # 400 GB covers the 80G-OSD override; size to ≥ 1 TB for the default OSD
   ```
+
+  Ubuntu 22.04/24.04 cloud images use the `ubuntu-vg`/`ubuntu-lv` layout and typically ship a single root volume with **no separate `/var`**, so grow the root LV instead (and adjust the `growpart` partition index for your disk).
 
   If `/var` is too small the install fails in one of three ways, none of which mentions disk space directly:
 

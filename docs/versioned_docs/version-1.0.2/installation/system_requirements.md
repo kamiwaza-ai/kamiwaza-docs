@@ -53,8 +53,10 @@ Storage requirements are the same across all platforms.
 
 #### Storage Capacity
 
-- **Minimum**: 100GB free disk space
-- **Recommended**: 200GB+ free disk space
+> **1.0.x installer (k0s):** the cluster's storage is **preallocated** on the volume backing `/var`, so it needs far more free space than the generic figures below. Budget **≥ 350 GB on `/var`** with the `80G` OSD override, up to **≈ 1 TB at the default OSD size**. See [Online Installation](online_install.md) and [Offline Installation](offline_install.md) for the authoritative per-filesystem floor and how to size the OSD image.
+
+- **Minimum**: 350GB free on the volume backing `/var` (with the `80G` OSD override)
+- **Recommended**: 1TB+ on `/var` at the default OSD size
 - Additional space for `/opt/kamiwaza` persistence
 
 #### Capacity Planning

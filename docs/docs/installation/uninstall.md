@@ -1,6 +1,6 @@
 # Uninstalling Kamiwaza
 
-This page describes how to remove Kamiwaza 1.0.1 from a host.
+This page describes how to remove Kamiwaza 1.0.2 from a host.
 
 > **This is destructive.** Uninstalling removes the local Kubernetes cluster, all Kamiwaza containers and images, and platform data. Back up anything you need — models, configuration, and any data in the platform database — before you begin.
 
