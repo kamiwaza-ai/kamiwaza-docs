@@ -1,5 +1,7 @@
 ---
+id: core-database-upgrade-1.2
 title: Core database upgrade from 1.0.0 to 1.2.0
+sidebar_label: Core database upgrade from 1.0.0 to 1.2.0
 ---
 
 # Core database upgrade from 1.0.0 to 1.2.0
@@ -30,9 +32,10 @@ failed Helm hook is a stopped upgrade, not permission to improvise.
 
 ## Prerequisites
 
-- A supported RHEL 9 production installation running Kamiwaza 1.0.0 or later
-  in the 1.x line, with the `core/1.0` database marker. A pre-1.0 database must
-  first be upgraded to the supported 1.0.0 source floor.
+- A supported RHEL 9 production installation running Kamiwaza 1.0.0 with the
+  `core/1.0` database marker. This qualification procedure does not cover other
+  source releases. A pre-1.0 database must first be upgraded to the supported
+  1.0.0 source floor.
 - The 1.2.0 online installer or the complete, verified 1.2.0 offline bundle.
 - Cluster-admin `kubectl` and Helm access for the installed cluster.
 - Enough storage outside the PostgreSQL data volume for the logical backup and
@@ -56,10 +59,11 @@ Run these commands from a private operator directory. Do not store the bundle
 in a Git repository.
 
 ```bash
-export RUN_ID="core-db-1.0.0-to-1.2.0-$(date -u +%Y%m%dT%H%M%SZ)"
-export EVIDENCE_DIR="${PWD}/${RUN_ID}"
-export COLLECTOR_DIR="${PWD}/${RUN_ID}-collector"
-export PRIVATE_DIR="${PWD}/${RUN_ID}-private"
+export RUN_ID="${KAMIWAZA_M1_RUN_ID:?the M1 harness must supply its run ID}"
+export LOCAL_RUN_LABEL="core-db-1.0.0-to-1.2.0-${RUN_ID}"
+export EVIDENCE_DIR="${PWD}/${LOCAL_RUN_LABEL}"
+export COLLECTOR_DIR="${PWD}/${LOCAL_RUN_LABEL}-collector"
+export PRIVATE_DIR="${PWD}/${LOCAL_RUN_LABEL}-private"
 export NAMESPACE="kamiwaza"
 export RELEASE="kamiwaza"
 
@@ -180,7 +184,20 @@ Stage and verify the complete 1.2.0 offline candidate. Use its own
 `release_origination.md` as the authority for the RPM, chart, and image tags;
 do not copy the 1.0.1 values from the current installation example. Record
 that manifest as `intended_artifact`, confirm it identifies product version
-1.2.0, and export its release-specific image values before running:
+1.2.0, and export its release-specific image values. Before invoking the
+installer, upgrade the installed production payload to the verified 1.2.0 RPM
+from that same candidate so `/opt/kamiwaza/scripts/install-prod.sh` and the
+packaged diagnostics are the 1.2.0 versions:
+
+```bash
+export KAMIWAZA_PROD_RPM="${PWD}/kamiwaza-prod-1.2.0-1.el9.x86_64.rpm"
+test -f "${KAMIWAZA_PROD_RPM}"
+sudo rpm -Uvh --replacepkgs "${KAMIWAZA_PROD_RPM}"
+rpm -q --queryformat '%{NAME} %{VERSION}-%{RELEASE}\n' kamiwaza-prod
+```
+
+Confirm the reported package version is the intended 1.2.0 candidate, then run
+the upgraded installer once:
 
 ```bash
 set +e
@@ -199,13 +216,16 @@ set -e
 printf '%s\n' "${INSTALL_RC}" >"${EVIDENCE_DIR}/installer/exit-status.txt"
 ```
 
-Copy `/var/log/kamiwaza-postinst-debug.log` to
+Copy the applicable source log—`/var/log/kamiwaza_install_online.log` for an
+online upgrade or `/var/log/kamiwaza_install_prod.log` for an offline
+upgrade—to the validator-compatible evidence name
 `installer/postinst-debug.log`, removing credentials or tokens before it is
 shared. Keep the raw source log and `console.log` private; neither is in the
 shareable allowlist.
 
-If `INSTALL_RC` is nonzero, stop. Do not rerun the installer. Continue with
-[Collect every failed attempt](#collect-every-failed-attempt).
+Whether the installer succeeds or fails, continue immediately with
+[Collect upgrade diagnostics](#collect-upgrade-diagnostics). If `INSTALL_RC`
+is nonzero, collect the evidence and then stop; do not rerun the installer.
 
 ## 5. Observe `core-db-init`
 
@@ -225,18 +245,18 @@ Do not delete the Job or pods. Failed pods are retained for
 `core.scheduler.dbInit.ttlSecondsAfterFinished` (3600 seconds by default) and
 are removed before the next hook creation, so collect evidence promptly.
 
-### Collect every failed attempt
+### Collect upgrade diagnostics
 
-The 1.2.0 production payload includes a deterministic collector:
+Run the 1.2.0 production payload's deterministic collector on both success and
+failure paths. The M1 evidence contract requires its cluster, db-init, and Helm
+outputs even when the upgrade succeeds:
 
 ```bash
-sudo /opt/kamiwaza/scripts/collect-core-db-init-diagnostics.sh \
+/opt/kamiwaza/scripts/collect-core-db-init-diagnostics.sh \
   "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}"
 
-# The collector deliberately requires a new or empty target. After it exits,
-# make its secret-safe output operator-readable and merge only its allowlisted
-# directories into the already-populated final bundle.
-sudo chown -R "$(id -u):$(id -g)" "${COLLECTOR_DIR}"
+# The collector deliberately requires a new or empty, non-symlink target.
+# Merge only its allowlisted directories into the final bundle.
 cp -a "${COLLECTOR_DIR}/cluster/." "${EVIDENCE_DIR}/cluster/"
 cp -a "${COLLECTOR_DIR}/db-init/." "${EVIDENCE_DIR}/db-init/"
 cp -a "${COLLECTOR_DIR}/helm/." "${EVIDENCE_DIR}/helm/"
@@ -288,7 +308,7 @@ Verify the actual production domain and record machine-readable results in
 ```bash
 kubectl get pods -n "${NAMESPACE}" -o wide
 curl --fail --silent --show-error --insecure \
-  "https://${DOMAIN}/api/ping" >/dev/null
+  "https://${DOMAIN}/api/node/node_status" >/dev/null
 curl --fail --silent --show-error --insecure \
   "https://${DOMAIN}/api/security/public/config" >/dev/null
 ```
@@ -301,7 +321,7 @@ required check using the exact validator shape below; every `status` must be
 ```json
 {
   "checks": [
-    {"name": "api-ping", "status": "pass"},
+    {"name": "node-status", "status": "pass"},
     {"name": "public-security-config", "status": "pass"}
   ]
 }
@@ -374,9 +394,8 @@ binary, or a reviewed and tested forward fix with its own evidence. Preserve
 the failed database and evidence first. Never drop the active database, delete
 its PVC, edit marker rows, stamp revisions, or apply ad hoc DDL as a first
 response. Record the
-rehearsal database name, active database name, restore result, old-binary
-compatibility result, and confirmation that the active database was untouched
-in `recovery/restore-rehearsal.json`.
+restored database name, old-binary compatibility result, and confirmation that
+the active database was untouched in `recovery/restore-rehearsal.json`.
 
 Old-binary compatibility is not inferred from schema queries. In the disposable
 M1 environment, start the exact immutable 1.0.0 core image with its database URL
@@ -425,7 +444,7 @@ recovery/restore-rehearsal.json
 ```json
 {
   "schema_version": 1,
-  "run_id": "core-db-1.0.0-to-1.2.0-YYYYMMDDTHHMMSSZ",
+  "run_id": "20260807T001500Z-a1b2c3d4",
   "candidate_sha": "full-git-commit-sha",
   "source_product_version": "1.0.0",
   "target_product_version": "1.2.0",
