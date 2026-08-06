@@ -47,6 +47,11 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: "category",
+			label: "Runbooks",
+			items: ["runbooks/core-database-upgrade-1.2"],
+		},
+		{
+			type: "category",
 			label: "Workrooms",
 			items: ["workrooms/runtime-contract"],
 		},

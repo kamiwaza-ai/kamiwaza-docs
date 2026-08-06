@@ -125,6 +125,11 @@ KEYGEN_LICENSE_KEY="<key>" \
 
 ## Verifying the Installation
 
+When upgrading an existing 1.0.0 production database to 1.2.0, follow the
+[Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
+before invoking the installer. It defines the required backup, schema gate,
+stop rules, recovery boundary, and evidence bundle.
+
 The installer writes kubeconfig access for the invoking user. Confirm the cluster is up:
 
 ```bash

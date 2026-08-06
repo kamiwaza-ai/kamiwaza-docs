@@ -247,6 +247,11 @@ printf '%s\n' "${ADMIN_PASSWORD}" | sudo "${BUNDLE_ROOT}/scripts/install-extensi
 
 ## Step 7: Verify the Installation
 
+When upgrading an existing 1.0.0 production database to 1.2.0, follow the
+[Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
+before invoking `install-prod.sh`. It defines the required backup, schema gate,
+stop rules, recovery boundary, and evidence bundle.
+
 ```bash
 sudo kubectl get pods -A
 sudo kubectl get kamiwazaextensions -A
