@@ -178,6 +178,12 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
 
 ## Step 5: Install Kamiwaza
 
+> **Upgrading a 1.0.0 production database to 1.2.0?** Stop here and follow the
+> [Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
+> before invoking `install-prod.sh`. The runbook requires the exact 1.2.0
+> candidate and its `release_origination.md`; the 1.0.1 values below are not
+> upgrade inputs for 1.2.0.
+
 Set the image tags for the bundle and run the offline installer. The tag and image-override values below match the published 1.0.1 bundle; if `release_origination.md` lists different values for your build, use those instead.
 
 ```bash
@@ -246,11 +252,6 @@ printf '%s\n' "${ADMIN_PASSWORD}" | sudo "${BUNDLE_ROOT}/scripts/install-extensi
 ```
 
 ## Step 7: Verify the Installation
-
-When upgrading an existing 1.0.0 production database to 1.2.0, follow the
-[Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
-before invoking `install-prod.sh`. It defines the required backup, schema gate,
-stop rules, recovery boundary, and evidence bundle.
 
 ```bash
 sudo kubectl get pods -A

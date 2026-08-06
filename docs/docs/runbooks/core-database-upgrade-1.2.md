@@ -137,8 +137,17 @@ the evidence bundle.
 
 ### Online upgrade
 
-Download and checksum the 1.2.0 installer as described in
-[Online Installation](../installation/online_install.md), then run:
+Obtain `kamiwaza-online-install.sh` and its `.sha256` file from the approved
+1.2.0 release-candidate artifact location recorded in `intended_artifact`.
+Do not reuse an installer URL or script retained from an earlier release.
+Verify the candidate before running it:
+
+```bash
+sha256sum -c kamiwaza-online-install.sh.sha256
+chmod +x kamiwaza-online-install.sh
+```
+
+Then run the verified candidate once:
 
 ```bash
 set +e
@@ -154,9 +163,11 @@ printf '%s\n' "${INSTALL_RC}" >"${EVIDENCE_DIR}/installer/exit-status.txt"
 
 ### Offline upgrade
 
-Stage and verify all 1.2.0 artifacts and export the release-specific image
-values from `release_origination.md` as described in
-[Offline Installation](../installation/offline_install.md), then run:
+Stage and verify the complete 1.2.0 offline candidate. Use its own
+`release_origination.md` as the authority for the RPM, chart, and image tags;
+do not copy the 1.0.1 values from the current installation example. Record
+that manifest as `intended_artifact`, confirm it identifies product version
+1.2.0, and export its release-specific image values before running:
 
 ```bash
 set +e
@@ -197,9 +208,9 @@ kubectl get pods -n "${NAMESPACE}" \
   --sort-by=.metadata.creationTimestamp -o wide
 ```
 
-Do not delete the Job or pods. Failed pods are retained for the configured
-TTL (one hour by default) and are removed before the next hook creation, so
-collect evidence promptly.
+Do not delete the Job or pods. Failed pods are retained for
+`core.scheduler.dbInit.ttlSecondsAfterFinished` (3600 seconds by default) and
+are removed before the next hook creation, so collect evidence promptly.
 
 ### Collect every failed attempt
 

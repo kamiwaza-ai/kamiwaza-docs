@@ -48,7 +48,10 @@ const sidebars: SidebarsConfig = {
 		{
 			type: "category",
 			label: "Runbooks",
-			items: ["runbooks/core-database-upgrade-1.2"],
+			items: [
+				"runbooks/core-database-upgrade-1.2",
+				"runbooks/ontology-graph-viewer",
+			],
 		},
 		{
 			type: "category",
