@@ -13,11 +13,11 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
 
 - A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
 - A host that meets the [System Requirements](system_requirements.md).
-- **Free disk space, on the right filesystem.** The installer provisions cluster storage under `/var/lib` as **preallocated** loopback images, so the space is consumed at install time rather than as you use it. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. At default settings a single-node host needs:
-  - **`/var` ≥ 1 TB** — at default settings a single-node install consumes roughly **890 GB**: the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`. Provision **≥ 1 TB** so the filesystem stays under the ~85% disk-pressure threshold described below — 890 GB on a 900 GB volume is already past it.
+- **Free disk space, on the right filesystem** *(Linux hosts — see the macOS note below)*. The installer provisions cluster storage under `/var/lib` as **preallocated** loopback images, so the space is consumed at install time rather than as you use it. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. At default settings a single-node host needs:
+  - **`/var` ≥ 1.1 TB** — the install consumes roughly **890 GB** here: the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`. Size the volume so that 890 GB leaves you under the ~85% disk-pressure threshold described below: 890 GB on a 1 TB volume is 89% and still inside the eviction range, so **1.1 TB** (≈81%) is the practical floor.
   - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
 
-  **On a smaller host, reduce the OSD image** rather than provisioning 1 TB. Passing `-e storage_host_prep_virtual_block_size=80G` — the size the offline installer uses by default — brings the requirement down to **350 GB on `/var`**:
+  **On a smaller host, reduce the OSD image** rather than provisioning 1.1 TB. Passing `-e storage_host_prep_virtual_block_size=80G` — the size the offline installer uses by default — brings the requirement down to **350 GB on `/var`**:
 
   ```bash
   KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
@@ -36,7 +36,7 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
   sudo growpart /dev/nvme0n1 4
   sudo pvresize /dev/nvme0n1p4
   sudo lvextend -r -L 100G /dev/rootvg/rootlv
-  sudo lvextend -r -L 400G /dev/rootvg/varlv   # 400 GB covers the 80G-OSD override; size to ≥ 1 TB for the default OSD
+  sudo lvextend -r -L 400G /dev/rootvg/varlv   # 400 GB covers the 80G-OSD override; size to ≥ 1.1 TB for the default OSD
   ```
 
   Ubuntu 22.04/24.04 cloud images use the `ubuntu-vg`/`ubuntu-lv` layout and typically ship a single root volume with **no separate `/var`**, so grow the root LV instead (and adjust the `growpart` partition index for your disk).
@@ -48,6 +48,8 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
   - or roughly ten minutes in, with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods. That last one is the kubelet disk-pressure taint, not a cert-manager fault.
 
   Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
+
+  **On macOS** the installer runs the cluster inside a user-scoped Podman machine rather than on the host's `/var`, so the figures above do not apply directly — size the Podman machine's disk (and the free space on your startup volume backing it) to the same totals instead.
 - Outbound DNS and HTTPS access to:
   - your OS package repositories,
   - `raw.pkg.keygen.sh` (installer and fallback artifacts),
