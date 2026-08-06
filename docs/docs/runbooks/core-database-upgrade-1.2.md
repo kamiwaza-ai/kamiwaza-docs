@@ -58,6 +58,7 @@ in a Git repository.
 ```bash
 export RUN_ID="core-db-1.0.0-to-1.2.0-$(date -u +%Y%m%dT%H%M%SZ)"
 export EVIDENCE_DIR="${PWD}/${RUN_ID}"
+export COLLECTOR_DIR="${PWD}/${RUN_ID}-collector"
 export PRIVATE_DIR="${PWD}/${RUN_ID}-private"
 export NAMESPACE="kamiwaza"
 export RELEASE="kamiwaza"
@@ -122,8 +123,20 @@ kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d kamiwaza -Atqc 'SHOW server_version;'
 ```
 
-Create `backup/manifest.json` with the backup filename, byte size, SHA-256,
-PostgreSQL server version, UTC timestamp, and `"pg_restore_list_valid": true`.
+Create `backup/manifest.json` with these exact field names and types (replace
+the example values with the observed values):
+
+```json
+{
+  "filename": "kamiwaza-1.0.0.dump",
+  "size_bytes": 123456,
+  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pg_restore_list_valid": true,
+  "postgresql_version": "observed-server-version",
+  "backup_timestamp": "RFC3339 UTC timestamp"
+}
+```
+
 Do not continue unless every command above succeeds. Keep the dump itself and
 its checksum private; the shareable evidence bundle contains the manifest, not
 the database contents.
@@ -218,7 +231,15 @@ The 1.2.0 production payload includes a deterministic collector:
 
 ```bash
 sudo /opt/kamiwaza/scripts/collect-core-db-init-diagnostics.sh \
-  "${EVIDENCE_DIR}" "${NAMESPACE}" "${RELEASE}"
+  "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}"
+
+# The collector deliberately requires a new or empty target. After it exits,
+# make its secret-safe output operator-readable and merge only its allowlisted
+# directories into the already-populated final bundle.
+sudo chown -R "$(id -u):$(id -g)" "${COLLECTOR_DIR}"
+cp -a "${COLLECTOR_DIR}/cluster/." "${EVIDENCE_DIR}/cluster/"
+cp -a "${COLLECTOR_DIR}/db-init/." "${EVIDENCE_DIR}/db-init/"
+cp -a "${COLLECTOR_DIR}/helm/." "${EVIDENCE_DIR}/helm/"
 ```
 
 It records the Job, all attempt pods in creation order, all attempt logs,
@@ -267,14 +288,24 @@ Verify the actual production domain and record machine-readable results in
 ```bash
 kubectl get pods -n "${NAMESPACE}" -o wide
 curl --fail --silent --show-error --insecure \
-  "https://${DOMAIN}/api/health" >/dev/null
+  "https://${DOMAIN}/api/ping" >/dev/null
 curl --fail --silent --show-error --insecure \
   "https://${DOMAIN}/api/security/public/config" >/dev/null
 ```
 
 The M1-20 release qualification also exercises authenticated login, a core API
-read, and an extension/API smoke appropriate to the release. All required
-checks must be represented as `"passed": true` in `smoke/results.json`.
+read, and an extension/API smoke appropriate to the release. Record every
+required check using the exact validator shape below; every `status` must be
+`"pass"`:
+
+```json
+{
+  "checks": [
+    {"name": "api-ping", "status": "pass"},
+    {"name": "public-security-config", "status": "pass"}
+  ]
+}
+```
 
 ## Failure states and next action
 
@@ -300,11 +331,15 @@ The schema classifier adds these state-specific rules:
 | `unreadable` | Check database readiness and connectivity, then retry diagnosis only. This is not a schema verdict. |
 | `no_migration_chain` or `unusable_artifact` | Replace or repair the build. Repeated database mutation cannot repair a broken binary. |
 | `unsupported_dialect` | Stop. This runbook supports PostgreSQL only. |
+| `lite` | Not applicable to this PostgreSQL-only procedure. Stop and use the separate Lite/SQLite lifecycle. |
 
-A schema advisory-lock timeout is retryable only after the holder or blocker is
-identified and removed. `KAMIWAZA_SCHEMA_LOCK_TIMEOUT` defaults to 30 seconds
-and bounds lock acquisition, not total migration duration. Preserve the failed
-attempt before any Support-approved retry.
+`KAMIWAZA_SCHEMA_LOCK_TIMEOUT` defaults to 30 seconds and bounds PostgreSQL
+table-lock acquisition by the migration DDL; it does not bound acquisition of
+the session advisory lock and does not bound total migration duration. A
+reported table-lock timeout is retryable only after the table-lock blocker is
+identified and removed. A migration that appears stuck before DDL may instead
+be waiting on the advisory lock and requires Support to inspect `pg_locks`.
+Preserve the failed attempt before any Support-approved retry.
 
 ## Recovery boundary
 
@@ -342,6 +377,22 @@ response. Record the
 rehearsal database name, active database name, restore result, old-binary
 compatibility result, and confirmation that the active database was untouched
 in `recovery/restore-rehearsal.json`.
+
+Old-binary compatibility is not inferred from schema queries. In the disposable
+M1 environment, start the exact immutable 1.0.0 core image with its database URL
+pointing only at `${RESTORE_DB}`, wait for its readiness check, and run its
+authenticated core API smoke. Stop that disposable workload after the check;
+never repoint a production 1.0.0 workload. Set `old_binary_compatible` to true
+only when both readiness and the authenticated smoke pass. Record the result
+using these exact fields:
+
+```json
+{
+  "restored_database": "kamiwaza_restore_YYYYMMDDTHHMMSSZ",
+  "active_database_untouched": true,
+  "old_binary_compatible": true
+}
+```
 
 ## Evidence manifest
 
@@ -404,7 +455,7 @@ secret_locations=0
 while IFS= read -r -d '' file; do
   if ! awk '
     BEGIN { IGNORECASE = 1; found = 0 }
-    /postgres(ql)?:\/\/[^[:space:]\/]+:[^[:space:]@]+@/ ||
+    /[[:alpha:]][[:alnum:]+.-]*:\/\/[^\/[:space:]@:]+:[^@\/[:space:]]+@/ ||
     /-----BEGIN .*PRIVATE KEY-----/ ||
     /authorization:[[:space:]]*bearer/ ||
     /kind:[[:space:]]*Secret/ {
