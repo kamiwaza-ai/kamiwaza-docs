@@ -69,6 +69,29 @@ DELETE /api/cluster/federations/{federation_id}
 
 Tears down the federation. Removes ReBAC grants and cleans up the pre-shared key.
 
+### Rotate the Pre-Shared Key
+
+```
+POST /api/cluster/federations/{federation_id}/rotate-preshared-key
+```
+
+Mints a new pre-shared key and returns it **once**. The outgoing key keeps
+verifying until the rotation is completed, so the mesh stays up while you deliver
+the new value to the peer's operator out of band. Requires admin role.
+
+```
+POST /api/cluster/federations/{federation_id}/complete-key-rotation
+{ "acknowledged": true }
+```
+
+Retires the outgoing key, ending the rotation. `acknowledged` is required because
+this step breaks any peer still signing with the old key, and the cluster cannot
+observe whether the peer has adopted the new one.
+
+Because the key is symmetric, replacing it on one side alone would sever the mesh
+immediately — rotation exists to provide the window in which both keys are valid.
+Do not edit the stored secret directly.
+
 ### Ping a Federation
 
 ```
