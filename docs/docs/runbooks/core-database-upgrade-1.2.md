@@ -24,7 +24,7 @@ failure bundle.
 | Installer and evidence capture | Customer operator | The installer exits zero and `core-db-init` succeeds. |
 | Failed-upgrade diagnosis | Kamiwaza Support | Support identifies the failed attempt and approves a retry or recovery action. |
 | Restore/cutover decision | Kamiwaza Support and customer change owner | A support-reviewed recovery plan is approved. |
-| Release qualification (M1-20) | Kamiwaza Engineering/Release | The exact 1.0.0-to-1.2.0 run passes and the signed evidence is retained. |
+| Release qualification (M1-20 appendix) | Kamiwaza Engineering/Release | The exact 1.0.0-to-1.2.0 run passes and the signed evidence is retained. |
 
 Stop immediately if any prerequisite, backup validation, installer, schema
 check, or smoke test fails. Preserve the active database and all evidence. A
@@ -49,9 +49,10 @@ failed Helm hook is a stopped upgrade, not permission to improvise.
 - A Kamiwaza Support contact who can review a failure before any retry.
 
 Record the exact installed release/chart/core image versions, cluster context,
-namespace, intended 1.2.0 artifact and candidate SHA, and the successful CI and
-M1 evidence URLs being relied on. If the database is below the 1.0.0 source
-floor, stop and request the required intermediate upgrade procedure.
+namespace, intended 1.2.0 artifact, and candidate SHA. The CI and signed M1
+evidence URLs are release-engineering inputs, not values a customer operator
+must create. If the database is below the 1.0.0 source floor, stop and request
+the required intermediate upgrade procedure.
 
 ## 1. Create the evidence workspace
 
@@ -59,13 +60,21 @@ Run these commands from a private operator directory. Do not store the bundle
 in a Git repository.
 
 ```bash
-export RUN_ID="${KAMIWAZA_M1_RUN_ID:?the M1 harness must supply its run ID}"
-export LOCAL_RUN_LABEL="core-db-1.0.0-to-1.2.0-${RUN_ID}"
+if [[ -n "${KAMIWAZA_M1_RUN_ID:-}" ]]; then
+  # Release qualification: the M1 harness owns the validator identity.
+  export RUN_ID="${KAMIWAZA_M1_RUN_ID}"
+else
+  # Customer/operator run: use a unique local support-bundle label.
+  export RUN_ID="core-db-1.0.0-to-1.2.0-$(date -u +%Y%m%dT%H%M%SZ)"
+fi
+export LOCAL_RUN_LABEL="${RUN_ID}"
 export EVIDENCE_DIR="${PWD}/${LOCAL_RUN_LABEL}"
 export COLLECTOR_DIR="${PWD}/${LOCAL_RUN_LABEL}-collector"
 export PRIVATE_DIR="${PWD}/${LOCAL_RUN_LABEL}-private"
 export NAMESPACE="kamiwaza"
 export RELEASE="kamiwaza"
+export DOMAIN="<existing-production-domain>"
+: "${ADMIN_PASSWORD:?export ADMIN_PASSWORD from the approved secret source}"
 
 mkdir -p "${PRIVATE_DIR}/backup" "${PRIVATE_DIR}/installer"
 mkdir -p \
@@ -81,8 +90,9 @@ chmod 700 "${EVIDENCE_DIR}" "${PRIVATE_DIR}"
 ```
 
 Record the maintenance ticket, operator, UTC start time, source and target,
-candidate commit, and the online/offline mode in a local change record. The
-final `metadata.json` schema is shown in [Evidence manifest](#evidence-manifest).
+candidate commit, and the online/offline mode in a local change record. The M1
+harness's exact `metadata.json` schema is shown in
+[M1-20 qualification bundle](#m1-20-qualification-bundle).
 
 ## 2. Verify the 1.0.0 baseline
 
@@ -121,10 +131,14 @@ kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
 
 test -s "${BACKUP_FILE}"
 sha256sum "${BACKUP_FILE}" >"${BACKUP_FILE}.sha256"
+BACKUP_SIZE_BYTES=$(stat -c '%s' "${BACKUP_FILE}")
+BACKUP_SHA256=$(sha256sum "${BACKUP_FILE}" | awk '{print $1}')
 kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   pg_restore --list <"${BACKUP_FILE}" >/dev/null
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d kamiwaza -Atqc 'SHOW server_version;'
+printf 'size_bytes=%s\nsha256=%s\n' \
+  "${BACKUP_SIZE_BYTES}" "${BACKUP_SHA256}"
 ```
 
 Create `backup/manifest.json` with these exact field names and types (replace
@@ -164,18 +178,23 @@ sha256sum -c kamiwaza-online-install.sh.sha256
 chmod +x kamiwaza-online-install.sh
 ```
 
-Then run the verified candidate once:
+Then run the verified candidate once. The subshell preserves the caller's
+existing `errexit` setting while still capturing a failed installer:
 
 ```bash
-set +e
-KEYGEN_LICENSE_KEY="${KEYGEN_LICENSE_KEY}" \
-  ./kamiwaza-online-install.sh \
-  --domain "${DOMAIN}" \
-  --admin-password "${ADMIN_PASSWORD}" \
-  -y 2>&1 | tee "${PRIVATE_DIR}/installer/console.log"
-INSTALL_RC=${PIPESTATUS[0]}
-set -e
-printf '%s\n' "${INSTALL_RC}" >"${EVIDENCE_DIR}/installer/exit-status.txt"
+(
+  set +e
+  KEYGEN_LICENSE_KEY="${KEYGEN_LICENSE_KEY}" \
+    ./kamiwaza-online-install.sh \
+    --domain "${DOMAIN}" \
+    --admin-password "${ADMIN_PASSWORD}" \
+    -y 2>&1 | tee "${PRIVATE_DIR}/installer/console.log"
+  install_rc=${PIPESTATUS[0]}
+  printf '%s\n' "${install_rc}" \
+    >"${EVIDENCE_DIR}/installer/exit-status.txt"
+  exit 0
+)
+INSTALL_RC=$(cat "${EVIDENCE_DIR}/installer/exit-status.txt")
 ```
 
 ### Offline upgrade
@@ -190,38 +209,61 @@ from that same candidate so `/opt/kamiwaza/scripts/install-prod.sh` and the
 packaged diagnostics are the 1.2.0 versions:
 
 ```bash
-export KAMIWAZA_PROD_RPM="${PWD}/kamiwaza-prod-1.2.0-1.el9.x86_64.rpm"
+export KAMIWAZA_PROD_RPM="${PWD}/<verified-1.2.0-kamiwaza-prod-rpm>"
 test -f "${KAMIWAZA_PROD_RPM}"
-sudo rpm -Uvh --replacepkgs "${KAMIWAZA_PROD_RPM}"
+sudo rpm -Uvh "${KAMIWAZA_PROD_RPM}"
 rpm -q --queryformat '%{NAME} %{VERSION}-%{RELEASE}\n' kamiwaza-prod
 ```
 
-Confirm the reported package version is the intended 1.2.0 candidate, then run
-the upgraded installer once:
+Confirm the reported package version is the intended 1.2.0 candidate. Export
+the exact values from that candidate's `release_origination.md`; do not infer
+or reuse tags from the currently installed release:
 
 ```bash
-set +e
-sudo -E /opt/kamiwaza/scripts/install-prod.sh \
-  --offline \
-  --domain "${DOMAIN}" \
-  --admin-password "${ADMIN_PASSWORD}" \
-  --wrap-bundle '/opt/kamiwaza/prereqs/kamiwaza-helm.*.tar' \
-  --wrap-sha256 /opt/kamiwaza/prereqs/kamiwaza-helm.sha256 \
-  --wrap-signature /opt/kamiwaza/prereqs/kamiwaza-helm.asc \
-  --wrap-pubkey /opt/kamiwaza/prereqs/kamiwaza-tools-rpm.pub.gpg \
-  -e helm_timeout=12m \
-  -y 2>&1 | tee "${PRIVATE_DIR}/installer/console.log"
-INSTALL_RC=${PIPESTATUS[0]}
-set -e
-printf '%s\n' "${INSTALL_RC}" >"${EVIDENCE_DIR}/installer/exit-status.txt"
+export APP_TAG="<1.2.0-candidate-app-tag>"
+export FRONTEND_TAG="<1.2.0-candidate-frontend-tag>"
+export CONTAINERS_TAG="<1.2.0-candidate-containers-tag>"
+export KAMIWAZA_VERSION="${APP_TAG}"
+export KAMIWAZA_IMAGE_TAG="${APP_TAG}"
+export KAMIWAZA_OFFLINE_APP_IMAGE_TAG="${APP_TAG}"
+export KAMIWAZA_OFFLINE_CORE_TAG="${APP_TAG}"
+export KAMIWAZA_OFFLINE_FRONTEND_TAG="${FRONTEND_TAG}"
+export KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG="${APP_TAG}"
+export KAMIWAZA_OFFLINE_CONTAINERS_IMAGE_TAG="${CONTAINERS_TAG}"
+export KAMIWAZA_OFFLINE_CHAINGUARD_BASE_TAG="${CONTAINERS_TAG}"
+export KAMIWAZA_IMAGE_OVERRIDES="<exact comma-separated overrides from release_origination.md>"
 ```
 
-Copy the applicable source log—`/var/log/kamiwaza_install_online.log` for an
-online upgrade or `/var/log/kamiwaza_install_prod.log` for an offline
-upgrade—to the validator-compatible evidence name
-`installer/postinst-debug.log`, removing credentials or tokens before it is
-shared. Keep the raw source log and `console.log` private; neither is in the
-shareable allowlist.
+Preserve the site's existing `KAMIWAZA_K8S_RUNTIME`, resource profile,
+storage, GPU, and Helm override inputs. Then run the upgraded installer once:
+
+```bash
+(
+  set +e
+  sudo -E /opt/kamiwaza/scripts/install-prod.sh \
+    --offline \
+    --domain "${DOMAIN}" \
+    --admin-password "${ADMIN_PASSWORD}" \
+    --wrap-bundle '/opt/kamiwaza/prereqs/kamiwaza-helm.*.tar' \
+    --wrap-sha256 /opt/kamiwaza/prereqs/kamiwaza-helm.sha256 \
+    --wrap-signature /opt/kamiwaza/prereqs/kamiwaza-helm.asc \
+    --wrap-pubkey /opt/kamiwaza/prereqs/kamiwaza-tools-rpm.pub.gpg \
+    -y 2>&1 | tee "${PRIVATE_DIR}/installer/console.log"
+  install_rc=${PIPESTATUS[0]}
+  printf '%s\n' "${install_rc}" \
+    >"${EVIDENCE_DIR}/installer/exit-status.txt"
+  exit 0
+)
+INSTALL_RC=$(cat "${EVIDENCE_DIR}/installer/exit-status.txt")
+```
+
+For an online upgrade, review and redact the captured
+`${PRIVATE_DIR}/installer/console.log`; the installer guide's source log is
+`kamiwaza-online-install.log` in its invocation directory, not a `/var/log`
+file. For an offline upgrade, review and redact
+`/var/log/kamiwaza_install_prod.log`. Copy the reviewed result to the
+validator-compatible evidence name `installer/postinst-debug.log`. Keep each
+raw source log private.
 
 Whether the installer succeeds or fails, continue immediately with
 [Collect upgrade diagnostics](#collect-upgrade-diagnostics). If `INSTALL_RC`
@@ -248,15 +290,21 @@ are removed before the next hook creation, so collect evidence promptly.
 ### Collect upgrade diagnostics
 
 Run the 1.2.0 production payload's deterministic collector on both success and
-failure paths. The M1 evidence contract requires its cluster, db-init, and Helm
-outputs even when the upgrade succeeds:
+failure paths. Support diagnosis and M1 qualification both require its cluster,
+db-init, and Helm outputs even when the upgrade succeeds:
 
 ```bash
 /opt/kamiwaza/scripts/collect-core-db-init-diagnostics.sh \
   "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}"
 
 # The collector deliberately requires a new or empty, non-symlink target.
-# Merge only its allowlisted directories into the final bundle.
+# Stop if any recorded command failed; the manifest itself remains private.
+awk '
+  /^command=/ && $0 !~ / status=0$/ { print; failed = 1 }
+  END { exit failed }
+' "${COLLECTOR_DIR}/manifest.txt"
+
+# Merge only the allowlisted directories into the final bundle.
 cp -a "${COLLECTOR_DIR}/cluster/." "${EVIDENCE_DIR}/cluster/"
 cp -a "${COLLECTOR_DIR}/db-init/." "${EVIDENCE_DIR}/db-init/"
 cp -a "${COLLECTOR_DIR}/helm/." "${EVIDENCE_DIR}/helm/"
@@ -270,8 +318,9 @@ log alone is not evidence that migration code ran.
 ## 6. Verify the schema from the running core image
 
 After an installer exit of zero, invoke the packaged schema-status CLI from the
-running 1.2.0 core container. The command exits nonzero unless the database is
-supported and at the code head.
+running 1.2.0 core container. Its exit code distinguishes supported states from
+unsafe or undetermined states; a supported state can still require migration.
+Always inspect the JSON fields below rather than gating on exit zero alone.
 
 ```bash
 kubectl exec -n "${NAMESPACE}" deployment/core-scheduler -c core -- \
@@ -280,7 +329,7 @@ kubectl exec -n "${NAMESPACE}" deployment/core-scheduler -c core -- \
 
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d kamiwaza -AtF $'\t' \
-  -c 'SELECT schema_name, version FROM kamiwaza_schema_version ORDER BY schema_name;' \
+  -c "SELECT schema_name, version FROM kamiwaza_schema_version WHERE schema_name = 'core';" \
   >"${EVIDENCE_DIR}/schema/marker.tsv"
 
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
@@ -371,8 +420,13 @@ Do not restore a logical dump over the active database. Do not point an old
 binary at a database after the 1.2.0 migration unless the exact compatibility
 has passed release qualification and Support explicitly approves it.
 
-The safe diagnostic rehearsal restores the dump into a newly created,
-disposable database while the active `kamiwaza` database remains untouched:
+Customer operators stop here and preserve the verified backup. Any restore,
+old-binary compatibility test, or production cutover requires a Support-owned
+recovery plan; it is not a routine continuation of a failed upgrade.
+
+For release qualification only, Engineering runs the following diagnostic
+rehearsal in the disposable M1 environment. It restores the dump into a newly
+created database while the active `kamiwaza` database remains untouched:
 
 ```bash
 export RESTORE_DB="kamiwaza_restore_${RUN_ID//[^A-Za-z0-9]/_}"
@@ -387,7 +441,7 @@ kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   'SELECT schema_name, version FROM kamiwaza_schema_version ORDER BY schema_name;'
 ```
 
-This rehearsal proves dump restorability; it does not switch production.
+This M1-only rehearsal proves dump restorability; it does not switch production.
 Supported recovery is either a support-reviewed cutover to a clean database
 restored from the verified pre-upgrade backup and run with a compatible old
 binary, or a reviewed and tested forward fix with its own evidence. Preserve
@@ -397,8 +451,8 @@ response. Record the
 restored database name, old-binary compatibility result, and confirmation that
 the active database was untouched in `recovery/restore-rehearsal.json`.
 
-Old-binary compatibility is not inferred from schema queries. In the disposable
-M1 environment, start the exact immutable 1.0.0 core image with its database URL
+Old-binary compatibility is not inferred from schema queries. Engineering
+starts the exact immutable 1.0.0 core image with its database URL
 pointing only at `${RESTORE_DB}`, wait for its readiness check, and run its
 authenticated core API smoke. Stop that disposable workload after the check;
 never repoint a production 1.0.0 workload. Set `old_binary_compatible` to true
@@ -407,17 +461,31 @@ using these exact fields:
 
 ```json
 {
-  "restored_database": "kamiwaza_restore_YYYYMMDDTHHMMSSZ",
+  "restored_database": "kamiwaza_restore_20260807T001500Z_a1b2c3d4",
   "active_database_untouched": true,
   "old_binary_compatible": true
 }
 ```
 
-## Evidence manifest
+## Customer support bundle
 
-The shareable bundle is deterministic. It contains exactly these nonempty
-files, no dump, no raw installer console, no environment dump, and no
-Kubernetes Secret or ConfigMap:
+The customer/operator bundle contains the files produced by the applicable
+steps above. Preserve the private backup and raw logs locally, remove empty or
+unexpected shareable files, scan the bundle as shown below, and share it only
+through the approved Support channel. A customer bundle is diagnostic input;
+it is not the signed M1-20 release-qualification artifact and does not require
+`KAMIWAZA_M1_RUN_ID`, an old-binary rehearsal, or M1 CI URLs.
+
+## M1-20 qualification bundle
+
+This section is for Kamiwaza Engineering/Release only. The M1 harness exports
+`KAMIWAZA_M1_RUN_ID` in the form `YYYYMMDDTHHMMSSZ-8hex`, and Step 1 uses that
+value as `RUN_ID`. The harness runs the recovery rehearsal and requires the
+following exact deterministic bundle.
+
+The qualification bundle contains exactly these nonempty files, no dump, no
+raw installer console, no environment dump, and no Kubernetes Secret or
+ConfigMap:
 
 ```text
 metadata.json
@@ -439,7 +507,7 @@ smoke/results.json
 recovery/restore-rehearsal.json
 ```
 
-`metadata.json` must include:
+For M1 qualification, `metadata.json` must include:
 
 ```json
 {
@@ -474,7 +542,7 @@ secret_locations=0
 while IFS= read -r -d '' file; do
   if ! awk '
     BEGIN { IGNORECASE = 1; found = 0 }
-    /[[:alpha:]][[:alnum:]+.-]*:\/\/[^\/[:space:]@:]+:[^@\/[:space:]]+@/ ||
+    /:\/\/[^\/[:space:]@:]+:[^@\/[:space:]]+@/ ||
     /-----BEGIN .*PRIVATE KEY-----/ ||
     /authorization:[[:space:]]*bearer/ ||
     /kind:[[:space:]]*Secret/ {
@@ -492,14 +560,14 @@ test "${secret_locations}" -eq 0
 Also perform a manual review for site-specific credentials, tokens, customer
 data, and private hostnames. Share only through the approved Support channel.
 
-## M1-20 release qualification
+## Run M1-20 release qualification
 
-Before 1.2.0 is promoted, Kamiwaza Engineering/Release must run this runbook
-against the exact release candidate in a disposable environment using a real
-1.0.0 database. The automated M1 harness binds the run to the candidate SHA,
-disposable kube context, disposable database URL, this runbook, and the
-deterministic evidence directory. It validates backup integrity, schema head
-and marker, smoke results, restore into a new database, old-binary
+Before 1.2.0 is promoted, Kamiwaza Engineering/Release runs the M1-only parts
+of this runbook against the exact release candidate in a disposable environment
+using a real 1.0.0 database. The automated M1 harness binds the run to the
+candidate SHA, disposable kube context, disposable database URL, this runbook,
+and the deterministic evidence directory. It validates backup integrity,
+schema head and marker, smoke results, restore into a new database, old-binary
 compatibility, allowlisted files, and the secret scan.
 
 The release owner must publish the exact CI run URL and signed M1 evidence URL

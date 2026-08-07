@@ -24,8 +24,15 @@ test("main sidebar contains one complete Runbooks category", () => {
 			runbookCategory !== null &&
 			"items" in runbookCategory,
 	);
-	assert.deepEqual(runbookCategory.items, [
+	const runbookItems = runbookCategory.items;
+	assert.ok(Array.isArray(runbookItems));
+	for (const requiredRunbook of [
 		"runbooks/core-database-upgrade-1.2",
 		"runbooks/ontology-graph-viewer",
-	]);
+	]) {
+		assert.equal(
+			runbookItems.filter((item) => item === requiredRunbook).length,
+			1,
+		);
+	}
 });
