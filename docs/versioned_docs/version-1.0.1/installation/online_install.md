@@ -46,6 +46,11 @@ shasum -a 256 -c kamiwaza-online-install.sh.sha256
 
 ## Step 2: Run the Installer
 
+> **Upgrading a 1.0.0 installation to 1.2.0?** Stop here and follow the
+> [1.0.0-to-1.2.0 database upgrade runbook](https://docs.kamiwaza.ai/runbooks/core-database-upgrade-1.2)
+> before invoking any newer installer. The values on this versioned page are
+> installation examples for 1.0.1, not 1.2.0 upgrade inputs.
+
 Run the installer on the target host, supplying your license key, domain, and an initial admin password:
 
 ```bash

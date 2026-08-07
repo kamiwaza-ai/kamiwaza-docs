@@ -1,16 +1,19 @@
 name: Scripts Tests
 
-# Runs the node:test suite under scripts/*.test.ts on every PR. The PDF
-# pipeline link-handling logic (pdf-link-utils.ts) is the riskiest part of
-# the docs tooling; without this workflow its 50+ unit tests would only run
-# when a contributor remembered to invoke `npm test` locally and regressions
-# would silently make it to develop.
+# Runs the node:test suite and production docs build on relevant PRs. The fast
+# tests cover docs tooling and sidebar structure; the build verifies that every
+# sidebar document id resolves to an actual document.
 
 on:
   pull_request:
     paths:
       - "scripts/**"
       - "docs/scripts/**"
+      - "docs/sidebars.ts"
+      - "docs/docs/**"
+      - "docs/versioned_docs/**"
+      - "docs/versioned_sidebars/**"
+      - "docs/docusaurus.config.ts"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/scripts-test.yml"
@@ -27,7 +30,7 @@ jobs:
   unit-tests:
     name: scripts/*.test.ts (node --test)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -48,3 +51,6 @@ jobs:
 
       - name: Run scripts unit tests
         run: npm test
+
+      - name: Build production documentation
+        run: npm run build:docs

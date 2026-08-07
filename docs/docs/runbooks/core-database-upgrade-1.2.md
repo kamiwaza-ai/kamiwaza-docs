@@ -41,6 +41,7 @@ failed Helm hook is a stopped upgrade, not permission to improvise.
 - Enough storage outside the PostgreSQL data volume for the logical backup and
   evidence bundle.
 - The exact domain, installation mode, and release inputs used for the site.
+- The approved CA certificate that validates the production HTTPS endpoint.
 - A confirmed maintenance window. Scheduler and API availability can be
   interrupted while the post-install database hook runs.
 - External writers quiesced for the backup and upgrade window.
@@ -73,9 +74,11 @@ export COLLECTOR_DIR="${PWD}/${LOCAL_RUN_LABEL}-collector"
 export PRIVATE_DIR="${PWD}/${LOCAL_RUN_LABEL}-private"
 export NAMESPACE="kamiwaza"
 export RELEASE="kamiwaza"
+: "${CANDIDATE_SHA:?export the full verified 1.2.0 candidate SHA}"
 : "${DOMAIN:?export the existing production domain}"
-: "${ADMIN_PASSWORD:?export ADMIN_PASSWORD from the approved secret source}"
+: "${ADMIN_PASSWORD:?export the current production admin password}"
 
+umask 077
 mkdir -p "${PRIVATE_DIR}/backup" "${PRIVATE_DIR}/installer"
 mkdir -p \
   "${EVIDENCE_DIR}/backup" \
@@ -126,10 +129,16 @@ operator host, so the backup remains outside the database pod and volume.
 ```bash
 export BACKUP_FILE="${PRIVATE_DIR}/backup/kamiwaza-1.0.0.dump"
 
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  pg_dump -U core -d kamiwaza --format=custom --no-owner --no-privileges \
-  >"${BACKUP_FILE}"
+(
+  set +e
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    pg_dump -U core -d kamiwaza --format=custom --no-owner --no-privileges \
+    >"${BACKUP_FILE}"
+  printf '%s\n' "$?" >"${PRIVATE_DIR}/backup/pg-dump-exit-status.txt"
+  exit 0
+)
 
+test "$(cat "${PRIVATE_DIR}/backup/pg-dump-exit-status.txt")" -eq 0
 test -s "${BACKUP_FILE}"
 sha256sum "${BACKUP_FILE}" >"${BACKUP_FILE}.sha256"
 BACKUP_SIZE_BYTES=$(stat -c '%s' "${BACKUP_FILE}")
@@ -140,6 +149,26 @@ kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d kamiwaza -Atqc 'SHOW server_version;'
 printf 'size_bytes=%s\nsha256=%s\n' \
   "${BACKUP_SIZE_BYTES}" "${BACKUP_SHA256}"
+
+# Prove the archive's data is restorable, not merely that its TOC is readable.
+export BACKUP_CHECK_DB="kamiwaza_backup_check_$(date -u +%Y%m%dT%H%M%S)"
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  createdb -U core "${BACKUP_CHECK_DB}"
+(
+  set +e
+  kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    pg_restore -U core --exit-on-error --no-owner --no-privileges \
+    -d "${BACKUP_CHECK_DB}" <"${BACKUP_FILE}"
+  printf '%s\n' "$?" \
+    >"${PRIVATE_DIR}/backup/pg-restore-exit-status.txt"
+  exit 0
+)
+test "$(cat "${PRIVATE_DIR}/backup/pg-restore-exit-status.txt")" -eq 0
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  psql -U core -d "${BACKUP_CHECK_DB}" -Atqc \
+  "SELECT version FROM kamiwaza_schema_version WHERE schema_name = 'core';"
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  dropdb -U core "${BACKUP_CHECK_DB}"
 ```
 
 Create `backup/manifest.json` with these exact field names and types (replace
@@ -179,8 +208,10 @@ sha256sum -c kamiwaza-online-install.sh.sha256
 chmod +x kamiwaza-online-install.sh
 ```
 
-Then run the verified candidate once. The subshell preserves the caller's
-existing `errexit` setting while still capturing a failed installer:
+Then run the verified candidate once. `--keep-extract` retains the exact
+candidate's deploy payload so its diagnostics collector remains available at
+the documented path. The subshell preserves the caller's existing `errexit`
+setting while still capturing a failed installer:
 
 ```bash
 : "${KEYGEN_LICENSE_KEY:?export KEYGEN_LICENSE_KEY from the approved license source}"
@@ -191,6 +222,7 @@ existing `errexit` setting while still capturing a failed installer:
     ./kamiwaza-online-install.sh \
     --domain "${DOMAIN}" \
     --admin-password "${ADMIN_PASSWORD}" \
+    --keep-extract \
     -y 2>&1 | tee "${PRIVATE_DIR}/installer/console.log"
   install_rc=${PIPESTATUS[0]}
   printf '%s\n' "${install_rc}" \
@@ -198,24 +230,48 @@ existing `errexit` setting while still capturing a failed installer:
   exit 0
 )
 INSTALL_RC=$(cat "${EVIDENCE_DIR}/installer/exit-status.txt")
+export COLLECTOR_COMMAND="/var/lib/kamiwaza-online-install/kamiwaza-online-payload/scripts/collect-core-db-init-diagnostics.sh"
+test -x "${COLLECTOR_COMMAND}"
 ```
 
 ### Offline upgrade
 
-Stage and verify the complete 1.2.0 offline candidate. Use its own
-`release_origination.md` as the authority for the RPM, chart, and image tags;
+Stage and verify the complete 1.2.0 offline candidate in a new, version-scoped
+directory; never reuse `/opt/kamiwaza/prereqs` from the installed release. Use
+its own `release_origination.md` as the authority for the RPM, chart, and image tags;
 do not copy the 1.0.1 values from the current installation example. Record
 that manifest as `intended_artifact`, confirm it identifies product version
 1.2.0, and export its release-specific image values. Before invoking the
 installer, upgrade the installed production payload to the verified 1.2.0 RPM
 from that same candidate so `/opt/kamiwaza/scripts/install-prod.sh` and the
-packaged diagnostics are the 1.2.0 versions:
+packaged diagnostics are the 1.2.0 versions. Download and recombine the exact
+files named by the candidate's release record into `PREREQ_DIR`, then verify
+the candidate-specific checksums and required files before installing anything:
 
 ```bash
-export KAMIWAZA_PROD_RPM="${PWD}/<verified-1.2.0-kamiwaza-prod-rpm>"
-test -f "${KAMIWAZA_PROD_RPM}"
+export PREREQ_DIR="${PWD}/kamiwaza-prereqs-1.2.0-${CANDIDATE_SHA}"
+mkdir "${PREREQ_DIR}"
+
+# Populate this new directory from the candidate's artifact location only.
+# Use the exact RPM and recombined Helm-bundle names in release_origination.md.
+export KAMIWAZA_PROD_RPM="${PREREQ_DIR}/<exact-1.2.0-kamiwaza-prod-rpm>"
+export HELM_BUNDLE="${PREREQ_DIR}/<exact-recombined-kamiwaza-helm-tar>"
+export HELM_SHA256="${PREREQ_DIR}/kamiwaza-helm.sha256"
+export HELM_SIGNATURE="${PREREQ_DIR}/kamiwaza-helm.asc"
+export HELM_PUBKEY="${PREREQ_DIR}/kamiwaza-tools-rpm.pub.gpg"
+
+test -s "${PREREQ_DIR}/release_origination.md"
+test -s "${KAMIWAZA_PROD_RPM}"
+test -s "${HELM_BUNDLE}"
+test -s "${HELM_SHA256}"
+test -s "${HELM_SIGNATURE}"
+test -s "${HELM_PUBKEY}"
+(cd "${PREREQ_DIR}" && sha256sum -c "$(basename "${HELM_SHA256}")")
+
 sudo rpm -Uvh "${KAMIWAZA_PROD_RPM}"
 rpm -q --queryformat '%{NAME} %{VERSION}-%{RELEASE}\n' kamiwaza-prod
+export COLLECTOR_COMMAND="/opt/kamiwaza/scripts/collect-core-db-init-diagnostics.sh"
+test -x "${COLLECTOR_COMMAND}"
 ```
 
 Confirm the reported package version is the intended 1.2.0 candidate. Export
@@ -238,7 +294,9 @@ export KAMIWAZA_IMAGE_OVERRIDES="<exact comma-separated overrides from release_o
 ```
 
 Preserve the site's existing `KAMIWAZA_K8S_RUNTIME`, resource profile,
-storage, GPU, and Helm override inputs. Then run the upgraded installer once:
+storage, GPU, and Helm override inputs. Preserve the site's configured Helm
+timeout; do not copy the fresh-install guide's shorter example timeout into a
+populated-database migration. Then run the upgraded installer once:
 
 ```bash
 (
@@ -247,10 +305,10 @@ storage, GPU, and Helm override inputs. Then run the upgraded installer once:
     --offline \
     --domain "${DOMAIN}" \
     --admin-password "${ADMIN_PASSWORD}" \
-    --wrap-bundle '/opt/kamiwaza/prereqs/kamiwaza-helm.*.tar' \
-    --wrap-sha256 /opt/kamiwaza/prereqs/kamiwaza-helm.sha256 \
-    --wrap-signature /opt/kamiwaza/prereqs/kamiwaza-helm.asc \
-    --wrap-pubkey /opt/kamiwaza/prereqs/kamiwaza-tools-rpm.pub.gpg \
+    --wrap-bundle "${HELM_BUNDLE}" \
+    --wrap-sha256 "${HELM_SHA256}" \
+    --wrap-signature "${HELM_SIGNATURE}" \
+    --wrap-pubkey "${HELM_PUBKEY}" \
     -y 2>&1 | tee "${PRIVATE_DIR}/installer/console.log"
   install_rc=${PIPESTATUS[0]}
   printf '%s\n' "${install_rc}" \
@@ -277,7 +335,9 @@ is nonzero, collect the evidence and then stop; do not rerun the installer.
 The production installer invokes the Helmfile-managed release. Its
 `core-db-init` post-install/post-upgrade hook is the only supported schema
 entrypoint. The Job runs the 1.2.0 core image's
-`/app/services/core/scripts/db-init.py` before scheduler startup.
+`/app/services/core/scripts/db-init.py`. Because this is a post-upgrade hook,
+do not infer scheduler rollout ordering from the hook weight; use the Job,
+schema-status, and readiness checks below as the authoritative gates.
 
 ```bash
 kubectl get job/core-db-init -n "${NAMESPACE}" -o wide
@@ -297,29 +357,32 @@ failure paths. Support diagnosis and M1 qualification both require its cluster,
 db-init, and Helm outputs even when the upgrade succeeds:
 
 ```bash
-/opt/kamiwaza/scripts/collect-core-db-init-diagnostics.sh \
+"${COLLECTOR_COMMAND}" \
   "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}"
 
 # The collector deliberately requires a new or empty, non-symlink target.
-# Stop if any recorded command failed; the manifest itself remains private.
+# Merge the evidence before classifying command failures. A missing Job or an
+# unreadable Pending pod log can be the failure state Support needs to inspect.
+cp -a "${COLLECTOR_DIR}/cluster/." "${EVIDENCE_DIR}/cluster/"
+cp -a "${COLLECTOR_DIR}/db-init/." "${EVIDENCE_DIR}/db-init/"
+cp -a "${COLLECTOR_DIR}/helm/." "${EVIDENCE_DIR}/helm/"
+
 if ! awk '
   /^command=/ && $0 !~ / status=0$/ { print; failed = 1 }
   END { exit failed }
 ' "${COLLECTOR_DIR}/manifest.txt"; then
-  echo "stop: the diagnostics collector recorded a failed command" >&2
-  exit 1
+  printf '%s\n' \
+    "The collector recorded command failures; preserve the merged evidence and stop for Support review." >&2
 fi
-
-# Merge only the allowlisted directories into the final bundle.
-cp -a "${COLLECTOR_DIR}/cluster/." "${EVIDENCE_DIR}/cluster/"
-cp -a "${COLLECTOR_DIR}/db-init/." "${EVIDENCE_DIR}/db-init/"
-cp -a "${COLLECTOR_DIR}/helm/." "${EVIDENCE_DIR}/helm/"
 ```
 
 It records the Job, all attempt pods in creation order, all attempt logs,
 namespace state and events, and Helm status/history. For a pod that never
 started, the pod description and events are authoritative; an empty container
 log alone is not evidence that migration code ran.
+
+If Support approves a retry, start again with a new `RUN_ID`, `EVIDENCE_DIR`,
+and `COLLECTOR_DIR`. Never reuse or overwrite the first attempt's evidence.
 
 ## 6. Verify the schema from the running core image
 
@@ -357,14 +420,16 @@ marker manually.
 
 ## 7. Run smoke checks
 
-Verify the actual production domain and record machine-readable results in
-`smoke/results.json`.
+Verify the actual production domain with the approved CA certificate and record
+machine-readable results in `smoke/results.json`. M1 qualification must never
+replace this trust check with `--insecure`.
 
 ```bash
+: "${KAMIWAZA_CA_CERT:?export the approved production CA certificate path}"
 kubectl get pods -n "${NAMESPACE}" -o wide
-curl --fail --silent --show-error --insecure \
+curl --fail --silent --show-error --cacert "${KAMIWAZA_CA_CERT}" \
   "https://${DOMAIN}/api/node/node_status" >/dev/null
-curl --fail --silent --show-error --insecure \
+curl --fail --silent --show-error --cacert "${KAMIWAZA_CA_CERT}" \
   "https://${DOMAIN}/api/security/public/config" >/dev/null
 ```
 
@@ -377,7 +442,10 @@ required check using the exact validator shape below; every `status` must be
 {
   "checks": [
     {"name": "node-status", "status": "pass"},
-    {"name": "public-security-config", "status": "pass"}
+    {"name": "public-security-config", "status": "pass"},
+    {"name": "authenticated-login", "status": "pass"},
+    {"name": "authenticated-core-api-read", "status": "pass"},
+    {"name": "extension-api-smoke", "status": "pass"}
   ]
 }
 ```
@@ -461,7 +529,7 @@ the active database was untouched in `recovery/restore-rehearsal.json`.
 
 Old-binary compatibility is not inferred from schema queries. Engineering
 starts the exact immutable 1.0.0 core image with its database URL
-pointing only at `${RESTORE_DB}`, wait for its readiness check, and run its
+pointing only at `${RESTORE_DB}`, waits for its readiness check, and runs its
 authenticated core API smoke. Stop that disposable workload after the check;
 never repoint a production 1.0.0 workload. Set `old_binary_compatible` to true
 only when both readiness and the authenticated smoke pass. Record the result
@@ -537,6 +605,8 @@ while IFS= read -r -d '' file; do
   if ! awk '
     BEGIN { IGNORECASE = 1; found = 0 }
     /:\/\/[^\/[:space:]@:]+:[^@\/[:space:]]+@/ ||
+    /--admin-password([=[:space:]])[^[:space:]]+/ ||
+    /(KEYGEN_LICENSE_KEY|KAMIWAZA_KEYGEN_LICENSE_KEY)[=[:space:]][^[:space:]]+/ ||
     /-----BEGIN .*PRIVATE KEY-----/ ||
     /authorization:[[:space:]]*bearer/ ||
     /kind:[[:space:]]*Secret/ {
