@@ -17,7 +17,11 @@ The v1.0 contract is:
 
 ## Supported Initialization Path
 
-For PostgreSQL-backed Kubernetes installs, the supported initialization gate is the `core-db-init` Helm hook. The hook runs the core image initializer at `/app/scripts/db-init.py` before scheduler startup.
+For PostgreSQL-backed Kubernetes installs, the supported initialization gate
+is the `core-db-init` Helm hook. The current chart runs the core image
+initializer at `/app/services/core/scripts/db-init.py` before scheduler
+startup. Older versioned documentation retains the path used by those
+historical release artifacts.
 
 During v1.0 initialization, the initializer creates or verifies the `kamiwaza_schema_version` table and records the core schema marker:
 
