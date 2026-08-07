@@ -178,6 +178,11 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
 
 ## Step 5: Install Kamiwaza
 
+> **Upgrading this 1.0.0 installation to 1.2.0?** Stop here and follow the
+> [1.0.0-to-1.2.0 database upgrade runbook](https://docs.kamiwaza.ai/runbooks/core-database-upgrade-1.2)
+> before invoking any newer installer. The values below are installation
+> examples for 1.0.0, not 1.2.0 upgrade inputs.
+
 Set the image tags for the bundle and run the offline installer. The tag and image-override values below match the published 1.0.0 bundle; if `release_origination.md` lists different values for your build, use those instead.
 
 ```bash
