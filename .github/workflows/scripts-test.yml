@@ -1,4 +1,4 @@
-name: Scripts Tests
+name: Docs Tests and Build
 
 # Runs the node:test suite and production docs build on relevant PRs. The fast
 # tests cover docs tooling and sidebar structure; the build verifies that every
@@ -14,6 +14,8 @@ on:
       - "docs/versioned_docs/**"
       - "docs/versioned_sidebars/**"
       - "docs/docusaurus.config.ts"
+      - "docs/package.json"
+      - "docs/package-lock.json"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/scripts-test.yml"
@@ -28,7 +30,7 @@ concurrency:
 
 jobs:
   unit-tests:
-    name: scripts/*.test.ts (node --test)
+    name: Docs tests and production build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -44,7 +46,9 @@ jobs:
           # before they hit downstream consumers still on Node 22.
           node-version: "22"
           cache: "npm"
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            docs/package-lock.json
 
       - name: Install root dependencies
         run: npm ci --ignore-scripts

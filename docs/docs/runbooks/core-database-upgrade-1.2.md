@@ -40,6 +40,9 @@ failed Helm hook is a stopped upgrade, not permission to improvise.
 - Cluster-admin `kubectl` and Helm access for the installed cluster.
 - Enough storage outside the PostgreSQL data volume for the logical backup and
   evidence bundle.
+- Free space inside the PostgreSQL data volume of at least 120% of the current
+  database size for the temporary restore validation. The command below checks
+  this before creating the scratch database.
 - The exact domain, installation mode, and release inputs used for the site.
 - The approved CA certificate that validates the production HTTPS endpoint.
 - A confirmed maintenance window. Scheduler and API availability can be
@@ -145,30 +148,54 @@ BACKUP_SIZE_BYTES=$(stat -c '%s' "${BACKUP_FILE}")
 BACKUP_SHA256=$(sha256sum "${BACKUP_FILE}" | awk '{print $1}')
 kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   pg_restore --list <"${BACKUP_FILE}" >/dev/null
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  psql -U core -d kamiwaza -Atqc 'SHOW server_version;'
-printf 'size_bytes=%s\nsha256=%s\n' \
-  "${BACKUP_SIZE_BYTES}" "${BACKUP_SHA256}"
+POSTGRESQL_VERSION=$(kubectl exec -n "${NAMESPACE}" \
+  core-postgres-0 -c postgres -- \
+  psql -U core -d kamiwaza -Atqc 'SHOW server_version;')
+BACKUP_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf 'size_bytes=%s\nsha256=%s\npostgresql_version=%s\nbackup_timestamp=%s\n' \
+  "${BACKUP_SIZE_BYTES}" "${BACKUP_SHA256}" \
+  "${POSTGRESQL_VERSION}" "${BACKUP_TIMESTAMP}"
 
 # Prove the archive's data is restorable, not merely that its TOC is readable.
+DATABASE_SIZE_BYTES=$(kubectl exec -n "${NAMESPACE}" \
+  core-postgres-0 -c postgres -- \
+  psql -U core -d kamiwaza -Atqc \
+  "SELECT pg_database_size('kamiwaza');")
+POSTGRES_DATA_DIR=$(kubectl exec -n "${NAMESPACE}" \
+  core-postgres-0 -c postgres -- \
+  psql -U core -d kamiwaza -Atqc 'SHOW data_directory;')
+POSTGRES_FREE_BYTES=$(kubectl exec -n "${NAMESPACE}" \
+  core-postgres-0 -c postgres -- \
+  df -PB1 "${POSTGRES_DATA_DIR}" | awk 'NR == 2 {print $4}')
+RESTORE_REQUIRED_BYTES=$((DATABASE_SIZE_BYTES + DATABASE_SIZE_BYTES / 5))
+test "${POSTGRES_FREE_BYTES}" -ge "${RESTORE_REQUIRED_BYTES}"
+
 export BACKUP_CHECK_DB="kamiwaza_backup_check_$(date -u +%Y%m%dT%H%M%S)"
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  createdb -U core "${BACKUP_CHECK_DB}"
 (
   set +e
-  kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-    pg_restore -U core --exit-on-error --no-owner --no-privileges \
-    -d "${BACKUP_CHECK_DB}" <"${BACKUP_FILE}"
-  printf '%s\n' "$?" \
-    >"${PRIVATE_DIR}/backup/pg-restore-exit-status.txt"
+  (
+    cleanup_backup_check() {
+      kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+        dropdb -U core --if-exists "${BACKUP_CHECK_DB}" \
+        >/dev/null 2>&1 || true
+    }
+    trap cleanup_backup_check EXIT
+
+    kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+      createdb -U core "${BACKUP_CHECK_DB}" || exit 1
+    kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+      pg_restore -U core --exit-on-error --no-owner --no-privileges \
+      -d "${BACKUP_CHECK_DB}" <"${BACKUP_FILE}" || exit 1
+    kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+      psql -U core -d "${BACKUP_CHECK_DB}" -Atqc \
+      "SELECT version FROM kamiwaza_schema_version WHERE schema_name = 'core';" \
+      >"${PRIVATE_DIR}/backup/restore-marker.tsv" || exit 1
+  )
+  printf '%s\n' "$?" >"${PRIVATE_DIR}/backup/pg-restore-exit-status.txt"
   exit 0
 )
 test "$(cat "${PRIVATE_DIR}/backup/pg-restore-exit-status.txt")" -eq 0
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  psql -U core -d "${BACKUP_CHECK_DB}" -Atqc \
-  "SELECT version FROM kamiwaza_schema_version WHERE schema_name = 'core';"
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  dropdb -U core "${BACKUP_CHECK_DB}"
+test "$(cat "${PRIVATE_DIR}/backup/restore-marker.tsv")" = "1.0"
 ```
 
 Create `backup/manifest.json` with these exact field names and types (replace
@@ -233,6 +260,11 @@ INSTALL_RC=$(cat "${EVIDENCE_DIR}/installer/exit-status.txt")
 export COLLECTOR_COMMAND="/var/lib/kamiwaza-online-install/kamiwaza-online-payload/scripts/collect-core-db-init-diagnostics.sh"
 test -x "${COLLECTOR_COMMAND}"
 ```
+
+That path is derived from the generated online installer's Linux
+`DEFAULT_EXTRACT_DIR` and `PAYLOAD_ROOT_NAME` constants in
+`kajiya/infra/online-ubuntu/kamiwaza-online-install.sh`; `--keep-extract`
+prevents cleanup of the candidate payload.
 
 ### Offline upgrade
 
@@ -357,29 +389,63 @@ failure paths. Support diagnosis and M1 qualification both require its cluster,
 db-init, and Helm outputs even when the upgrade succeeds:
 
 ```bash
+COLLECTOR_RC=0
+COLLECTOR_COMMAND_FAILURES=0
+COLLECTOR_EVIDENCE_COMPLETE=0
+
 "${COLLECTOR_COMMAND}" \
-  "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}"
+  "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}" || COLLECTOR_RC=$?
 
-# The collector deliberately requires a new or empty, non-symlink target.
-# Merge the evidence before classifying command failures. A missing Job or an
-# unreadable Pending pod log can be the failure state Support needs to inspect.
-cp -a "${COLLECTOR_DIR}/cluster/." "${EVIDENCE_DIR}/cluster/"
-cp -a "${COLLECTOR_DIR}/db-init/." "${EVIDENCE_DIR}/db-init/"
-cp -a "${COLLECTOR_DIR}/helm/." "${EVIDENCE_DIR}/helm/"
+if [[ "${COLLECTOR_RC}" -ne 0 ]]; then
+  printf 'stop: diagnostics collector failed before evidence merge (exit %s)\n' \
+    "${COLLECTOR_RC}" >&2
+else
+  # The collector deliberately requires a new or empty, non-symlink target.
+  # Merge evidence before classifying failures observed in the cluster.
+  cp -a "${COLLECTOR_DIR}/cluster/." "${EVIDENCE_DIR}/cluster/"
+  cp -a "${COLLECTOR_DIR}/db-init/." "${EVIDENCE_DIR}/db-init/"
+  cp -a "${COLLECTOR_DIR}/helm/." "${EVIDENCE_DIR}/helm/"
 
-if ! awk '
-  /^command=/ && $0 !~ / status=0$/ { print; failed = 1 }
-  END { exit failed }
-' "${COLLECTOR_DIR}/manifest.txt"; then
-  printf '%s\n' \
-    "The collector recorded command failures; preserve the merged evidence and stop for Support review." >&2
+  awk '
+    BEGIN { failed = 0 }
+    /^command=/ && $0 !~ / status=0$/ { print; failed = 1 }
+    END { exit failed }
+  ' "${COLLECTOR_DIR}/manifest.txt" || COLLECTOR_COMMAND_FAILURES=1
+
+  if test -s "${EVIDENCE_DIR}/db-init/pod-describe.txt" && \
+    test -s "${EVIDENCE_DIR}/db-init/all-attempts.log"; then
+    COLLECTOR_EVIDENCE_COMPLETE=1
+  else
+    printf '%s\n' \
+      "stop: required db-init pod evidence is empty; preserve the partial bundle for Support" >&2
+  fi
 fi
+
+printf 'collector_rc=%s\ncommand_failures=%s\nevidence_complete=%s\n' \
+  "${COLLECTOR_RC}" "${COLLECTOR_COMMAND_FAILURES}" \
+  "${COLLECTOR_EVIDENCE_COMPLETE}"
+test "${COLLECTOR_RC}" -eq 0
+test "${COLLECTOR_COMMAND_FAILURES}" -eq 0
+test "${COLLECTOR_EVIDENCE_COMPLETE}" -eq 1
 ```
 
 It records the Job, all attempt pods in creation order, all attempt logs,
 namespace state and events, and Helm status/history. For a pod that never
 started, the pod description and events are authoritative; an empty container
 log alone is not evidence that migration code ran.
+
+`COLLECTOR_RC` nonzero means the collector itself failed. A
+`COLLECTOR_COMMAND_FAILURES` value of 1 means collection succeeded but observed
+one or more failing cluster commands; preserve the merged evidence and stop for
+Support review. `COLLECTOR_EVIDENCE_COMPLETE` must be 1 for M1 qualification.
+
+```bash
+if [[ "${INSTALL_RC}" -ne 0 ]]; then
+  printf 'stop: installer failed with exit %s; do not continue to schema checks\n' \
+    "${INSTALL_RC}" >&2
+fi
+test "${INSTALL_RC}" -eq 0
+```
 
 If Support approves a retry, start again with a new `RUN_ID`, `EVIDENCE_DIR`,
 and `COLLECTOR_DIR`. Never reuse or overwrite the first attempt's evidence.
@@ -392,9 +458,14 @@ unsafe or undetermined states; a supported state can still require migration.
 Always inspect the JSON fields below rather than gating on exit zero alone.
 
 ```bash
-kubectl exec -n "${NAMESPACE}" deployment/core-scheduler -c core -- \
-  python /app/scripts/schema-status.py --json \
-  >"${EVIDENCE_DIR}/schema/status.json"
+(
+  set +e
+  kubectl exec -n "${NAMESPACE}" deployment/core-scheduler -c core -- \
+    python /app/scripts/schema-status.py --json \
+    >"${EVIDENCE_DIR}/schema/status.json"
+  printf '%s\n' "$?" >"${PRIVATE_DIR}/schema-status-exit-status.txt"
+  exit 0
+)
 
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d kamiwaza -AtF $'\t' \
@@ -405,6 +476,10 @@ kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d kamiwaza -AtF $'\t' \
   -c 'SELECT version_num FROM alembic_version ORDER BY version_num;' \
   >"${EVIDENCE_DIR}/schema/revision.tsv"
+
+test -s "${EVIDENCE_DIR}/schema/status.json"
+test -s "${EVIDENCE_DIR}/schema/marker.tsv"
+test -s "${EVIDENCE_DIR}/schema/revision.tsv"
 ```
 
 Required result:
@@ -412,11 +487,13 @@ Required result:
 - `state` is `at_head`;
 - `supported` is `true`;
 - `migration_required` is `false`;
-- the marker is `core` version `1.0`;
-- there is exactly one database Alembic head and it equals the 1.2.0 code head.
+- `marker_version` is `1.0` and `marker.tsv` contains exactly `core<TAB>1.0`;
+- `db_heads` contains exactly one revision;
+- `code_heads` contains exactly one revision and equals `db_heads`.
 
-Any other result is a stopped upgrade. Do not stamp a revision or edit the
-marker manually.
+The captured schema-status exit code may be nonzero on the failure path; the
+three evidence files are still required. Any result outside the fields above is
+a stopped upgrade. Do not stamp a revision or edit the marker manually.
 
 ## 7. Run smoke checks
 
@@ -435,8 +512,9 @@ curl --fail --silent --show-error --cacert "${KAMIWAZA_CA_CERT}" \
 
 The M1-20 release qualification also exercises authenticated login, a core API
 read, and an extension/API smoke appropriate to the release. Record every
-required check using the exact validator shape below; every `status` must be
-`"pass"`:
+required check using the evidence convention below. The bundle validator
+enforces a nonempty list with every `status` set to `"pass"`; the M1 harness is
+responsible for producing all five named checks:
 
 ```json
 {
@@ -454,7 +532,7 @@ required check using the exact validator shape below; every `status` must be
 
 | Observed state | Meaning | Required action |
 | --- | --- | --- |
-| Backup is empty, checksum cannot be produced, or `pg_restore --list` fails | There is no validated recovery artifact. | Stop before upgrade; correct backup storage or access and create a new validated backup. |
+| Backup is empty, checksum cannot be produced, or either restore validation fails | There is no validated recovery artifact. | Stop before upgrade; correct backup storage or access and create a new validated backup. |
 | Installer exits nonzero before `core-db-init` exists | Host, artifact, registry, or Helm preparation failed before schema execution. | Preserve installer logs and cluster/Helm state; contact Support before retrying. |
 | `core-db-init` pod is Pending, `ImagePullBackOff`, or `CreateContainerConfigError` | Migration code did not start. | Collect pod descriptions and events; fix only the Support-approved infrastructure cause, then obtain retry approval. |
 | `core-db-init` starts and exits nonzero | Migration or database validation failed. | Collect every attempt log and description. Do not delete the Job, stamp the DB, or rerun. Escalate to Support. |
@@ -523,9 +601,9 @@ restored from the verified pre-upgrade backup and run with a compatible old
 binary, or a reviewed and tested forward fix with its own evidence. Preserve
 the failed database and evidence first. Never drop the active database, delete
 its PVC, edit marker rows, stamp revisions, or apply ad hoc DDL as a first
-response. Record the
-restored database name, old-binary compatibility result, and confirmation that
-the active database was untouched in `recovery/restore-rehearsal.json`.
+response. In `recovery/restore-rehearsal.json`, record the restored database
+name, old-binary compatibility result, and confirmation that the active
+database was untouched.
 
 Old-binary compatibility is not inferred from schema queries. Engineering
 starts the exact immutable 1.0.0 core image with its database URL
@@ -550,6 +628,9 @@ nonempty files produced by the applicable steps; on a failed upgrade, tell
 Support which later files could not be produced rather than inventing them.
 The dump, checksum file, raw installer logs, environment dumps, Kubernetes
 Secrets, and ConfigMaps remain private.
+
+<!-- Contract: keep this list synchronized with the customer subset of
+kamiwaza/scripts/db_migration_m1/runbook_bundle.py EVIDENCE_FILES. -->
 
 ```text
 metadata.json
@@ -637,6 +718,9 @@ following exact deterministic bundle.
 The qualification bundle contains exactly these nonempty files, no dump, no
 raw installer console, no environment dump, and no Kubernetes Secret or
 ConfigMap:
+
+<!-- Contract: keep this exact list synchronized with
+kamiwaza/scripts/db_migration_m1/runbook_bundle.py EVIDENCE_FILES. -->
 
 ```text
 metadata.json
