@@ -11,7 +11,7 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
 - A **Kamiwaza Prod license key**, used to download the bundle artifacts from Keygen.
 - A RHEL-compatible 9.x host (x86_64) that meets the [System Requirements](system_requirements.md).
 - **Free disk space, on the right filesystems.** The offline flow stages large artifacts and provisions cluster storage under `/`, `/tmp`, and `/var/lib`. Confirm each path has room on the **volume that actually backs it** — on hosts with LVM or separate partitions (most cloud RHEL images ship this way), a large total disk does **not** help if `/var` is a small separate volume. Recommended free space:
-  - **`/var/lib` ≥ 350 GB** — the largest consumer, and mostly **preallocated**: the Rook/Ceph OSD image (80 GB by default, set via `KAMIWAZA_ROOK_OSD_IMAGE_SIZE`) and the TopoLVM volume group backing stateful PVCs (150 GB) are both created up front, before any container image is pulled. Add the container images under `/var/lib/k0s` and `/var/lib/containers` and the extension bundle staged under `/var/lib/kajiya-reports` and a single-node install consumes roughly 270 GB. Leave headroom above that — Kubernetes begins evicting pods once the filesystem passes ~85% full.
+  - **`/var/lib` ≥ 350 GB** — the largest consumer, and mostly **preallocated**: the Rook/Ceph OSD image and the TopoLVM volume group backing stateful PVCs (150 GB) are both created up front, before any container image is pulled. The 350 GB figure assumes the OSD image is set to **80 GB**, which is what the `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G` export in [Step 5](#step-5-install-kamiwaza) does. **The installer's own default is 700 GB** — if you omit that export, budget **1.1 TB** on `/var/lib` instead. With the 80 GB OSD, adding the container images under `/var/lib/k0s` and `/var/lib/containers` and the extension bundle staged under `/var/lib/kajiya-reports`, a single-node install consumes roughly 270 GB. Leave headroom above that — Kubernetes begins evicting pods once the filesystem passes ~85% full.
   - **`/tmp` ≥ 25 GB** — bundle extraction and install scratch space.
   - **`/` ≥ 50 GB** — the downloaded bundle and its recombined tarballs under `/opt/kamiwaza/prereqs` (~25 GB), plus installed tooling under `/opt` and `/usr/local`.
 
@@ -179,6 +179,8 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
 ## Step 5: Install Kamiwaza
 
 Set the image tags for the bundle and run the offline installer. The tag and image-override values below are the 1.0.2 release-scheme tags; the pinned dependency versions in `KAMIWAZA_IMAGE_OVERRIDES` are unchanged from 1.0.1 and match the published 1.0.2 build. If `release_origination.md` lists different values for your build, use those instead.
+
+> **Keep `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G`** in the block below unless you have sized `/var/lib` for the 700 GB default — it is what brings the requirement down to the 350 GB floor in [Prerequisites](#prerequisites). This env var and the online guide's `-e storage_host_prep_virtual_block_size` extra-var are the same setting expressed two ways; the offline path sets it via the environment, the online path via an installer argument.
 
 ```bash
 export DOMAIN="<domain>"

@@ -93,6 +93,8 @@ KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
   -y 2>&1 | tee kamiwaza-online-install.log
 ```
 
+> **If you sized the host to the 350 GB floor rather than 1.1 TB**, add `-e storage_host_prep_virtual_block_size=80G` to the command above. Without it the installer provisions the default 700 GB OSD image and fails at host prep. See [Prerequisites](#prerequisites).
+
 - **On Linux**, the installer re-executes itself through `sudo -E` when it needs elevated privileges.
 - **On macOS**, run as the target admin user rather than as root. The installer uses Homebrew and Podman state scoped to that user and prompts through `sudo` only for privileged setup steps.
 
@@ -124,7 +126,7 @@ KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
   -y
 ```
 
-The installer always includes the required core and Kaizen agent images. If your NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
+The same `-e storage_host_prep_virtual_block_size=80G` note above applies here. The installer always includes the required core and Kaizen agent images. If your NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
 
 ## Common Options
 

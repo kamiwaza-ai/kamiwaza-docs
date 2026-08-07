@@ -207,6 +207,8 @@ df -h /var
 # Check the root filesystem too
 df -h /
 # Expected: At least 30GB free (50GB for the offline install path)
+# If /var is not a separate mount, both commands report the same filesystem —
+# size the root volume to the /var figure, not the sum of the two.
 ```
 
 ---
@@ -263,7 +265,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Hardware Specifications:**
 - **CPU:** 32 cores / 64 threads
 - **RAM:** 128-256GB system RAM
-- **Storage:** 1.2-2TB NVMe SSD (the 1.1TB default-OSD floor applies; 400GB is enough with the `80G` override)
+- **Storage:** 1.2-2TB NVMe SSD (the 1.1TB default-OSD floor applies). The `80G` override drops the *install* floor to 400GB, but size well above that for a Tier 2 model library — see Model Storage in [Capacity Planning](#capacity-planning)
 - **GPU:** 1-4 GPUs with 40GB+ VRAM each
   - 1-4x NVIDIA B200 (192GB HBM3e)
   - 1-4x NVIDIA H200 (141GB HBM3e)
