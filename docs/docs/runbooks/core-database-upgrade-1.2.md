@@ -24,7 +24,7 @@ failure bundle.
 | Installer and evidence capture | Customer operator | The installer exits zero and `core-db-init` succeeds. |
 | Failed-upgrade diagnosis | Kamiwaza Support | Support identifies the failed attempt and approves a retry or recovery action. |
 | Restore/cutover decision | Kamiwaza Support and customer change owner | A support-reviewed recovery plan is approved. |
-| Release qualification (M1-20 appendix) | Kamiwaza Engineering/Release | The exact 1.0.0-to-1.2.0 run passes and the signed evidence is retained. |
+| [Release qualification (M1-20)](#run-m1-20-release-qualification) | Kamiwaza Engineering/Release | The exact 1.0.0-to-1.2.0 run passes and the signed evidence is retained. |
 
 Stop immediately if any prerequisite, backup validation, installer, schema
 check, or smoke test fails. Preserve the active database and all evidence. A
@@ -73,7 +73,7 @@ export COLLECTOR_DIR="${PWD}/${LOCAL_RUN_LABEL}-collector"
 export PRIVATE_DIR="${PWD}/${LOCAL_RUN_LABEL}-private"
 export NAMESPACE="kamiwaza"
 export RELEASE="kamiwaza"
-export DOMAIN="<existing-production-domain>"
+: "${DOMAIN:?export the existing production domain}"
 : "${ADMIN_PASSWORD:?export ADMIN_PASSWORD from the approved secret source}"
 
 mkdir -p "${PRIVATE_DIR}/backup" "${PRIVATE_DIR}/installer"
@@ -90,9 +90,10 @@ chmod 700 "${EVIDENCE_DIR}" "${PRIVATE_DIR}"
 ```
 
 Record the maintenance ticket, operator, UTC start time, source and target,
-candidate commit, and the online/offline mode in a local change record. The M1
-harness's exact `metadata.json` schema is shown in
-[M1-20 qualification bundle](#m1-20-qualification-bundle).
+candidate commit, and the online/offline mode in a local change record. Before
+sharing evidence, write those values to `${EVIDENCE_DIR}/metadata.json` using
+the applicable schema in [Customer support bundle](#customer-support-bundle)
+or [M1-20 qualification bundle](#m1-20-qualification-bundle).
 
 ## 2. Verify the 1.0.0 baseline
 
@@ -182,6 +183,8 @@ Then run the verified candidate once. The subshell preserves the caller's
 existing `errexit` setting while still capturing a failed installer:
 
 ```bash
+: "${KEYGEN_LICENSE_KEY:?export KEYGEN_LICENSE_KEY from the approved license source}"
+
 (
   set +e
   KEYGEN_LICENSE_KEY="${KEYGEN_LICENSE_KEY}" \
@@ -257,13 +260,13 @@ storage, GPU, and Helm override inputs. Then run the upgraded installer once:
 INSTALL_RC=$(cat "${EVIDENCE_DIR}/installer/exit-status.txt")
 ```
 
-For an online upgrade, review and redact the captured
-`${PRIVATE_DIR}/installer/console.log`; the installer guide's source log is
-`kamiwaza-online-install.log` in its invocation directory, not a `/var/log`
-file. For an offline upgrade, review and redact
-`/var/log/kamiwaza_install_prod.log`. Copy the reviewed result to the
-validator-compatible evidence name `installer/postinst-debug.log`. Keep each
-raw source log private.
+For an online upgrade, review both the captured
+`${PRIVATE_DIR}/installer/console.log` and the installer's Linux default log,
+`/var/log/kamiwaza_install_online.log` (or the path selected with
+`KAMIWAZA_ONLINE_INSTALL_LOG`). For an offline upgrade, review the captured
+console and `/var/log/kamiwaza_install_prod.log`. Redact credentials and copy
+the diagnostic content needed for Support to the validator-compatible evidence
+name `installer/postinst-debug.log`. Keep every raw source log private.
 
 Whether the installer succeeds or fails, continue immediately with
 [Collect upgrade diagnostics](#collect-upgrade-diagnostics). If `INSTALL_RC`
@@ -283,7 +286,7 @@ kubectl get pods -n "${NAMESPACE}" \
   --sort-by=.metadata.creationTimestamp -o wide
 ```
 
-Do not delete the Job or pods. Failed pods are retained for
+Do not delete the Job or pods. The completed Job and its pods are retained for
 `core.scheduler.dbInit.ttlSecondsAfterFinished` (3600 seconds by default) and
 are removed before the next hook creation, so collect evidence promptly.
 
@@ -299,10 +302,13 @@ db-init, and Helm outputs even when the upgrade succeeds:
 
 # The collector deliberately requires a new or empty, non-symlink target.
 # Stop if any recorded command failed; the manifest itself remains private.
-awk '
+if ! awk '
   /^command=/ && $0 !~ / status=0$/ { print; failed = 1 }
   END { exit failed }
-' "${COLLECTOR_DIR}/manifest.txt"
+' "${COLLECTOR_DIR}/manifest.txt"; then
+  echo "stop: the diagnostics collector recorded a failed command" >&2
+  exit 1
+fi
 
 # Merge only the allowlisted directories into the final bundle.
 cp -a "${COLLECTOR_DIR}/cluster/." "${EVIDENCE_DIR}/cluster/"
@@ -422,7 +428,9 @@ has passed release qualification and Support explicitly approves it.
 
 Customer operators stop here and preserve the verified backup. Any restore,
 old-binary compatibility test, or production cutover requires a Support-owned
-recovery plan; it is not a routine continuation of a failed upgrade.
+recovery plan; it is not a routine continuation of a failed upgrade. Skip the
+Engineering-only rehearsal below and prepare the
+[Customer support bundle](#customer-support-bundle).
 
 For release qualification only, Engineering runs the following diagnostic
 rehearsal in the disposable M1 environment. It restores the dump into a newly
@@ -469,12 +477,85 @@ using these exact fields:
 
 ## Customer support bundle
 
-The customer/operator bundle contains the files produced by the applicable
-steps above. Preserve the private backup and raw logs locally, remove empty or
-unexpected shareable files, scan the bundle as shown below, and share it only
-through the approved Support channel. A customer bundle is diagnostic input;
-it is not the signed M1-20 release-qualification artifact and does not require
-`KAMIWAZA_M1_RUN_ID`, an old-binary rehearsal, or M1 CI URLs.
+The customer/operator bundle may contain only the following paths. Include the
+nonempty files produced by the applicable steps; on a failed upgrade, tell
+Support which later files could not be produced rather than inventing them.
+The dump, checksum file, raw installer logs, environment dumps, Kubernetes
+Secrets, and ConfigMaps remain private.
+
+```text
+metadata.json
+backup/manifest.json
+installer/exit-status.txt
+installer/postinst-debug.log
+cluster/state.txt
+cluster/events.txt
+db-init/attempts.json
+db-init/job-describe.txt
+db-init/pod-describe.txt
+db-init/all-attempts.log
+helm/status.txt
+helm/history.txt
+schema/status.json
+schema/marker.tsv
+schema/revision.tsv
+smoke/results.json
+```
+
+Write `${EVIDENCE_DIR}/metadata.json` with these fields for Support:
+
+```json
+{
+  "schema_version": 1,
+  "run_id": "core-db-1.0.0-to-1.2.0-20260807T001500Z",
+  "candidate_sha": "full-git-commit-sha",
+  "source_product_version": "1.0.0",
+  "target_product_version": "1.2.0",
+  "installation_mode": "online-or-offline",
+  "operator": "named-operator",
+  "maintenance_ticket": "customer-change-id",
+  "cluster_context": "exact-kube-context",
+  "namespace": "kamiwaza",
+  "installed_release_version": "1.0.0",
+  "installed_chart_version": "exact-installed-chart-version",
+  "installed_core_image": "immutable-image-reference-or-digest",
+  "intended_artifact": "exact-1.2.0-artifact-name-or-digest",
+  "started_at": "RFC3339 UTC timestamp",
+  "finished_at": "RFC3339 UTC timestamp",
+  "runbook_id": "core-database-upgrade-1.2",
+  "runbook_url": "published immutable or versioned URL"
+}
+```
+
+Before sharing, remove paths outside the list above and scan every text file.
+The following scan reports only the file path and line number, never the
+matching value:
+
+```bash
+secret_locations=0
+while IFS= read -r -d '' file; do
+  if ! awk '
+    BEGIN { IGNORECASE = 1; found = 0 }
+    /:\/\/[^\/[:space:]@:]+:[^@\/[:space:]]+@/ ||
+    /-----BEGIN .*PRIVATE KEY-----/ ||
+    /authorization:[[:space:]]*bearer/ ||
+    /kind:[[:space:]]*Secret/ {
+      print FILENAME ":" FNR
+      found = 1
+    }
+    END { exit found }
+  ' "${file}"; then
+    secret_locations=1
+  fi
+done < <(find "${EVIDENCE_DIR}" -type f -print0)
+test "${secret_locations}" -eq 0
+```
+
+Also perform a manual review for site-specific credentials, tokens, customer
+data, and private hostnames. Share only through the approved Support channel.
+A customer bundle is diagnostic input; it is not the signed M1-20
+release-qualification artifact and does not require `KAMIWAZA_M1_RUN_ID`, an
+old-binary rehearsal, or M1 CI URLs.
 
 ## M1-20 qualification bundle
 
@@ -534,31 +615,9 @@ For M1 qualification, `metadata.json` must include:
 }
 ```
 
-Before sharing, remove unexpected files and scan every text file. The following
-scan reports only the file path and line number, never the matching value:
-
-```bash
-secret_locations=0
-while IFS= read -r -d '' file; do
-  if ! awk '
-    BEGIN { IGNORECASE = 1; found = 0 }
-    /:\/\/[^\/[:space:]@:]+:[^@\/[:space:]]+@/ ||
-    /-----BEGIN .*PRIVATE KEY-----/ ||
-    /authorization:[[:space:]]*bearer/ ||
-    /kind:[[:space:]]*Secret/ {
-      print FILENAME ":" FNR
-      found = 1
-    }
-    END { exit found }
-  ' "${file}"; then
-    secret_locations=1
-  fi
-done < <(find "${EVIDENCE_DIR}" -type f -print0)
-test "${secret_locations}" -eq 0
-```
-
-Also perform a manual review for site-specific credentials, tokens, customer
-data, and private hostnames. Share only through the approved Support channel.
+Before publishing M1 evidence, enforce the exact file list above, then run the
+same secret scan and manual review documented in
+[Customer support bundle](#customer-support-bundle).
 
 ## Run M1-20 release qualification
 
