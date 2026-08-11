@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Kamiwaza REST API",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "servers": [
     {
@@ -815,6 +815,134 @@
         "x-auth-role": "authenticated"
       }
     },
+    "/auth/users/me/password-capability": {
+      "get": {
+        "tags": [
+          "auth",
+          "auth-users"
+        ],
+        "summary": "Get Password Change Capability",
+        "operationId": "get_password_change_capability_auth_users_me_password_capability_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordChangeCapabilityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2Login": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/auth/users/me/password": {
+      "post": {
+        "tags": [
+          "auth",
+          "auth-users"
+        ],
+        "summary": "Change My Password",
+        "operationId": "change_my_password_auth_users_me_password_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalUserPasswordChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordChangeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2Login": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-auth-role": "authenticated"
+      }
+    },
     "/auth/users/{user_id}": {
       "get": {
         "tags": [
@@ -1150,75 +1278,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LocalUserResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OAuth2Login": []
-          },
-          {
-            "BearerAuth": []
-          }
-        ],
-        "x-auth-role": "authenticated"
-      }
-    },
-    "/auth/users/me/password": {
-      "post": {
-        "tags": [
-          "auth",
-          "auth-users"
-        ],
-        "summary": "Change My Password",
-        "operationId": "change_my_password_auth_users_me_password_post",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LocalUserPasswordChangeRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PasswordChangeResponse"
                 }
               }
             }
@@ -3684,15 +3743,33 @@
         ],
         "summary": "Check Access",
         "operationId": "check_access_auth_check_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CheckRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -5508,7 +5585,7 @@
           "models"
         ],
         "summary": "Delete Model File",
-        "description": "Delete a model file.\n\nAuthorization is handled at the service layer via @guarded decorator with\nan id_resolver that maps model_file_id -> model_id.",
+        "description": "Delete a model file.\n\nAuthorization is handled at the service layer by resolving the parent\nmodel and requiring model manage permission.",
         "operationId": "delete_model_file_model_files__model_file_id__delete",
         "security": [
           {
@@ -8945,6 +9022,499 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/catalog/datasets/v2/{dataset_urn}/objects": {
+      "post": {
+        "tags": [
+          "catalog",
+          "catalog",
+          "datasets"
+        ],
+        "summary": "Create Dataset Object V2",
+        "description": "Upload one object into a writable dataset (multipart, streaming).\n\nPlain POST never replaces: an existing live logical path returns 409\neven for identical bytes. Replacement is PUT with If-Match only.",
+        "operationId": "create_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects_post",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_urn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Urn"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetContentItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "get": {
+        "tags": [
+          "catalog",
+          "catalog",
+          "datasets"
+        ],
+        "summary": "List Dataset Objects V2",
+        "description": "List the content manifest of a writable dataset (live by default).",
+        "operationId": "list_dataset_objects_v2_catalog_datasets_v2__dataset_urn__objects_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_urn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Urn"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "live",
+                "tombstoned",
+                "all"
+              ],
+              "type": "string",
+              "description": "Manifest states to list (live by default)",
+              "default": "live",
+              "title": "State"
+            },
+            "description": "Manifest states to list (live by default)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DatasetContentItemResponse"
+                  },
+                  "title": "Response List Dataset Objects V2 Catalog Datasets V2  Dataset Urn  Objects Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/catalog/datasets/v2/{dataset_urn}/objects/{item_id}": {
+      "get": {
+        "tags": [
+          "catalog",
+          "catalog",
+          "datasets"
+        ],
+        "summary": "Get Dataset Object V2",
+        "description": "Manifest metadata for one object (tombstoned rows stay visible).",
+        "operationId": "get_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects__item_id__get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_urn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Urn"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetContentItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "put": {
+        "tags": [
+          "catalog",
+          "catalog",
+          "datasets"
+        ],
+        "summary": "Replace Dataset Object V2",
+        "description": "Optimistically replace one live object (If-Match REQUIRED; 412 on\nabsence or mismatch, 400 on malformed entity-tag syntax). If-Match takes\nRFC 9110 form: ``*`` or quoted entity-tags, lists allowed. Identical\nbytes are a no-op returning current state.",
+        "operationId": "replace_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects__item_id__put",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_urn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Urn"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "if-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_replace_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects__item_id__put"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetContentItemResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "delete": {
+        "tags": [
+          "catalog",
+          "catalog",
+          "datasets"
+        ],
+        "summary": "Tombstone Dataset Object V2",
+        "description": "Tombstone one live object (If-Match REQUIRED, in RFC 9110 entity-tag\nform; bytes are never deleted here — purge happens after retention or an\naudited admin force-purge).",
+        "operationId": "tombstone_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects__item_id__delete",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_urn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Urn"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "if-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetContentTombstoneResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/catalog/datasets/v2/{dataset_urn}/objects/{item_id}/content": {
+      "get": {
+        "tags": [
+          "catalog",
+          "catalog",
+          "datasets"
+        ],
+        "summary": "Get Dataset Object Content V2",
+        "description": "Stream one live object's bytes with its content type and ETag.",
+        "operationId": "get_dataset_object_content_v2_catalog_datasets_v2__dataset_urn__objects__item_id__content_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_urn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Urn"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/catalog/datasets/v2/{dataset_urn}/objects/{item_id}/purge": {
+      "post": {
+        "tags": [
+          "catalog",
+          "catalog",
+          "datasets"
+        ],
+        "summary": "Purge Dataset Object V2",
+        "description": "Force purge eligibility for one tombstoned object (verified admin only).\n\nStamps ``forced_by`` on the purge ledger and emits an audit record; the\nbytes are removed through the same idempotent reconciliation sweep the\nbackground purger uses.",
+        "operationId": "purge_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects__item_id__purge_post",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_urn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Urn"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetContentPurgeResponse"
+                }
               }
             }
           },
@@ -13316,6 +13886,155 @@
         "x-auth-role": "admin"
       }
     },
+    "/cluster/federations/preflight": {
+      "post": {
+        "tags": [
+          "cluster"
+        ],
+        "summary": "Preflight Federation",
+        "description": "ENG-8447: pre-flight a remote endpoint BEFORE creating the federation.\n\nProbes DNS → TCP → TLS → L7 against the supplied remote_ips and returns a\nper-layer pass/fail table, so the wizard can validate reachability before\ncommitting to a pair. Run on each cluster to validate both directions.\n\nSSRF note: this (like /resolve-address and /{id}/diagnose) opens outbound\nconnections to caller-supplied addresses. It is intentionally gated behind\nNativeRealmRequired + AdminUser — the same admins can already create\noutbound-connecting federations — and returns only a per-layer reachability\nverdict, never the peer's response body.",
+        "operationId": "preflight_federation_cluster_federations_preflight_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FederationPreflightRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "admin"
+      }
+    },
+    "/cluster/federations/resolve-address": {
+      "post": {
+        "tags": [
+          "cluster"
+        ],
+        "summary": "Resolve Federation Address",
+        "description": "ENG-8447: derive the complement of a remote address for the wizard.\n\nAn FQDN resolves to an IP (DNS); an IP derives an FQDN from the peer's TLS\ncert SAN. Best-effort — returns {input, ip, fqdn, source, error}.",
+        "operationId": "resolve_federation_address_cluster_federations_resolve_address_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FederationResolveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "admin"
+      }
+    },
+    "/cluster/federations/{federation_id}/diagnose": {
+      "post": {
+        "tags": [
+          "cluster"
+        ],
+        "summary": "Diagnose Federation",
+        "description": "ENG-8447: pre-flight a federation's remote endpoint before/after pairing.\n\nProbes DNS → TCP → TLS → L7 the way the pair flow connects and returns a\nper-layer pass/fail table with the same reason codes as the structured\npairing errors. Run on each cluster to validate both directions.",
+        "operationId": "diagnose_federation_cluster_federations__federation_id__diagnose_post",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "federation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Federation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      }
+    },
     "/cluster/federations/{federation_id}/disconnect": {
       "post": {
         "tags": [
@@ -14163,13 +14882,225 @@
         "x-auth-role": "admin"
       }
     },
+    "/authz/subjects/by-id": {
+      "put": {
+        "tags": [
+          "authz-subjects"
+        ],
+        "summary": "Upsert Subject By Id",
+        "operationId": "upsert_subject_by_id",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact Keycloak UUID or opaque User Storage id.",
+              "title": "Id"
+            },
+            "description": "Exact Keycloak UUID or opaque User Storage id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubjectUpsertRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      },
+      "get": {
+        "tags": [
+          "authz-subjects"
+        ],
+        "summary": "Get Subject By Id",
+        "operationId": "get_subject_by_id",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact Keycloak UUID or opaque User Storage id.",
+              "title": "Id"
+            },
+            "description": "Exact Keycloak UUID or opaque User Storage id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      },
+      "delete": {
+        "tags": [
+          "authz-subjects"
+        ],
+        "summary": "Delete Subject By Id",
+        "operationId": "delete_subject_by_id",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact Keycloak UUID or opaque User Storage id.",
+              "title": "Id"
+            },
+            "description": "Exact Keycloak UUID or opaque User Storage id."
+          },
+          {
+            "name": "cascade",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Set to ``grants`` to cascade-remove the subject's ReBAC relations (ENG-4937). Omit to keep grants in place.",
+              "title": "Cascade"
+            },
+            "description": "Set to ``grants`` to cascade-remove the subject's ReBAC relations (ENG-4937). Omit to keep grants in place."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Subject By Id"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      }
+    },
     "/authz/subjects/{id_or_username}": {
       "put": {
         "tags": [
           "authz-subjects"
         ],
         "summary": "Upsert Subject",
-        "description": "T3.5: idempotent upsert at ``PUT /api/authz/subjects/{id_or_username}``.\n\nAuth (M3 Proactive Security Checklist §4.4.3.1):\n  - AdminUser: Keycloak admin role required (subject management is\n    an admin function — subjects ARE the principals ReBAC names,\n    so ReBAC ownership doesn't recurse here).\n  - NativeRealmRequired: mesh-origin rejected. Brokered mesh\n    viewers must not provision subjects on the receiver.",
+        "description": "T3.5: idempotent subject upsert by exact username or safe path id.",
         "operationId": "upsert_subject_authz_subjects__id_or_username__put",
         "security": [
           {
@@ -14229,7 +15160,7 @@
           "authz-subjects"
         ],
         "summary": "Get Subject",
-        "description": "T3.5: read the Subject by KC UUID or username.\n\nAuth: AdminUser (admin-only in M3). Self-read (a non-admin reading\ntheir own subject) is a separate use case — wires in M3.1+ when\nan end-user surface needs it; the M3 demo author runs setup.py as\nadmin and never hits self-read.",
+        "description": "T3.5: read a Subject by exact username or safe path id.",
         "operationId": "get_subject_authz_subjects__id_or_username__get",
         "security": [
           {
@@ -14279,7 +15210,7 @@
           "authz-subjects"
         ],
         "summary": "Delete Subject",
-        "description": "T3.5: delete the Subject by KC UUID or username.\n\nAuth: AdminUser + NativeRealmRequired.\n\n``?cascade=grants`` forwards ``cascade_grants=True`` to the service\nso the subject's ReBAC tuples are removed BEFORE the KC user delete\nfires (ENG-4937). Any other cascade value is rejected to keep the\nAPI surface tight.",
+        "description": "T3.5: delete a Subject, optionally cascading its grants.",
         "operationId": "delete_subject_authz_subjects__id_or_username__delete",
         "security": [
           {
@@ -14345,13 +15276,221 @@
         "x-auth-role": "admin"
       }
     },
+    "/authz/subjects/by-id/grants": {
+      "post": {
+        "tags": [
+          "authz-subjects"
+        ],
+        "summary": "Create Grant By Id",
+        "operationId": "create_subject_grant_by_id",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact Keycloak UUID or opaque User Storage id.",
+              "title": "Id"
+            },
+            "description": "Exact Keycloak UUID or opaque User Storage id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_GrantBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Grant"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      },
+      "get": {
+        "tags": [
+          "authz-subjects"
+        ],
+        "summary": "List Grants By Id",
+        "operationId": "list_subject_grants_by_id",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact Keycloak UUID or opaque User Storage id.",
+              "title": "Id"
+            },
+            "description": "Exact Keycloak UUID or opaque User Storage id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Grant"
+                  },
+                  "title": "Response List Subject Grants By Id"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      },
+      "delete": {
+        "tags": [
+          "authz-subjects"
+        ],
+        "summary": "Delete Grant By Id",
+        "operationId": "delete_subject_grant_by_id",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact Keycloak UUID or opaque User Storage id.",
+              "title": "Id"
+            },
+            "description": "Exact Keycloak UUID or opaque User Storage id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_GrantBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Subject Grant By Id"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      }
+    },
     "/authz/subjects/{id_or_username}/grants": {
       "post": {
         "tags": [
           "authz-subjects"
         ],
         "summary": "Create Grant",
-        "description": "T3.6: bind a ReBAC tuple ``(subject, object, relation)``.\n\nSubject namespace is fixed at ``user`` (corpuser equivalent); the\ncaller-supplied ``object_namespace`` / ``object_id`` / ``relation``\nname the target side and the verb. Delegates to relationship_store.",
+        "description": "T3.6: bind a ReBAC tuple to a subject resolved from the path.",
         "operationId": "create_grant_authz_subjects__id_or_username__grants_post",
         "security": [
           {
@@ -14465,7 +15604,7 @@
           "authz-subjects"
         ],
         "summary": "Delete Grant",
-        "description": "T3.6: remove a ReBAC tuple ``(subject, object, relation)``.\n\nTuple-key body (not path) because relation values can contain\ncharacters that don't path-encode cleanly. Same shape as POST.",
+        "description": "T3.6: remove a ReBAC tuple from a subject resolved from the path.",
         "operationId": "delete_grant_authz_subjects__id_or_username__grants_delete",
         "security": [
           {
@@ -14520,6 +15659,1081 @@
             }
           }
         },
+        "x-auth-role": "admin"
+      }
+    },
+    "/authz/groups/": {
+      "get": {
+        "tags": [
+          "authz-groups"
+        ],
+        "summary": "List Groups",
+        "operationId": "list_groups_authz_groups__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GroupResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Groups Authz Groups  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "admin"
+      },
+      "post": {
+        "tags": [
+          "authz-groups"
+        ],
+        "summary": "Create Group",
+        "operationId": "create_group_authz_groups__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "admin"
+      }
+    },
+    "/authz/groups/{group_id}": {
+      "get": {
+        "tags": [
+          "authz-groups"
+        ],
+        "summary": "Get Group",
+        "operationId": "get_group_authz_groups__group_id__get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      },
+      "delete": {
+        "tags": [
+          "authz-groups"
+        ],
+        "summary": "Delete Group",
+        "operationId": "delete_group_authz_groups__group_id__delete",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Group Id"
+            }
+          },
+          {
+            "name": "cascade",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cascade"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      }
+    },
+    "/authz/groups/{group_id}/members": {
+      "post": {
+        "tags": [
+          "authz-groups"
+        ],
+        "summary": "Add Group Member",
+        "operationId": "add_group_member_authz_groups__group_id__members_post",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      },
+      "get": {
+        "tags": [
+          "authz-groups"
+        ],
+        "summary": "List Group Members",
+        "operationId": "list_group_members_authz_groups__group_id__members_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMembersResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      }
+    },
+    "/authz/groups/{group_id}/members/{user_id}": {
+      "delete": {
+        "tags": [
+          "authz-groups"
+        ],
+        "summary": "Remove Group Member",
+        "operationId": "remove_group_member_authz_groups__group_id__members__user_id__delete",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Group Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      }
+    },
+    "/authz/group-mappings": {
+      "post": {
+        "tags": [
+          "authz-group-mappings"
+        ],
+        "summary": "Create Group Mapping",
+        "operationId": "create_group_mapping_authz_group_mappings_post",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupMappingCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMappingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      },
+      "get": {
+        "tags": [
+          "authz-group-mappings"
+        ],
+        "summary": "List Group Mappings",
+        "operationId": "list_group_mappings_authz_group_mappings_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "issuer",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Issuer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupMappingResponse"
+                  },
+                  "title": "Response List Group Mappings Authz Group Mappings Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      }
+    },
+    "/authz/group-mappings/{mapping_id}": {
+      "get": {
+        "tags": [
+          "authz-group-mappings"
+        ],
+        "summary": "Get Group Mapping",
+        "operationId": "get_group_mapping_authz_group_mappings__mapping_id__get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mapping_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Mapping Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMappingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      },
+      "delete": {
+        "tags": [
+          "authz-group-mappings"
+        ],
+        "summary": "Delete Group Mapping",
+        "operationId": "delete_group_mapping_authz_group_mappings__mapping_id__delete",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mapping_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Mapping Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin"
+      }
+    },
+    "/authz/resources/{namespace}/grants": {
+      "post": {
+        "tags": [
+          "authz-grants"
+        ],
+        "summary": "Create Resource Grant",
+        "operationId": "create_resource_grant_authz_resources__namespace__grants_post",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Namespace"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantMutationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "get": {
+        "tags": [
+          "authz-grants"
+        ],
+        "summary": "List Resource Grants",
+        "operationId": "list_resource_grants_authz_resources__namespace__grants_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Namespace"
+            }
+          },
+          {
+            "name": "object_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "title": "Object Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrantListItem"
+                  },
+                  "title": "Response List Resource Grants Authz Resources  Namespace  Grants Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "delete": {
+        "tags": [
+          "authz-grants"
+        ],
+        "summary": "Delete Resource Grant",
+        "operationId": "delete_resource_grant_authz_resources__namespace__grants_delete",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Namespace"
+            }
+          },
+          {
+            "name": "object_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "title": "Object Id"
+            }
+          },
+          {
+            "name": "subject_namespace",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "title": "Subject Namespace"
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "title": "Subject Id"
+            }
+          },
+          {
+            "name": "relation",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "title": "Relation"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantMutationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/authz/resources/{namespace}/grant-capability": {
+      "get": {
+        "tags": [
+          "authz-grants"
+        ],
+        "summary": "Get Resource Grant Capability",
+        "operationId": "get_resource_grant_capability_authz_resources__namespace__grant_capability_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Namespace"
+            }
+          },
+          {
+            "name": "object_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "title": "Object Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantCapabilityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/authz/resources/{namespace}/access": {
+      "get": {
+        "tags": [
+          "authz-grants"
+        ],
+        "summary": "Who Can Access Resource",
+        "operationId": "who_can_access_resource_authz_resources__namespace__access_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Namespace"
+            }
+          },
+          {
+            "name": "object_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "title": "Object Id"
+            }
+          },
+          {
+            "name": "permission",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "can_view",
+              "title": "Permission"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhoCanAccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/authz/access/resources": {
+      "get": {
+        "tags": [
+          "authz-grants"
+        ],
+        "summary": "Access Resources For Subject",
+        "operationId": "access_resources_for_subject_authz_access_resources_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Namespace"
+            }
+          },
+          {
+            "name": "permission",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "can_view",
+              "title": "Permission"
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessibleResourcesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/authz/policy": {
+      "get": {
+        "tags": [
+          "authz-policy"
+        ],
+        "summary": "Get Authorization Policy",
+        "operationId": "get_authorization_policy_authz_policy_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Authorization Policy Authz Policy Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
         "x-auth-role": "admin"
       }
     },
@@ -14963,298 +17177,13 @@
       }
     },
     "/mesh/{cluster_selector}/{path}": {
-      "patch": {
-        "tags": [
-          "mesh",
-          "mesh"
-        ],
-        "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__patch_patch",
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "OAuth2Login": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cluster_selector",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cluster Selector"
-            }
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Path"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "x-auth-role": "authenticated"
-      },
-      "delete": {
-        "tags": [
-          "mesh",
-          "mesh"
-        ],
-        "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__patch_delete",
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "OAuth2Login": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cluster_selector",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cluster Selector"
-            }
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Path"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "x-auth-role": "authenticated"
-      },
-      "options": {
-        "tags": [
-          "mesh",
-          "mesh"
-        ],
-        "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__patch_options",
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "OAuth2Login": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cluster_selector",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cluster Selector"
-            }
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Path"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "x-auth-role": "authenticated"
-      },
       "get": {
         "tags": [
           "mesh",
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__patch_get",
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "OAuth2Login": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cluster_selector",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cluster Selector"
-            }
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Path"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "x-auth-role": "authenticated"
-      },
-      "put": {
-        "tags": [
-          "mesh",
-          "mesh"
-        ],
-        "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__patch_put",
-        "security": [
-          {
-            "BearerAuth": []
-          },
-          {
-            "OAuth2Login": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "cluster_selector",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Cluster Selector"
-            }
-          },
-          {
-            "name": "path",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Path"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "x-auth-role": "authenticated"
-      },
-      "post": {
-        "tags": [
-          "mesh",
-          "mesh"
-        ],
-        "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__patch_post",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__get_get",
         "security": [
           {
             "BearerAuth": []
@@ -15311,7 +17240,292 @@
           "mesh"
         ],
         "summary": "Proxy Mesh",
-        "operationId": "proxy_mesh_mesh__cluster_selector___path__patch_head",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__get_head",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cluster_selector",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cluster Selector"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "delete": {
+        "tags": [
+          "mesh",
+          "mesh"
+        ],
+        "summary": "Proxy Mesh",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__get_delete",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cluster_selector",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cluster Selector"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "put": {
+        "tags": [
+          "mesh",
+          "mesh"
+        ],
+        "summary": "Proxy Mesh",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__get_put",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cluster_selector",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cluster Selector"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "options": {
+        "tags": [
+          "mesh",
+          "mesh"
+        ],
+        "summary": "Proxy Mesh",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__get_options",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cluster_selector",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cluster Selector"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "patch": {
+        "tags": [
+          "mesh",
+          "mesh"
+        ],
+        "summary": "Proxy Mesh",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__get_patch",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cluster_selector",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cluster Selector"
+            }
+          },
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "post": {
+        "tags": [
+          "mesh",
+          "mesh"
+        ],
+        "summary": "Proxy Mesh",
+        "operationId": "proxy_mesh_mesh__cluster_selector___path__get_post",
         "security": [
           {
             "BearerAuth": []
@@ -18323,12 +20537,25 @@
               }
             }
           },
+          "404": {
+            "description": "The collection or explicitly targeted VectorDB does not exist in the workroom."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``vectordb_instance_not_found``. Retry per the ``Retry-After`` header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceUnavailable503Detail"
                 }
               }
             }
@@ -19512,6 +21739,9 @@
               }
             }
           },
+          "404": {
+            "description": "A caller-named collection or explicitly targeted VectorDB could not be resolved in the workroom."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -19523,7 +21753,7 @@
             }
           },
           "503": {
-            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``embedding_deploying``, ``embedding_unavailable``, ``embedding_service_error``. Retry per the ``Retry-After`` header.",
+            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``embedding_deploying``, ``embedding_unavailable``, ``embedding_runtime_unreachable``, ``embedding_service_error``, ``vectordb_instance_not_found``. Retry per the ``Retry-After`` header.",
             "content": {
               "application/json": {
                 "schema": {
@@ -19594,6 +21824,9 @@
               }
             }
           },
+          "404": {
+            "description": "A caller-named collection or explicitly targeted VectorDB could not be resolved in the workroom."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -19605,7 +21838,7 @@
             }
           },
           "503": {
-            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``embedding_deploying``, ``embedding_unavailable``, ``embedding_service_error``. Retry per the ``Retry-After`` header.",
+            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``embedding_deploying``, ``embedding_unavailable``, ``embedding_runtime_unreachable``, ``embedding_service_error``, ``vectordb_instance_not_found``. Retry per the ``Retry-After`` header.",
             "content": {
               "application/json": {
                 "schema": {
@@ -19677,6 +21910,9 @@
               }
             }
           },
+          "404": {
+            "description": "A caller-named collection or explicitly targeted VectorDB could not be resolved in the workroom."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -19688,7 +21924,7 @@
             }
           },
           "503": {
-            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``embedding_deploying``, ``embedding_unavailable``, ``embedding_service_error``. Retry per the ``Retry-After`` header.",
+            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``embedding_deploying``, ``embedding_unavailable``, ``embedding_runtime_unreachable``, ``embedding_service_error``, ``vectordb_instance_not_found``. Retry per the ``Retry-After`` header.",
             "content": {
               "application/json": {
                 "schema": {
@@ -19760,6 +21996,9 @@
               }
             }
           },
+          "404": {
+            "description": "A caller-named collection or explicitly targeted VectorDB could not be resolved in the workroom."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -19771,7 +22010,7 @@
             }
           },
           "503": {
-            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``embedding_deploying``, ``embedding_unavailable``, ``embedding_service_error``. Retry per the ``Retry-After`` header.",
+            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``embedding_deploying``, ``embedding_unavailable``, ``embedding_runtime_unreachable``, ``embedding_service_error``, ``vectordb_instance_not_found``. Retry per the ``Retry-After`` header.",
             "content": {
               "application/json": {
                 "schema": {
@@ -19854,11 +22093,595 @@
             }
           },
           "503": {
-            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``embedding_deploying``, ``embedding_unavailable``, ``embedding_service_error``. Retry per the ``Retry-After`` header.",
+            "description": "Service temporarily unavailable. Body matches the shared ``ServiceUnavailable503Detail`` schema (``code``, ``message``, ``retry_after_seconds``); ``code`` is one of ``embedding_deploying``, ``embedding_unavailable``, ``embedding_runtime_unreachable``, ``embedding_service_error``, ``vectordb_instance_not_found``. Retry per the ``Retry-After`` header.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServiceUnavailable503Detail"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/context/dataset-indexes": {
+      "post": {
+        "tags": [
+          "context",
+          "dataset-indexes"
+        ],
+        "summary": "Create Dataset Index",
+        "description": "Create (or idempotently re-request) an index binding; build runs async.\n\nThe workroom comes from the authorized header dependency, never the body.",
+        "operationId": "create_dataset_index_context_dataset_indexes_post",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Workroom-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workroom ID for isolation",
+              "title": "X-Workroom-Id"
+            },
+            "description": "Workroom ID for isolation"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDatasetIndexRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateDatasetIndexResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "get": {
+        "tags": [
+          "context",
+          "dataset-indexes"
+        ],
+        "summary": "List Dataset Indexes",
+        "description": "List bindings in the caller's tenant+workroom, optionally per dataset.",
+        "operationId": "list_dataset_indexes_context_dataset_indexes_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_urn",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dataset Urn"
+            }
+          },
+          {
+            "name": "X-Workroom-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workroom ID for isolation",
+              "title": "X-Workroom-Id"
+            },
+            "description": "Workroom ID for isolation"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DatasetIndexBinding"
+                  },
+                  "title": "Response List Dataset Indexes Context Dataset Indexes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/context/dataset-indexes/{binding_id}": {
+      "get": {
+        "tags": [
+          "context",
+          "dataset-indexes"
+        ],
+        "summary": "Get Dataset Index",
+        "description": "Fetch one binding; out-of-scope ids collapse to 404.",
+        "operationId": "get_dataset_index_context_dataset_indexes__binding_id__get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "binding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Binding Id"
+            }
+          },
+          {
+            "name": "X-Workroom-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workroom ID for isolation",
+              "title": "X-Workroom-Id"
+            },
+            "description": "Workroom ID for isolation"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetIndexBinding"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      },
+      "delete": {
+        "tags": [
+          "context",
+          "dataset-indexes"
+        ],
+        "summary": "Delete Dataset Index",
+        "description": "Tombstone the binding now; generations are cleaned asynchronously.",
+        "operationId": "delete_dataset_index_context_dataset_indexes__binding_id__delete",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "binding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Binding Id"
+            }
+          },
+          {
+            "name": "X-Workroom-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workroom ID for isolation",
+              "title": "X-Workroom-Id"
+            },
+            "description": "Workroom ID for isolation"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Dataset Index Context Dataset Indexes  Binding Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/context/dataset-index-jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "context",
+          "dataset-indexes"
+        ],
+        "summary": "Get Dataset Index Job",
+        "description": "Job (generation) diagnostics, scope-checked via its binding.",
+        "operationId": "get_dataset_index_job_context_dataset_index_jobs__job_id__get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "X-Workroom-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workroom ID for isolation",
+              "title": "X-Workroom-Id"
+            },
+            "description": "Workroom ID for isolation"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetIndexJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/context/dataset-indexes/{binding_id}/retry": {
+      "post": {
+        "tags": [
+          "context",
+          "dataset-indexes"
+        ],
+        "summary": "Retry Dataset Index",
+        "description": "Re-drive the latest incomplete generation (or unfinished cleanup).",
+        "operationId": "retry_dataset_index_context_dataset_indexes__binding_id__retry_post",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "binding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Binding Id"
+            }
+          },
+          {
+            "name": "X-Workroom-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workroom ID for isolation",
+              "title": "X-Workroom-Id"
+            },
+            "description": "Workroom ID for isolation"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateDatasetIndexResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/context/dataset-indexes/{binding_id}/search": {
+      "post": {
+        "tags": [
+          "context",
+          "dataset-indexes"
+        ],
+        "summary": "Search Dataset Index",
+        "description": "Search only the binding's ACTIVE generation.\n\nCollection/group/generation names are resolved server-side from the\nactive generation; identifiers in the request body are ignored.",
+        "operationId": "search_dataset_index_context_dataset_indexes__binding_id__search_post",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "binding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Binding Id"
+            }
+          },
+          {
+            "name": "X-Workroom-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workroom ID for isolation",
+              "title": "X-Workroom-Id"
+            },
+            "description": "Workroom ID for isolation"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetScopedSearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetScopedSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/context/readiness": {
+      "get": {
+        "tags": [
+          "context",
+          "dataset-indexes"
+        ],
+        "summary": "Get Context Readiness",
+        "description": "Best-effort dependency readiness for the workroom (discovery only).",
+        "operationId": "get_context_readiness_context_readiness_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Workroom-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workroom ID for isolation",
+              "title": "X-Workroom-Id"
+            },
+            "description": "Workroom ID for isolation"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextReadiness"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -25215,6 +28038,289 @@
           }
         ],
         "x-auth-role": "authenticated"
+      },
+      "post": {
+        "tags": [
+          "connectors",
+          "connectors"
+        ],
+        "summary": "Register Catalog Connector",
+        "description": "Register a connector *type* in the DB-backed catalog from its manifest (admin).\n\nParity with ``POST /apps/app_templates``: makes a connector configurable in the\nadmin Connectors page without editing the remote ``connectors.json``. Idempotent\nper ``connector_type`` (latest write wins) -- 201 when a new type is created, 200\nwhen an existing one is updated. No workload is deployed and no config is stored;\nan admin fills the config and creates the instance afterwards.",
+        "operationId": "register_catalog_connector_connectors_catalog_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorCatalogCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogConnectorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2Login": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-auth-role": "authenticated"
+      }
+    },
+    "/connectors/catalog/{connector_type}": {
+      "get": {
+        "tags": [
+          "connectors",
+          "connectors"
+        ],
+        "summary": "Get Catalog Connector",
+        "description": "Get a DB-backed catalog connector by type (admin).",
+        "operationId": "get_catalog_connector_connectors_catalog__connector_type__get",
+        "parameters": [
+          {
+            "name": "connector_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connector Type"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogConnectorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2Login": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-auth-role": "authenticated"
+      },
+      "put": {
+        "tags": [
+          "connectors",
+          "connectors"
+        ],
+        "summary": "Update Catalog Connector",
+        "description": "Update (upsert) a DB-backed catalog connector's manifest (admin).\n\nThis is upsert semantics: a PUT for a ``connector_type`` that does not yet\nexist creates it rather than returning 404 (consistent with ``POST /catalog``,\nwhich is idempotent per type). The manifest's ``connector_type`` must match the\npath.",
+        "operationId": "update_catalog_connector_connectors_catalog__connector_type__put",
+        "parameters": [
+          {
+            "name": "connector_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connector Type"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorCatalogCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogConnectorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2Login": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-auth-role": "authenticated"
+      },
+      "delete": {
+        "tags": [
+          "connectors",
+          "connectors"
+        ],
+        "summary": "Delete Catalog Connector",
+        "description": "Delete a DB-backed catalog connector by type (admin).",
+        "operationId": "delete_catalog_connector_connectors_catalog__connector_type__delete",
+        "parameters": [
+          {
+            "name": "connector_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connector Type"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Catalog Connector Connectors Catalog  Connector Type  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2Login": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-auth-role": "authenticated"
       }
     },
     "/connectors/register": {
@@ -25482,7 +28588,7 @@
           "connectors"
         ],
         "summary": "Update Connector",
-        "description": "Update a connector configuration (admin only).",
+        "description": "Update a connector configuration (admin only).\n\nPassing ``background_tasks`` lets the service schedule a redeploy + egress\nrefresh when the edit changed a non-secret setting on a deployed connector, so\nthe running pod picks up the new settings without a manual re-register.",
         "operationId": "update_connector_connectors__connector_id__put",
         "parameters": [
           {
@@ -25623,7 +28729,7 @@
           "connectors"
         ],
         "summary": "Deploy Connector Workload",
-        "description": "Run a subscribed connector as a type:connector extension (admin only).\n\nProvisions the connector's workload identity, applies its CR (no public\ningress, no external egress), and binds the workload principal so the\nmint/proxy authorization recognizes the running pod. 202: the workload is\nscheduled; the extension-operator reconciles it to running asynchronously.",
+        "description": "Run a subscribed connector as a type:connector extension (admin only).\n\nProvisions the connector's workload identity, applies its CR (no public\ningress, no external egress), and binds the workload principal so the\nmint/proxy authorization recognizes the running pod. 202: the workload is\nscheduled; the extension-operator reconciles it to running asynchronously.\n\nOnce the pod is healthy the background refresh refetches its ``/manifest`` and\nstores the egress it derives from its settings -- so this recovery/operator path\nlands the same egress allowlist as the create path, no manual re-register.",
         "operationId": "deploy_connector_workload_connectors__connector_id__deploy_post",
         "parameters": [
           {
@@ -31815,6 +34921,113 @@
   },
   "components": {
     "schemas": {
+      "AccessSubjectRow": {
+        "properties": {
+          "subject": {
+            "$ref": "#/components/schemas/GrantSubject"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "relation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relation"
+          },
+          "permission": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permission"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "effective": {
+            "type": "boolean",
+            "title": "Effective"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject",
+          "source",
+          "effective"
+        ],
+        "title": "AccessSubjectRow"
+      },
+      "AccessibleResourcesResponse": {
+        "properties": {
+          "effective": {
+            "type": "boolean",
+            "title": "Effective"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "permission": {
+            "type": "string",
+            "title": "Permission"
+          },
+          "subject_id": {
+            "type": "string",
+            "title": "Subject Id"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "resource_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Resource Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "effective",
+          "source",
+          "namespace",
+          "permission",
+          "subject_id",
+          "limit",
+          "offset",
+          "resource_ids"
+        ],
+        "title": "AccessibleResourcesResponse"
+      },
       "AcquireWorkroomThreadClaimRequest": {
         "properties": {
           "prompt_excerpt": {
@@ -34099,6 +37312,12 @@
             "title": "Status",
             "description": "Workload readiness (see ConnectorResponse.status); gates the UI 'Test' button.",
             "default": "unknown"
+          },
+          "user_connectable": {
+            "type": "boolean",
+            "title": "User Connectable",
+            "description": "False for shared-credential (service_token) and public (none) connectors: no per-user Connect ceremony exists, so the UI renders a status card instead of a Connect button.",
+            "default": true
           }
         },
         "type": "object",
@@ -34222,6 +37441,33 @@
         "title": "BindingUpdate",
         "description": "A single per-capability pin update.\n\nA request body presence indicates \"operator intends to change this\ncapability\". A ``deployment_id`` of ``None`` is the explicit \"clear pin\"\nsignal; ``deployment_id`` set means \"pin to this deployment\".\n\n``deployment_id`` is required-but-nullable: callers must include the\nfield explicitly so an accidental ``{\"chat\": {}}`` does not silently\nclear an operator pin (this is a destructive operation)."
       },
+      "Body_create_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "Object bytes (multipart)"
+          },
+          "logical_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logical Path",
+            "description": "Manifest path; defaults to the filename"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_create_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects_post"
+      },
       "Body_import_skill_package_skills_import_post": {
         "properties": {
           "file": {
@@ -34291,6 +37537,21 @@
           "password"
         ],
         "title": "Body_login_auth_token_post"
+      },
+      "Body_replace_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects__item_id__put": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "Replacement bytes (multipart)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_replace_dataset_object_v2_catalog_datasets_v2__dataset_urn__objects__item_id__put"
       },
       "Body_start_ray_serving_start_post": {
         "properties": {
@@ -34713,6 +37974,18 @@
             "title": "Required Env Vars",
             "description": "Required environment variables"
           },
+          "preview_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Image",
+            "description": "Template preview image URL or cached app-garden image path"
+          },
           "kamiwaza_version": {
             "anyOf": [
               {
@@ -34877,7 +38150,7 @@
           },
           "relation": {
             "type": "string",
-            "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|member|mission|mission_member|mission_owner|operator|owner|viewer)$",
+            "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|member|mission|mission_member|mission_owner|operator|owner|shared_to_workroom|viewer|writer)$",
             "title": "Relation"
           },
           "object": {
@@ -35544,6 +38817,84 @@
             "title": "Brokering Enabled",
             "description": "Whether KC IdP brokering is active for this federation",
             "default": true
+          },
+          "shared_issuer_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shared Issuer Url",
+            "description": "shared_idp trusted issuer URL (the realm the receiver trusts for federated identity)"
+          },
+          "shared_jwks_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shared Jwks Url",
+            "description": "shared_idp JWKs URL for token signature verification (derived from the issuer when absent)"
+          },
+          "shared_ca_pem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shared Ca Pem",
+            "description": "Optional CA PEM pinning the shared issuer's TLS chain (public cert material, not a secret)"
+          },
+          "require_peer_jwt": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Require Peer Jwt",
+            "description": "Per-federation strict switch: require a validated peer JWT for peer_kc (no HMAC-only trust)"
+          },
+          "identity_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Mode",
+            "description": "Resolved identity trust mode: peer_kc | shared_idp | receiver_realm"
+          },
+          "trust_posture": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Posture",
+            "description": "Operator-facing trust posture: source_trusted (peer_kc) | receiver_controlled_shared (shared_idp) | receiver_controlled_realm (receiver_realm)"
+          },
+          "grandfathered": {
+            "type": "boolean",
+            "title": "Grandfathered",
+            "description": "True when this is a grandfathered 1.0 peer_kc federation (identity_mode NULL).",
+            "default": false
           }
         },
         "type": "object",
@@ -35887,6 +39238,34 @@
         "type": "object",
         "title": "ConnectorCapabilities",
         "description": "Top-level connector capabilities."
+      },
+      "ConnectorCatalogCreate": {
+        "properties": {
+          "manifest": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Manifest",
+            "description": "The connector's self-describing manifest (ConnectorSpec.to_manifest())."
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version",
+            "description": "Optional catalog version tag (advisory)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "manifest"
+        ],
+        "title": "ConnectorCatalogCreate",
+        "description": "Register a connector *type* in the DB-backed catalog from its manifest.\n\nParity with ``POST /apps/app_templates``: an external client registers a\nconnector type by its self-describing manifest so it surfaces through\n``GET /connectors/catalog`` as a configurable card, without editing the\nremote ``connectors.json``. ``connector_type``/``provider_label``/``icon`` are\nderived from the manifest (validated via ``ConnectorSpec.from_manifest``)."
       },
       "ConnectorCatalogItem": {
         "properties": {
@@ -37404,6 +40783,51 @@
         "type": "object",
         "title": "ContextGlobalSettings"
       },
+      "ContextReadiness": {
+        "properties": {
+          "embedding": {
+            "$ref": "#/components/schemas/DependencyReadiness"
+          },
+          "extractor": {
+            "$ref": "#/components/schemas/DependencyReadiness"
+          },
+          "vector": {
+            "$ref": "#/components/schemas/DependencyReadiness"
+          },
+          "lexical": {
+            "$ref": "#/components/schemas/DependencyReadiness"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/GraphReadiness"
+          },
+          "agentic": {
+            "$ref": "#/components/schemas/DependencyReadiness"
+          },
+          "can_index_semantic_lexical": {
+            "type": "boolean",
+            "title": "Can Index Semantic Lexical",
+            "default": false
+          },
+          "degradation_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Degradation Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "embedding",
+          "extractor",
+          "vector",
+          "lexical",
+          "graph",
+          "agentic"
+        ],
+        "title": "ContextReadiness",
+        "description": "Aggregate readiness for the dependencies a dataset index build uses."
+      },
       "CreateAppDeployment": {
         "properties": {
           "name": {
@@ -37857,14 +41281,14 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 7000000
+                "maxLength": 11184812
               },
               {
                 "type": "null"
               }
             ],
             "title": "Preview Image Data",
-            "description": "Base64-encoded preview image data (used during push, not persisted)"
+            "description": "Base64-encoded preview image data decoded into durable server storage during push"
           },
           "kamiwaza_version": {
             "anyOf": [
@@ -37942,7 +41366,7 @@
             },
             "type": "array",
             "title": "Remote Ips",
-            "description": "List of remote endpoints. Each entry: {'ip': <connect address>, 'primary': bool, 'hostname': <optional istio-routable FQDN>}. ENG-7427: when 'hostname' is set the platform connects to 'ip' but sends Host + TLS SNI = hostname (so the istio gateway routes by FQDN); without it, routing falls back to 'ip' (direct-IP deployments). Required for initiator, optional for receiver."
+            "description": "List of remote endpoints. Each entry: {'ip': <connect address>, 'primary': bool, 'hostname': <optional istio-routable FQDN>}. ENG-7427: when 'hostname' is set the platform connects to 'ip' but sends Host + TLS SNI = hostname (so the istio gateway routes by FQDN); without it, routing falls back to 'ip' (direct-IP deployments). Required for the initiator; optional for the receiver in the API for backward compatibility, but the UI requires it on both roles and it is planned to become required for both (ENG-8447)."
           },
           "preshared_key": {
             "type": "string",
@@ -38018,6 +41442,42 @@
             ],
             "title": "Local Broker Client Secret",
             "description": "DataHub secret URN (e.g. urn:li:dataHubSecret:...) for the Keycloak broker client secret. **URN-only at this API ingress** — raw secrets are refused so the operator's payload never lands in API request logs or the local override DB row in plaintext. Operators store the raw secret in DataHub first (via the secrets API) and supply the URN here. Wire-level disposition: at pair time the server resolves the URN via CatalogService and ships the raw secret to the peer's KC over the federation pair channel. That channel is HTTPS (`AUTH_GATEWAY_TLS_INSECURE` is an explicit dev escape hatch) and the body is PSK-HMAC-signed (cluster_trust.sign_federation_request) — same wire posture as the pre-existing env-driven path (KAMIWAZA_KC_BROKER_CLIENT_SECRET). The URN-only claim applies to API ingress + local override storage, not to the receiver's `peer_broker_client_secret_urn` DB row (which despite its name has always stored the raw value in the env-driven path — see column comment in models/cluster.py)."
+          },
+          "shared_issuer_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shared Issuer Url",
+            "description": "Optional shared Keycloak realm issuer both clusters trust (e.g. https://host/realms/federated). When set, the federation is created in shared_idp mode (Alt C) rather than peer_kc, and is not gated by ALLOW_UNTRUSTED_FEDERATION."
+          },
+          "shared_jwks_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shared Jwks Url",
+            "description": "Optional JWKS URL for the shared realm; derived from shared_issuer_url when absent."
+          },
+          "shared_ca_pem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shared Ca Pem",
+            "description": "Optional PEM CA cert pinning the shared-realm JWKS-fetch trust root."
           }
         },
         "type": "object",
@@ -38095,6 +41555,71 @@
         ],
         "title": "CreateCollection",
         "description": "Request to create a new collection."
+      },
+      "CreateDatasetIndexRequest": {
+        "properties": {
+          "dataset_urn": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Dataset Urn"
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "semantic_lexical",
+              "semantic_lexical_graph"
+            ],
+            "title": "Profile",
+            "default": "semantic_lexical"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dataset_urn"
+        ],
+        "title": "CreateDatasetIndexRequest",
+        "description": "Create (or idempotently re-request) an index binding for a dataset."
+      },
+      "CreateDatasetIndexResponse": {
+        "properties": {
+          "binding_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Binding Id"
+          },
+          "job_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Job Id"
+          },
+          "requested_revision": {
+            "type": "integer",
+            "title": "Requested Revision"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "indexing",
+              "active",
+              "degraded",
+              "failed",
+              "tombstoned"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "binding_id",
+          "job_id",
+          "requested_revision",
+          "status"
+        ],
+        "title": "CreateDatasetIndexResponse",
+        "description": "202 response for create/retry: the binding + the enqueued job."
       },
       "CreateExtension": {
         "properties": {
@@ -39317,6 +42842,44 @@
             "title": "Replicas",
             "description": "Number of replicas to deploy",
             "default": 1
+          },
+          "storage_size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Size",
+            "description": "Per-instance persistent-volume size as a Kubernetes resource quantity (e.g. '50Gi'). For the milvus engine it is applied to both the object-store and primary data PVCs and used to derive a matching object-store ceiling so the two scale together. Unset keeps the template sizing (1Gi PVCs / 1GB ceiling)."
+          },
+          "seaweedfs_volume_size_limit_mb": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seaweedfs Volume Size Limit Mb",
+            "description": "Optional explicit SeaweedFS per-volume size limit in MB (milvus engine only). Overrides the value derived from storage_size; the resulting object-store ceiling must not exceed the object-store PVC size."
+          },
+          "seaweedfs_volume_max": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seaweedfs Volume Max",
+            "description": "Optional explicit SeaweedFS maximum volume count (milvus engine only). Overrides the template default; the resulting object-store ceiling must not exceed the object-store PVC size."
           }
         },
         "type": "object",
@@ -39666,6 +43229,21 @@
             ],
             "title": "Container Urn"
           },
+          "writable": {
+            "type": "boolean",
+            "title": "Writable",
+            "default": false
+          },
+          "storage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatasetStorageRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "urn": {
             "type": "string",
             "title": "Urn"
@@ -39704,6 +43282,21 @@
               }
             ],
             "title": "Updated At"
+          },
+          "storage_binding": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatasetStorageBinding"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content_revision": {
+            "type": "integer",
+            "title": "Content Revision",
+            "default": 0
           }
         },
         "type": "object",
@@ -39714,6 +43307,151 @@
         ],
         "title": "Dataset",
         "description": "Full dataset schema including system-generated fields"
+      },
+      "DatasetContentItemResponse": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "logical_path": {
+            "type": "string",
+            "title": "Logical Path"
+          },
+          "item_revision": {
+            "type": "integer",
+            "title": "Item Revision"
+          },
+          "dataset_revision": {
+            "type": "integer",
+            "title": "Dataset Revision"
+          },
+          "etag": {
+            "type": "string",
+            "title": "Etag"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Type"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "logical_path",
+          "item_revision",
+          "dataset_revision",
+          "etag",
+          "size_bytes",
+          "state"
+        ],
+        "title": "DatasetContentItemResponse",
+        "description": "One manifest object of a writable dataset (read + mutation responses).\n\n``etag`` is the wire form ``sha256:<hex>`` used by If-Match optimistic\nconcurrency on replace/tombstone."
+      },
+      "DatasetContentPurgeResponse": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "logical_path": {
+            "type": "string",
+            "title": "Logical Path"
+          },
+          "state": {
+            "type": "string",
+            "const": "purged",
+            "title": "State",
+            "default": "purged"
+          },
+          "forced_by": {
+            "type": "string",
+            "title": "Forced By"
+          },
+          "purged_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Purged At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "logical_path",
+          "forced_by",
+          "purged_at"
+        ],
+        "title": "DatasetContentPurgeResponse",
+        "description": "Result of the audited admin-only force purge of a tombstoned object."
+      },
+      "DatasetContentTombstoneResponse": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "logical_path": {
+            "type": "string",
+            "title": "Logical Path"
+          },
+          "item_revision": {
+            "type": "integer",
+            "title": "Item Revision"
+          },
+          "dataset_revision": {
+            "type": "integer",
+            "title": "Dataset Revision"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "purge_eligible_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Purge Eligible At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "logical_path",
+          "item_revision",
+          "dataset_revision",
+          "state",
+          "purge_eligible_at"
+        ],
+        "title": "DatasetContentTombstoneResponse",
+        "description": "Result of tombstoning one object (bytes are retained until purge)."
       },
       "DatasetCreate": {
         "properties": {
@@ -39775,6 +43513,21 @@
               }
             ],
             "title": "Container Urn"
+          },
+          "writable": {
+            "type": "boolean",
+            "title": "Writable",
+            "default": false
+          },
+          "storage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatasetStorageRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -39847,6 +43600,464 @@
         ],
         "title": "DatasetDescriptor",
         "description": "Summary of dataset metadata returned to clients."
+      },
+      "DatasetIndexBinding": {
+        "properties": {
+          "binding_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Binding Id"
+          },
+          "dataset_urn": {
+            "type": "string",
+            "title": "Dataset Urn"
+          },
+          "profile": {
+            "type": "string",
+            "enum": [
+              "semantic_lexical",
+              "semantic_lexical_graph"
+            ],
+            "title": "Profile"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "indexing",
+              "active",
+              "degraded",
+              "failed",
+              "tombstoned"
+            ],
+            "title": "Status"
+          },
+          "desired_revision": {
+            "type": "integer",
+            "title": "Desired Revision"
+          },
+          "active_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Revision"
+          },
+          "active_generation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Generation Id"
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "binding_id",
+          "dataset_urn",
+          "profile",
+          "status",
+          "desired_revision"
+        ],
+        "title": "DatasetIndexBinding",
+        "description": "Desired vs active indexing state for one dataset under one profile."
+      },
+      "DatasetIndexJob": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Job Id"
+          },
+          "binding_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Binding Id"
+          },
+          "dataset_revision": {
+            "type": "integer",
+            "title": "Dataset Revision"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "cleanup_state": {
+            "type": "string",
+            "title": "Cleanup State"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/DatasetIndexStageStatus"
+            },
+            "type": "array",
+            "title": "Stages"
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "activated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "binding_id",
+          "dataset_revision",
+          "state",
+          "cleanup_state"
+        ],
+        "title": "DatasetIndexJob",
+        "description": "Async build job (one generation) with per-stage diagnostics."
+      },
+      "DatasetIndexStageStatus": {
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "materialize",
+              "vector",
+              "lexical",
+              "graph",
+              "activate",
+              "cleanup"
+            ],
+            "title": "Stage"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "succeeded",
+              "failed",
+              "skipped"
+            ],
+            "title": "State"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts",
+            "default": 0
+          },
+          "error_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Detail"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stage",
+          "state"
+        ],
+        "title": "DatasetIndexStageStatus",
+        "description": "One stage's progress within a generation build."
+      },
+      "DatasetScopedSearchRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Query"
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Top K",
+            "default": 10
+          },
+          "synthesize": {
+            "type": "boolean",
+            "title": "Synthesize",
+            "default": false
+          },
+          "enable_graph_search": {
+            "type": "boolean",
+            "title": "Enable Graph Search",
+            "default": true
+          },
+          "max_iterations": {
+            "type": "integer",
+            "maximum": 8,
+            "minimum": 1,
+            "title": "Max Iterations",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "DatasetScopedSearchRequest",
+        "description": "Dataset-scoped search: unified-search fields, NO index identifiers.\n\nThe server authorizes dataset view, loads only the active generation,\nand runs unified/agentic retrieval. Collection/group/generation names\nare never accepted from the client."
+      },
+      "DatasetScopedSearchResponse": {
+        "properties": {
+          "results": {
+            "$ref": "#/components/schemas/UnifiedSearchResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/DatasetSearchMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results",
+          "meta"
+        ],
+        "title": "DatasetScopedSearchResponse",
+        "description": "Unified search results plus dataset provenance/honesty metadata."
+      },
+      "DatasetSearchMeta": {
+        "properties": {
+          "dataset_urn": {
+            "type": "string",
+            "title": "Dataset Urn"
+          },
+          "dataset_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Revision"
+          },
+          "retrieval_mode": {
+            "type": "string",
+            "title": "Retrieval Mode"
+          },
+          "lexical_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lexical Provider"
+          },
+          "graph_used": {
+            "type": "boolean",
+            "title": "Graph Used",
+            "default": false
+          },
+          "degradation_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Degradation Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_urn",
+          "retrieval_mode"
+        ],
+        "title": "DatasetSearchMeta",
+        "description": "Provenance + honesty metadata attached to a dataset-scoped search."
+      },
+      "DatasetStorageBinding": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "binding_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Binding Id"
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "object",
+              "file"
+            ],
+            "title": "Backend"
+          },
+          "scope": {
+            "type": "string",
+            "const": "workroom",
+            "title": "Scope",
+            "default": "workroom"
+          },
+          "workroom_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Workroom Id"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ObjectLocator"
+              },
+              {
+                "$ref": "#/components/schemas/FileLocator"
+              }
+            ],
+            "title": "Locator"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "error"
+            ],
+            "title": "State"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "binding_id",
+          "backend",
+          "workroom_id",
+          "locator",
+          "state",
+          "created_at"
+        ],
+        "title": "DatasetStorageBinding",
+        "description": "Server-allocated, immutable storage binding for a writable dataset."
+      },
+      "DatasetStorageRequest": {
+        "properties": {
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "object",
+                  "file"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
+          }
+        },
+        "type": "object",
+        "title": "DatasetStorageRequest",
+        "description": "Create-only request for platform-managed storage. Clients may choose a\nbackend (or accept the cluster default); they never supply locations."
       },
       "DatasetUpdate": {
         "properties": {
@@ -40147,6 +44358,52 @@
         "title": "DeleteWorkroomResponse",
         "description": "Response from delete/purge operation."
       },
+      "DependencyReadiness": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "degraded",
+              "unavailable"
+            ],
+            "title": "State"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "retry_after_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "state"
+        ],
+        "title": "DependencyReadiness",
+        "description": "Readiness of one Context dependency."
+      },
       "DeployFromTemplateRequest": {
         "properties": {
           "name": {
@@ -40428,7 +44685,24 @@
               }
             ],
             "title": "Underlying Model",
-            "description": "Canonical provider-published model name backing this deployment, when discover surfaced it. For Azure, this is the ``model`` field from ``/openai/deployments`` (e.g. ``gpt-5.3-chat-2026-03-03``) — distinct from the operator-chosen deployment name in ``id``. Persisted on the endpoint config and forwarded to LiteLLM as ``base_model`` for cost-tracking and model-info lookups; None for endpoints where the canonical name isn't available."
+            "description": "Canonical provider-published model name backing this deployment, when discover surfaced it. For Azure, this is the ``model`` field from ``/openai/deployments`` (e.g. ``gpt-5.3-chat-2026-03-03``) — distinct from the operator-chosen deployment name in ``id``. For LiteLLM, this is ``litellm_params.model`` behind the callable ``model_name`` alias, which also makes aliases searchable by their provider model. Persisted on the endpoint config and forwarded to LiteLLM as ``base_model`` for cost-tracking and model-info lookups; None for endpoints where the canonical name isn't available."
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "chat",
+                  "embedding",
+                  "transcription"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose",
+            "description": "Provider-declared invocation purpose when discovery exposes one. LiteLLM supplies this from model_info.mode; generic OpenAI model lists omit it. The registration UI uses it as the default while still allowing an operator override."
           }
         },
         "type": "object",
@@ -41845,6 +46119,7 @@
                 "type": "string",
                 "enum": [
                   "azure",
+                  "litellm",
                   "openai",
                   "other"
                 ]
@@ -41854,7 +46129,7 @@
               }
             ],
             "title": "Provider",
-            "description": "Vendor the operator selected in the wizard. Lets discovery honor that choice for a host the URL-suffix map can't classify — e.g. an Azure inference proxy on a private/sovereign network is probed as Azure instead of falling back to the generic /v1/models path. Optional; when unset the strategy is derived from the URL alone."
+            "description": "Vendor the operator selected in the wizard. Lets discovery honor that choice for a host the URL-suffix map can't classify — e.g. an Azure inference proxy on a private/sovereign network is probed as Azure instead of falling back to the generic /v1/models path. Selecting LiteLLM uses its detailed /v1/model/info inventory so embedding-only models and their modes are discoverable. Optional; selecting Other keeps the standard /v1/models result and opportunistically augments it from a provider-specific inventory when available: LiteLLM's detailed model metadata or OpenRouter's separate embedding-model catalog. When unset the strategy is derived from the URL alone."
           }
         },
         "type": "object",
@@ -42233,6 +46508,35 @@
         "title": "FederationPairRequest",
         "description": "Request payload for cluster federation pairing.\n\nThe PSK is no longer sent in this payload — the HMAC signature in\nthe request headers proves possession of the pre-shared key."
       },
+      "FederationPreflightRequest": {
+        "properties": {
+          "remote_ips": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Remote Ips"
+          }
+        },
+        "type": "object",
+        "title": "FederationPreflightRequest",
+        "description": "ENG-8447 §B: pre-flight a remote endpoint before the federation is created."
+      },
+      "FederationResolveRequest": {
+        "properties": {
+          "address": {
+            "type": "string",
+            "title": "Address"
+          }
+        },
+        "type": "object",
+        "required": [
+          "address"
+        ],
+        "title": "FederationResolveRequest",
+        "description": "ENG-8447 §A: derive the IP<->FQDN complement of a remote address."
+      },
       "FileInput": {
         "properties": {
           "filename": {
@@ -42296,6 +46600,40 @@
         ],
         "title": "FileInput",
         "description": "Input file for pipeline processing."
+      },
+      "FileLocator": {
+        "properties": {
+          "root_id": {
+            "type": "string",
+            "title": "Root Id"
+          },
+          "relative_path": {
+            "type": "string",
+            "title": "Relative Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "root_id",
+          "relative_path"
+        ],
+        "title": "FileLocator",
+        "description": "Opaque file-backend location: a configured mount name plus a path\nrelative to it. Never a host path, PVC name, or Kubernetes detail."
+      },
+      "FlightEndpoint": {
+        "properties": {
+          "location": {
+            "type": "string",
+            "title": "Location",
+            "description": "Flight URI, e.g. grpc+tls://host:6130"
+          }
+        },
+        "type": "object",
+        "required": [
+          "location"
+        ],
+        "title": "FlightEndpoint",
+        "description": "One routable Arrow Flight location a client may dial."
       },
       "FreshnessStatus": {
         "type": "string",
@@ -42575,6 +46913,146 @@
         "title": "Grant",
         "description": "One ReBAC relation tuple bound to a subject."
       },
+      "GrantCapabilityResponse": {
+        "properties": {
+          "can_grant": {
+            "type": "boolean",
+            "title": "Can Grant"
+          }
+        },
+        "type": "object",
+        "required": [
+          "can_grant"
+        ],
+        "title": "GrantCapabilityResponse"
+      },
+      "GrantCreateRequest": {
+        "properties": {
+          "object_id": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Object Id"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/GrantSubject"
+          },
+          "relation": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Relation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "object_id",
+          "subject",
+          "relation"
+        ],
+        "title": "GrantCreateRequest"
+      },
+      "GrantListItem": {
+        "properties": {
+          "grant_id": {
+            "type": "string",
+            "title": "Grant Id"
+          },
+          "relation": {
+            "type": "string",
+            "title": "Relation"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/GrantSubject"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "grant_id",
+          "relation",
+          "subject"
+        ],
+        "title": "GrantListItem"
+      },
+      "GrantMutationResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "zedtoken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zedtoken"
+          },
+          "relation": {
+            "type": "string",
+            "title": "Relation"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/GrantSubject"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "relation",
+          "subject"
+        ],
+        "title": "GrantMutationResponse"
+      },
+      "GrantSubject": {
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Namespace"
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "namespace",
+          "id"
+        ],
+        "title": "GrantSubject"
+      },
       "GraphEdge": {
         "properties": {
           "fact_uuid": {
@@ -42592,6 +47070,17 @@
           "fact": {
             "type": "string",
             "title": "Fact"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
           "valid_at": {
             "anyOf": [
@@ -42662,6 +47151,57 @@
         ],
         "title": "GraphNode",
         "description": "A single entity node in the bounded-subgraph response (T3.2).\n\nPer system design v0.1.6 §4.2.11. Embedding fields (``name_embedding``)\nare stripped at the substrate layer (RETURN n {.*, embedding: null})\nbefore this representation is constructed."
+      },
+      "GraphReadiness": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "degraded",
+              "unavailable"
+            ],
+            "title": "State"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "retry_after_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After Seconds"
+          },
+          "capacity_available": {
+            "type": "boolean",
+            "title": "Capacity Available",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "state"
+        ],
+        "title": "GraphReadiness",
+        "description": "Graph adds a capacity signal used to default the graph profile on/off."
       },
       "GreymatterRouteBackendRequest": {
         "properties": {
@@ -42812,11 +47352,225 @@
         "title": "GreymatterRouteStatusResponse",
         "description": "Observed state returned after writing a Greymatter route intent."
       },
+      "GroupCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "GroupCreateRequest"
+      },
+      "GroupMappingCreateRequest": {
+        "properties": {
+          "issuer": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Issuer"
+          },
+          "idp_group_path": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Idp Group Path"
+          },
+          "local_group_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Local Group Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "issuer",
+          "idp_group_path",
+          "local_group_name"
+        ],
+        "title": "GroupMappingCreateRequest"
+      },
+      "GroupMappingResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "issuer": {
+            "type": "string",
+            "title": "Issuer"
+          },
+          "idp_group_path": {
+            "type": "string",
+            "title": "Idp Group Path"
+          },
+          "local_group_name": {
+            "type": "string",
+            "title": "Local Group Name"
+          },
+          "policy_version": {
+            "type": "string",
+            "title": "Policy Version"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "issuer",
+          "idp_group_path",
+          "local_group_name",
+          "policy_version",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GroupMappingResponse"
+      },
+      "GroupMemberRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "GroupMemberRequest"
+      },
+      "GroupMembersResponse": {
+        "properties": {
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Members"
+          }
+        },
+        "type": "object",
+        "required": [
+          "members"
+        ],
+        "title": "GroupMembersResponse"
+      },
+      "GroupResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "managed_by": {
+            "type": "string",
+            "title": "Managed By"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "name",
+          "managed_by",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GroupResponse"
+      },
       "GrpcHandshake": {
         "properties": {
           "endpoint": {
-            "type": "string",
-            "title": "Endpoint"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint",
+            "description": "Deprecated alias for the first routable Flight location"
+          },
+          "endpoints": {
+            "items": {
+              "$ref": "#/components/schemas/FlightEndpoint"
+            },
+            "type": "array",
+            "title": "Endpoints",
+            "description": "Routable Flight locations, tried in order"
           },
           "token": {
             "type": "string",
@@ -42830,17 +47584,16 @@
           "protocol": {
             "type": "string",
             "title": "Protocol",
-            "default": "kamiwaza.retrieval.v1"
+            "default": "arrow-flight"
           }
         },
         "type": "object",
         "required": [
-          "endpoint",
           "token",
           "expires_at"
         ],
         "title": "GrpcHandshake",
-        "description": "Handshake information for gRPC clients."
+        "description": "Handshake returned for the big-payload (Arrow Flight) transport."
       },
       "HTTPValidationError": {
         "properties": {
@@ -45571,6 +50324,7 @@
               }
             ],
             "title": "Deploy After Download",
+            "description": "Only honored by POST /models/download_and_deploy. The download-only POST /models/download/ endpoint ignores this field — it never deploys (ENG-5022). Use /models/download_and_deploy to control auto-deploy.",
             "default": true
           },
           "novice_selected_context": {
@@ -47374,6 +52128,25 @@
         ],
         "title": "OIDCConfig"
       },
+      "ObjectLocator": {
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "title": "Bucket"
+          },
+          "prefix": {
+            "type": "string",
+            "title": "Prefix"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bucket",
+          "prefix"
+        ],
+        "title": "ObjectLocator",
+        "description": "Opaque object-storage location. Never carries endpoints/credentials."
+      },
       "ObjectModel": {
         "properties": {
           "namespace": {
@@ -48019,6 +52792,30 @@
         ],
         "title": "PackageSummary",
         "description": "Summary of an imported skill package."
+      },
+      "PasswordChangeCapabilityResponse": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "available"
+        ],
+        "title": "PasswordChangeCapabilityResponse"
       },
       "PasswordChangeResponse": {
         "properties": {
@@ -49749,7 +54546,7 @@
           },
           "relation": {
             "type": "string",
-            "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|member|mission|mission_member|mission_owner|operator|owner|viewer)$",
+            "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|member|mission|mission_member|mission_owner|operator|owner|shared_to_workroom|viewer|writer)$",
             "title": "Relation"
           },
           "object": {
@@ -49785,7 +54582,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|member|mission|mission_member|mission_owner|operator|owner|viewer)$"
+                "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|member|mission|mission_member|mission_owner|operator|owner|shared_to_workroom|viewer|writer)$"
               },
               {
                 "type": "null"
@@ -51261,6 +56058,14 @@
             ],
             "title": "Matched Span",
             "description": "First verbatim match span in chunk content"
+          },
+          "retrieved_by": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Retrieved By",
+            "description": "Retrieval legs that surfaced this result: 'vector', 'lexical', or both. Empty when the result predates hybrid retrieval or the lexical leg was unavailable."
           }
         },
         "type": "object",
@@ -51357,6 +56162,36 @@
             "type": "array",
             "title": "Semantic Neighbors",
             "description": "Non-exact candidates retained only for diagnostics"
+          },
+          "retrieval_mode": {
+            "type": "string",
+            "title": "Retrieval Mode",
+            "description": "Retrieval strategy by actual contribution: 'hybrid' only when BOTH the vector and lexical legs contributed results, 'lexical' when only the lexical leg did, 'vector' otherwise. Attempted providers and degradation are reported separately.",
+            "default": "vector"
+          },
+          "lexical_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lexical Provider",
+            "description": "Lexical/full-text provider used for the lexical leg ('postgres_tsvector' or 'sqlite_fts5'); None when the leg did not run."
+          },
+          "lexical_degraded_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lexical Degraded Reason",
+            "description": "Why the lexical/full-text leg was skipped (vector-only results), or why its coverage is degraded (e.g. 'lexical_incomplete' after a persisted lexical-write loss); None when the leg ran with full coverage."
           }
         },
         "type": "object",
@@ -54175,6 +59010,26 @@
             "title": "Canonical Model Id",
             "description": "Model id a client should present in requests to this deployment. External: the provider's canonical model id (e.g. 'anthropic.claude-sonnet-4-6-v1:0', 'gpt-4o'; for Azure, the provider-published model backing the operator-named deployment) — restores the identity the deployment alias erases for name-keyed SDK/LiteLLM feature gates. Local: the engine's served name (curated alias/served_model_name, else the servable model name) — NOT the HF repo id, which local engines would reject. Consumers use this without distinguishing local from external."
           },
+          "context_window": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Window",
+            "description": "Configured model context limit in tokens. This is a sanitized capability value; the underlying model configuration is not exposed."
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capabilities",
+            "description": "Client-safe inference capabilities, including cache behavior such as 'prompt_cache_anthropic' when supported by the deployment."
+          },
           "tool_calling": {
             "anyOf": [
               {
@@ -54496,6 +59351,36 @@
             "type": "array",
             "title": "Semantic Neighbors",
             "description": "Non-exact candidates retained only for diagnostics"
+          },
+          "retrieval_mode": {
+            "type": "string",
+            "title": "Retrieval Mode",
+            "description": "Retrieval strategy by actual contribution: 'hybrid' only when BOTH the vector and lexical legs contributed results, 'lexical' when only the lexical leg did, 'vector' otherwise. Attempted providers and degradation are reported separately.",
+            "default": "vector"
+          },
+          "lexical_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lexical Provider",
+            "description": "Lexical/full-text provider used for the lexical leg ('postgres_tsvector' or 'sqlite_fts5'); None when the leg did not run."
+          },
+          "lexical_degraded_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lexical Degraded Reason",
+            "description": "Why the lexical/full-text leg was skipped (vector-only results), or why its coverage is degraded (e.g. 'lexical_incomplete' after a persisted lexical-write loss); None when the leg ran with full coverage."
           },
           "context": {
             "anyOf": [
@@ -54928,14 +59813,14 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 7000000
+                "maxLength": 11184812
               },
               {
                 "type": "null"
               }
             ],
             "title": "Preview Image Data",
-            "description": "Base64-encoded preview image data (used during push, not persisted)"
+            "description": "Base64-encoded preview image data decoded into durable server storage during push"
           },
           "kamiwaza_version": {
             "anyOf": [
@@ -55516,6 +60401,12 @@
             "title": "Create If Missing",
             "description": "Create collection if missing",
             "default": true
+          },
+          "flush": {
+            "type": "boolean",
+            "title": "Flush",
+            "description": "Force a synchronous Milvus flush after this insert. Off by default so bulk ingestion is not gated by a per-insert flush; inserted vectors are searchable immediately and Milvus auto-flushes segments by size. Set true when immediate on-disk durability is required (e.g. a single end-of-batch flush).",
+            "default": false
           }
         },
         "type": "object",
@@ -55755,6 +60646,47 @@
         ],
         "title": "VisionModelConfig",
         "description": "Vision Model configuration for image text extraction."
+      },
+      "WhoCanAccessResponse": {
+        "properties": {
+          "effective": {
+            "type": "boolean",
+            "title": "Effective"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "permission": {
+            "type": "string",
+            "title": "Permission"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AccessSubjectRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "effective",
+          "source",
+          "permission",
+          "limit",
+          "offset",
+          "rows"
+        ],
+        "title": "WhoCanAccessResponse"
       },
       "WorkroomBootstrapResponse": {
         "properties": {
@@ -56556,6 +61488,17 @@
       },
       "WorkroomManagerPathResponse": {
         "properties": {
+          "surface": {
+            "type": "string",
+            "enum": [
+              "core",
+              "extension",
+              "disabled"
+            ],
+            "title": "Surface",
+            "description": "Canonical Workroom Manager launch surface for this install.",
+            "default": "core"
+          },
           "enabled": {
             "type": "boolean",
             "title": "Enabled",
@@ -56571,13 +61514,13 @@
           "extension_enabled": {
             "type": "boolean",
             "title": "Extension Enabled",
-            "description": "Whether the retired Workroom Manager runtime extension launch surface is available. Always false for the core Workroom Manager UI consolidation.",
+            "description": "Whether Workroom Manager can launch through the deployable runtime extension (federal posture).",
             "default": false
           },
           "launch_enabled": {
             "type": "boolean",
             "title": "Launch Enabled",
-            "description": "Whether the server advertises a direct Workroom Manager launch path. Retired runtime extension launch paths are intentionally not advertised by the core Workroom Manager capability.",
+            "description": "Whether the server advertises a direct Workroom Manager launch path. Extension-only launch paths are resolved client-side from visible runtime extension deployments.",
             "default": false
           },
           "primary_path": {
@@ -56603,7 +61546,7 @@
             },
             "type": "array",
             "title": "Alias Paths",
-            "description": "Compatibility public paths associated with Workroom Manager. Retired runtime aliases are intentionally excluded."
+            "description": "Compatibility lookup paths associated with Workroom Manager. These aliases are retained for runtime resolution and stale-row compatibility; they are not guaranteed to all be public ingress routes."
           }
         },
         "type": "object",
@@ -58420,6 +63363,12 @@
             "title": "Configured",
             "description": "True when the stored config satisfies the connector's required fields (e.g. a non-empty client_id/client_secret). A bare, sync-seeded row with an empty config is not configured and is hidden from the connect screen.",
             "default": false
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config",
+            "description": "Non-secret deployment settings (e.g. a site or repo list), echoed so the edit dialog can pre-fill current values. Secret fields (client secret, service token) are never included -- they stay write-only."
           }
         },
         "type": "object",
