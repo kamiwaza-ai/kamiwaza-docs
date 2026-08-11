@@ -104,9 +104,12 @@ within one 10-second period once `core-db-init` completes.
 Verifying the gate's state directly:
 
 ```bash
-kubectl get pods -n "${NAMESPACE}" -l ray.io/node-type=head -o wide
+kubectl get pods -n "${NAMESPACE}" \
+  -l ray.io/cluster=core-raycluster,ray.io/node-type=head -o wide
 kubectl get endpoints core-api -n "${NAMESPACE}" -o wide
-kubectl logs -n "${NAMESPACE}" -l ray.io/node-type=head -c schema-readiness --tail=20
+kubectl logs -n "${NAMESPACE}" \
+  -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
+  -c schema-readiness --tail=20
 ```
 
 An empty `ENDPOINTS` column on `core-api` while `core-db-init` is still running
@@ -621,7 +624,8 @@ do with the platform's health, and a failure recorded then is not evidence of
 anything. Confirm the gate has reopened first:
 
 ```bash
-kubectl get pods -n "${NAMESPACE}" -l ray.io/node-type=head -o wide
+kubectl get pods -n "${NAMESPACE}" \
+  -l ray.io/cluster=core-raycluster,ray.io/node-type=head -o wide
 kubectl get endpoints core-api -n "${NAMESPACE}" -o wide
 ```
 
