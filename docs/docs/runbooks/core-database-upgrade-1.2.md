@@ -234,7 +234,7 @@ than being reconstructed afterwards:
 export OPERATOR="${OPERATOR:-$(id -un)}"
 export STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# Chart version of the installed release, e.g. core-1.0.0
+# Chart version of the installed release, e.g. kamiwaza-1.0.0
 INSTALLED_CHART_VERSION=$(helm list -n "${NAMESPACE}" -o json \
   | jq -r --arg r "${RELEASE}" '.[] | select(.name == $r) | .chart')
 
@@ -987,7 +987,7 @@ same secret scan and manual review documented in
 Every field is required and the harness matches `run_id` and `candidate_sha`
 against its ledger, so hand-assembly is the most common way a complete,
 correct upgrade still produces a rejected bundle. Generate it from the
-variables exported in [step 1](#inputs-you-must-be-given-release-qualification-only),
+variables exported in [step 1](#inputs-you-must-have-before-you-start),
 after the upgrade finishes:
 
 ```bash
@@ -1022,7 +1022,8 @@ jq -n \
   '$ARGS.named' >"${EVIDENCE_DIR}/metadata.json"
 
 # Refuse to ship a file with an empty or placeholder value in it.
-jq -e 'to_entries | all(.value | tostring | (length > 0) and (test("^exact-|^immutable-|^customer-change-id$|^named-operator$") | not))' \
+jq -e --arg placeholder '^(exact|immutable|named-operator|customer-change-id|online-or-offline|full-git-commit-sha|RFC3339|published immutable)' \
+  'to_entries | all(.value | tostring | (length > 0) and (test($placeholder) | not))' \
   "${EVIDENCE_DIR}/metadata.json" >/dev/null
 ```
 
@@ -1031,10 +1032,13 @@ a branch link. A branch URL moves after the fact, which makes the evidence
 unreproducible and does not satisfy M1-20.
 
 The second `jq` is the check worth keeping: it fails if any field is empty or
-still carries one of the schema's placeholder strings. Those placeholders are
-valid non-empty text, so the harness would otherwise accept them and the
-finished record would assert a change ticket and an operator that never
-existed.
+still carries one of the placeholder strings from the schema above. Those
+placeholders are valid non-empty text, so the harness would otherwise accept
+them and the finished record would assert a change ticket and an operator that
+never existed.
+
+If you extend the schema, extend that pattern with it — a placeholder it does
+not match is one the harness will accept.
 
 ## Record the external sign-off
 
