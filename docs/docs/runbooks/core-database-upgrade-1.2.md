@@ -45,8 +45,12 @@ failed Helm hook is a stopped upgrade, not permission to improvise.
   this before creating the scratch database.
 - The exact domain, installation mode, and release inputs used for the site.
 - The approved CA certificate that validates the production HTTPS endpoint.
-- A confirmed maintenance window. Scheduler and API availability can be
-  interrupted while the post-install database hook runs.
+- A confirmed maintenance window that covers a **Core API outage**, not merely a
+  possible interruption. From the moment the 1.2.0 chart's Ray head starts until
+  `core-db-init` brings the schema to head, the Core API serves no traffic at
+  all. This is designed behaviour, not a fault; see
+  [What normal looks like](#what-normal-looks-like-during-the-upgrade) before
+  you begin.
 - External writers quiesced for the backup and upgrade window.
 - The site's existing domain, runtime, storage, GPU, and installer options
   recorded and preserved for the 1.2.0 invocation.
@@ -57,6 +61,89 @@ namespace, intended 1.2.0 artifact, and candidate SHA. The CI and signed M1
 evidence URLs are release-engineering inputs, not values a customer operator
 must create. If the database is below the 1.0.0 source floor, stop and request
 the required intermediate upgrade procedure.
+
+## What normal looks like during the upgrade
+
+Read this section before starting. A gated workload and a broken one look
+alike from the outside, and the single most likely way to turn a healthy
+upgrade into a failed one is to react to the gate as though it were a fault.
+
+### The Core API stops serving, on purpose
+
+The 1.2.0 chart adds a second container, `schema-readiness`, to the Ray head
+pod. It runs the core image's `python -m kamiwaza.node.readiness_server` and its
+readiness probe asks one question: is the core database at the schema head this
+build carries?
+
+A Kubernetes pod is Ready only when **every** container is Ready, and the
+`core-api` Service selects the Ray head. So while the database is behind — the
+entire window from the new head starting to `core-db-init` reaching head —
+the head is not Ready, `core-api` has no endpoints, and the Core API answers
+nothing. That is the gate doing its job: 1.0.0-shaped data is never served
+through a 1.2.0 binary, and a paused or failed `core-db-init` cannot go
+unnoticed.
+
+The probe is declared in the chart as `GET /healthz/schema` on port 7788, with
+`periodSeconds: 10` and `failureThreshold: 3`. Where the mesh rewrites app
+probes, the rendered pod spec shows the equivalent
+`/app-health/schema-readiness/readyz` on the sidecar's port instead — both
+describe the same probe. The thresholds mean the head leaves `core-api`'s
+endpoints roughly 30 seconds after the schema stops being at head, and rejoins
+within one 10-second period once `core-db-init` completes.
+
+### Expected observations
+
+| Observation | Meaning | Action |
+| --- | --- | --- |
+| Ray head pod `Running` but **not Ready**, with its READY column one container short (`2/3` where the mesh sidecar is present), while `core-db-init` is pre-head | Correct. The gate is holding. | Wait. Continue to observe `core-db-init`. |
+| `core-api` has no endpoints, and requests to it fail or return 503, during that same window | Correct, and it follows directly from the line above. | Wait. Do not restart anything. |
+| Ray head becomes Ready and `core-api` endpoints reappear shortly after `core-db-init` succeeds | Correct. The gate has reopened. | Continue to [step 6](#6-verify-the-schema-from-the-running-core-image). |
+| Ray head still not Ready well **after** the schema has reached head | Not expected. | Collect evidence and escalate to Support. Do not delete the pod. |
+| `schema-readiness` container is in `CrashLoopBackOff` | Not expected — almost always chart/image skew. | See [image contract](#image-contract-do-not-pin-an-older-core-image) below. |
+
+Verifying the gate's state directly:
+
+```bash
+kubectl get pods -n "${NAMESPACE}" \
+  -l ray.io/cluster=core-raycluster,ray.io/node-type=head -o wide
+kubectl get endpoints core-api -n "${NAMESPACE}" -o wide
+kubectl logs -n "${NAMESPACE}" \
+  -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
+  -c schema-readiness --tail=20
+```
+
+An empty `ENDPOINTS` column on `core-api` while `core-db-init` is still running
+is the expected reading, not a finding.
+
+### Image contract: do not pin an older core image
+
+The `schema-readiness` container runs a module that exists only in 1.2.0 and
+later core images. The chart and the core image normally ship together — the
+chart's `appVersion` is rewritten to the core version it was built against — so
+every supported upgrade path is safe.
+
+Deliberately skewing them is not. Pinning a core image older than the chart —
+for example `KAMIWAZA_IMAGE_TAG=release-1.1.0` against the 1.2.0 chart — leaves
+the container with no module to run. It crash-loops, the head never becomes
+Ready, and `core-api` loses every endpoint permanently. **That is a full API
+outage, not a held gate**, and no amount of waiting clears it.
+
+If you must run a core image older than the gate, disable the gate in the same
+change by setting `ray.head.schemaGate.enabled: false`. That restores exactly
+the pre-1.2.0 behaviour — a head that serves regardless of schema state — and
+is the documented escape hatch. Do not use it to work around a head that is
+correctly holding against a pre-head schema; that would serve 1.0.0 data
+through a 1.2.0 binary, which is the outcome this procedure exists to prevent.
+
+### Wait windows
+
+`core-db-init` may legitimately use its full dependency-wait budget of
+1800 seconds (`core.scheduler.waitForDeps.timeoutSeconds`). The scheduler's
+`startupProbe` is sized to match at `180 × 10s = 1800s`, so a slow but healthy
+migration no longer expires the scheduler's startup gate before `core-db-init`
+gives up. Preserve the site's configured Helm timeout, and size any wait of
+your own against 1800 seconds rather than against a shorter fresh-install
+example.
 
 ## 1. Create the evidence workspace
 
@@ -264,7 +351,19 @@ test -x "${COLLECTOR_COMMAND}"
 That path is derived from the generated online installer's Linux
 `DEFAULT_EXTRACT_DIR` and `PAYLOAD_ROOT_NAME` constants in
 `kajiya/infra/online-ubuntu/kamiwaza-online-install.sh`; `--keep-extract`
-prevents cleanup of the candidate payload.
+prevents cleanup of the candidate payload. The payload build stages the deploy
+tree's whole `scripts/` directory, so the collector arrives with its executable
+bit intact.
+
+The `test -x` above is the check that matters — run it before you need the
+collector, not after an upgrade has already failed. If it fails, the payload
+was cleaned up (`--keep-extract` missing) or the candidate predates the
+collector. Locate the payload root before continuing, and do not proceed to the
+installer without a working collector:
+
+```bash
+find /var/lib/kamiwaza-online-install -maxdepth 3 -name kamiwaza-online-payload -type d
+```
 
 ### Offline upgrade
 
@@ -306,6 +405,12 @@ export COLLECTOR_COMMAND="/opt/kamiwaza/scripts/collect-core-db-init-diagnostics
 test -x "${COLLECTOR_COMMAND}"
 ```
 
+The `kamiwaza-prod` RPM installs the deploy tree's `scripts/` directory under
+`/opt/kamiwaza`, so the collector is present once the 1.2.0 RPM is installed —
+which is why the RPM upgrade above precedes this check. If `test -x` fails, the
+installed RPM predates the collector; upgrade to the verified 1.2.0 candidate
+package before continuing.
+
 Confirm the reported package version is the intended 1.2.0 candidate. Export
 the exact values from that candidate's `release_origination.md`; do not infer
 or reuse tags from the currently installed release:
@@ -327,8 +432,10 @@ export KAMIWAZA_IMAGE_OVERRIDES="<exact comma-separated overrides from release_o
 
 Preserve the site's existing `KAMIWAZA_K8S_RUNTIME`, resource profile,
 storage, GPU, and Helm override inputs. Preserve the site's configured Helm
-timeout; do not copy the fresh-install guide's shorter example timeout into a
-populated-database migration. Then run the upgraded installer once:
+timeout, and size it against `core-db-init`'s full 1800-second dependency-wait
+budget (see [Wait windows](#wait-windows)); do not copy the fresh-install
+guide's shorter example timeout into a populated-database migration. Then run
+the upgraded installer once:
 
 ```bash
 (
@@ -377,6 +484,14 @@ kubectl get pods -n "${NAMESPACE}" \
   -l app.kubernetes.io/name=core-db-init \
   --sort-by=.metadata.creationTimestamp -o wide
 ```
+
+While this Job is running, the Ray head is expected to be `Running` but **not
+Ready** and `core-api` is expected to have no endpoints. That is the
+schema-readiness gate holding, not a fault — see
+[What normal looks like](#what-normal-looks-like-during-the-upgrade). Do not
+restart the head, delete its pod, or roll back the release in response to it.
+The head rejoins `core-api` on its own within about ten seconds of the schema
+reaching head.
 
 Do not delete the Job or pods. The completed Job and its pods are retained for
 `core.scheduler.dbInit.ttlSecondsAfterFinished` (3600 seconds by default) and
@@ -501,6 +616,22 @@ Verify the actual production domain with the approved CA certificate and record
 machine-readable results in `smoke/results.json`. M1 qualification must never
 replace this trust check with `--insecure`.
 
+**Order matters.** These checks reach the Core API through the Ray head, which
+is withdrawn from `core-api` while the schema is behind. Run them only after
+[step 6](#6-verify-the-schema-from-the-running-core-image) reports `at_head`
+and the head is Ready. Run earlier, they fail for a reason that has nothing to
+do with the platform's health, and a failure recorded then is not evidence of
+anything. Confirm the gate has reopened first:
+
+```bash
+kubectl get pods -n "${NAMESPACE}" \
+  -l ray.io/cluster=core-raycluster,ray.io/node-type=head -o wide
+kubectl get endpoints core-api -n "${NAMESPACE}" -o wide
+```
+
+Both the head's READY column showing every container ready and a nonempty
+`core-api` endpoints list are preconditions for the checks below.
+
 ```bash
 : "${KAMIWAZA_CA_CERT:?export the approved production CA certificate path}"
 kubectl get pods -n "${NAMESPACE}" -o wide
@@ -536,6 +667,9 @@ responsible for producing all five named checks:
 | Installer exits nonzero before `core-db-init` exists | Host, artifact, registry, or Helm preparation failed before schema execution. | Preserve installer logs and cluster/Helm state; contact Support before retrying. |
 | `core-db-init` pod is Pending, `ImagePullBackOff`, or `CreateContainerConfigError` | Migration code did not start. | Collect pod descriptions and events; fix only the Support-approved infrastructure cause, then obtain retry approval. |
 | `core-db-init` starts and exits nonzero | Migration or database validation failed. | Collect every attempt log and description. Do not delete the Job, stamp the DB, or rerun. Escalate to Support. |
+| Ray head is `Running` but not Ready, and `core-api` has no endpoints, **while `core-db-init` is still pre-head** | Not a failure. The schema-readiness gate is holding the API off a pre-head database, as designed. | Wait for `core-db-init`. Do not restart the head, delete its pod, or roll back — a retry here is the wrong action and can only lose evidence. |
+| Ray head is still not Ready **after** schema status reports `at_head` | The gate should have reopened and did not. | Collect the head pod description, its `schema-readiness` container logs, and `core-api` endpoints; escalate to Support. Do not delete the pod. |
+| `schema-readiness` container is in `CrashLoopBackOff` | Chart and core image are skewed: the pinned core image predates the module this container runs. | Full API outage until corrected. Deploy a core image matching the chart, or set `ray.head.schemaGate.enabled: false` if the older image is intentional. See [image contract](#image-contract-do-not-pin-an-older-core-image). |
 | Installer exits zero but schema status is not `at_head` and supported | The release gate and the database disagree. | Treat the upgrade as failed; preserve the database and evidence and contact Support. |
 | Schema is healthy but a required smoke test fails | Schema migration completed, but the platform is not operational. | Preserve evidence. Support determines whether the issue is configuration, service recovery, or rollback/cutover. |
 | Evidence contains a credential, token, private key, or Kubernetes Secret | The bundle is unsafe to share. | Quarantine it, rotate exposed credentials as required, redact by omission, and regenerate the bundle. |
