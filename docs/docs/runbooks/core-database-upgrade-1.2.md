@@ -188,19 +188,33 @@ sharing evidence, write those values to `${EVIDENCE_DIR}/metadata.json` using
 the applicable schema in [Customer support bundle](#customer-support-bundle)
 or [M1-20 qualification bundle](#m1-20-qualification-bundle).
 
-### Inputs you must be given (release qualification only)
+### Inputs you must have before you start
 
-For a release qualification these five values come from the release owner, not
-from the cluster, and the bundle is refused without them. Get them before you
-start rather than at the end:
+The procedure requires these exports, spread across steps 1, 4, 7 and the
+qualification sections. Every one of them stops the run where it is first
+referenced, so collect them now rather than discovering the gap mid-window.
 
-| Variable | What it is |
-| --- | --- |
-| `KAMIWAZA_M1_RUN_ID` | The harness run this evidence belongs to. Must match the run exactly. |
-| `CANDIDATE_SHA` | The full 1.2.0 candidate commit the run is pinned to. |
-| `MAINTENANCE_TICKET` | The change record authorizing this run. |
-| `CI_RUN_URL` | The M1-20 CI run URL. |
-| `M1_EVIDENCE_URL` | Where the signed qualification evidence is published. |
+Supplied by the release owner (a qualification run cannot derive these):
+
+| Variable | What it is | First needed |
+| --- | --- | --- |
+| `KAMIWAZA_M1_RUN_ID` | The harness run this evidence belongs to | step 1 |
+| `CANDIDATE_SHA` | The full 1.2.0 candidate commit the run is pinned to | step 1 |
+| `MAINTENANCE_TICKET` | The change record authorizing this run | step 1 |
+| `INTENDED_ARTIFACT` | The exact 1.2.0 artifact name or digest being installed | step 4 |
+| `KEYGEN_LICENSE_KEY` | The license the installer validates at startup | step 4 |
+| `RUNBOOK_URL` | Commit-pinned URL of the revision you followed | metadata |
+| `CI_RUN_URL` | The M1-20 CI run URL | metadata |
+| `M1_EVIDENCE_URL` | Where the signed qualification evidence is published | metadata |
+
+Properties of the installation under test:
+
+| Variable | What it is | First needed |
+| --- | --- | --- |
+| `DOMAIN` | The existing domain of the 1.0.0 installation | step 1 |
+| `ADMIN_PASSWORD` | Its current admin password | step 1 |
+| `KAMIWAZA_CA_CERT` | Path to the CA certificate validating that domain | step 7 |
+| `INSTALLATION_MODE` | `online` or `offline`, matching the path you take in step 4 | metadata |
 
 `KAMIWAZA_M1_RUN_ID` and `CANDIDATE_SHA` are checked against the harness ledger
 and a mismatch is rejected outright, so neither can be invented locally. The
