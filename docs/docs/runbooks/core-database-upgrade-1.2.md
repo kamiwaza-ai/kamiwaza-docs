@@ -202,17 +202,17 @@ Supplied by the release owner (a qualification run cannot derive these):
 | `CANDIDATE_SHA` | The full 1.2.0 candidate commit the run is pinned to | step 1 |
 | `MAINTENANCE_TICKET` | The change record authorizing this run | step 1 |
 | `INTENDED_ARTIFACT` | The exact 1.2.0 artifact name or digest being installed | step 4 |
-| `KEYGEN_LICENSE_KEY` | The license the installer validates at startup | step 4 |
 | `RUNBOOK_URL` | Commit-pinned URL of the revision you followed | metadata |
 | `CI_RUN_URL` | The M1-20 CI run URL | metadata |
 | `M1_EVIDENCE_URL` | Where the signed qualification evidence is published | metadata |
 
-Properties of the installation under test:
+Properties of the installation under test, held by whoever operates it:
 
 | Variable | What it is | First needed |
 | --- | --- | --- |
 | `DOMAIN` | The existing domain of the 1.0.0 installation | step 1 |
 | `ADMIN_PASSWORD` | Its current admin password | step 1 |
+| `KEYGEN_LICENSE_KEY` | The license this installation runs under, from the approved license source. The installer validates it at startup, so a missing or wrong value fails **after** the backup has been taken. | step 4 |
 | `KAMIWAZA_CA_CERT` | Path to the CA certificate validating that domain | step 7 |
 | `INSTALLATION_MODE` | `online` or `offline`, matching the path you take in step 4 | metadata |
 
