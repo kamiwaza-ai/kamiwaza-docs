@@ -188,6 +188,81 @@ sharing evidence, write those values to `${EVIDENCE_DIR}/metadata.json` using
 the applicable schema in [Customer support bundle](#customer-support-bundle)
 or [M1-20 qualification bundle](#m1-20-qualification-bundle).
 
+### Inputs you must have before you start
+
+The procedure requires these exports, spread across steps 1, 4, 7 and the
+qualification sections. Every one of them stops the run where it is first
+referenced, so collect them now rather than discovering the gap mid-window.
+
+Supplied by the release owner (a qualification run cannot derive these):
+
+| Variable | What it is | First needed |
+| --- | --- | --- |
+| `KAMIWAZA_M1_RUN_ID` | The harness run this evidence belongs to | step 1 |
+| `CANDIDATE_SHA` | The full 1.2.0 candidate commit the run is pinned to | step 1 |
+| `MAINTENANCE_TICKET` | The change record authorizing this run | step 1 |
+| `INTENDED_ARTIFACT` | The exact 1.2.0 artifact name or digest being installed | step 4 |
+| `KEYGEN_LICENSE_KEY` | The license the installer validates at startup | step 4 |
+| `RUNBOOK_URL` | Commit-pinned URL of the revision you followed | metadata |
+| `CI_RUN_URL` | The M1-20 CI run URL | metadata |
+| `M1_EVIDENCE_URL` | Where the signed qualification evidence is published | metadata |
+
+Properties of the installation under test:
+
+| Variable | What it is | First needed |
+| --- | --- | --- |
+| `DOMAIN` | The existing domain of the 1.0.0 installation | step 1 |
+| `ADMIN_PASSWORD` | Its current admin password | step 1 |
+| `KAMIWAZA_CA_CERT` | Path to the CA certificate validating that domain | step 7 |
+| `INSTALLATION_MODE` | `online` or `offline`, matching the path you take in step 4 | metadata |
+
+`KAMIWAZA_M1_RUN_ID` and `CANDIDATE_SHA` are checked against the harness ledger
+and a mismatch is rejected outright, so neither can be invented locally. The
+candidate must be a commit that contains the approver's enrolled signing key —
+see [Record the external sign-off](#record-the-external-sign-off).
+
+### Capture the metadata now, not at the end
+
+`metadata.json` is the one bundle file with no natural home in the procedure,
+and the easiest to get wrong: every field is required, and `run_id` and
+`candidate_sha` are matched against the harness. Capture what is knowable at
+this point, so the values describe the cluster **before** the upgrade rather
+than being reconstructed afterwards:
+
+```bash
+: "${MAINTENANCE_TICKET:?export the change record authorizing this run}"
+export OPERATOR="${OPERATOR:-$(id -un)}"
+export STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# Chart version of the installed release, e.g. kamiwaza-1.0.0
+INSTALLED_CHART_VERSION=$(helm list -n "${NAMESPACE}" -o json \
+  | jq -r --arg r "${RELEASE}" '.[] | select(.name == $r) | .chart')
+
+# Prefer the immutable digest over the mutable tag: imageID carries name@sha256:...
+INSTALLED_CORE_IMAGE=$(kubectl get pods -n "${NAMESPACE}" \
+  -l app.kubernetes.io/name=core-scheduler \
+  -o jsonpath='{.items[0].status.containerStatuses[?(@.name=="core")].imageID}')
+# Fall back to the deployment's tag only if the pod has not reported an imageID.
+if [[ -z "${INSTALLED_CORE_IMAGE}" ]]; then
+  INSTALLED_CORE_IMAGE=$(kubectl get deployment/core-scheduler -n "${NAMESPACE}" \
+    -o jsonpath='{.spec.template.spec.containers[?(@.name=="core")].image}')
+fi
+
+test -n "${INSTALLED_CHART_VERSION}"
+test -n "${INSTALLED_CORE_IMAGE}"
+printf 'chart=%s\nimage=%s\n' \
+  "${INSTALLED_CHART_VERSION}" "${INSTALLED_CORE_IMAGE}"
+
+export INSTALLED_CHART_VERSION INSTALLED_CORE_IMAGE
+```
+
+Both `test` lines are deliberate: an empty value here becomes a bundle that is
+refused hours later, at the point where re-running is most expensive.
+
+Write the file once the upgrade completes and `FINISHED_AT` is known — the
+schema in [M1-20 qualification bundle](#m1-20-qualification-bundle) lists every
+field, and the generator below fills them from the variables exported here.
+
 ## 2. Verify the 1.0.0 baseline
 
 Confirm the cluster is reachable and healthy enough to back up. Record the
@@ -906,6 +981,146 @@ For M1 qualification, `metadata.json` must include:
 Before publishing M1 evidence, enforce the exact file list above, then run the
 same secret scan and manual review documented in
 [Customer support bundle](#customer-support-bundle).
+
+### Generating `metadata.json`
+
+Every field is required and the harness matches `run_id` and `candidate_sha`
+against its ledger, so hand-assembly is the most common way a complete,
+correct upgrade still produces a rejected bundle. Generate it from the
+variables exported in [step 1](#inputs-you-must-have-before-you-start),
+after the upgrade finishes:
+
+```bash
+export FINISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+: "${CI_RUN_URL:?export the exact M1-20 CI run URL}"
+: "${M1_EVIDENCE_URL:?export the signed qualification evidence URL}"
+: "${INSTALLATION_MODE:?export online or offline}"
+: "${INTENDED_ARTIFACT:?export the exact 1.2.0 artifact name or digest}"
+: "${RUNBOOK_URL:?export the versioned URL of the runbook you followed}"
+
+jq -n \
+  --argjson schema_version 1 \
+  --arg run_id "${RUN_ID}" \
+  --arg candidate_sha "${CANDIDATE_SHA}" \
+  --arg source_product_version "1.0.0" \
+  --arg target_product_version "1.2.0" \
+  --arg installation_mode "${INSTALLATION_MODE}" \
+  --arg operator "${OPERATOR}" \
+  --arg maintenance_ticket "${MAINTENANCE_TICKET}" \
+  --arg cluster_context "$(kubectl config current-context)" \
+  --arg namespace "${NAMESPACE}" \
+  --arg installed_release_version "1.0.0" \
+  --arg installed_chart_version "${INSTALLED_CHART_VERSION}" \
+  --arg installed_core_image "${INSTALLED_CORE_IMAGE}" \
+  --arg intended_artifact "${INTENDED_ARTIFACT}" \
+  --arg started_at "${STARTED_AT}" \
+  --arg finished_at "${FINISHED_AT}" \
+  --arg runbook_id "core-database-upgrade-1.2" \
+  --arg runbook_url "${RUNBOOK_URL}" \
+  --arg ci_run_url "${CI_RUN_URL}" \
+  --arg m1_evidence_url "${M1_EVIDENCE_URL}" \
+  '$ARGS.named' >"${EVIDENCE_DIR}/metadata.json"
+
+# Refuse to ship a file with an empty or placeholder value in it.
+jq -e --arg placeholder '^(exact|immutable|named-operator|customer-change-id|online-or-offline|full-git-commit-sha|RFC3339|published immutable)' \
+  'to_entries | all(.value | tostring | (length > 0) and (test($placeholder) | not))' \
+  "${EVIDENCE_DIR}/metadata.json" >/dev/null
+```
+
+`RUNBOOK_URL` must be a versioned or immutable URL — a commit-pinned link, not
+a branch link. A branch URL moves after the fact, which makes the evidence
+unreproducible and does not satisfy M1-20.
+
+The second `jq` is the check worth keeping: it fails if any field is empty or
+still carries one of the placeholder strings from the schema above. Those
+placeholders are valid non-empty text, so the harness would otherwise accept
+them and the finished record would assert a change ticket and an operator that
+never existed.
+
+If you extend the schema, extend that pattern with it — a placeholder it does
+not match is one the harness will accept.
+
+## Record the external sign-off
+
+M1-20 completes as **Blocked** on purpose, so an independent approver can
+inspect finished evidence before approving it. The case closes only when a
+signed approval is imported.
+
+The approval is an Ed25519 signature over the artifact's own fields, verified
+against a public key **enrolled in the candidate commit**. Three consequences
+follow, and each has refused an otherwise-valid approval:
+
+- The approver's key must already be enrolled in the candidate the run is
+  pinned to. A run pinned to a commit predating enrollment can never accept
+  that approver's sign-off, no matter how the signature is produced.
+- The approval must be timestamped **after** the rehearsal finished, and no
+  more than five minutes ahead of the verifying clock. Signing in advance
+  fails.
+- `role` must be one of `business-owner`, `customer-proxy`, or
+  `release-approver`. It is a signed field, so it cannot be corrected
+  afterwards without re-signing.
+
+### Produce the signed approval
+
+The approver runs this on the machine holding their private key. The signature
+covers every field except `signature` itself, serialized as canonical JSON —
+sorted keys, no whitespace. Any other serialization verifies as invalid:
+
+```bash
+# Values supplied by the release owner; RUN_ID and CANDIDATE_SHA must match the run.
+: "${RUN_ID:?}" ; : "${CANDIDATE_SHA:?}"
+export APPROVER="Full Name"
+export ROLE="release-approver"        # or business-owner / customer-proxy
+export SOURCE="the record this approval is tracked in"
+export PRIVATE_KEY="${HOME}/.kamiwaza-signoff.key"
+
+python3 - <<'PY' >external-signoff.json
+import base64, json, os, datetime
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+
+payload = {
+    "schema_version": 1,
+    "approved": True,
+    "approver": os.environ["APPROVER"],
+    "role": os.environ["ROLE"],
+    "approved_at": datetime.datetime.now(datetime.timezone.utc)
+        .strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "source": os.environ["SOURCE"],
+    "run_id": os.environ["RUN_ID"],
+    "candidate_sha": os.environ["CANDIDATE_SHA"],
+}
+# Canonical form: sorted keys, compact separators, signature excluded.
+signed = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+
+key = load_pem_private_key(
+    open(os.environ["PRIVATE_KEY"], "rb").read(),
+    password=(os.environ["KEY_PASSPHRASE"].encode()
+              if os.environ.get("KEY_PASSPHRASE") else None),
+)
+payload["signature"] = base64.b64encode(key.sign(signed)).decode()
+print(json.dumps(payload, indent=2))
+PY
+```
+
+The private key never leaves the approver's machine; only
+`external-signoff.json` is returned. If the key is passphrase-protected, set
+`KEY_PASSPHRASE` for the command rather than storing it.
+
+### Import it
+
+Run this from the `kamiwaza` checkout the qualification run was created in:
+
+```bash
+scripts/kw_py scripts/run_db_migration_m1.py \
+  resume "${RUN_ID}" --external-signoff /path/to/external-signoff.json
+```
+
+The import validates the signature, the enrolled key, the run and candidate
+binding, the timestamp window, and refuses any approval carrying sensitive
+data. On success M1-20 moves from Blocked to Pass. On failure the case stays
+Blocked and the reason names the specific check that refused — read it rather
+than re-signing blindly, since the usual causes are a candidate that predates
+enrollment or a timestamp earlier than the rehearsal's completion.
 
 ## Run M1-20 release qualification
 
