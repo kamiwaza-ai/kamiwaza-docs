@@ -98,6 +98,8 @@ within one 10-second period once `core-db-init` completes.
 | Ray head pod `Running` but **not Ready**, with its READY column one container short (`2/3` where the mesh sidecar is present), while `core-db-init` is pre-head | Correct. The gate is holding. | Wait. Continue to observe `core-db-init`. |
 | `core-api` has no endpoints, and requests to it fail or return 503, during that same window | Correct, and it follows directly from the line above. | Wait. Do not restart anything. |
 | Ray head becomes Ready and `core-api` endpoints reappear shortly after `core-db-init` succeeds | Correct. The gate has reopened. | Continue to [step 6](#6-verify-the-schema-from-the-running-core-image). |
+| `core-postgres-0` is recreated during the upgrade — a young pod age where you expected an old one | Correct. The platform sync rolls the PostgreSQL pod; the data lives on its volume and is unaffected. | Continue. Verify data after the upgrade in [step 6](#6-verify-the-schema-from-the-running-core-image), not by pod age. |
+| The core schema marker still reads `core` / `1.0` after a successful upgrade | Correct — see [step 6](#6-verify-the-schema-from-the-running-core-image). The marker records the schema **contract** the database satisfies, which 1.2.0 does not change. There is no `1.2` marker value and you will never see one. | Continue. Judge success by `state`, `supported`, `migration_required`, and the head revisions. |
 | Ray head still not Ready well **after** the schema has reached head | Not expected. | Collect evidence and escalate to Support. Do not delete the pod. |
 | `schema-readiness` container is in `CrashLoopBackOff` | Not expected — almost always chart/image skew. | See [image contract](#image-contract-do-not-pin-an-older-core-image) below. |
 
@@ -677,7 +679,14 @@ Required result:
 - `state` is `at_head`;
 - `supported` is `true`;
 - `migration_required` is `false`;
-- `marker_version` is `1.0` and `marker.tsv` contains exactly `core<TAB>1.0`;
+- `marker_version` is `1.0` and `marker.tsv` contains exactly `core<TAB>1.0`.
+  **This is correct after a successful 1.2.0 upgrade and is the single most
+  misread line in this procedure.** The marker names the schema contract the
+  database satisfies, not the product release you installed. 1.2.0 does not
+  advance it, no `1.2` marker value exists, and a marker reading `1.0` is
+  therefore evidence of success rather than of an incomplete upgrade. Judge the
+  upgrade by `state`, `supported`, `migration_required`, and the head revisions
+  below;
 - `db_heads` contains exactly one revision;
 - `code_heads` contains exactly one revision and equals `db_heads`.
 
@@ -981,6 +990,32 @@ For M1 qualification, `metadata.json` must include:
 Before publishing M1 evidence, enforce the exact file list above, then run the
 same secret scan and manual review documented in
 [Customer support bundle](#customer-support-bundle).
+
+### What `intended_artifact` has to record
+
+Record **both** the installer's SHA-256 **and** the core image digest the
+install actually resolved. Either alone is insufficient, for different reasons.
+
+The installer is immutable once built, so its checksum identifies the payload
+exactly. But the payload contains no Kamiwaza code — it pulls images at install
+time, and the chart's core image is a floating tag with `pullPolicy: Always`.
+That is deliberate: the `schema-readiness` container runs a module that exists
+only on the development line, so a fixed release tag would not carry the gate
+this upgrade depends on. The consequence is that the tag can move between the
+moment you record the installer checksum and the moment the image is pulled.
+
+So capture the digest that was actually pulled, after the upgrade:
+
+```bash
+kubectl get pods -n "${NAMESPACE}" \
+  -o jsonpath='{range .items[*]}{.status.containerStatuses[*].imageID}{"\n"}{end}' \
+  | sort -u
+```
+
+Together the two are reproducible: the checksum says which installer ran, and
+the digest says which code it installed. Neither question can be answered later
+from the other, and the image carries no source-commit label to recover it
+from.
 
 ### Generating `metadata.json`
 
