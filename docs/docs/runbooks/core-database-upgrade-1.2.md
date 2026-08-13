@@ -604,7 +604,11 @@ COLLECTOR_EVIDENCE_COMPLETE=0
   "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}" \
   --kubectl-bin "${KUBECTL_PATH}" --helm-bin "${HELM_PATH}" || COLLECTOR_RC=$?
 
-if [[ "${COLLECTOR_RC}" -ne 0 ]]; then
+if [[ "${COLLECTOR_RC}" -eq 2 ]]; then
+  # Exit 2 is refused before the evidence tree exists, so there is no manifest
+  # to consult — the argument or the target path is what needs correcting.
+  printf 'stop: collector refused the invocation (exit 2); fix the argument or use a new COLLECTOR_DIR\n' >&2
+elif [[ "${COLLECTOR_RC}" -ne 0 ]]; then
   printf 'stop: diagnostics bundle is incomplete (exit %s); %s names what is missing\n' \
     "${COLLECTOR_RC}" "${COLLECTOR_DIR}/manifest.txt" >&2
 else
@@ -616,8 +620,20 @@ else
 
   # Exit zero says both collectors produced evidence, not that every command
   # succeeded. The failures are the manifest lines marked result=failed.
-  if grep -q ' result=failed ' "${COLLECTOR_DIR}/manifest.txt"; then
-    grep ' result=failed ' "${COLLECTOR_DIR}/manifest.txt" >&2
+  # Capture grep's status rather than branching on it directly: grep exits 1
+  # for "no failures" but 2 for "could not read the manifest", and treating
+  # those alike would report a clean bundle for one nobody could open.
+  # FAILED_LINES, not LINES — the shell keeps its own LINES.
+  FAILED_LINES=''
+  MANIFEST_GREP_RC=0
+  FAILED_LINES=$(grep ' result=failed ' "${COLLECTOR_DIR}/manifest.txt") \
+    || MANIFEST_GREP_RC=$?
+  if [[ -n "${FAILED_LINES}" ]]; then
+    printf '%s\n' "${FAILED_LINES}" >&2
+    COLLECTOR_COMMAND_FAILURES=1
+  elif [[ "${MANIFEST_GREP_RC}" -gt 1 ]]; then
+    printf 'stop: %s could not be read (grep exit %s)\n' \
+      "${COLLECTOR_DIR}/manifest.txt" "${MANIFEST_GREP_RC}" >&2
     COLLECTOR_COMMAND_FAILURES=1
   fi
 
@@ -644,10 +660,15 @@ started, the pod description and events are authoritative; an empty container
 log alone is not evidence that migration code ran.
 
 `--namespace` and `--release` are also accepted as flags; the positional
-`DIR [NAMESPACE] [RELEASE]` form above is still supported. Both binary options
-require a value containing a `/`, because a bare name would be re-resolved
-through `PATH` when the command runs — so the binary that executes need not be
-the one that was checked.
+`DIR [NAMESPACE] [RELEASE]` form above is still supported. Every option also
+takes the `--option=value` form, which is how to pass a value that legitimately
+begins with `-`. Both binary options need a path to an executable regular file
+containing a `/`: a bare name would be re-resolved through `PATH` when the
+command runs, so the binary that executes need not be the one that was checked.
+A value that fails either test is not a usage error — the tool is simply
+unresolvable, and the run ends at exit 1 with `result=not-collected` naming it.
+
+Then apply the installer gate:
 
 ```bash
 if [[ "${INSTALL_RC}" -ne 0 ]]; then
@@ -669,15 +690,30 @@ naming it. The `--kubectl-bin` / `--helm-bin` values above are expanded by your
 own shell before `sudo` runs, so they carry through correctly and are the form
 to use:
 
+Use a `COLLECTOR_DIR` no earlier run has touched: the collector refuses a
+target that already exists and is non-empty, so pointing a second run at the
+first run's directory ends at exit 2 rather than collecting anything.
+
 ```bash
 sudo "${COLLECTOR_COMMAND}" \
   "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}" \
   --kubectl-bin "${KUBECTL_PATH}" --helm-bin "${HELM_PATH}"
+
+# Hand the bundle back before the merge step. The collector runs under
+# `umask 077` and `chmod 700`s its output, so a root-run bundle is root-owned
+# and unreadable to you — and the `cp -a` above would fail with EACCES.
+sudo chown -R "$(id -u):$(id -g)" "${COLLECTOR_DIR}"
 ```
+
+That `chown` is not housekeeping. Without it the merge fails, and the failure
+lands on a bundle you can no longer read to find out why.
 
 `KUBECTL_BIN` / `HELM_BIN` environment variables do the same job, but only for
 non-`sudo` invocations: `env_reset` strips them, and default RHEL 9 sudoers
-refuses `sudo KUBECTL_BIN=... `. Carrying your own `PATH` through instead —
+refuses `sudo KUBECTL_BIN=... `. `sudo -E` preserves the environment where
+sudoers grants `setenv` — the installer step above relies on exactly that — but
+it does not help here, because `secure_path` still replaces `PATH` even under
+`-E`. Carrying your own `PATH` through instead —
 `sudo env "PATH=$PATH" ...` — also works, but it defeats `secure_path`: any
 user-writable directory on your `PATH` can then supply the `kubectl`, `helm`,
 or `bash` that runs as root. Prefer the explicit paths above on production
@@ -688,15 +724,16 @@ carry it through `env` rather than as a `sudo` variable assignment:
 
 ### Reading the manifest and the exit status
 
-Read `manifest.txt` on every run, not only on a failure. Each line carries the
-command's exit status plus an explicit `result=`:
+Read `manifest.txt` on every run, not only on a failure. After four header
+lines (`collector=`, `collected_at=`, `namespace=`, `release=`), each
+`command=` line carries that command's exit status plus an explicit `result=`:
 
 | `result=` | Meaning |
 | --- | --- |
 | `collected` | Ran, succeeded, produced output; `bytes=` counts it. |
 | `collected-empty` | Ran and succeeded, but there was nothing to report. |
 | `failed` | Ran and failed. `bytes=` counts the command's error text, not evidence. |
-| `not-collected` | Never ran; `reason=` says why (the tool was unresolvable). |
+| `not-collected` | Never ran; `reason=` says why (the tool was unresolvable). Its `status=127` is a stand-in, not a command's exit code. |
 
 That distinction is the point of the manifest: it tells a reader who was not
 present whether an absent answer means "nothing to report", "the cluster
