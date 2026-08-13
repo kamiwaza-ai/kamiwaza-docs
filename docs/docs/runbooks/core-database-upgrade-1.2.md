@@ -585,15 +585,30 @@ the Helm half missing. Resolve the paths in your own shell so they are correct
 on any host, and check them before the collector needs them:
 
 ```bash
-KUBECTL_PATH="$(command -v kubectl)" || KUBECTL_PATH=''
-HELM_PATH="$(command -v helm)" || HELM_PATH=''
-test -n "${KUBECTL_PATH}"
-test -n "${HELM_PATH}"
+# `type -P`, not `command -v`: the latter also resolves aliases and shell
+# functions, printing something that is not a filesystem path and passing the
+# checks below only to be rejected by the collector a step later.
+KUBECTL_PATH="$(type -P kubectl)" || KUBECTL_PATH=''
+HELM_PATH="$(type -P helm)" || HELM_PATH=''
+test -x "${KUBECTL_PATH}"
+test -x "${HELM_PATH}"
 ```
 
-An empty value here is the same finding the collector would report a step
-later: install or locate the missing tool before running the collector, rather
-than accepting a bundle without it.
+`test -x` is the same requirement the collector enforces — an executable
+regular file, reached by a path — so a failure here is the finding it would
+report a step later. Install or locate the missing tool before running the
+collector rather than accepting a bundle without it.
+
+Point `COLLECTOR_DIR` at a path no earlier run has touched: the collector
+refuses a target that already exists and is non-empty, so re-pointing a second
+run at the first run's directory ends at exit 2 rather than collecting
+anything.
+
+This is the only invocation. If your cluster access requires root, add `sudo`
+to the collector line below and read
+[running it under `sudo`](#if-you-run-the-collector-under-sudo) first — the
+ownership reclaim that follows the invocation is already part of this block, so
+there is no separate root-only recipe to splice in.
 
 ```bash
 COLLECTOR_RC=0
@@ -603,6 +618,15 @@ COLLECTOR_EVIDENCE_COMPLETE=0
 "${COLLECTOR_COMMAND}" \
   "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}" \
   --kubectl-bin "${KUBECTL_PATH}" --helm-bin "${HELM_PATH}" || COLLECTOR_RC=$?
+
+# Reclaim the bundle on every outcome, before anything reads it. The collector
+# runs under `umask 077` and `chmod 700`s its output, so a root-run leaves it
+# root-owned and unreadable to you — and the exit-1 path below is precisely
+# when you need to read manifest.txt. `-O` is false only when the directory is
+# not yours, so this is a no-op when you ran the collector as yourself.
+if [[ -d "${COLLECTOR_DIR}" && ! -O "${COLLECTOR_DIR}" ]]; then
+  sudo chown -R "$(id -u):$(id -g)" "${COLLECTOR_DIR}"
+fi
 
 if [[ "${COLLECTOR_RC}" -eq 2 ]]; then
   # Exit 2 is refused before the evidence tree exists, so there is no manifest
@@ -665,8 +689,11 @@ takes the `--option=value` form, which is how to pass a value that legitimately
 begins with `-`. Both binary options need a path to an executable regular file
 containing a `/`: a bare name would be re-resolved through `PATH` when the
 command runs, so the binary that executes need not be the one that was checked.
-A value that fails either test is not a usage error — the tool is simply
-unresolvable, and the run ends at exit 1 with `result=not-collected` naming it.
+A *non-empty* value that fails either test is not a usage error — the tool is
+simply unresolvable, and the run ends at exit 1 with `result=not-collected`
+naming it. An *empty* value is rejected as a usage error, at exit 2, before the
+evidence tree exists — which is why the pre-check above gates on `test -x`
+rather than passing whatever it found straight through.
 
 Then apply the installer gate:
 
@@ -683,30 +710,21 @@ and `COLLECTOR_DIR`. Never reuse or overwrite the first attempt's evidence.
 
 ### If you run the collector under `sudo`
 
+Add `sudo` to the collector line in the block above. Do not copy that line out
+into a snippet of its own: the surrounding block initializes `COLLECTOR_RC`,
+captures the collector's status into it, reclaims ownership, and gates on the
+three counters. A standalone root invocation carries none of that, and its exit
+status is silently lost — an incomplete bundle then reads as a complete one.
+
 `sudo` replaces `PATH` with `secure_path`. On RHEL 9 that keeps `/usr/bin`,
 where the packaged `kubectl` lives, but not `/usr/local/bin`, where `helm` is
 installed — so `helm` is the half that disappears, and the run ends at exit 1
-naming it. The `--kubectl-bin` / `--helm-bin` values above are expanded by your
-own shell before `sudo` runs, so they carry through correctly and are the form
-to use:
+naming it. That is what `--kubectl-bin` / `--helm-bin` are for: their values are
+expanded by your own shell before `sudo` runs, so they carry through intact.
 
-Use a `COLLECTOR_DIR` no earlier run has touched: the collector refuses a
-target that already exists and is non-empty, so pointing a second run at the
-first run's directory ends at exit 2 rather than collecting anything.
-
-```bash
-sudo "${COLLECTOR_COMMAND}" \
-  "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}" \
-  --kubectl-bin "${KUBECTL_PATH}" --helm-bin "${HELM_PATH}"
-
-# Hand the bundle back before the merge step. The collector runs under
-# `umask 077` and `chmod 700`s its output, so a root-run bundle is root-owned
-# and unreadable to you — and the `cp -a` above would fail with EACCES.
-sudo chown -R "$(id -u):$(id -g)" "${COLLECTOR_DIR}"
-```
-
-That `chown` is not housekeeping. Without it the merge fails, and the failure
-lands on a bundle you can no longer read to find out why.
+The reclaim step matters most on the paths where something already went wrong.
+It runs on every outcome, not just success, because the exit-1 branch tells you
+to read `manifest.txt` — a file a root-run leaves at mode 600, owned by root.
 
 `KUBECTL_BIN` / `HELM_BIN` environment variables do the same job, but only for
 non-`sudo` invocations: `env_reset` strips them, and default RHEL 9 sudoers
