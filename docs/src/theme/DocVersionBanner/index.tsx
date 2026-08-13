@@ -20,7 +20,10 @@ export default function DocVersionBanner({className}: Props): React.ReactNode {
         <div>
           This is documentation for Kamiwaza <b>{versionMetadata.label}</b>, which
           is the next release of Kamiwaza. For the current GA release, see{' '}
-          <Link to="/"><b>1.0.1</b></Link>.
+          <Link to="/"><b>1.0.2</b></Link>.
+          {/* TODO: dynamic version resolution instead of hardcoding the version.
+          Currently this is a manual step that has been overlooked in previous
+          version-bump PRs. */}
         </div>
       </div>
     );
@@ -38,7 +41,7 @@ export default function DocVersionBanner({className}: Props): React.ReactNode {
         <div>
           This is documentation for Kamiwaza <b>{versionMetadata.label}</b>, which
           is no longer actively maintained. For the current GA release, see{' '}
-          <Link to="/"><b>1.0.1</b></Link>.
+          <Link to="/"><b>1.0.2</b></Link>.
         </div>
       </div>
     );
