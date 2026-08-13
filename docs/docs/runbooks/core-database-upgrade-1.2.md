@@ -619,18 +619,24 @@ COLLECTOR_EVIDENCE_COMPLETE=0
   "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}" \
   --kubectl-bin "${KUBECTL_PATH}" --helm-bin "${HELM_PATH}" || COLLECTOR_RC=$?
 
-# Reclaim the bundle on every outcome, before anything reads it. The collector
-# runs under `umask 077` and `chmod 700`s its output, so a root-run leaves it
-# root-owned and unreadable to you — and the exit-1 path below is precisely
-# when you need to read manifest.txt. `-O` is false only when the directory is
-# not yours, so this is a no-op when you ran the collector as yourself.
-if [[ -d "${COLLECTOR_DIR}" && ! -O "${COLLECTOR_DIR}" ]]; then
+# Reclaim the bundle before anything reads it. The collector runs under
+# `umask 077` and `chmod 700`s its output, so a root-run leaves it root-owned
+# and unreadable to you — and the exit-1 path below is precisely when you need
+# to read manifest.txt. `-O` is false only when the directory is not yours, so
+# this is a no-op when you ran the collector as yourself.
+#
+# Excluding exit 2 is what keeps a recursive, root-privileged chown pointed at
+# this run's own output: exit 2 is the one outcome where the collector created
+# nothing, and it is what you get for a COLLECTOR_DIR that already existed and
+# was non-empty. Any other status means this tree is ours to reclaim.
+if [[ "${COLLECTOR_RC}" -ne 2 && -d "${COLLECTOR_DIR}" && ! -O "${COLLECTOR_DIR}" ]]; then
   sudo chown -R "$(id -u):$(id -g)" "${COLLECTOR_DIR}"
 fi
 
 if [[ "${COLLECTOR_RC}" -eq 2 ]]; then
-  # Exit 2 is refused before the evidence tree exists, so there is no manifest
-  # to consult — the argument or the target path is what needs correcting.
+  # Exit 2 is refused before this run writes anything, so it produced no
+  # manifest to consult — any file already at that path belongs to an earlier
+  # run. The argument or the target path is what needs correcting.
   printf 'stop: collector refused the invocation (exit 2); fix the argument or use a new COLLECTOR_DIR\n' >&2
 elif [[ "${COLLECTOR_RC}" -ne 0 ]]; then
   printf 'stop: diagnostics bundle is incomplete (exit %s); %s names what is missing\n' \
