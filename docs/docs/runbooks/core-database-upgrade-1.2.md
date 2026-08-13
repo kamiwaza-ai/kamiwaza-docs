@@ -647,6 +647,10 @@ else
   cp -a "${COLLECTOR_DIR}/cluster/." "${EVIDENCE_DIR}/cluster/"
   cp -a "${COLLECTOR_DIR}/db-init/." "${EVIDENCE_DIR}/db-init/"
   cp -a "${COLLECTOR_DIR}/helm/." "${EVIDENCE_DIR}/helm/"
+  # manifest.txt is the key to everything above it: without it, a reader who
+  # was not present cannot tell a file the cluster had nothing to say about
+  # from one the cluster refused to produce.
+  cp -a "${COLLECTOR_DIR}/manifest.txt" "${EVIDENCE_DIR}/manifest.txt"
 
   # Exit zero says both collectors produced evidence, not that every command
   # succeeded. The failures are the manifest lines marked result=failed.
@@ -763,6 +767,11 @@ That distinction is the point of the manifest: it tells a reader who was not
 present whether an absent answer means "nothing to report", "the cluster
 refused", or "never asked". Treat a `failed` line's output as an error message,
 never as evidence.
+
+That reader is usually Support or the release owner rather than you, which is
+why the merge step above copies `manifest.txt` into `${EVIDENCE_DIR}` and both
+bundle lists carry it. Left behind on the operator host, the taxonomy above
+would describe a file its intended audience never receives.
 
 Exit status is symmetric across both halves of the bundle. `COLLECTOR_RC` of 1
 means the bundle is **incomplete** — `kubectl` or `helm` was unresolvable, or
@@ -981,6 +990,7 @@ kamiwaza/scripts/db_migration_m1/runbook_bundle.py EVIDENCE_FILES. -->
 
 ```text
 metadata.json
+manifest.txt
 backup/manifest.json
 installer/exit-status.txt
 installer/postinst-debug.log
@@ -1071,6 +1081,7 @@ kamiwaza/scripts/db_migration_m1/runbook_bundle.py EVIDENCE_FILES. -->
 
 ```text
 metadata.json
+manifest.txt
 backup/manifest.json
 installer/exit-status.txt
 installer/postinst-debug.log
