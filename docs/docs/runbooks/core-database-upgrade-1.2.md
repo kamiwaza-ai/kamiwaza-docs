@@ -576,7 +576,39 @@ are removed before the next hook creation, so collect evidence promptly.
 
 Run the 1.2.0 production payload's deterministic collector on both success and
 failure paths. Support diagnosis and M1 qualification both require its cluster,
-db-init, and Helm outputs even when the upgrade succeeds:
+db-init, and Helm outputs even when the upgrade succeeds.
+
+Name the two collector binaries explicitly. The collector resolves `kubectl`
+and `helm` once, up front, and a tool it cannot resolve is a hole in the bundle
+that ends the run at exit 1 — it no longer proceeds and reports success with
+the Helm half missing. Resolve the paths in your own shell so they are correct
+on any host, and check them before the collector needs them:
+
+```bash
+# `type -P`, not `command -v`: the latter also resolves aliases and shell
+# functions, printing something that is not a filesystem path and passing the
+# checks below only to be rejected by the collector a step later.
+KUBECTL_PATH="$(type -P kubectl)" || KUBECTL_PATH=''
+HELM_PATH="$(type -P helm)" || HELM_PATH=''
+test -x "${KUBECTL_PATH}"
+test -x "${HELM_PATH}"
+```
+
+`test -x` is the same requirement the collector enforces — an executable
+regular file, reached by a path — so a failure here is the finding it would
+report a step later. Install or locate the missing tool before running the
+collector rather than accepting a bundle without it.
+
+Point `COLLECTOR_DIR` at a path no earlier run has touched: the collector
+refuses a target that already exists and is non-empty, so re-pointing a second
+run at the first run's directory ends at exit 2 rather than collecting
+anything.
+
+This is the only invocation. If your cluster access requires root, add `sudo`
+to the collector line below and read
+[running it under `sudo`](#if-you-run-the-collector-under-sudo) first — the
+ownership reclaim that follows the invocation is already part of this block, so
+there is no separate root-only recipe to splice in.
 
 ```bash
 COLLECTOR_RC=0
@@ -584,11 +616,31 @@ COLLECTOR_COMMAND_FAILURES=0
 COLLECTOR_EVIDENCE_COMPLETE=0
 
 "${COLLECTOR_COMMAND}" \
-  "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}" || COLLECTOR_RC=$?
+  "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}" \
+  --kubectl-bin "${KUBECTL_PATH}" --helm-bin "${HELM_PATH}" || COLLECTOR_RC=$?
 
-if [[ "${COLLECTOR_RC}" -ne 0 ]]; then
-  printf 'stop: diagnostics collector failed before evidence merge (exit %s)\n' \
-    "${COLLECTOR_RC}" >&2
+# Reclaim the bundle before anything reads it. The collector runs under
+# `umask 077` and `chmod 700`s its output, so a root-run leaves it root-owned
+# and unreadable to you — and the exit-1 path below is precisely when you need
+# to read manifest.txt. `-O` is false only when the directory is not yours, so
+# this is a no-op when you ran the collector as yourself.
+#
+# Excluding exit 2 is what keeps a recursive, root-privileged chown pointed at
+# this run's own output: exit 2 is the one outcome where the collector created
+# nothing, and it is what you get for a COLLECTOR_DIR that already existed and
+# was non-empty. Any other status means this tree is ours to reclaim.
+if [[ "${COLLECTOR_RC}" -ne 2 && -d "${COLLECTOR_DIR}" && ! -O "${COLLECTOR_DIR}" ]]; then
+  sudo chown -R "$(id -u):$(id -g)" "${COLLECTOR_DIR}"
+fi
+
+if [[ "${COLLECTOR_RC}" -eq 2 ]]; then
+  # Exit 2 is refused before this run writes anything, so it produced no
+  # manifest to consult — any file already at that path belongs to an earlier
+  # run. The argument or the target path is what needs correcting.
+  printf 'stop: collector refused the invocation (exit 2); fix the argument or use a new COLLECTOR_DIR\n' >&2
+elif [[ "${COLLECTOR_RC}" -ne 0 ]]; then
+  printf 'stop: diagnostics bundle is incomplete (exit %s); %s names what is missing\n' \
+    "${COLLECTOR_RC}" "${COLLECTOR_DIR}/manifest.txt" >&2
 else
   # The collector deliberately requires a new or empty, non-symlink target.
   # Merge evidence before classifying failures observed in the cluster.
@@ -596,11 +648,24 @@ else
   cp -a "${COLLECTOR_DIR}/db-init/." "${EVIDENCE_DIR}/db-init/"
   cp -a "${COLLECTOR_DIR}/helm/." "${EVIDENCE_DIR}/helm/"
 
-  awk '
-    BEGIN { failed = 0 }
-    /^command=/ && $0 !~ / status=0$/ { print; failed = 1 }
-    END { exit failed }
-  ' "${COLLECTOR_DIR}/manifest.txt" || COLLECTOR_COMMAND_FAILURES=1
+  # Exit zero says both collectors produced evidence, not that every command
+  # succeeded. The failures are the manifest lines marked result=failed.
+  # Capture grep's status rather than branching on it directly: grep exits 1
+  # for "no failures" but 2 for "could not read the manifest", and treating
+  # those alike would report a clean bundle for one nobody could open.
+  # FAILED_LINES, not LINES — the shell keeps its own LINES.
+  FAILED_LINES=''
+  MANIFEST_GREP_RC=0
+  FAILED_LINES=$(grep ' result=failed ' "${COLLECTOR_DIR}/manifest.txt") \
+    || MANIFEST_GREP_RC=$?
+  if [[ -n "${FAILED_LINES}" ]]; then
+    printf '%s\n' "${FAILED_LINES}" >&2
+    COLLECTOR_COMMAND_FAILURES=1
+  elif [[ "${MANIFEST_GREP_RC}" -gt 1 ]]; then
+    printf 'stop: %s could not be read (grep exit %s)\n' \
+      "${COLLECTOR_DIR}/manifest.txt" "${MANIFEST_GREP_RC}" >&2
+    COLLECTOR_COMMAND_FAILURES=1
+  fi
 
   if test -s "${EVIDENCE_DIR}/db-init/pod-describe.txt" && \
     test -s "${EVIDENCE_DIR}/db-init/all-attempts.log"; then
@@ -624,10 +689,19 @@ namespace state and events, and Helm status/history. For a pod that never
 started, the pod description and events are authoritative; an empty container
 log alone is not evidence that migration code ran.
 
-`COLLECTOR_RC` nonzero means the collector itself failed. A
-`COLLECTOR_COMMAND_FAILURES` value of 1 means collection succeeded but observed
-one or more failing cluster commands; preserve the merged evidence and stop for
-Support review. `COLLECTOR_EVIDENCE_COMPLETE` must be 1 for M1 qualification.
+`--namespace` and `--release` are also accepted as flags; the positional
+`DIR [NAMESPACE] [RELEASE]` form above is still supported. Every option also
+takes the `--option=value` form, which is how to pass a value that legitimately
+begins with `-`. Both binary options need a path to an executable regular file
+containing a `/`: a bare name would be re-resolved through `PATH` when the
+command runs, so the binary that executes need not be the one that was checked.
+A *non-empty* value that fails either test is not a usage error — the tool is
+simply unresolvable, and the run ends at exit 1 with `result=not-collected`
+naming it. An *empty* value is rejected as a usage error, at exit 2, before the
+evidence tree exists — which is why the pre-check above gates on `test -x`
+rather than passing whatever it found straight through.
+
+Then apply the installer gate:
 
 ```bash
 if [[ "${INSTALL_RC}" -ne 0 ]]; then
@@ -639,6 +713,70 @@ test "${INSTALL_RC}" -eq 0
 
 If Support approves a retry, start again with a new `RUN_ID`, `EVIDENCE_DIR`,
 and `COLLECTOR_DIR`. Never reuse or overwrite the first attempt's evidence.
+
+### If you run the collector under `sudo`
+
+Add `sudo` to the collector line in the block above. Do not copy that line out
+into a snippet of its own: the surrounding block initializes `COLLECTOR_RC`,
+captures the collector's status into it, reclaims ownership, and gates on the
+three counters. A standalone root invocation carries none of that, and its exit
+status is silently lost — an incomplete bundle then reads as a complete one.
+
+`sudo` replaces `PATH` with `secure_path`. On RHEL 9 that keeps `/usr/bin`,
+where the packaged `kubectl` lives, but not `/usr/local/bin`, where `helm` is
+installed — so `helm` is the half that disappears, and the run ends at exit 1
+naming it. That is what `--kubectl-bin` / `--helm-bin` are for: their values are
+expanded by your own shell before `sudo` runs, so they carry through intact.
+
+The reclaim step matters most on the paths where something already went wrong.
+It runs on every outcome, not just success, because the exit-1 branch tells you
+to read `manifest.txt` — a file a root-run leaves at mode 600, owned by root.
+
+`KUBECTL_BIN` / `HELM_BIN` environment variables do the same job, but only for
+non-`sudo` invocations: `env_reset` strips them, and default RHEL 9 sudoers
+refuses `sudo KUBECTL_BIN=... `. `sudo -E` preserves the environment where
+sudoers grants `setenv` — the installer step above relies on exactly that — but
+it does not help here, because `secure_path` still replaces `PATH` even under
+`-E`. Carrying your own `PATH` through instead —
+`sudo env "PATH=$PATH" ...` — also works, but it defeats `secure_path`: any
+user-writable directory on your `PATH` can then supply the `kubectl`, `helm`,
+or `bash` that runs as root. Prefer the explicit paths above on production
+hosts. `env_reset` drops more than `PATH` — `KUBECONFIG` goes with it and
+`HOME` becomes root's — so if the kubeconfig you want is not root's default,
+carry it through `env` rather than as a `sudo` variable assignment:
+`sudo env "KUBECONFIG=$KUBECONFIG" "${COLLECTOR_COMMAND}" ... --kubectl-bin ...`.
+
+### Reading the manifest and the exit status
+
+Read `manifest.txt` on every run, not only on a failure. After four header
+lines (`collector=`, `collected_at=`, `namespace=`, `release=`), each
+`command=` line carries that command's exit status plus an explicit `result=`:
+
+| `result=` | Meaning |
+| --- | --- |
+| `collected` | Ran, succeeded, produced output; `bytes=` counts it. |
+| `collected-empty` | Ran and succeeded, but there was nothing to report. |
+| `failed` | Ran and failed. `bytes=` counts the command's error text, not evidence. |
+| `not-collected` | Never ran; `reason=` says why (the tool was unresolvable). Its `status=127` is a stand-in, not a command's exit code. |
+
+That distinction is the point of the manifest: it tells a reader who was not
+present whether an absent answer means "nothing to report", "the cluster
+refused", or "never asked". Treat a `failed` line's output as an error message,
+never as evidence.
+
+Exit status is symmetric across both halves of the bundle. `COLLECTOR_RC` of 1
+means the bundle is **incomplete** — `kubectl` or `helm` was unresolvable, or
+resolved but had every one of its invocations fail — and `manifest.txt` names
+what is missing. `COLLECTOR_RC` of 2 is a usage error or an evidence path that
+is unsafe to write (an existing non-empty directory, a symbolic link, or a
+non-directory); correct the argument or choose a new `COLLECTOR_DIR` and re-run.
+Exit zero means both collectors produced evidence — it does **not** mean every
+command succeeded. A run where some commands failed (a Job that does not exist,
+an RBAC denial on one resource) still exits zero, prints
+`warning: N collection command(s) failed` to stderr, and marks each one
+`result=failed`; that is the case `COLLECTOR_COMMAND_FAILURES` catches, and it
+is still a stop for Support review. `COLLECTOR_EVIDENCE_COMPLETE` must be 1 for
+M1 qualification.
 
 ## 6. Verify the schema from the running core image
 
