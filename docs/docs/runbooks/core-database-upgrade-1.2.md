@@ -98,7 +98,7 @@ within one 10-second period once `core-db-init` completes.
 | Ray head pod `Running` but **not Ready**, with its READY column one container short (`2/3` where the mesh sidecar is present), while `core-db-init` is pre-head | Correct. The gate is holding. | Wait. Continue to observe `core-db-init`. |
 | `core-api` has no endpoints, and requests to it fail or return 503, during that same window | Correct, and it follows directly from the line above. | Wait. Do not restart anything. |
 | Ray head becomes Ready and `core-api` endpoints reappear shortly after `core-db-init` succeeds | Correct. The gate has reopened. | Continue to [step 6](#6-verify-the-schema-from-the-running-core-image). |
-| `core-postgres-0` is recreated during the upgrade — a young pod age where you expected an old one | Correct. The platform sync rolls the PostgreSQL pod; the data lives on its volume and is unaffected. | Continue. Verify data after the upgrade in [step 6](#6-verify-the-schema-from-the-running-core-image), not by pod age. |
+| `core-postgres-0` is recreated during the upgrade — a young pod age where you expected an old one | Correct. The platform sync rolls the PostgreSQL pod; the data lives on its volume and is unaffected by the roll. | Continue. The volume is what preserves the data. [Step 6](#6-verify-the-schema-from-the-running-core-image) then verifies the schema, which is the condition this runbook gates on — judge the roll by that, not by pod age. |
 | The core schema marker still reads `core` / `1.0` after a successful upgrade | Correct — see [step 6](#6-verify-the-schema-from-the-running-core-image). The marker records the schema **contract** the database satisfies, which 1.2.0 does not change. There is no `1.2` marker value and you will never see one. | Continue. Judge success by `state`, `supported`, `migration_required`, and the head revisions. |
 | Ray head still not Ready well **after** the schema has reached head | Not expected. | Collect evidence and escalate to Support. Do not delete the pod. |
 | `schema-readiness` container is in `CrashLoopBackOff` | Not expected — almost always chart/image skew. | See [image contract](#image-contract-do-not-pin-an-older-core-image) below. |
@@ -203,7 +203,7 @@ Supplied by the release owner (a qualification run cannot derive these):
 | `KAMIWAZA_M1_RUN_ID` | The harness run this evidence belongs to | step 1 |
 | `CANDIDATE_SHA` | The full 1.2.0 candidate commit the run is pinned to | step 1 |
 | `MAINTENANCE_TICKET` | The change record authorizing this run | step 1 |
-| `INTENDED_ARTIFACT` | The exact 1.2.0 artifact name or digest being installed | step 4 |
+| `INTENDED_ARTIFACT` | The exact 1.2.0 payload installed — offline, the candidate's `release_origination.md` manifest; online, the installer checksum plus the resolved core image digest. See [what `intended_artifact` has to record](#what-intended_artifact-has-to-record). | step 4 offline; finalized after the upgrade online |
 | `RUNBOOK_URL` | Commit-pinned URL of the revision you followed | metadata |
 | `CI_RUN_URL` | The M1-20 CI run URL | metadata |
 | `M1_EVIDENCE_URL` | Where the signed qualification evidence is published | metadata |
@@ -390,13 +390,17 @@ the evidence bundle.
 ### Online upgrade
 
 Obtain `kamiwaza-online-install.sh` and its `.sha256` file from the approved
-1.2.0 release-candidate artifact location recorded in `intended_artifact`.
-Do not reuse an installer URL or script retained from an earlier release.
-Verify the candidate before running it:
+1.2.0 release-candidate artifact location. Do not reuse an installer URL or
+script retained from an earlier release. Verify the candidate before running
+it, and retain the checksum — on this path `intended_artifact` is finalized
+after the upgrade from this value plus the resolved image digest, per
+[What `intended_artifact` has to record](#what-intended_artifact-has-to-record):
 
 ```bash
 sha256sum -c kamiwaza-online-install.sh.sha256
 chmod +x kamiwaza-online-install.sh
+
+INSTALLER_SHA256=$(sha256sum kamiwaza-online-install.sh | awk '{print $1}')
 ```
 
 Then run the verified candidate once. `--keep-extract` retains the exact
@@ -993,24 +997,48 @@ same secret scan and manual review documented in
 
 ### What `intended_artifact` has to record
 
-Record **both** the installer's SHA-256 **and** the core image digest the
-install actually resolved. Either alone is insufficient, for different reasons.
+`intended_artifact` names the exact payload this run installed. What satisfies
+it differs by installation mode, and on the online path it is **finalized after
+the upgrade**, not before.
 
-The installer is immutable once built, so its checksum identifies the payload
-exactly. But the payload contains no Kamiwaza code — it pulls images at install
-time, and the chart's core image is a floating tag with `pullPolicy: Always`.
-That is deliberate: the `schema-readiness` container runs a module that exists
-only on the development line, so a fixed release tag would not carry the gate
-this upgrade depends on. The consequence is that the tag can move between the
-moment you record the installer checksum and the moment the image is pulled.
+**Offline.** The staged candidate's own `release_origination.md` manifest is the
+record, exactly as [Offline upgrade](#offline-upgrade) instructs. That path
+pins every image to an exact, non-floating tag taken from the manifest, so the
+manifest alone identifies the payload. Nothing further is required here.
 
-So capture the digest that was actually pulled, after the upgrade:
+**Online.** Record **both** the installer's SHA-256 **and** the core image
+digest the install actually resolved. Either alone is insufficient. The
+installer is immutable once built, so its checksum identifies the payload
+exactly — but that payload carries no Kamiwaza code. It pulls images at install
+time, and the online chart resolves the core image through a floating tag with
+`pullPolicy: Always`, so the tag can move between the moment you verify the
+installer checksum and the moment the image is pulled.
+
+Capture the resolved digest after the upgrade, with the same selector used in
+[Capture the metadata now](#capture-the-metadata-now-not-at-the-end) so the
+result is a single assignable value rather than every container in the
+namespace:
 
 ```bash
-kubectl get pods -n "${NAMESPACE}" \
-  -o jsonpath='{range .items[*]}{.status.containerStatuses[*].imageID}{"\n"}{end}' \
-  | sort -u
+INSTALLED_CORE_DIGEST=$(kubectl get pods -n "${NAMESPACE}" \
+  -l app.kubernetes.io/name=core-scheduler \
+  -o jsonpath='{range .items[*]}{.status.containerStatuses[?(@.name=="core")].imageID}{"\n"}{end}' \
+  | sed '/^$/d' | sort -u)
+
+# Exactly one digest is required. Empty means no core pod reported an imageID
+# yet — wait and re-run rather than recording a blank field. More than one means
+# the tag moved during the install and the pods are not running the same code:
+# stop, and re-run the upgrade against a pinned digest. Do not pick one of them.
+test -n "${INSTALLED_CORE_DIGEST}"
+test "$(printf '%s\n' "${INSTALLED_CORE_DIGEST}" | wc -l)" -eq 1
+
+export INTENDED_ARTIFACT="installer=sha256:${INSTALLER_SHA256};core-image=${INSTALLED_CORE_DIGEST}"
 ```
+
+`INSTALLER_SHA256` is the value captured when you verified the installer in
+[Online upgrade](#online-upgrade). The two fields are semicolon-delimited and
+each is `name=value`, so the pair stays parseable in the single
+`intended_artifact` string the bundle contract allows.
 
 Together the two are reproducible: the checksum says which installer ran, and
 the digest says which code it installed. Neither question can be answered later
