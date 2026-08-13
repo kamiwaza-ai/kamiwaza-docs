@@ -98,6 +98,8 @@ within one 10-second period once `core-db-init` completes.
 | Ray head pod `Running` but **not Ready**, with its READY column one container short (`2/3` where the mesh sidecar is present), while `core-db-init` is pre-head | Correct. The gate is holding. | Wait. Continue to observe `core-db-init`. |
 | `core-api` has no endpoints, and requests to it fail or return 503, during that same window | Correct, and it follows directly from the line above. | Wait. Do not restart anything. |
 | Ray head becomes Ready and `core-api` endpoints reappear shortly after `core-db-init` succeeds | Correct. The gate has reopened. | Continue to [step 6](#6-verify-the-schema-from-the-running-core-image). |
+| `core-postgres-0` is recreated during the upgrade — a young pod age where you expected an old one | Correct. The platform sync rolls the PostgreSQL pod; the data lives on its volume and is unaffected by the roll. | Continue. The volume is what preserves the data. [Step 6](#6-verify-the-schema-from-the-running-core-image) then verifies the schema, which is the condition this runbook gates on — judge the roll by that, not by pod age. |
+| The core schema marker still reads `core` / `1.0` after a successful upgrade | Correct — see [step 6](#6-verify-the-schema-from-the-running-core-image). The marker records the schema **contract** the database satisfies, which 1.2.0 does not change. There is no `1.2` marker value and you will never see one. | Continue. Judge success by `state`, `supported`, `migration_required`, and the head revisions. |
 | Ray head still not Ready well **after** the schema has reached head | Not expected. | Collect evidence and escalate to Support. Do not delete the pod. |
 | `schema-readiness` container is in `CrashLoopBackOff` | Not expected — almost always chart/image skew. | See [image contract](#image-contract-do-not-pin-an-older-core-image) below. |
 
@@ -194,14 +196,17 @@ The procedure requires these exports, spread across steps 1, 4, 7 and the
 qualification sections. Every one of them stops the run where it is first
 referenced, so collect them now rather than discovering the gap mid-window.
 
-Supplied by the release owner (a qualification run cannot derive these):
+Supplied by the release owner (a qualification run cannot derive these), with
+one exception called out in the table — on the online path `INTENDED_ARTIFACT`
+is completed by the run itself, because half of it does not exist until the
+upgrade has pulled its images:
 
 | Variable | What it is | First needed |
 | --- | --- | --- |
 | `KAMIWAZA_M1_RUN_ID` | The harness run this evidence belongs to | step 1 |
 | `CANDIDATE_SHA` | The full 1.2.0 candidate commit the run is pinned to | step 1 |
 | `MAINTENANCE_TICKET` | The change record authorizing this run | step 1 |
-| `INTENDED_ARTIFACT` | The exact 1.2.0 artifact name or digest being installed | step 4 |
+| `INTENDED_ARTIFACT` | The exact 1.2.0 payload installed — offline, the candidate's `release_origination.md` checksum; online, the installer checksum plus the resolved core image digest. Both are composed in [what `intended_artifact` has to record](#what-intended_artifact-has-to-record). | metadata |
 | `RUNBOOK_URL` | Commit-pinned URL of the revision you followed | metadata |
 | `CI_RUN_URL` | The M1-20 CI run URL | metadata |
 | `M1_EVIDENCE_URL` | Where the signed qualification evidence is published | metadata |
@@ -388,14 +393,25 @@ the evidence bundle.
 ### Online upgrade
 
 Obtain `kamiwaza-online-install.sh` and its `.sha256` file from the approved
-1.2.0 release-candidate artifact location recorded in `intended_artifact`.
-Do not reuse an installer URL or script retained from an earlier release.
-Verify the candidate before running it:
+1.2.0 release-candidate artifact location. Do not reuse an installer URL or
+script retained from an earlier release. Verify the candidate before running
+it, and retain the checksum — on this path `intended_artifact` is finalized
+after the upgrade from this value plus the resolved image digest, per
+[What `intended_artifact` has to record](#what-intended_artifact-has-to-record):
 
 ```bash
 sha256sum -c kamiwaza-online-install.sh.sha256
 chmod +x kamiwaza-online-install.sh
+
+INSTALLER_SHA256=$(sha256sum kamiwaza-online-install.sh | awk '{print $1}')
+test -n "${INSTALLER_SHA256}"
+export INSTALLER_SHA256
 ```
+
+The `test` and the `export` are deliberate, for the same reason as the baseline
+capture above: this value is consumed after the upgrade, and an empty or
+shell-local one becomes a bundle that is refused hours later — or worse, one
+that ships an empty installer checksum the placeholder guard cannot catch.
 
 Then run the verified candidate once. `--keep-extract` retains the exact
 candidate's deploy payload so its diagnostics collector remains available at
@@ -824,7 +840,14 @@ Required result:
 - `state` is `at_head`;
 - `supported` is `true`;
 - `migration_required` is `false`;
-- `marker_version` is `1.0` and `marker.tsv` contains exactly `core<TAB>1.0`;
+- `marker_version` is `1.0` and `marker.tsv` contains exactly `core<TAB>1.0`.
+  **This is correct after a successful 1.2.0 upgrade and is the single most
+  misread line in this procedure.** The marker names the schema contract the
+  database satisfies, not the product release you installed. 1.2.0 does not
+  advance it, no `1.2` marker value exists, and a marker reading `1.0` is
+  therefore evidence of success rather than of an incomplete upgrade. Judge the
+  upgrade by `state`, `supported`, `migration_required`, and the head revisions
+  below;
 - `db_heads` contains exactly one revision;
 - `code_heads` contains exactly one revision and equals `db_heads`.
 
@@ -1131,6 +1154,83 @@ Before publishing M1 evidence, enforce the exact file list above, then run the
 same secret scan and manual review documented in
 [Customer support bundle](#customer-support-bundle).
 
+### What `intended_artifact` has to record
+
+`intended_artifact` names the exact payload this run installed. What satisfies
+it differs by installation mode, and on the online path it is **finalized after
+the upgrade**, not before.
+
+**Offline.** The staged candidate's own `release_origination.md` manifest is the
+record, exactly as [Offline upgrade](#offline-upgrade) instructs. That path pins
+every image to an exact, non-floating tag taken from the manifest, so the
+manifest identifies the payload on its own. Record it by checksum rather than by
+path — the manifest is not in the evidence file list, so a local path stops
+identifying anything once the workspace is gone:
+
+```bash
+RELEASE_ORIGINATION_SHA256=$(sha256sum "${PREREQ_DIR}/release_origination.md" \
+  | awk '{print $1}')
+test -n "${RELEASE_ORIGINATION_SHA256}"
+
+export INTENDED_ARTIFACT="release-origination=sha256:${RELEASE_ORIGINATION_SHA256}"
+```
+
+**Online.** Record **both** the installer's SHA-256 **and** the core image
+digest the install actually resolved. Either alone is insufficient. The
+installer is immutable once built, so its checksum identifies the payload
+exactly — but that payload carries no Kamiwaza code. It pulls images at install
+time, and the online chart resolves the core image through a floating tag with
+`pullPolicy: Always`, so the tag can move between the moment you verify the
+installer checksum and the moment the image is pulled.
+
+Capture the resolved digest after the upgrade, with the same label selector used
+in [Capture the metadata now](#capture-the-metadata-now-not-at-the-end), widened
+to every matching pod so that a disagreement between pods is detectable rather
+than invisible:
+
+```bash
+: "${INSTALLER_SHA256:?export INSTALLER_SHA256 from the online installer verification in step 4}"
+
+CORE_POD_COUNT=$(kubectl get pods -n "${NAMESPACE}" \
+  -l app.kubernetes.io/name=core-scheduler \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
+  | sed '/^$/d' | wc -l)
+
+CORE_IMAGE_IDS=$(kubectl get pods -n "${NAMESPACE}" \
+  -l app.kubernetes.io/name=core-scheduler \
+  -o jsonpath='{range .items[*]}{.status.containerStatuses[?(@.name=="core")].imageID}{"\n"}{end}' \
+  | sed '/^$/d')
+
+# Every selected pod must have reported an imageID. A pod still pending or
+# starting has not resolved the tag yet, and accepting the digest now would
+# finalize evidence a later-starting pod could contradict. Wait for the rollout
+# to complete, then re-run this block.
+test "$(printf '%s\n' "${CORE_IMAGE_IDS}" | wc -l)" -eq "${CORE_POD_COUNT}"
+
+INSTALLED_CORE_DIGEST=$(printf '%s\n' "${CORE_IMAGE_IDS}" | sort -u)
+test -n "${INSTALLED_CORE_DIGEST}"
+
+# Exactly one distinct digest is required. More than one means the tag moved
+# during the install and the pods are not running the same code. That is a
+# stopped upgrade: preserve the evidence and escalate to Kamiwaza Support per
+# the stop rules. Do not record a digest, do not pick one of them, and do not
+# re-run the installer — a retry needs Support's approval.
+test "$(printf '%s\n' "${INSTALLED_CORE_DIGEST}" | wc -l)" -eq 1
+
+export INTENDED_ARTIFACT="installer=sha256:${INSTALLER_SHA256};core-image=${INSTALLED_CORE_DIGEST}"
+```
+
+`INSTALLER_SHA256` is exported when you verify the installer in
+[Online upgrade](#online-upgrade); the `:?` above stops the run here rather than
+letting an unset value ship a bundle whose installer field is empty. The two
+fields are semicolon-delimited and each is `name=value`, so the pair stays
+parseable in the single `intended_artifact` string the bundle contract allows.
+
+Together the two are reproducible: the checksum says which installer ran, and
+the digest says which code it installed. Neither question can be answered later
+from the other, and the image carries no source-commit label to recover it
+from.
+
 ### Generating `metadata.json`
 
 Every field is required and the harness matches `run_id` and `candidate_sha`
@@ -1144,7 +1244,7 @@ export FINISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 : "${CI_RUN_URL:?export the exact M1-20 CI run URL}"
 : "${M1_EVIDENCE_URL:?export the signed qualification evidence URL}"
 : "${INSTALLATION_MODE:?export online or offline}"
-: "${INTENDED_ARTIFACT:?export the exact 1.2.0 artifact name or digest}"
+: "${INTENDED_ARTIFACT:?export it per 'What intended_artifact has to record'}"
 : "${RUNBOOK_URL:?export the versioned URL of the runbook you followed}"
 
 jq -n \
