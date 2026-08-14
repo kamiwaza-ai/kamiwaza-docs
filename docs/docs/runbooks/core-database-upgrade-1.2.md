@@ -400,6 +400,9 @@ export LOCAL_RUN_LABEL="${RUN_ID}"
 export EVIDENCE_DIR="${PWD}/${LOCAL_RUN_LABEL}"
 export COLLECTOR_DIR="${PWD}/${LOCAL_RUN_LABEL}-collector"
 export PRIVATE_DIR="${PWD}/${LOCAL_RUN_LABEL}-private"
+# NAMESPACE is for this runbook's kubectl commands only. It must NOT reach the
+# installer in step 4 -- see "Keep NAMESPACE out of the installer's environment"
+# there. The step 4 blocks strip it explicitly, so exporting it here is safe.
 export NAMESPACE="kamiwaza"
 export RELEASE="kamiwaza"
 : "${CANDIDATE_SHA:?export the full verified 1.2.0 candidate SHA}"
@@ -829,6 +832,37 @@ kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
 > Past this point the [recovery boundary](#recovery-boundary) offers no way back
 > to a 1.0.0 baseline without one.
 
+### Keep `NAMESPACE` out of the installer's environment
+
+Both invocations below run through `env -u NAMESPACE`. That is not decoration.
+
+[Step 1](#1-create-the-evidence-workspace) has you `export NAMESPACE="kamiwaza"`
+for this runbook's `kubectl` commands. The installer's post-install
+`make patch-coredns` step runs `scripts/patch-coredns.sh`, which reads
+`NAMESPACE` as something else entirely — its **ingress-service namespace
+override** — and prefers a pre-set value over its provider default of
+`istio-system`. Following this runbook and then running step 4 in the same
+shell, which is exactly what it prescribes, therefore sends the script looking
+for `istio-ingressgateway` in `kamiwaza`, where it does not exist:
+
+```
+=== CoreDNS Patch: <domain> -> istio-ingressgateway.kamiwaza ClusterIP (provider: istio) ===
+  Attempt 1/30: waiting for istio-ingressgateway service (retry in 10s)...
+ERROR: istio-ingressgateway.kamiwaza has no ClusterIP after 30 attempts
+make[1]: *** [Makefile:427: patch-coredns] Error 1
+```
+
+Five minutes of retries, then a nonzero installer exit — **after** the database
+migration, the Ray head roll, and every Helm release have already succeeded. The
+platform is fine; the install reports failure. Observed on a real validation
+run, and initially misfiled as an installer defect before the collision was
+traced.
+
+`env -u NAMESPACE` removes the variable for the installer process only, so the
+runbook's own `kubectl` steps keep working before and after. It does not depend
+on the operator remembering to `unset`, and it survives being pasted out of
+order.
+
 Use the same supported production path as a clean installation. Preserve the
 exact invocation and exit status. The examples below omit real credentials;
 provide them using your approved secret-handling process and do not add them to
@@ -867,7 +901,7 @@ setting while still capturing a failed installer:
 
 (
   set +e
-  KEYGEN_LICENSE_KEY="${KEYGEN_LICENSE_KEY}" \
+  env -u NAMESPACE KEYGEN_LICENSE_KEY="${KEYGEN_LICENSE_KEY}" \
     ./kamiwaza-online-install.sh \
     --domain "${DOMAIN}" \
     --admin-password "${ADMIN_PASSWORD}" \
@@ -975,7 +1009,7 @@ the upgraded installer once:
 ```bash
 (
   set +e
-  sudo -E /opt/kamiwaza/scripts/install-prod.sh \
+  sudo -E env -u NAMESPACE /opt/kamiwaza/scripts/install-prod.sh \
     --offline \
     --domain "${DOMAIN}" \
     --admin-password "${ADMIN_PASSWORD}" \
