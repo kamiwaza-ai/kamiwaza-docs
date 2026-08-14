@@ -45,13 +45,21 @@ failed Helm hook is a stopped upgrade, not permission to improvise.
   this before creating the scratch database.
 - The exact domain, installation mode, and release inputs used for the site.
 - The approved CA certificate that validates the production HTTPS endpoint.
-- A confirmed maintenance window that covers a **Core API outage**, not merely a
-  possible interruption. From the moment the 1.2.0 chart's Ray head starts until
-  `core-db-init` brings the schema to head, the Core API serves no traffic at
-  all. This is designed behaviour, not a fault; see
+- A confirmed maintenance window that covers a **possible Core API outage**.
+  While the 1.2.0 Ray head is up and the schema is behind, the head is held out
+  of `core-api` and the API serves nothing. Whether that window has any length
+  is a race the chart does not order, and on a measured run it had none at all.
+  Plan for the outage; do not conclude anything from its absence. See
   [What normal looks like](#what-normal-looks-like-during-the-upgrade) before
   you begin.
 - External writers quiesced for the backup and upgrade window.
+- **Durable storage for the Ceph OSD**, verified before anything else — every
+  PVC in the cluster, including both PostgreSQL instances, depends on it. See
+  [Durable storage for the OSD](#durable-storage-for-the-osd).
+- **A host snapshot taken immediately before [step 4](#4-run-the-supported-installer-once)**.
+  This is the only route to a second attempt: the [recovery boundary](#recovery-boundary)
+  forbids every in-runbook alternative. See
+  [Snapshot the host before step 4](#snapshot-the-host-before-step-4).
 - The site's existing domain, runtime, storage, GPU, and installer options
   recorded and preserved for the 1.2.0 invocation.
 - A Kamiwaza Support contact who can review a failure before any retry.
@@ -62,13 +70,81 @@ evidence URLs are release-engineering inputs, not values a customer operator
 must create. If the database is below the 1.0.0 source floor, stop and request
 the required intermediate upgrade procedure.
 
+### Durable storage for the OSD
+
+Confirm this first, because it decides whether any of the protection below is
+worth anything. The Ceph OSD's backing store must live on **durable** storage —
+a managed or otherwise persistent disk. It must never be an instance-store or
+temporary resource disk. Every PVC in a Kamiwaza cluster is `ceph-block`, so the
+OSD holds the platform's entire persistent state: both PostgreSQL instances, all
+etcd members, Neo4j, Kafka, and OpenSearch.
+
+The trap is specific and easy to walk into. The default OSD path commonly lands
+on a filesystem too small for the sizing requirement, which forces relocation,
+and the volume with room to spare is frequently the cloud's ephemeral one. Know
+which one that is on your platform:
+
+| Platform | Ephemeral volume — never put the OSD here |
+| --- | --- |
+| Azure | The temporary resource disk, usually mounted at `/mnt` |
+| AWS | Instance-store volumes |
+| GCP | Local SSDs |
+
+Check the OSD's actual device, and check for Azure's marker file:
+
+```bash
+findmnt -T "$(dirname "${OSD_IMAGE_PATH}")"   # which device really holds it
+ls -la /mnt/DATALOSS_WARNING_README.txt       # present => /mnt is Azure-ephemeral
+```
+
+`findmnt` needs `-T` here. Without it, `findmnt` matches only exact mount points
+and returns nothing at all for a path inside one — silence that reads like a
+clean result.
+
+If the OSD is on ephemeral storage, **stop**. The cloud destroys that volume on
+stop, deallocate, resize, or host migration, and it cannot be snapshotted — so
+the snapshot below cannot protect this data, and the VM must not be stopped or
+deallocated for any reason, including taking one. Relocate the OSD onto durable
+storage before proceeding with the upgrade.
+
+### Snapshot the host before step 4
+
+Take a full host snapshot immediately before [step 4](#4-run-the-supported-installer-once),
+and treat that step as the point of no return. The
+[recovery boundary](#recovery-boundary) rules out every alternative — there are
+no downgrade migrations, a Helm rollback does not roll the schema back, and
+restoring a logical dump over the active database is prohibited. Without a
+snapshot there is no faithful 1.0.0 baseline to return to: a dump restore plus a
+Helm rollback still leaves 1.2.0 CRDs, hook state, and extension records behind.
+
+**Capture every disk holding state, not only the OS disk.** On Azure, that means
+a restore point collection over the whole VM:
+
+```bash
+az restore-point collection create -g "$RG" --collection-name kamiwaza-pre-upgrade \
+  --source-id "$(az vm show -g "$RG" -n "$VM" --query id -o tsv)"
+az restore-point create -g "$RG" --collection-name kamiwaza-pre-upgrade --name pre-step4
+```
+
+On AWS the equivalent is a multi-volume snapshot of the instance
+(`aws ec2 create-snapshots --instance-specification InstanceId=...`); on GCP,
+a machine image (`gcloud compute machine-images create`). On bare metal, use
+whatever storage-layer snapshot the array provides, and confirm it covers the
+OSD's device from [the check above](#durable-storage-for-the-osd).
+
+A snapshot taken while the VM is running is crash-consistent, which is
+sufficient here: PostgreSQL recovers from its WAL when the snapshot is restored.
+**Do not stop or deallocate the VM to take one** — on a host whose OSD is on
+ephemeral storage that is destructive, and it buys nothing on a host where it
+is not.
+
 ## What normal looks like during the upgrade
 
 Read this section before starting. A gated workload and a broken one look
 alike from the outside, and the single most likely way to turn a healthy
 upgrade into a failed one is to react to the gate as though it were a fault.
 
-### The Core API stops serving, on purpose
+### The Core API may stop serving, on purpose — and may not
 
 The 1.2.0 chart adds a second container, `schema-readiness`, to the Ray head
 pod. It runs the core image's `python -m kamiwaza.node.readiness_server` and its
@@ -91,6 +167,63 @@ describe the same probe. The thresholds mean the head leaves `core-api`'s
 endpoints roughly 30 seconds after the schema stops being at head, and rejoins
 within one 10-second period once `core-db-init` completes.
 
+#### How long the outage lasts is a race, and it is often zero
+
+The window above is bounded by two events the chart does not order relative to
+each other. `core-db-init` is a `post-install,post-upgrade` hook, while the new
+1.2.0 Ray head is rolled **asynchronously** by the KubeRay operator once the
+RayCluster CR updates. Nothing sequences the migration ahead of or behind the
+head's creation, so the overlap between "1.2.0 head is up" and "schema is
+behind" can be long, short, or empty.
+
+Empty is a perfectly ordinary outcome. On a successful measured run:
+
+| Event | Time (UTC) |
+| --- | --- |
+| Release upgrade begins (Helm revision 31) | 02:49:06 |
+| `core-db-init` created | 02:49:26 |
+| `core-db-init` completed (`v1_marker_only -> at_head`) | 02:51:11 |
+| New 1.2.0 Ray head created | 02:52:06 |
+| New head Ready 3/3 | 02:52:21 |
+
+`core-db-init` finished 55 seconds before the 1.2.0 head was even created, so
+the head came up against an already-at-head schema and went Ready in 15
+seconds. It was never observed at `2/3`, `core-api` never had an empty endpoint
+list, and the 1.0.0 head served throughout. That run was a success, not a gate
+that failed to engage.
+
+Read the 1800-second figure in [Wait windows](#wait-windows) accordingly: it
+bounds how long `core-db-init` itself may legitimately run, **not** how much
+downtime to expect. Observed downtime can be anywhere from none to roughly that
+long.
+
+#### Confirm the gate is armed, rather than inferring it from an outage
+
+Because a fast success and a gate that never engaged look identical from the
+outside — no outage, in both cases — do not use the presence or absence of
+downtime as evidence either way. Check the gate positively instead:
+
+```bash
+# The schema-readiness container exists in the head pod and is running.
+kubectl get pods -n "${NAMESPACE}" \
+  -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .status.containerStatuses[*]}{.name}={.ready}{" "}{end}{"\n"}{end}'
+
+# The probe endpoint answers from inside the head pod.
+kubectl exec -n "${NAMESPACE}" \
+  "$(kubectl get pod -n "${NAMESPACE}" \
+      -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
+      -o jsonpath='{.items[0].metadata.name}')" \
+  -c schema-readiness -- \
+  curl --fail --silent --show-error http://127.0.0.1:7788/healthz/schema
+```
+
+A `schema-readiness` entry in the container list and a successful
+`/healthz/schema` response together show the gate is present and answering. If
+the container is absent from the head pod entirely, the gate is not armed —
+that is a chart/image problem to escalate, and any smoke test that passed
+during the upgrade proved nothing about schema safety.
+
 ### Expected observations
 
 | Observation | Meaning | Action |
@@ -98,8 +231,9 @@ within one 10-second period once `core-db-init` completes.
 | Ray head pod `Running` but **not Ready**, with its READY column one container short (`2/3` where the mesh sidecar is present), while `core-db-init` is pre-head | Correct. The gate is holding. | Wait. Continue to observe `core-db-init`. |
 | `core-api` has no endpoints, and requests to it fail or return 503, during that same window | Correct, and it follows directly from the line above. | Wait. Do not restart anything. |
 | Ray head becomes Ready and `core-api` endpoints reappear shortly after `core-db-init` succeeds | Correct. The gate has reopened. | Continue to [step 6](#6-verify-the-schema-from-the-running-core-image). |
-| `core-postgres-0` is recreated during the upgrade — a young pod age where you expected an old one | Correct. The platform sync rolls the PostgreSQL pod; the data lives on its volume and is unaffected by the roll. | Continue. The volume is what preserves the data. [Step 6](#6-verify-the-schema-from-the-running-core-image) then verifies the schema, which is the condition this runbook gates on — judge the roll by that, not by pod age. |
+| `core-postgres-0` is recreated during the upgrade — a young pod age where you expected an old one | Correct. The platform sync rolls the PostgreSQL StatefulSet; the data lives on its volume and is unaffected by the roll. `core-db-init` runs as its own hook against the pre-roll Postgres. | Continue. The volume is what preserves the data. [Step 6](#6-verify-the-schema-from-the-running-core-image) then verifies the schema, which is the condition this runbook gates on — judge the roll by that, not by pod age. |
 | The core schema marker still reads `core` / `1.0` after a successful upgrade | Correct — see [step 6](#6-verify-the-schema-from-the-running-core-image). The marker records the schema **contract** the database satisfies, which 1.2.0 does not change. There is no `1.2` marker value and you will never see one. | Continue. Judge success by `state`, `supported`, `migration_required`, and the head revisions. |
+| No outage at all: the head is never seen short a container and `core-api` never loses its endpoints | Correct, and common. `core-db-init` finished before the 1.2.0 head was created. | Continue. Do not read this as a gate that failed to engage — [confirm the gate positively](#confirm-the-gate-is-armed-rather-than-inferring-it-from-an-outage) instead. |
 | Ray head still not Ready well **after** the schema has reached head | Not expected. | Collect evidence and escalate to Support. Do not delete the pod. |
 | `schema-readiness` container is in `CrashLoopBackOff` | Not expected — almost always chart/image skew. | See [image contract](#image-contract-do-not-pin-an-older-core-image) below. |
 
@@ -116,6 +250,13 @@ kubectl logs -n "${NAMESPACE}" \
 
 An empty `ENDPOINTS` column on `core-api` while `core-db-init` is still running
 is the expected reading, not a finding.
+
+Note the scope of this procedure's restart prohibitions: they forbid
+**operator-initiated** restarts during diagnosis — deleting the Ray head pod,
+bouncing `core-postgres-0`, rolling a deployment to "clear" a gate. They say
+nothing about the platform's own rollouts. The upgrade recreates
+`core-postgres-0` as a matter of course, and that is not a restart you caused or
+should react to.
 
 ### Image contract: do not pin an older core image
 
@@ -291,6 +432,99 @@ installation. If the marker query fails or its contents are unexpected, stop.
 The pre-upgrade file is diagnostic only and is not part of the final allowlist;
 retain it alongside the private change record.
 
+## Working inside the database pod
+
+Every remaining step drives PostgreSQL through `kubectl exec`. Two of its
+behaviours have each, on a real run, produced a failure that looked like
+something else entirely — one an unrecoverable-looking hang, the other a silent
+no-op reported as success. Read this before step 3 rather than diagnosing them
+mid-window.
+
+### Never feed a large redirect into `kubectl exec -i`
+
+`kubectl exec -i` does not reliably deliver EOF once a redirected file has been
+consumed, so a command that reads until end of input never returns.
+`pg_restore --list <dump` is the case this procedure used to contain, and it
+hangs indefinitely.
+
+The damage outlives the command. The wedged invocation leaves a stuck streaming
+connection from konnectivity-agent to the kubelet on port 10250, with the
+unread bytes sitting in its receive queue, and from that point **every**
+`kubectl exec` into that pod fails with a dial timeout. On the host where this
+was observed, restarting konnectivity-agent was not sufficient; the kubelet
+itself had to be restarted.
+
+Note what is *not* broken when this happens: the dump. The `pg_dump` that
+preceded it exited 0 and wrote a complete file. It is the table-of-contents
+check that hangs, not the backup.
+
+Copy the file into the pod and restore from a path instead:
+
+```bash
+kubectl cp -c postgres "${BACKUP_FILE}" \
+  kamiwaza/core-postgres-0:/tmp/kamiwaza-1.0.0.dump
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  pg_restore --list /tmp/kamiwaza-1.0.0.dump >/dev/null
+```
+
+If you have already wedged a pod, recover the node rather than the database:
+restart konnectivity-agent, and restart the kubelet if `kubectl exec` still
+times out afterwards. **Do not restart `core-postgres-0`** — the fault is in the
+exec transport, not in PostgreSQL, and restarting the database pod neither
+clears it nor is a safe reflex during an upgrade.
+
+### The inverse trap: `kubectl exec` *without* `-i` runs nothing and exits 0
+
+The same mechanism has a second, worse face. Without `-i`, stdin is never
+attached, so a heredoc supplied to the container is never delivered: `psql`
+reads EOF immediately, executes **zero** statements, and exits 0.
+
+This is not hypothetical. A heredoc'd block of `ALTER DATABASE` / `DROP
+DATABASE` / `CREATE DATABASE` ran no statements and reported success. The
+`pg_restore` that followed — which takes its input as an argument, and therefore
+*did* run — then reported 643 "already exists" errors. The natural reading is
+that something re-created the schema. Nothing had: the drop never happened. One
+block, two commands, only one of them honouring stdin.
+
+The tell is that `psql` prints nothing whatsoever and returns 0. Genuine
+administrative SQL always prints something (`ALTER DATABASE`, `DROP DATABASE`).
+Silence plus `rc=0` means no statement ran.
+
+**Use `-c` per statement as the default for administrative SQL.** Multiple `-c`
+arguments run in sequence and are *not* wrapped in a single transaction, which
+also makes `DROP DATABASE` legal — a heredoc would fail on that even if its
+input were delivered:
+
+```bash
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  psql -U core -d postgres \
+  -c "ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS false" \
+  -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+        WHERE datname = 'kamiwaza' AND pid <> pg_backend_pid()" \
+  -c "DROP DATABASE kamiwaza" \
+  -c "CREATE DATABASE kamiwaza OWNER core"
+```
+
+Reserve `-i` for input you pipe deliberately and keep small; never combine it
+with a redirect of a dump-sized file.
+
+One related way this stayed invisible: **piping to `tail` makes `$?` the exit
+status of `tail`**, which is essentially always 0. Check the status of the
+command itself — `${PIPESTATUS[0]}` in bash — or do not pipe at all when the
+exit status is the thing you are gating on.
+
+### Keep pasted commands short
+
+Long multi-line blocks corrupt on paste. A multi-line `kubectl exec` assignment
+pasted into a terminal arrived mashed together and left bash waiting at a `PS2`
+continuation prompt — which looks exactly like another hang, and which is
+especially confusing alongside the trap above, because the shell may be
+displaying garbled *later* lines while execution is actually stuck on an
+earlier one.
+
+Keep each `kubectl exec` assignment short enough to paste as one line, or put
+the block in a `.sh` file and run that instead of pasting it.
+
 ## 3. Back up and validate the database
 
 Create a PostgreSQL custom-format logical dump. The redirect runs on the
@@ -313,12 +547,29 @@ test -s "${BACKUP_FILE}"
 sha256sum "${BACKUP_FILE}" >"${BACKUP_FILE}.sha256"
 BACKUP_SIZE_BYTES=$(stat -c '%s' "${BACKUP_FILE}")
 BACKUP_SHA256=$(sha256sum "${BACKUP_FILE}" | awk '{print $1}')
-kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  pg_restore --list <"${BACKUP_FILE}" >/dev/null
+
+# Copy the dump into the pod and check its table of contents from a path.
+# Never redirect it into `kubectl exec -i`: that wedges the node's exec
+# transport for every later command. See
+# "Working inside the database pod" above.
+export POD_DUMP=/tmp/kamiwaza-1.0.0.dump
+kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}"
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  pg_restore --list "${POD_DUMP}" >/dev/null
+
 POSTGRESQL_VERSION=$(kubectl exec -n "${NAMESPACE}" \
   core-postgres-0 -c postgres -- \
   psql -U core -d kamiwaza -Atqc 'SHOW server_version;')
 BACKUP_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# Refuse to print the stanza unless every field was actually collected. An
+# earlier revision printed it unconditionally, so a `kubectl exec` that failed
+# with a dial timeout produced `postgresql_version=` — a record that reads as a
+# successful backup whose Postgres version merely went unrecorded. A printed
+# stanza is not proof that the commands behind it ran.
+test -n "${BACKUP_SIZE_BYTES}"
+test -n "${BACKUP_SHA256}"
+test -n "${POSTGRESQL_VERSION}"
 printf 'size_bytes=%s\nsha256=%s\npostgresql_version=%s\nbackup_timestamp=%s\n' \
   "${BACKUP_SIZE_BYTES}" "${BACKUP_SHA256}" \
   "${POSTGRESQL_VERSION}" "${BACKUP_TIMESTAMP}"
@@ -350,9 +601,9 @@ export BACKUP_CHECK_DB="kamiwaza_backup_check_$(date -u +%Y%m%dT%H%M%S)"
 
     kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
       createdb -U core "${BACKUP_CHECK_DB}" || exit 1
-    kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
       pg_restore -U core --exit-on-error --no-owner --no-privileges \
-      -d "${BACKUP_CHECK_DB}" <"${BACKUP_FILE}" || exit 1
+      -d "${BACKUP_CHECK_DB}" "${POD_DUMP}" || exit 1
     kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
       psql -U core -d "${BACKUP_CHECK_DB}" -Atqc \
       "SELECT version FROM kamiwaza_schema_version WHERE schema_name = 'core';" \
@@ -383,7 +634,24 @@ Do not continue unless every command above succeeds. Keep the dump itself and
 its checksum private; the shareable evidence bundle contains the manifest, not
 the database contents.
 
+`${POD_DUMP}` is a staging copy inside the pod's filesystem, not a backup. The
+authoritative copy is `${BACKUP_FILE}` on the operator host. The pod is
+recreated by any StatefulSet roll — including the one the upgrade itself
+performs — and anything staged in it is gone afterwards, so **re-run the
+`kubectl cp` before any later step that needs the dump in the pod**. Remove the
+staging copy once the validation above has passed:
+
+```bash
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  rm -f "${POD_DUMP}"
+```
+
 ## 4. Run the supported installer once
+
+> **Point of no return.** Take the host snapshot now if you have not already —
+> see [Snapshot the host before step 4](#snapshot-the-host-before-step-4).
+> Past this point the [recovery boundary](#recovery-boundary) offers no way back
+> to a 1.0.0 baseline without one.
 
 Use the same supported production path as a clean installation. Preserve the
 exact invocation and exit status. The examples below omit real credentials;
@@ -835,9 +1103,17 @@ test -s "${EVIDENCE_DIR}/schema/marker.tsv"
 test -s "${EVIDENCE_DIR}/schema/revision.tsv"
 ```
 
+**The success condition is `before=v1_marker_only after=at_head`, together with
+the expected `head_revision`.** That is the transition `core-db-init` reports
+and the only phrasing this procedure uses. There is no schema value `1.2` — not
+in `kamiwaza_schema_version`, not in `alembic_version` (whose revisions are
+dated identifiers such as `20260801_007`), not from the runner, and not from
+`schema-status.py`. Anyone expecting to read `1.2` somewhere will read `1.0`
+instead and call a successful upgrade failed.
+
 Required result:
 
-- `state` is `at_head`;
+- `state` is `at_head`, having been `v1_marker_only` before the upgrade;
 - `supported` is `true`;
 - `migration_required` is `false`;
 - `marker_version` is `1.0` and `marker.tsv` contains exactly `core<TAB>1.0`.
@@ -951,6 +1227,81 @@ Do not restore a logical dump over the active database. Do not point an old
 binary at a database after the 1.2.0 migration unless the exact compatibility
 has passed release qualification and Support explicitly approves it.
 
+**Say plainly what this means: without a pre-step-4 host snapshot there is no
+path back to a 1.0.0 baseline from inside this runbook.** Every in-procedure
+mechanism is ruled out above — there are no downgrade migrations, a Helm
+rollback leaves the schema where it is, and restoring the dump over the live
+database is prohibited. A dump restore plus a Helm rollback is not equivalent
+either: it leaves 1.2.0 CRDs, hook state, and extension records in place. If you
+reach a failed upgrade with no snapshot, the remaining options are a
+Support-owned forward fix or a rebuild — decide that with Support rather than
+improvising. Take the snapshot before step 4 precisely so this paragraph never
+applies to you.
+
+### If Support approves a reset to the 1.0.0 baseline
+
+A Support-approved reset rolls the release back and restores the dump into a
+freshly created database. Two things about that sequence have already misled an
+operator on a real run, both worth knowing before you start it.
+
+**Wait for PostgreSQL before restoring.** A `helm rollback` to the 1.0.0
+revision rolls the Postgres StatefulSet exactly as an upgrade does. A restore
+attempted immediately afterwards fails against a database that is still coming
+down:
+
+```
+psql: FATAL:  the database system is shutting down
+pg_restore: error: connection to server ... FATAL: the database system is shutting down
+```
+
+An operator whose upgrade has just failed, restoring a dump they took
+themselves, sees `pg_restore` fail and reasonably concludes **the backup is
+bad**. That is the worst available wrong conclusion at that moment: it sends
+them hunting for another recovery route while holding a perfectly good one. The
+dump is intact. Gate the restore on readiness and it succeeds on the first
+attempt:
+
+```bash
+for i in $(seq 1 60); do
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    psql -U core -d postgres -Atqc 'SELECT 1' >/dev/null 2>&1 && break
+  sleep 5
+done
+```
+
+On the affected host this returned after about 10 seconds — short enough that a
+human typing the next command by hand usually misses the window, and short
+enough that a scripted step hits it almost every time.
+
+**Re-copy the dump after the roll.** The rollback recreates `core-postgres-0`,
+so anything staged into its filesystem with `kubectl cp` beforehand is gone.
+Copy it in again after the readiness gate, not before the rollback.
+
+Then drop and recreate with one `-c` per statement, for the reasons in
+[Working inside the database pod](#working-inside-the-database-pod): `DROP
+DATABASE` cannot run inside a transaction block, separate `-c` arguments are not
+wrapped in one, and a heredoc would both fail *and* silently execute nothing
+while returning 0. The `pg_terminate_backend` step is required in practice —
+platform pods reconnect during a rollback and hold the database open:
+
+```bash
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  psql -U core -d postgres \
+  -c "ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS false" \
+  -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+        WHERE datname = 'kamiwaza' AND pid <> pg_backend_pid()" \
+  -c "DROP DATABASE kamiwaza" \
+  -c "CREATE DATABASE kamiwaza OWNER core"
+
+kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}"
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  pg_restore -U core --no-owner --no-privileges -d kamiwaza "${POD_DUMP}"
+```
+
+Verify the result before declaring the reset done: `alembic_version` absent,
+`kamiwaza_schema_version` reading `core | 1.0`, the expected table count, and no
+`core-db-init` Jobs left in the namespace.
+
 Customer operators stop here and preserve the verified backup. Any restore,
 old-binary compatibility test, or production cutover requires a Support-owned
 recovery plan; it is not a routine continuation of a failed upgrade. Skip the
@@ -966,9 +1317,12 @@ export RESTORE_DB="kamiwaza_restore_${RUN_ID//[^A-Za-z0-9]/_}"
 
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   createdb -U core "${RESTORE_DB}"
-kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+
+# Re-copy: the upgrade rolled the pod, so any earlier staging copy is gone.
+kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}"
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   pg_restore -U core --no-owner --no-privileges -d "${RESTORE_DB}" \
-  <"${BACKUP_FILE}"
+  "${POD_DUMP}"
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d "${RESTORE_DB}" -Atqc \
   'SELECT schema_name, version FROM kamiwaza_schema_version ORDER BY schema_name;'
