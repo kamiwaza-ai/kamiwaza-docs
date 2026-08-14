@@ -83,12 +83,6 @@ shasum -a 256 -c kamiwaza-online-install.sh.sha256
 
 ## Step 2: Run the Installer
 
-> **Upgrading a 1.0.0 production database to 1.2.0?** Stop here and follow the
-> [Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
-> before invoking an installer. The runbook requires the exact 1.2.0 candidate,
-> a pre-mutation backup, schema gates, stop rules, and recovery evidence. The
-> 1.0.2 download example above is not an upgrade artifact for 1.2.0.
-
 Run the installer on the target host, supplying your license key, domain, and an initial admin password:
 
 ```bash
