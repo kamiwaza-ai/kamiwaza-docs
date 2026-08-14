@@ -90,29 +90,54 @@ which one that is on your platform:
 | AWS | Instance-store volumes |
 | GCP | Local SSDs |
 
-Check the OSD's actual device, and check for Azure's marker file. Read
-`OSD_IMAGE_PATH` off the cluster rather than assuming the default — the whole
-point of this check is that the path is frequently *not* the default:
+**First find what actually backs the OSDs on this cluster.** There is no single
+field that answers this, and the wrong one is easy to reach for:
+`spec.dataDirHostPath` is Rook's configuration and daemon-state directory, *not*
+the OSD data store. Reading it instead would inspect the wrong filesystem —
+frequently a durable `/var/lib/rook` — while the real OSD sits on the ephemeral
+disk you are trying to detect. Read `spec.storage`, which is where the backing
+device, PVC template, or file-backed image is declared:
 
 ```bash
-# The host path Rook-Ceph backs the OSD with. Adjust the resource name if this
-# cluster's CephCluster is not named `rook-ceph`.
-OSD_IMAGE_PATH=$(kubectl get cephcluster rook-ceph -n rook-ceph \
-  -o jsonpath='{.spec.dataDirHostPath}' 2>/dev/null)
-: "${OSD_IMAGE_PATH:?could not read dataDirHostPath — supply the OSD backing path explicitly}"
-
-findmnt -T "${OSD_IMAGE_PATH}"                # which device really holds it
-ls -la /mnt/DATALOSS_WARNING_README.txt       # present => /mnt is Azure-ephemeral
+kubectl get cephcluster -A \
+  -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{.spec.storage}{"\n"}{end}'
 ```
 
-The `:?` is load-bearing. Unset, `${OSD_IMAGE_PATH}` expands to the empty
-string, `findmnt -T ""` reports the mount holding your *current directory*, and
-it exits 0 — a confident, wrong, clean-looking answer on the one check that
-decides whether any of the protection below is worth anything.
+Interpret the result:
 
-`findmnt` needs `-T` here. Without it, `findmnt` matches only exact mount points
+| What `spec.storage` shows | What backs the OSD | What to check |
+| --- | --- | --- |
+| `devices` / `deviceFilter` / `useAllDevices` | A raw block device on the node | The device itself — is it a managed disk or an instance-store device? |
+| `storageClassDeviceSets` | PVCs from another storage class | That storage class's underlying disk type |
+| A host path (file-backed OSD) | A file on a node filesystem | The mount holding that file — the case below |
+
+For the file-backed case the ticket's host hit, set `OSD_IMAGE_PATH` to that
+file's path and resolve its mount. **Put the guard on the command itself**, not
+on a line of its own:
+
+```bash
+# Substitute the path from spec.storage above.
+OSD_IMAGE_PATH=/var/lib/rook/osd-image
+
+findmnt -T "${OSD_IMAGE_PATH:?set this to the OSD backing file from spec.storage}"
+ls -la /mnt/DATALOSS_WARNING_README.txt   # present => /mnt is Azure-ephemeral
+```
+
+The guard has to be attached to `findmnt` because of how you are running this.
+A bare `: "${OSD_IMAGE_PATH:?…}"` on its own line prints the message but **does
+not stop an interactive shell** — bash aborts only non-interactive ones, and
+these blocks are meant to be pasted into a terminal. The next line would run
+anyway, and `findmnt -T ""` reports the mount holding your *current directory*
+and exits 0: a confident, wrong, clean-looking answer on the check that decides
+whether any of the protection below is worth anything.
+
+`findmnt` also needs `-T`. Without it, `findmnt` matches only exact mount points
 and returns nothing at all for a path inside one — silence that reads like a
 clean result.
+
+Whichever shape the cluster uses, the question is the same: **is the device
+holding OSD data a managed/persistent disk, or an instance-store one?** Answer it
+for every OSD, not just the first.
 
 If the OSD is on ephemeral storage, **stop**. The cloud destroys that volume on
 stop, deallocate, resize, or host migration, and it cannot be snapshotted — so
@@ -134,12 +159,12 @@ Helm rollback still leaves 1.2.0 CRDs, hook state, and extension records behind.
 a restore point collection over the whole VM:
 
 ```bash
-: "${RG:?export the resource group holding the VM}"
-: "${VM:?export the VM name}"
-
-az restore-point collection create -g "$RG" --collection-name kamiwaza-pre-upgrade \
-  --source-id "$(az vm show -g "$RG" -n "$VM" --query id -o tsv)"
-az restore-point create -g "$RG" --collection-name kamiwaza-pre-upgrade --name pre-step4
+az restore-point collection create \
+  -g "${RG:?export the resource group holding the VM}" \
+  --collection-name kamiwaza-pre-upgrade \
+  --source-id "$(az vm show -g "${RG}" -n "${VM:?export the VM name}" --query id -o tsv)"
+az restore-point create -g "${RG}" \
+  --collection-name kamiwaza-pre-upgrade --name pre-step4
 ```
 
 On AWS the equivalent is a multi-volume snapshot of the instance
@@ -225,31 +250,47 @@ kubectl get pods -n "${NAMESPACE}" \
   -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
   -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .status.containerStatuses[*]}{.name}={.ready}{" "}{end}{"\n"}{end}'
 
-# The probe endpoint answers from inside the head pod. Resolve the pod name
-# first: an empty name would otherwise become an empty argument to `exec`.
+# Resolve the NEWEST head pod. Both the 1.0.0 and 1.2.0 heads carry these
+# labels while the upgrade is in flight, and only the 1.2.0 one has the gate --
+# so an unsorted `items[0]` can hand you the old head and a
+# "container not found" that reads exactly like a missing gate.
 HEAD_POD=$(kubectl get pod -n "${NAMESPACE}" \
   -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
-  -o jsonpath='{.items[0].metadata.name}')
-: "${HEAD_POD:?no Ray head pod found — the gate cannot be confirmed}"
+  --sort-by=.metadata.creationTimestamp \
+  -o jsonpath='{.items[-1:].metadata.name}')
 
 # Query with the interpreter the container definitionally has. The
 # schema-readiness container runs `python -m kamiwaza.node.readiness_server`,
-# and slim Python images frequently ship no curl — `exec: "curl": executable
-# file not found` is a missing tool, NOT a missing gate, and must not be read
-# as one.
-kubectl exec -n "${NAMESPACE}" "${HEAD_POD}" -c schema-readiness -- \
-  python -c 'import urllib.request, sys
-r = urllib.request.urlopen("http://127.0.0.1:7788/healthz/schema", timeout=5)
-sys.stdout.write("%s %s\n" % (r.status, r.read().decode()))'
+# and slim Python images frequently ship no curl -- `exec: "curl": executable
+# file not found` is a missing tool, NOT a missing gate.
+#
+# Catch HTTPError: a readiness endpoint reporting "schema is behind" answers
+# 503, which urlopen raises on. That is the gate WORKING, and an uncaught
+# traceback here would read as a broken probe at the exact moment the probe is
+# telling you what you asked.
+kubectl exec -n "${NAMESPACE}" \
+  "${HEAD_POD:?no Ray head pod found — the gate cannot be confirmed}" \
+  -c schema-readiness -- \
+  python -c 'import urllib.request, urllib.error, sys
+try:
+    r = urllib.request.urlopen("http://127.0.0.1:7788/healthz/schema", timeout=5)
+    print("%s %s" % (r.status, r.read().decode()))
+except urllib.error.HTTPError as e:
+    print("%s %s" % (e.code, e.read().decode()))
+except Exception as e:
+    print("probe could not run: %r" % (e,)); sys.exit(1)'
 ```
 
-A `schema-readiness` entry in the container list and a successful
-`/healthz/schema` response together show the gate is present and answering. If
-the container is absent from the head pod entirely, the gate is not armed —
-that is a chart/image problem to escalate, and any smoke test that passed
-during the upgrade proved nothing about schema safety. Distinguish that from a
-tooling failure: a missing interpreter or a connection refused tells you the
-probe could not be run, not that the gate is absent.
+**Any HTTP status back from `/healthz/schema` means the gate is armed** — 200
+says the schema is at head, 503 says it is behind and the gate is holding. Both
+are the gate working. Read the status, not merely the absence of an error.
+
+The gate is *not* armed only when the `schema-readiness` container is absent
+from the newest head pod's container list. That is a chart/image problem to
+escalate, and any smoke test that passed during the upgrade proved nothing about
+schema safety. Distinguish it from a probe that could not run at all — a missing
+interpreter, a connection refused, or the `probe could not run:` line above tell
+you the check failed, not that the gate is missing.
 
 ### Expected observations
 
@@ -502,8 +543,31 @@ once before the maintenance window rather than discovering it mid-restore, since
 this procedure now depends on `kubectl cp` in three places:
 
 ```bash
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- tar --version
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- command -v tar
 ```
+
+**It also needs room for a second copy of the dump, inside the pod.** This is
+space the prerequisites do not otherwise account for: the
+["enough storage outside the data volume"](#prerequisites) requirement covers
+the operator host, and the 120% check in step 3 measures the filesystem holding
+`data_directory`. The staging path is neither — `/tmp` in the container is
+usually the node's writable layer, so a large database can fail here, or fill
+the node root mid-window, while satisfying every documented capacity check.
+Check before the first copy:
+
+```bash
+# Sized from the dump on this host, so the check works wherever it is run --
+# step 3, the reset path, or the M1 rehearsal.
+DUMP_BYTES=$(stat -c '%s' "${BACKUP_FILE:?path to the dump on this host}")
+POD_TMP_FREE=$(kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  df -PB1 /tmp | awk 'NR == 2 {print $4}')
+test "${POD_TMP_FREE}" -ge "${DUMP_BYTES}" \
+  || { echo "stop: dump is ${DUMP_BYTES} bytes, pod /tmp has ${POD_TMP_FREE} free" >&2; false; }
+```
+
+If the margin is thin, stage onto a path with known capacity instead of `/tmp`
+and set `POD_DUMP` accordingly — anywhere the `postgres` container can write
+works, provided you account for the space and remove the file afterwards.
 
 If you have already wedged a pod, recover the node rather than the database:
 restart konnectivity-agent, and restart the kubelet if `kubectl exec` still
@@ -548,7 +612,7 @@ statement, carries on to the next one, and still **exits 0** — so a sequence
 whose first half failed looks like a success to the `test`/`&&` that follows it.
 With it, `psql` stops at the first error and exits nonzero.
 
-The destructive drop-and-recreate that uses this same form lives in
+The destructive rename-and-recreate that uses this same form lives in
 [If Support approves a reset to the 1.0.0 baseline](#if-support-approves-a-reset-to-the-100-baseline).
 **Do not run it from here.** It requires Support approval, a completed
 [step 3](#3-back-up-and-validate-the-database) backup, and the readiness gate
@@ -1173,7 +1237,9 @@ instead and call a successful upgrade failed.
 
 Required result:
 
-- `state` is `at_head`, having been `v1_marker_only` before the upgrade;
+- `state` is `at_head`. `core-db-init` reports the transition it performed as
+  `v1_marker_only -> at_head`; this step observes only the `at_head` end of it,
+  since the procedure does not run `schema-status.py` before the upgrade;
 - `supported` is `true`;
 - `migration_required` is `false`;
 - `marker_version` is `1.0` and `marker.tsv` contains exactly `core<TAB>1.0`.
@@ -1337,9 +1403,14 @@ test "${PG_READY}" -eq 1 \
 
 **The `PG_READY` flag is the point of the block, not decoration.** A bare
 `for … && break; sleep 5; done` ends with `sleep` as its last command, so on
-timeout the loop exits 0 and the operator walks straight into the
-drop-and-restore below against a database that never came up — recreating the
-exact failure this gate exists to prevent.
+timeout the whole loop reports success and nothing marks the failure at all.
+The final `test` is what turns a timeout into a visible `stop:` line and a
+nonzero status.
+
+It cannot physically prevent the next paste — nothing in an interactive shell
+can. **Read its output before continuing**, and if you are scripting this,
+chain the sequence below onto it with `&&` so the timeout actually stops the
+run.
 
 On the affected host this returned after about 10 seconds — short enough that a
 human typing the next command by hand usually misses the window, and short
@@ -1356,46 +1427,73 @@ it. Renaming keeps the failed 1.2.0 state (and any post-upgrade writes) availabl
 for diagnosis at no cost, and it is the only copy that exists:
 
 ```bash
+# Lower-cased on purpose. An unquoted SQL identifier is folded to lower case by
+# PostgreSQL, and RUN_ID always contains upper case (the `T` and `Z` of its
+# timestamp) -- so building the name in mixed case would store
+# `..._20260814t055333z` while every later lookup searched for
+# `..._20260814T055333Z` and silently found nothing.
+FAILED_DB="kamiwaza_failed_$(printf '%s' "${RUN_ID:?RUN_ID from step 1 is required}" \
+  | tr -c 'A-Za-z0-9' '_' | tr 'A-Z' 'a-z')"
+echo "preserving the failed database as: ${FAILED_DB}"
+
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d postgres -v ON_ERROR_STOP=1 \
   -c "ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS false" \
   -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
         WHERE datname = 'kamiwaza' AND pid <> pg_backend_pid()" \
-  -c "ALTER DATABASE kamiwaza RENAME TO kamiwaza_failed_${RUN_ID//[^A-Za-z0-9]/_}"
+  -c "ALTER DATABASE kamiwaza RENAME TO ${FAILED_DB}" \
+  -c "ALTER DATABASE ${FAILED_DB} WITH ALLOW_CONNECTIONS true"
 ```
+
+The final `ALLOW_CONNECTIONS true` is what makes the preservation worth
+anything: the connection block set two statements earlier survives the rename,
+so without it the database you kept for diagnosis cannot be connected to.
 
 Record the original database's settings before creating its replacement — a
 `CREATE DATABASE` that inherits cluster defaults silently produces a baseline
-whose encoding or collation differs from the one you backed up:
+whose encoding or collation differs from the one you backed up. Capture them
+into shell variables rather than transcribing by hand:
 
 ```bash
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  psql -U core -d postgres -Atqc \
-  "SELECT pg_encoding_to_char(encoding), datcollate, datctype
-     FROM pg_database WHERE datname = 'kamiwaza_failed_${RUN_ID//[^A-Za-z0-9]/_}'"
+read -r DB_ENCODING DB_COLLATE DB_CTYPE < <(
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    psql -U core -d postgres -AtF ' ' -c \
+    "SELECT pg_encoding_to_char(encoding), datcollate, datctype
+       FROM pg_database WHERE datname = '${FAILED_DB}'")
+
+test -n "${DB_ENCODING}" && test -n "${DB_COLLATE}" && test -n "${DB_CTYPE}" \
+  || { echo "stop: could not read the failed database's settings" >&2; false; }
+printf 'encoding=%s collate=%s ctype=%s\n' \
+  "${DB_ENCODING}" "${DB_COLLATE}" "${DB_CTYPE}"
 ```
 
 Then create the replacement with those exact values and restore into it, one
 `-c` per statement for the reasons in
-[Working inside the database pod](#working-inside-the-database-pod): `DROP
-DATABASE` and `ALTER DATABASE … RENAME` cannot run inside a transaction block,
-separate `-c` arguments are not wrapped in one, and a heredoc would both fail
-*and* silently execute nothing while returning 0. The `pg_terminate_backend`
-step above is required in practice — platform pods reconnect during a rollback
-and hold the database open:
+[Working inside the database pod](#working-inside-the-database-pod):
+`ALTER DATABASE … RENAME` and `CREATE DATABASE` cannot run inside a transaction
+block, separate `-c` arguments are not wrapped in one, and a heredoc would both
+fail *and* silently execute nothing while returning 0. The
+`pg_terminate_backend` step above is required in practice — platform pods
+reconnect during a rollback and hold the database open:
 
 ```bash
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d postgres -v ON_ERROR_STOP=1 \
   -c "CREATE DATABASE kamiwaza OWNER core
-        ENCODING '<observed>' LC_COLLATE '<observed>' LC_CTYPE '<observed>'
+        ENCODING '${DB_ENCODING}'
+        LC_COLLATE '${DB_COLLATE}' LC_CTYPE '${DB_CTYPE}'
         TEMPLATE template0"
 
-kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}"
+# Re-copy: the rollback rolled the pod, so any earlier staging copy is gone.
+kubectl cp -c postgres "${BACKUP_FILE:?path to the step 3 dump on this host}" \
+  "${NAMESPACE}/core-postgres-0:${POD_DUMP:?in-pod staging path from step 3}"
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   pg_restore -U core --exit-on-error --no-owner --no-privileges \
   -d kamiwaza "${POD_DUMP}"
 ```
+
+`TEMPLATE template0` is required whenever the encoding or locale differs from
+the cluster default; it is harmless when they match.
 
 `ON_ERROR_STOP=1` is what makes the sequence fail loudly. Without it `psql`
 reports a failed statement and still exits 0, so a rename or create that did not
@@ -1407,6 +1505,8 @@ dump. That is the same misdiagnosis this whole section exists to prevent.
 If the sequence aborts between the `ALTER … ALLOW_CONNECTIONS false` and the
 rename, the database is left refusing every connection. Undo it with
 `ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS true` before diagnosing further.
+After the rename has succeeded the same block re-enables connections under the
+new name, so use `${FAILED_DB}` in place of `kamiwaza` from that point on.
 
 Verify the result before declaring the reset done: `alembic_version` absent,
 `kamiwaza_schema_version` reading `core | 1.0`, the expected table count, and no
@@ -1430,9 +1530,11 @@ kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   createdb -U core "${RESTORE_DB}"
 
 # Re-copy: the upgrade rolled the pod, so any earlier staging copy is gone.
-kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}"
+# Guarded because this section runs long after step 3, often in a new shell.
+kubectl cp -c postgres "${BACKUP_FILE:?path to the step 3 dump on this host}" \
+  "${NAMESPACE}/core-postgres-0:${POD_DUMP:?in-pod staging path from step 3}"
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  pg_restore -U core --no-owner --no-privileges -d "${RESTORE_DB}" \
+  pg_restore -U core --exit-on-error --no-owner --no-privileges -d "${RESTORE_DB}" \
   "${POD_DUMP}"
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d "${RESTORE_DB}" -Atqc \
