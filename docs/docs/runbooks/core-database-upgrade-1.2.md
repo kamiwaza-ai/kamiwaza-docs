@@ -90,12 +90,25 @@ which one that is on your platform:
 | AWS | Instance-store volumes |
 | GCP | Local SSDs |
 
-Check the OSD's actual device, and check for Azure's marker file:
+Check the OSD's actual device, and check for Azure's marker file. Read
+`OSD_IMAGE_PATH` off the cluster rather than assuming the default — the whole
+point of this check is that the path is frequently *not* the default:
 
 ```bash
-findmnt -T "$(dirname "${OSD_IMAGE_PATH}")"   # which device really holds it
+# The host path Rook-Ceph backs the OSD with. Adjust the resource name if this
+# cluster's CephCluster is not named `rook-ceph`.
+OSD_IMAGE_PATH=$(kubectl get cephcluster rook-ceph -n rook-ceph \
+  -o jsonpath='{.spec.dataDirHostPath}' 2>/dev/null)
+: "${OSD_IMAGE_PATH:?could not read dataDirHostPath — supply the OSD backing path explicitly}"
+
+findmnt -T "${OSD_IMAGE_PATH}"                # which device really holds it
 ls -la /mnt/DATALOSS_WARNING_README.txt       # present => /mnt is Azure-ephemeral
 ```
+
+The `:?` is load-bearing. Unset, `${OSD_IMAGE_PATH}` expands to the empty
+string, `findmnt -T ""` reports the mount holding your *current directory*, and
+it exits 0 — a confident, wrong, clean-looking answer on the one check that
+decides whether any of the protection below is worth anything.
 
 `findmnt` needs `-T` here. Without it, `findmnt` matches only exact mount points
 and returns nothing at all for a path inside one — silence that reads like a
@@ -121,6 +134,9 @@ Helm rollback still leaves 1.2.0 CRDs, hook state, and extension records behind.
 a restore point collection over the whole VM:
 
 ```bash
+: "${RG:?export the resource group holding the VM}"
+: "${VM:?export the VM name}"
+
 az restore-point collection create -g "$RG" --collection-name kamiwaza-pre-upgrade \
   --source-id "$(az vm show -g "$RG" -n "$VM" --query id -o tsv)"
 az restore-point create -g "$RG" --collection-name kamiwaza-pre-upgrade --name pre-step4
@@ -209,20 +225,31 @@ kubectl get pods -n "${NAMESPACE}" \
   -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
   -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .status.containerStatuses[*]}{.name}={.ready}{" "}{end}{"\n"}{end}'
 
-# The probe endpoint answers from inside the head pod.
-kubectl exec -n "${NAMESPACE}" \
-  "$(kubectl get pod -n "${NAMESPACE}" \
-      -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
-      -o jsonpath='{.items[0].metadata.name}')" \
-  -c schema-readiness -- \
-  curl --fail --silent --show-error http://127.0.0.1:7788/healthz/schema
+# The probe endpoint answers from inside the head pod. Resolve the pod name
+# first: an empty name would otherwise become an empty argument to `exec`.
+HEAD_POD=$(kubectl get pod -n "${NAMESPACE}" \
+  -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
+  -o jsonpath='{.items[0].metadata.name}')
+: "${HEAD_POD:?no Ray head pod found — the gate cannot be confirmed}"
+
+# Query with the interpreter the container definitionally has. The
+# schema-readiness container runs `python -m kamiwaza.node.readiness_server`,
+# and slim Python images frequently ship no curl — `exec: "curl": executable
+# file not found` is a missing tool, NOT a missing gate, and must not be read
+# as one.
+kubectl exec -n "${NAMESPACE}" "${HEAD_POD}" -c schema-readiness -- \
+  python -c 'import urllib.request, sys
+r = urllib.request.urlopen("http://127.0.0.1:7788/healthz/schema", timeout=5)
+sys.stdout.write("%s %s\n" % (r.status, r.read().decode()))'
 ```
 
 A `schema-readiness` entry in the container list and a successful
 `/healthz/schema` response together show the gate is present and answering. If
 the container is absent from the head pod entirely, the gate is not armed —
 that is a chart/image problem to escalate, and any smoke test that passed
-during the upgrade proved nothing about schema safety.
+during the upgrade proved nothing about schema safety. Distinguish that from a
+tooling failure: a missing interpreter or a connection refused tells you the
+probe could not be run, not that the gate is absent.
 
 ### Expected observations
 
@@ -458,13 +485,24 @@ Note what is *not* broken when this happens: the dump. The `pg_dump` that
 preceded it exited 0 and wrote a complete file. It is the table-of-contents
 check that hangs, not the backup.
 
-Copy the file into the pod and restore from a path instead:
+Copy the file into the pod and restore from a path instead — this is the shape
+[step 3](#3-back-up-and-validate-the-database) uses, with `POD_DUMP` defined
+there:
 
 ```bash
 kubectl cp -c postgres "${BACKUP_FILE}" \
-  kamiwaza/core-postgres-0:/tmp/kamiwaza-1.0.0.dump
+  "${NAMESPACE}/core-postgres-0:${POD_DUMP}"
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  pg_restore --list /tmp/kamiwaza-1.0.0.dump >/dev/null
+  pg_restore --list "${POD_DUMP}" >/dev/null
+```
+
+`kubectl cp` needs `tar` in the target container — it streams the file as a tar
+archive and extracts it inside. The `postgres` container has it, but confirm
+once before the maintenance window rather than discovering it mid-restore, since
+this procedure now depends on `kubectl cp` in three places:
+
+```bash
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- tar --version
 ```
 
 If you have already wedged a pod, recover the node rather than the database:
@@ -490,20 +528,31 @@ The tell is that `psql` prints nothing whatsoever and returns 0. Genuine
 administrative SQL always prints something (`ALTER DATABASE`, `DROP DATABASE`).
 Silence plus `rc=0` means no statement ran.
 
-**Use `-c` per statement as the default for administrative SQL.** Multiple `-c`
-arguments run in sequence and are *not* wrapped in a single transaction, which
-also makes `DROP DATABASE` legal — a heredoc would fail on that even if its
-input were delivered:
+**Use `-c` per statement as the default for administrative SQL**, and always
+with `-v ON_ERROR_STOP=1`. Multiple `-c` arguments run in sequence and are *not*
+wrapped in a single transaction — which is what makes statements like `DROP
+DATABASE` legal in this form, where a heredoc would fail on them even if its
+input were delivered.
+
+The form is safe to run as written — it only reads:
 
 ```bash
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  psql -U core -d postgres \
-  -c "ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS false" \
-  -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
-        WHERE datname = 'kamiwaza' AND pid <> pg_backend_pid()" \
-  -c "DROP DATABASE kamiwaza" \
-  -c "CREATE DATABASE kamiwaza OWNER core"
+  psql -U core -d postgres -v ON_ERROR_STOP=1 \
+  -c "SELECT current_database(), current_user" \
+  -c "SELECT count(*) FROM pg_stat_activity WHERE datname = 'kamiwaza'"
 ```
+
+**`ON_ERROR_STOP=1` is not optional.** Without it `psql` reports a failed
+statement, carries on to the next one, and still **exits 0** — so a sequence
+whose first half failed looks like a success to the `test`/`&&` that follows it.
+With it, `psql` stops at the first error and exits nonzero.
+
+The destructive drop-and-recreate that uses this same form lives in
+[If Support approves a reset to the 1.0.0 baseline](#if-support-approves-a-reset-to-the-100-baseline).
+**Do not run it from here.** It requires Support approval, a completed
+[step 3](#3-back-up-and-validate-the-database) backup, and the readiness gate
+documented alongside it.
 
 Reserve `-i` for input you pipe deliberately and keep small; never combine it
 with a redirect of a dump-sized file.
@@ -567,12 +616,21 @@ BACKUP_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 # with a dial timeout produced `postgresql_version=` — a record that reads as a
 # successful backup whose Postgres version merely went unrecorded. A printed
 # stanza is not proof that the commands behind it ran.
-test -n "${BACKUP_SIZE_BYTES}"
-test -n "${BACKUP_SHA256}"
-test -n "${POSTGRESQL_VERSION}"
-printf 'size_bytes=%s\nsha256=%s\npostgresql_version=%s\nbackup_timestamp=%s\n' \
-  "${BACKUP_SIZE_BYTES}" "${BACKUP_SHA256}" \
-  "${POSTGRESQL_VERSION}" "${BACKUP_TIMESTAMP}"
+#
+# The guards are CHAINED to the printf on purpose. As separate statements they
+# would not gate anything in an interactive shell: a failing `test` returns 1
+# and the next line runs regardless. Only `errexit` would stop it, and you are
+# pasting these into a shell that does not have it set.
+if test -n "${BACKUP_SIZE_BYTES}" \
+  && test -n "${BACKUP_SHA256}" \
+  && test -n "${POSTGRESQL_VERSION}"; then
+  printf 'size_bytes=%s\nsha256=%s\npostgresql_version=%s\nbackup_timestamp=%s\n' \
+    "${BACKUP_SIZE_BYTES}" "${BACKUP_SHA256}" \
+    "${POSTGRESQL_VERSION}" "${BACKUP_TIMESTAMP}"
+else
+  echo "stop: backup metadata incomplete; a kubectl exec above failed" >&2
+  false
+fi
 
 # Prove the archive's data is restorable, not merely that its TOC is readable.
 DATABASE_SIZE_BYTES=$(kubectl exec -n "${NAMESPACE}" \
@@ -844,13 +902,15 @@ kubectl get pods -n "${NAMESPACE}" \
   --sort-by=.metadata.creationTimestamp -o wide
 ```
 
-While this Job is running, the Ray head is expected to be `Running` but **not
-Ready** and `core-api` is expected to have no endpoints. That is the
-schema-readiness gate holding, not a fault — see
-[What normal looks like](#what-normal-looks-like-during-the-upgrade). Do not
-restart the head, delete its pod, or roll back the release in response to it.
-The head rejoins `core-api` on its own within about ten seconds of the schema
-reaching head.
+While this Job is running, the Ray head **may** be `Running` but not Ready, with
+`core-api` showing no endpoints. That is the schema-readiness gate holding, not a
+fault. It is equally normal to see none of it: whether the 1.2.0 head is up
+before the Job finishes is a race, and it is frequently won by the Job — see
+[how long the outage lasts](#how-long-the-outage-lasts-is-a-race-and-it-is-often-zero).
+Neither observation is a finding on its own; confirm the gate positively rather
+than inferring it from downtime. If the head is holding, do not restart it,
+delete its pod, or roll back the release in response — it rejoins `core-api` on
+its own within about ten seconds of the schema reaching head.
 
 Do not delete the Job or pods. The completed Job and its pods are retained for
 `core.scheduler.dbInit.ttlSecondsAfterFinished` (3600 seconds by default) and
@@ -1262,12 +1322,24 @@ dump is intact. Gate the restore on readiness and it succeeds on the first
 attempt:
 
 ```bash
-for i in $(seq 1 60); do
-  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-    psql -U core -d postgres -Atqc 'SELECT 1' >/dev/null 2>&1 && break
+PG_READY=0
+for _ in $(seq 1 60); do
+  if kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+       psql -U core -d postgres -Atqc 'SELECT 1' >/dev/null 2>&1; then
+    PG_READY=1
+    break
+  fi
   sleep 5
 done
+test "${PG_READY}" -eq 1 \
+  || { echo "stop: PostgreSQL not ready after 300s; do not continue" >&2; false; }
 ```
+
+**The `PG_READY` flag is the point of the block, not decoration.** A bare
+`for … && break; sleep 5; done` ends with `sleep` as its last command, so on
+timeout the loop exits 0 and the operator walks straight into the
+drop-and-restore below against a database that never came up — recreating the
+exact failure this gate exists to prevent.
 
 On the affected host this returned after about 10 seconds — short enough that a
 human typing the next command by hand usually misses the window, and short
@@ -1277,30 +1349,69 @@ enough that a scripted step hits it almost every time.
 so anything staged into its filesystem with `kubectl cp` beforehand is gone.
 Copy it in again after the readiness gate, not before the rollback.
 
-Then drop and recreate with one `-c` per statement, for the reasons in
-[Working inside the database pod](#working-inside-the-database-pod): `DROP
-DATABASE` cannot run inside a transaction block, separate `-c` arguments are not
-wrapped in one, and a heredoc would both fail *and* silently execute nothing
-while returning 0. The `pg_terminate_backend` step is required in practice —
-platform pods reconnect during a rollback and hold the database open:
+**Preserve the failed database before you remove it.** The rest of this section
+is the one Support-approved exception to *"Preserve the failed database and
+evidence first"* below — but the exception is to *replace* it, not to destroy
+it. Renaming keeps the failed 1.2.0 state (and any post-upgrade writes) available
+for diagnosis at no cost, and it is the only copy that exists:
 
 ```bash
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  psql -U core -d postgres \
+  psql -U core -d postgres -v ON_ERROR_STOP=1 \
   -c "ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS false" \
   -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
         WHERE datname = 'kamiwaza' AND pid <> pg_backend_pid()" \
-  -c "DROP DATABASE kamiwaza" \
-  -c "CREATE DATABASE kamiwaza OWNER core"
+  -c "ALTER DATABASE kamiwaza RENAME TO kamiwaza_failed_${RUN_ID//[^A-Za-z0-9]/_}"
+```
+
+Record the original database's settings before creating its replacement — a
+`CREATE DATABASE` that inherits cluster defaults silently produces a baseline
+whose encoding or collation differs from the one you backed up:
+
+```bash
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  psql -U core -d postgres -Atqc \
+  "SELECT pg_encoding_to_char(encoding), datcollate, datctype
+     FROM pg_database WHERE datname = 'kamiwaza_failed_${RUN_ID//[^A-Za-z0-9]/_}'"
+```
+
+Then create the replacement with those exact values and restore into it, one
+`-c` per statement for the reasons in
+[Working inside the database pod](#working-inside-the-database-pod): `DROP
+DATABASE` and `ALTER DATABASE … RENAME` cannot run inside a transaction block,
+separate `-c` arguments are not wrapped in one, and a heredoc would both fail
+*and* silently execute nothing while returning 0. The `pg_terminate_backend`
+step above is required in practice — platform pods reconnect during a rollback
+and hold the database open:
+
+```bash
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  psql -U core -d postgres -v ON_ERROR_STOP=1 \
+  -c "CREATE DATABASE kamiwaza OWNER core
+        ENCODING '<observed>' LC_COLLATE '<observed>' LC_CTYPE '<observed>'
+        TEMPLATE template0"
 
 kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}"
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  pg_restore -U core --no-owner --no-privileges -d kamiwaza "${POD_DUMP}"
+  pg_restore -U core --exit-on-error --no-owner --no-privileges \
+  -d kamiwaza "${POD_DUMP}"
 ```
+
+`ON_ERROR_STOP=1` is what makes the sequence fail loudly. Without it `psql`
+reports a failed statement and still exits 0, so a rename or create that did not
+happen looks like success — and the `pg_restore` that follows lands on top of
+whatever survived, producing "already exists" errors that read as a corrupt
+dump. That is the same misdiagnosis this whole section exists to prevent.
+`--exit-on-error` does the same job for the restore.
+
+If the sequence aborts between the `ALTER … ALLOW_CONNECTIONS false` and the
+rename, the database is left refusing every connection. Undo it with
+`ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS true` before diagnosing further.
 
 Verify the result before declaring the reset done: `alembic_version` absent,
 `kamiwaza_schema_version` reading `core | 1.0`, the expected table count, and no
-`core-db-init` Jobs left in the namespace.
+`core-db-init` Jobs left in the namespace. Keep `kamiwaza_failed_*` until Support
+confirms it is no longer needed; drop it only then, and only with their sign-off.
 
 Customer operators stop here and preserve the verified backup. Any restore,
 old-binary compatibility test, or production cutover requires a Support-owned
