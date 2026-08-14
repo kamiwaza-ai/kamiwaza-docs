@@ -124,7 +124,15 @@ be a guess about the very thing being measured:
 export OSD_IMAGE_PATH=   # <- paste the backing file's path from spec.storage
 
 findmnt -T "${OSD_IMAGE_PATH:?set this to the OSD backing file from spec.storage}"
-ls -la /mnt/DATALOSS_WARNING_README.txt   # present => /mnt is Azure-ephemeral
+
+# Azure marks its ephemeral resource disk with a sentinel file. Report only if
+# it is there: a bare `ls` would exit nonzero and print "No such file or
+# directory" on AWS, on GCP, and on any Azure host without it -- reading as a
+# failed prerequisite on a perfectly good installation.
+if test -e /mnt/DATALOSS_WARNING_README.txt; then
+  echo "WARNING: /mnt is Azure's ephemeral resource disk on this host."
+  echo "         The OSD must not live on it, and it cannot be snapshotted."
+fi
 ```
 
 Two deliberate choices in those three lines. The value is left **empty** so the
@@ -174,13 +182,16 @@ a restore point collection over the whole VM:
 VM_ID=$(az vm show \
   -g "${RG:?export the resource group holding the VM}" \
   -n "${VM:?export the VM name}" --query id -o tsv)
-test -n "${VM_ID}" \
-  || { echo "stop: could not resolve the VM id" >&2; false; }
 
-az restore-point collection create -g "${RG}" \
-  --collection-name kamiwaza-pre-upgrade --source-id "${VM_ID}"
-az restore-point create -g "${RG}" \
-  --collection-name kamiwaza-pre-upgrade --name pre-step4
+if test -n "${VM_ID}"; then
+  az restore-point collection create -g "${RG}" \
+    --collection-name kamiwaza-pre-upgrade --source-id "${VM_ID}"
+  az restore-point create -g "${RG}" \
+    --collection-name kamiwaza-pre-upgrade --name pre-step4
+else
+  echo "stop: could not resolve the VM id" >&2
+  false
+fi
 ```
 
 On AWS the equivalent is a multi-volume snapshot of the instance
@@ -577,7 +588,13 @@ the operator host, and the 120% check in step 3 measures the filesystem holding
 usually the node's writable layer, so a large database can fail at the copy, or
 fill the node root mid-window, while satisfying every documented capacity check.
 [Step 3](#3-back-up-and-validate-the-database) runs that check, once the dump
-exists to size it against; run it again before the reset and rehearsal copies.
+exists to size it against, and copies only if it passes. It sizes itself from
+`BACKUP_FILE`, so re-run the same block before the reset and rehearsal copies —
+both happen after a pod roll, and the earlier staging copy is gone by then.
+
+If it stops, stage somewhere with known capacity instead of `/tmp`: set
+`POD_DUMP` to a path the `postgres` container can write, re-run the check
+against it, and remove the file when the restore is done.
 
 If you have already wedged a pod, recover the node rather than the database:
 restart konnectivity-agent, and restart the kubelet if `kubectl exec` still
@@ -677,15 +694,24 @@ BACKUP_SHA256=$(sha256sum "${BACKUP_FILE}" | awk '{print $1}')
 # "Working inside the database pod" above.
 export POD_DUMP=/tmp/kamiwaza-1.0.0.dump
 
-# Confirm the pod has room for the staging copy first. This filesystem is
-# neither the operator host nor the PostgreSQL data volume, so neither the
-# prerequisites nor the 120% check below covers it.
+# Confirm the pod has room for the staging copy, and copy only if it does.
+# This filesystem is neither the operator host nor the PostgreSQL data volume,
+# so neither the prerequisites nor the 120% check below covers it.
+#
+# Sized from the dump on this host rather than from BACKUP_SIZE_BYTES, so the
+# same block can be re-run before the reset and rehearsal copies -- both of
+# which happen after a pod roll, often in a new shell.
+DUMP_BYTES=$(stat -c '%s' "${BACKUP_FILE:?path to the dump on this host}")
 POD_TMP_FREE=$(kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   df -PB1 /tmp | awk 'NR == 2 {print $4}')
-test -n "${POD_TMP_FREE}" && test "${POD_TMP_FREE}" -ge "${BACKUP_SIZE_BYTES}" \
-  || { echo "stop: dump is ${BACKUP_SIZE_BYTES} bytes, pod /tmp has '${POD_TMP_FREE}' free" >&2; false; }
 
-kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}"
+if test -n "${DUMP_BYTES}" && test -n "${POD_TMP_FREE}" \
+  && test "${POD_TMP_FREE}" -ge "${DUMP_BYTES}"; then
+  kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}"
+else
+  echo "stop: dump is '${DUMP_BYTES}' bytes, pod /tmp has '${POD_TMP_FREE}' free" >&2
+  false
+fi
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   pg_restore --list "${POD_DUMP}" >/dev/null
 
@@ -1457,18 +1483,27 @@ FAILED_DB="kamiwaza_failed_$(printf '%s' "${RUN_ID:?RUN_ID from step 1 is requir
 # Check the suffix separately: the `:?` above dies inside `$( )` only, so an
 # unset RUN_ID would leave the bare, still-valid identifier `kamiwaza_failed_`
 # and rename the database to it.
-test "${FAILED_DB}" != "kamiwaza_failed_" \
-  || { echo "stop: RUN_ID is unset; refusing to rename to a bare name" >&2; false; }
-echo "preserving the failed database as: ${FAILED_DB}"
-
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  psql -U core -d postgres -v ON_ERROR_STOP=1 \
-  -c "ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS false" \
-  -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
-        WHERE datname = 'kamiwaza' AND pid <> pg_backend_pid()" \
-  -c "ALTER DATABASE kamiwaza RENAME TO ${FAILED_DB}" \
-  -c "ALTER DATABASE ${FAILED_DB} WITH ALLOW_CONNECTIONS true"
+if test "${FAILED_DB}" = "kamiwaza_failed_"; then
+  echo "stop: RUN_ID is unset; refusing to rename to a bare name" >&2
+  false
+else
+  echo "preserving the failed database as: ${FAILED_DB}"
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    psql -U core -d postgres -v ON_ERROR_STOP=1 \
+    -c "ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS false" \
+    -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+          WHERE datname = 'kamiwaza' AND pid <> pg_backend_pid()" \
+    -c "ALTER DATABASE kamiwaza RENAME TO ${FAILED_DB}" \
+    -c "ALTER DATABASE ${FAILED_DB} WITH ALLOW_CONNECTIONS true"
+fi
 ```
+
+The rename sits **inside** the `if`, not after a preceding `test`. That is the
+difference between a guard and a comment: a bare `test … || { echo; false; }`
+on its own line prints and returns 1, and the next pasted command runs anyway —
+so the destructive rename would still execute with the bare name. This page
+uses the same enclosing form for the [backup metadata stanza](#3-back-up-and-validate-the-database);
+follow it for anything destructive.
 
 The final `ALLOW_CONNECTIONS true` is what makes the preservation worth
 anything: the connection block set two statements earlier survives the rename,
