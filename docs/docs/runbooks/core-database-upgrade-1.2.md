@@ -1189,10 +1189,29 @@ namespace state and events, and Helm status/history. For a pod that never
 started, the pod description and events are authoritative; an empty container
 log alone is not evidence that migration code ran.
 
-`--namespace` and `--release` are also accepted as flags; the positional
-`DIR [NAMESPACE] [RELEASE]` form above is still supported. Every option also
-takes the `--option=value` form, which is how to pass a value that legitimately
-begins with `-`. Both binary options need a path to an executable regular file
+`--output-dir`, `--namespace`, and `--release` are also accepted as flags; the
+positional `DIR [NAMESPACE] [RELEASE]` form above is still supported. Every
+option also takes the `--option=value` form, which is how to pass a value that
+legitimately begins with `-`.
+
+`--output-dir` **replaces** the positional evidence directory rather than
+supplementing it, so passing both is a usage error naming the two forms.
+Accepting both would make the first positional mean `DIR` in one invocation
+and `NAMESPACE` in another, and a mistyped flag would then write the bundle to
+a directory named for the namespace. Either of these is complete, and mixing
+them is not:
+
+```bash
+"${COLLECTOR_COMMAND}" "${COLLECTOR_DIR}" "${NAMESPACE}" "${RELEASE}" \
+  --kubectl-bin "${KUBECTL_PATH}" --helm-bin "${HELM_PATH}"
+
+"${COLLECTOR_COMMAND}" --output-dir "${COLLECTOR_DIR}" \
+  --namespace "${NAMESPACE}" --release "${RELEASE}" \
+  --kubectl-bin "${KUBECTL_PATH}" --helm-bin "${HELM_PATH}"
+```
+
+The block above uses the positional form; either is fine, but do not edit it
+into a mixture of the two. Both binary options need a path to an executable regular file
 containing a `/`: a bare name would be re-resolved through `PATH` when the
 command runs, so the binary that executes need not be the one that was checked.
 A *non-empty* value that fails either test is not a usage error — the tool is
@@ -1275,6 +1294,12 @@ resolved but had every one of its invocations fail — and `manifest.txt` names
 what is missing. `COLLECTOR_RC` of 2 is a usage error or an evidence path that
 is unsafe to write (an existing non-empty directory, a symbolic link, or a
 non-directory); correct the argument or choose a new `COLLECTOR_DIR` and re-run.
+Each of those refusals names the offending path, and the non-empty case also
+prints the `rm -rf` that clears it — so a first attempt that failed does not
+leave you deducing why the corrected one is also refused. Removing the
+directory is only ever right for a bundle you do not intend to keep; when the
+first attempt collected anything worth preserving, choose a new
+`COLLECTOR_DIR` instead.
 Exit zero means both collectors produced evidence — it does **not** mean every
 command succeeded. A run where some commands failed (a Job that does not exist,
 an RBAC denial on one resource) still exits zero, prints
