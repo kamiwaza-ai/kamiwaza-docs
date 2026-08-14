@@ -610,16 +610,19 @@ the operator host, and the 120% check in step 3 measures the filesystem holding
 `data_directory`. The staging path is neither — `/tmp` in the container is
 usually the node's writable layer, so a large database can fail at the copy, or
 fill the node root mid-window, while satisfying every documented capacity check.
-[Step 3](#3-back-up-and-validate-the-database) runs that check, once the dump
-exists to size it against, and copies only if it passes. It sizes itself from
-`BACKUP_FILE`, so re-run the same block before the reset and rehearsal copies —
-both happen after a pod roll, and the earlier staging copy is gone by then.
+Step 3's [Stage the dump into the pod](#stage-the-dump-into-the-pod) block runs
+that check, once the dump exists to size it against, and copies only if it
+passes. It sizes itself from `BACKUP_FILE`, so re-run **that block, and only
+that block**, before the reset and rehearsal copies — both happen after a pod
+roll, and the earlier staging copy is gone by then. Re-running the `pg_dump`
+above it would overwrite `${BACKUP_FILE}`.
 
 If it stops, stage somewhere with known capacity instead of `/tmp`: `export
-POD_DUMP=/path/the/postgres/container/can/write` **before** re-running the
-block, and remove the file when the restore is done. The block honours a
-`POD_DUMP` you have already exported and measures whichever directory it names,
-so the relocation survives the re-run.
+POD_DUMP=/path/the/postgres/container/can/write/kamiwaza-1.0.0.dump` **before**
+re-running the block, and remove the file when the restore is done. The value is
+a *file* path; the block measures the directory holding it. It honours a
+`POD_DUMP` you have already exported, so the relocation survives the re-run
+within the same shell.
 
 If you have already wedged a pod, recover the node rather than the database:
 restart konnectivity-agent, and restart the kubelet if `kubectl exec` still
@@ -712,15 +715,27 @@ test -s "${BACKUP_FILE}"
 sha256sum "${BACKUP_FILE}" >"${BACKUP_FILE}.sha256"
 BACKUP_SIZE_BYTES=$(stat -c '%s' "${BACKUP_FILE}")
 BACKUP_SHA256=$(sha256sum "${BACKUP_FILE}" | awk '{print $1}')
+```
 
-# Copy the dump into the pod and check its table of contents from a path.
-# Never redirect it into `kubectl exec -i`: that wedges the node's exec
-# transport for every later command. See
-# "Working inside the database pod" above.
+#### Stage the dump into the pod
+
+The dump has to exist inside the pod for the table-of-contents read below, and
+again for the reset and rehearsal copies much later in this runbook. Those later
+sections send you back **here, to this block only** — never to the `pg_dump`
+above, which would overwrite `${BACKUP_FILE}`.
+
+Copy the dump in and check its table of contents from a path. Never redirect it
+into `kubectl exec -i`: that wedges the node's exec transport for every later
+command, per [Working inside the database
+pod](#working-inside-the-database-pod).
+
+```bash
 # Staging path inside the pod. If /tmp is short on room, `export POD_DUMP=...`
-# to somewhere with known capacity **before** running this block -- the capacity
-# check below measures whichever directory it points at, and the export is what
-# survives into the later re-copies, which run in a new shell.
+# to a writable file path with known capacity **before** running this block --
+# the capacity check below measures the directory holding it. The export carries
+# the relocation to the rest of THIS shell's commands; a later re-copy in a new
+# shell has to re-run this block, which is exactly what the `:?` guards at those
+# sites tell you to do.
 export POD_DUMP="${POD_DUMP:-/tmp/kamiwaza-1.0.0.dump}"
 
 # Clear any staging copy left by an earlier attempt, before measuring anything.
@@ -728,7 +743,8 @@ export POD_DUMP="${POD_DUMP:-/tmp/kamiwaza-1.0.0.dump}"
 # refuses, or that fails outright (a full target, no `tar` in the pod, an exec
 # transport error), would otherwise leave the TOC read and the restore check
 # validating an old dump -- so a host backup that was never staged reads as
-# verified. Removing it first also makes the free-space figure below honest.
+# verified. Removing it first also keeps the free-space figure below honest,
+# rather than counting a doomed retry's own leftovers against it.
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   rm -f "${POD_DUMP}"
 
@@ -746,16 +762,26 @@ POD_TMP_FREE=$(kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
 
 if test -n "${DUMP_BYTES}" && test -n "${POD_TMP_FREE}" \
   && test "${POD_TMP_FREE}" -ge "${DUMP_BYTES}"; then
-  # Chained with `&&`, not merely sequential: a `kubectl cp` that fails must not
-  # be followed by a table-of-contents read that reports success.
-  kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}" &&
+  # One `&&` chain, not three statements. In an interactive shell -- which is
+  # what you are pasting into -- a failed statement does not stop the ones after
+  # it, so an unchained sequence would let the TOC read report success against a
+  # stale file the copy never replaced. The leading `test ! -e` catches the case
+  # where the `rm` above silently failed (read-only staging dir, permissions).
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    test ! -e "${POD_DUMP}" &&
+    kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}" &&
     kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
       pg_restore --list "${POD_DUMP}" >/dev/null
 else
   echo "stop: dump is '${DUMP_BYTES}' bytes, $(dirname "${POD_DUMP}") has '${POD_TMP_FREE}' free" >&2
   false
 fi
+```
 
+With the staging copy in place and its table of contents readable, record the
+backup metadata and prove the archive actually restores:
+
+```bash
 POSTGRESQL_VERSION=$(kubectl exec -n "${NAMESPACE}" \
   core-postgres-0 -c postgres -- \
   psql -U core -d kamiwaza -Atqc 'SHOW server_version;')
@@ -1644,16 +1670,21 @@ kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
         TEMPLATE template0"
 
 # Re-copy: the rollback rolled the pod, so any earlier staging copy is gone.
-# In a new shell, re-run step 3's staging block first -- see "Back up and
-# validate the database". It is what exports POD_DUMP and checks the pod has
-# room, and the guard below is deliberately left to abort until it has run:
-# defaulting POD_DUMP back to /tmp here would silently undo a relocation made
-# for a full /tmp, and copy a dump-sized file with no capacity check.
+# Re-run ONLY step 3's "Stage the dump into the pod" block -- it exports
+# POD_DUMP and checks the pod has room. Do NOT re-run the `pg_dump` block above
+# it: `kamiwaza` was just dropped and re-created empty a few lines up, so a
+# re-dump would write an empty archive over ${BACKUP_FILE} -- the only remaining
+# 1.0.0 backup -- and `test -s` would still pass.
+#
+# No POD_DUMP default here on purpose. In a new shell the guard below aborts
+# until you have re-run that block; in this same shell POD_DUMP is still
+# exported and the guard passes, which is why re-running the staging block
+# rather than relying on the guard is what actually re-checks capacity.
 kubectl cp -c postgres "${BACKUP_FILE:?path to the step 3 dump on this host}" \
-  "${NAMESPACE}/core-postgres-0:${POD_DUMP:?re-run the step 3 staging block first, which exports POD_DUMP and checks pod capacity}"
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  pg_restore -U core --exit-on-error --no-owner --no-privileges \
-  -d kamiwaza "${POD_DUMP}"
+  "${NAMESPACE}/core-postgres-0:${POD_DUMP:?re-run step 3 Stage the dump into the pod first, which exports POD_DUMP and checks pod capacity}" &&
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    pg_restore -U core --exit-on-error --no-owner --no-privileges \
+    -d kamiwaza "${POD_DUMP}"
 ```
 
 `TEMPLATE template0` is required whenever the encoding or locale differs from
@@ -1698,16 +1729,20 @@ kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
 
 # Re-copy: the upgrade rolled the pod, so any earlier staging copy is gone.
 # Guarded because this section runs long after step 3, often in a new shell --
-# re-run step 3's staging block before copying. It is what exports POD_DUMP and
-# checks the pod has room, and the guard below is deliberately left to abort
-# until it has run: defaulting POD_DUMP back to /tmp here would silently undo a
-# relocation made for a full /tmp, and copy a dump-sized file with no capacity
-# check.
+# re-run ONLY step 3's "Stage the dump into the pod" block before copying. It
+# exports POD_DUMP and checks the pod has room. Do NOT re-run the `pg_dump`
+# block above it: that would overwrite ${BACKUP_FILE}, the 1.0.0 backup, with a
+# dump of the already-upgraded database.
+#
+# No POD_DUMP default here on purpose. In a new shell the guard below aborts
+# until you have re-run that block; in this same shell POD_DUMP is still
+# exported and the guard passes, which is why re-running the staging block
+# rather than relying on the guard is what actually re-checks capacity.
 kubectl cp -c postgres "${BACKUP_FILE:?path to the step 3 dump on this host}" \
-  "${NAMESPACE}/core-postgres-0:${POD_DUMP:?re-run the step 3 staging block first, which exports POD_DUMP and checks pod capacity}"
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  pg_restore -U core --exit-on-error --no-owner --no-privileges -d "${RESTORE_DB}" \
-  "${POD_DUMP}"
+  "${NAMESPACE}/core-postgres-0:${POD_DUMP:?re-run step 3 Stage the dump into the pod first, which exports POD_DUMP and checks pod capacity}" &&
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    pg_restore -U core --exit-on-error --no-owner --no-privileges -d "${RESTORE_DB}" \
+    "${POD_DUMP}"
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d "${RESTORE_DB}" -Atqc \
   'SELECT schema_name, version FROM kamiwaza_schema_version ORDER BY schema_name;'
