@@ -45,13 +45,21 @@ failed Helm hook is a stopped upgrade, not permission to improvise.
   this before creating the scratch database.
 - The exact domain, installation mode, and release inputs used for the site.
 - The approved CA certificate that validates the production HTTPS endpoint.
-- A confirmed maintenance window that covers a **Core API outage**, not merely a
-  possible interruption. From the moment the 1.2.0 chart's Ray head starts until
-  `core-db-init` brings the schema to head, the Core API serves no traffic at
-  all. This is designed behaviour, not a fault; see
+- A confirmed maintenance window that covers a **possible Core API outage**.
+  While the 1.2.0 Ray head is up and the schema is behind, the head is held out
+  of `core-api` and the API serves nothing. Whether that window has any length
+  is a race the chart does not order, and on a measured run it had none at all.
+  Plan for the outage; do not conclude anything from its absence. See
   [What normal looks like](#what-normal-looks-like-during-the-upgrade) before
   you begin.
 - External writers quiesced for the backup and upgrade window.
+- **Durable storage for the Ceph OSD**, verified before anything else — every
+  PVC in the cluster, including both PostgreSQL instances, depends on it. See
+  [Durable storage for the OSD](#durable-storage-for-the-osd).
+- **A host snapshot taken immediately before [step 4](#4-run-the-supported-installer-once)**.
+  This is the only route to a second attempt: the [recovery boundary](#recovery-boundary)
+  forbids every in-runbook alternative. See
+  [Snapshot the host before step 4](#snapshot-the-host-before-step-4).
 - The site's existing domain, runtime, storage, GPU, and installer options
   recorded and preserved for the 1.2.0 invocation.
 - A Kamiwaza Support contact who can review a failure before any retry.
@@ -62,13 +70,149 @@ evidence URLs are release-engineering inputs, not values a customer operator
 must create. If the database is below the 1.0.0 source floor, stop and request
 the required intermediate upgrade procedure.
 
+### Durable storage for the OSD
+
+Confirm this first, because it decides whether any of the protection below is
+worth anything. The Ceph OSD's backing store must live on **durable** storage —
+a managed or otherwise persistent disk. It must never be an instance-store or
+temporary resource disk. Every PVC in a Kamiwaza cluster is `ceph-block`, so the
+OSD holds the platform's entire persistent state: both PostgreSQL instances, all
+etcd members, Neo4j, Kafka, and OpenSearch.
+
+The trap is specific and easy to walk into. The default OSD path commonly lands
+on a filesystem too small for the sizing requirement, which forces relocation,
+and the volume with room to spare is frequently the cloud's ephemeral one. Know
+which one that is on your platform:
+
+| Platform | Ephemeral volume — never put the OSD here |
+| --- | --- |
+| Azure | The temporary resource disk, usually mounted at `/mnt` |
+| AWS | Instance-store volumes |
+| GCP | Local SSDs |
+
+**First find what actually backs the OSDs on this cluster.** There is no single
+field that answers this, and the wrong one is easy to reach for:
+`spec.dataDirHostPath` is Rook's configuration and daemon-state directory, *not*
+the OSD data store. Reading it instead would inspect the wrong filesystem —
+frequently a durable `/var/lib/rook` — while the real OSD sits on the ephemeral
+disk you are trying to detect. Read `spec.storage`, which is where the backing
+device, PVC template, or file-backed image is declared:
+
+```bash
+kubectl get cephcluster -A -o json \
+  | jq '.items[] | {ns: .metadata.namespace, name: .metadata.name, storage: .spec.storage}'
+```
+
+(Use `-o json | jq` rather than `-o jsonpath` here: a jsonpath expression
+renders a CR's nested object in Go's `map[deviceFilter:… useAllDevices:…]`
+form, which is awkward to read against the table below.)
+
+Interpret the result:
+
+| What `spec.storage` shows | What backs the OSD | What to check |
+| --- | --- | --- |
+| `devices` / `deviceFilter` / `useAllDevices` | A raw block device on the node | The device itself — is it a managed disk or an instance-store device? |
+| `storageClassDeviceSets` | PVCs from another storage class | That storage class's underlying disk type |
+| A host path (file-backed OSD) | A file on a node filesystem | The mount holding that file — the case below |
+
+For the file-backed case — the shape the reporting host had — export the backing
+file's path from `spec.storage` and resolve its mount. **Export it yourself; the
+block deliberately does not supply a default**, because any default here would
+be a guess about the very thing being measured:
+
+```bash
+export OSD_IMAGE_PATH=   # <- paste the backing file's path from spec.storage
+
+findmnt -T "${OSD_IMAGE_PATH:?set this to the OSD backing file from spec.storage}"
+
+# Azure marks its ephemeral resource disk with a sentinel file. Report only if
+# it is there: a bare `ls` would exit nonzero and print "No such file or
+# directory" on AWS, on GCP, and on any Azure host without it -- reading as a
+# failed prerequisite on a perfectly good installation.
+if test -e /mnt/DATALOSS_WARNING_README.txt; then
+  echo "WARNING: /mnt is Azure's ephemeral resource disk on this host."
+  echo "         The OSD must not live on it, and it cannot be snapshotted."
+fi
+```
+
+Two deliberate choices in those three lines. The value is left **empty** so the
+guard actually fires if you paste without substituting — a plausible-looking
+default such as `/var/lib/rook/...` would make the guard unreachable and hand
+back a confident reading of `dataDirHostPath`'s filesystem, which is the wrong
+one this section exists to steer you off. And the guard is attached to
+`findmnt` rather than sitting on a line of its own: a bare
+`: "${OSD_IMAGE_PATH:?…}"` prints its message but **does not stop an
+interactive shell** — bash aborts only non-interactive ones, and these blocks
+are written to be pasted into a terminal. The next line would run regardless,
+and `findmnt -T ""` reports the mount holding your *current directory* and exits
+0: a confident, wrong, clean-looking answer on the check that decides whether
+any of the protection below is worth anything.
+
+`findmnt` also needs `-T`. Without it, `findmnt` matches only exact mount points
+and returns nothing at all for a path inside one — silence that reads like a
+clean result.
+
+Whichever shape the cluster uses, the question is the same: **is the device
+holding OSD data a managed/persistent disk, or an instance-store one?** Answer it
+for every OSD, not just the first.
+
+If the OSD is on ephemeral storage, **stop**. The cloud destroys that volume on
+stop, deallocate, resize, or host migration, and it cannot be snapshotted — so
+the snapshot below cannot protect this data, and the VM must not be stopped or
+deallocated for any reason, including taking one. Relocate the OSD onto durable
+storage before proceeding with the upgrade.
+
+### Snapshot the host before step 4
+
+Take a full host snapshot immediately before [step 4](#4-run-the-supported-installer-once),
+and treat that step as the point of no return. The
+[recovery boundary](#recovery-boundary) rules out every alternative — there are
+no downgrade migrations, a Helm rollback does not roll the schema back, and
+restoring a logical dump over the active database is prohibited. Without a
+snapshot there is no faithful 1.0.0 baseline to return to: a dump restore plus a
+Helm rollback still leaves 1.2.0 CRDs, hook state, and extension records behind.
+
+**Capture every disk holding state, not only the OS disk.** On Azure, that means
+a restore point collection over the whole VM:
+
+```bash
+# Resolve the id in its own statement and check it. A `${VM:?…}` written inside
+# the `$( )` below would kill only the subshell: the outer `az` would still run,
+# with an empty --source-id.
+VM_ID=$(az vm show \
+  -g "${RG:?export the resource group holding the VM}" \
+  -n "${VM:?export the VM name}" --query id -o tsv)
+
+if test -n "${VM_ID}"; then
+  az restore-point collection create -g "${RG}" \
+    --collection-name kamiwaza-pre-upgrade --source-id "${VM_ID}"
+  az restore-point create -g "${RG}" \
+    --collection-name kamiwaza-pre-upgrade --name pre-step4
+else
+  echo "stop: could not resolve the VM id" >&2
+  false
+fi
+```
+
+On AWS the equivalent is a multi-volume snapshot of the instance
+(`aws ec2 create-snapshots --instance-specification InstanceId=...`); on GCP,
+a machine image (`gcloud compute machine-images create`). On bare metal, use
+whatever storage-layer snapshot the array provides, and confirm it covers the
+OSD's device from [the check above](#durable-storage-for-the-osd).
+
+A snapshot taken while the VM is running is crash-consistent, which is
+sufficient here: PostgreSQL recovers from its WAL when the snapshot is restored.
+**Do not stop or deallocate the VM to take one** — on a host whose OSD is on
+ephemeral storage that is destructive, and it buys nothing on a host where it
+is not.
+
 ## What normal looks like during the upgrade
 
 Read this section before starting. A gated workload and a broken one look
 alike from the outside, and the single most likely way to turn a healthy
 upgrade into a failed one is to react to the gate as though it were a fault.
 
-### The Core API stops serving, on purpose
+### The Core API may stop serving, on purpose — and may not
 
 The 1.2.0 chart adds a second container, `schema-readiness`, to the Ray head
 pod. It runs the core image's `python -m kamiwaza.node.readiness_server` and its
@@ -91,6 +235,107 @@ describe the same probe. The thresholds mean the head leaves `core-api`'s
 endpoints roughly 30 seconds after the schema stops being at head, and rejoins
 within one 10-second period once `core-db-init` completes.
 
+#### How long the outage lasts is a race, and it is often zero
+
+The window above is bounded by two events the chart does not order relative to
+each other. `core-db-init` is a `post-install,post-upgrade` hook, while the new
+1.2.0 Ray head is rolled **asynchronously** by the KubeRay operator once the
+RayCluster CR updates. Nothing sequences the migration ahead of or behind the
+head's creation, so the overlap between "1.2.0 head is up" and "schema is
+behind" can be long, short, or empty.
+
+Empty is a perfectly ordinary outcome. On a successful measured run:
+
+| Event | Time (UTC) |
+| --- | --- |
+| Release upgrade begins (Helm revision 31) | 02:49:06 |
+| `core-db-init` created | 02:49:26 |
+| `core-db-init` completed (`v1_marker_only -> at_head`) | 02:51:11 |
+| New 1.2.0 Ray head created | 02:52:06 |
+| New head Ready 3/3 | 02:52:21 |
+
+`core-db-init` finished 55 seconds before the 1.2.0 head was even created, so
+the head came up against an already-at-head schema and went Ready in 15
+seconds. It was never observed at `2/3`, `core-api` never had an empty endpoint
+list, and the 1.0.0 head served throughout. That run was a success, not a gate
+that failed to engage.
+
+Read the 1800-second figure in [Wait windows](#wait-windows) accordingly: it
+bounds how long `core-db-init` itself may legitimately run, **not** how much
+downtime to expect. Observed downtime can be anywhere from none to roughly that
+long.
+
+#### Confirm the gate is armed, rather than inferring it from an outage
+
+Because a fast success and a gate that never engaged look identical from the
+outside — no outage, in both cases — do not use the presence or absence of
+downtime as evidence either way. Check the gate positively instead:
+
+```bash
+# The schema-readiness container exists in the head pod and is running.
+kubectl get pods -n "${NAMESPACE}" \
+  -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{range .status.containerStatuses[*]}{.name}={.ready}{" "}{end}{"\n"}{end}'
+
+# Resolve the NEWEST head pod. Both the 1.0.0 and 1.2.0 heads carry these
+# labels while the upgrade is in flight, and only the 1.2.0 one has the gate --
+# so an unsorted `items[0]` can hand you the old head and a
+# "container not found" that reads exactly like a missing gate.
+HEAD_POD=$(kubectl get pod -n "${NAMESPACE}" \
+  -l ray.io/cluster=core-raycluster,ray.io/node-type=head \
+  --sort-by=.metadata.creationTimestamp \
+  -o jsonpath='{.items[-1:].metadata.name}')
+
+# Newest is not yet the same as 1.2.0. KubeRay creates the replacement head
+# asynchronously, and until it does, the newest -- and only -- pod matching the
+# selector is still the 1.0.0 head, which has no schema-readiness container by
+# definition. Read the images before reading anything into a missing container:
+# a 1.0.0 image here means the replacement head has not been created yet, which
+# is an ordinary window to wait out, not a gate to escalate.
+kubectl get pod -n "${NAMESPACE}" "${HEAD_POD}" \
+  -o jsonpath='{range .spec.containers[*]}{.name}{"\t"}{.image}{"\n"}{end}'
+
+# Query with the interpreter the container definitionally has. The
+# schema-readiness container runs `python -m kamiwaza.node.readiness_server`,
+# and slim Python images frequently ship no curl -- `exec: "curl": executable
+# file not found` is a missing tool, NOT a missing gate.
+#
+# Catch HTTPError: a readiness endpoint reporting "schema is behind" answers
+# 503, which urlopen raises on. That is the gate WORKING, and an uncaught
+# traceback here would read as a broken probe at the exact moment the probe is
+# telling you what you asked.
+kubectl exec -n "${NAMESPACE}" \
+  "${HEAD_POD:?no Ray head pod found — the gate cannot be confirmed}" \
+  -c schema-readiness -- \
+  python -c 'import urllib.request, urllib.error, sys
+try:
+    r = urllib.request.urlopen("http://127.0.0.1:7788/healthz/schema", timeout=5)
+    print("%s %s" % (r.status, r.read().decode()))
+except urllib.error.HTTPError as e:
+    print("%s %s" % (e.code, e.read().decode()))
+except Exception as e:
+    print("probe could not run: %r" % (e,)); sys.exit(1)'
+```
+
+**Any HTTP status back from `/healthz/schema` means the gate is armed** — 200
+says the schema is at head, 503 says it is behind and the gate is holding. Both
+are the gate working. Read the status, not merely the absence of an error.
+
+The gate is *not* armed only when the `schema-readiness` container is absent
+from a head pod **that is running the 1.2.0 image**. That is a chart/image
+problem to escalate, and any smoke test that passed during the upgrade proved
+nothing about schema safety. Two things look identical to a check that skips the
+image and must not be escalated as a missing gate:
+
+- **The newest head is still the 1.0.0 one.** The replacement head has not been
+  created yet, so the container is absent exactly as expected. Wait and
+  re-check — the roll is asynchronous, as
+  [the section above](#how-long-the-outage-lasts-is-a-race-and-it-is-often-zero)
+  describes.
+- **The probe could not run at all.** A missing interpreter, a connection
+  refused, or the `probe could not run:` line above tell you the check failed,
+  not that the gate is missing.
+
 ### Expected observations
 
 | Observation | Meaning | Action |
@@ -98,8 +343,9 @@ within one 10-second period once `core-db-init` completes.
 | Ray head pod `Running` but **not Ready**, with its READY column one container short (`2/3` where the mesh sidecar is present), while `core-db-init` is pre-head | Correct. The gate is holding. | Wait. Continue to observe `core-db-init`. |
 | `core-api` has no endpoints, and requests to it fail or return 503, during that same window | Correct, and it follows directly from the line above. | Wait. Do not restart anything. |
 | Ray head becomes Ready and `core-api` endpoints reappear shortly after `core-db-init` succeeds | Correct. The gate has reopened. | Continue to [step 6](#6-verify-the-schema-from-the-running-core-image). |
-| `core-postgres-0` is recreated during the upgrade — a young pod age where you expected an old one | Correct. The platform sync rolls the PostgreSQL pod; the data lives on its volume and is unaffected by the roll. | Continue. The volume is what preserves the data. [Step 6](#6-verify-the-schema-from-the-running-core-image) then verifies the schema, which is the condition this runbook gates on — judge the roll by that, not by pod age. |
+| `core-postgres-0` is recreated during the upgrade — a young pod age where you expected an old one | Correct. The platform sync rolls the PostgreSQL StatefulSet; the data lives on its volume and is unaffected by the roll. `core-db-init` runs as its own hook against the pre-roll Postgres. | Continue. The volume is what preserves the data. [Step 6](#6-verify-the-schema-from-the-running-core-image) then verifies the schema, which is the condition this runbook gates on — judge the roll by that, not by pod age. |
 | The core schema marker still reads `core` / `1.0` after a successful upgrade | Correct — see [step 6](#6-verify-the-schema-from-the-running-core-image). The marker records the schema **contract** the database satisfies, which 1.2.0 does not change. There is no `1.2` marker value and you will never see one. | Continue. Judge success by `state`, `supported`, `migration_required`, and the head revisions. |
+| No outage at all: the head is never seen short a container and `core-api` never loses its endpoints | Correct, and common. `core-db-init` finished before the 1.2.0 head was created. | Continue. Do not read this as a gate that failed to engage — [confirm the gate positively](#confirm-the-gate-is-armed-rather-than-inferring-it-from-an-outage) instead. |
 | Ray head still not Ready well **after** the schema has reached head | Not expected. | Collect evidence and escalate to Support. Do not delete the pod. |
 | `schema-readiness` container is in `CrashLoopBackOff` | Not expected — almost always chart/image skew. | See [image contract](#image-contract-do-not-pin-an-older-core-image) below. |
 
@@ -116,6 +362,13 @@ kubectl logs -n "${NAMESPACE}" \
 
 An empty `ENDPOINTS` column on `core-api` while `core-db-init` is still running
 is the expected reading, not a finding.
+
+Note the scope of this procedure's restart prohibitions: they forbid
+**operator-initiated** restarts during diagnosis — deleting the Ray head pod,
+bouncing `core-postgres-0`, rolling a deployment to "clear" a gate. They say
+nothing about the platform's own rollouts. The upgrade recreates
+`core-postgres-0` as a matter of course, and that is not a restart you caused or
+should react to.
 
 ### Image contract: do not pin an older core image
 
@@ -164,6 +417,9 @@ export LOCAL_RUN_LABEL="${RUN_ID}"
 export EVIDENCE_DIR="${PWD}/${LOCAL_RUN_LABEL}"
 export COLLECTOR_DIR="${PWD}/${LOCAL_RUN_LABEL}-collector"
 export PRIVATE_DIR="${PWD}/${LOCAL_RUN_LABEL}-private"
+# NAMESPACE is for this runbook's kubectl commands only. It must NOT reach the
+# installer in step 4 -- see "Keep NAMESPACE out of the installer's environment"
+# there. The step 4 blocks strip it explicitly, so exporting it here is safe.
 export NAMESPACE="kamiwaza"
 export RELEASE="kamiwaza"
 : "${CANDIDATE_SHA:?export the full verified 1.2.0 candidate SHA}"
@@ -291,6 +547,153 @@ installation. If the marker query fails or its contents are unexpected, stop.
 The pre-upgrade file is diagnostic only and is not part of the final allowlist;
 retain it alongside the private change record.
 
+## Working inside the database pod
+
+Every remaining step drives PostgreSQL through `kubectl exec`. Two of its
+behaviours have each, on a real run, produced a failure that looked like
+something else entirely — one an unrecoverable-looking hang, the other a silent
+no-op reported as success. Read this before step 3 rather than diagnosing them
+mid-window.
+
+### Never feed a large redirect into `kubectl exec -i`
+
+`kubectl exec -i` does not reliably deliver EOF once a redirected file has been
+consumed, so a command that reads until end of input never returns.
+`pg_restore --list <dump` is the case this procedure used to contain, and it
+hangs indefinitely.
+
+The damage outlives the command. The wedged invocation leaves a stuck streaming
+connection from konnectivity-agent to the kubelet on port 10250, with the
+unread bytes sitting in its receive queue, and from that point **every**
+`kubectl exec` into that pod fails with a dial timeout. On the host where this
+was observed, restarting konnectivity-agent was not sufficient; the kubelet
+itself had to be restarted.
+
+Note what is *not* broken when this happens: the dump. The `pg_dump` that
+preceded it exited 0 and wrote a complete file. It is the table-of-contents
+check that hangs, not the backup.
+
+Copy the file into the pod and restore from a path instead — this is the shape
+[Stage the dump into the pod](#stage-the-dump-into-the-pod) uses, with
+`POD_DUMP` defined there:
+
+```bash
+kubectl cp -c postgres "${BACKUP_FILE}" \
+  "${NAMESPACE}/core-postgres-0:${POD_DUMP}" &&
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    pg_restore --list "${POD_DUMP}" >/dev/null
+```
+
+The `&&` is load-bearing: on its own line the table-of-contents read would still
+run after a failed copy, against whatever the path held before.
+
+`kubectl cp` needs `tar` in the target container — it streams the file as a tar
+archive and extracts it inside. The `postgres` container has it, but confirm
+once before the maintenance window rather than discovering it mid-restore, since
+every staged copy this procedure makes — the one in step 3 and the two re-runs
+of it before the reset and rehearsal restores — goes through `kubectl cp`:
+
+```bash
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- sh -c 'command -v tar'
+```
+
+The `sh -c` wrapper is required. `kubectl exec -- command -v tar` execs `argv`
+directly with no shell, and `command` is a shell *builtin* with no binary on
+disk — so that form always fails with
+`exec: "command": executable file not found in $PATH` no matter how present
+`tar` is. Reading that as a missing `tar` is the same false negative this
+section warns about elsewhere.
+
+**`kubectl cp` also needs room for a second copy of the dump, inside the pod.**
+This is space the prerequisites do not otherwise account for: the
+["enough storage outside the data volume"](#prerequisites) requirement covers
+the operator host, and the 120% check in step 3 measures the filesystem holding
+`data_directory`. The staging path is neither — `/tmp` in the container is
+usually the node's writable layer, so a large database can fail at the copy, or
+fill the node root mid-window, while satisfying every documented capacity check.
+Step 3's [Stage the dump into the pod](#stage-the-dump-into-the-pod) block runs
+that check, once the dump exists to size it against, and copies only if it
+passes. It sizes itself from `BACKUP_FILE`, so re-run **that block, and only
+that block**, before the reset and rehearsal copies — both happen after a pod
+roll, and the earlier staging copy is gone by then. Re-running the `pg_dump`
+above it would overwrite `${BACKUP_FILE}`.
+
+If it stops, stage somewhere with known capacity instead of `/tmp`: `export
+POD_DUMP=/path/the/postgres/container/can/write/kamiwaza-1.0.0.dump` **before**
+re-running the block, and remove the file when the restore is done. The value is
+a *file* path; the block measures the directory holding it. It honours a
+`POD_DUMP` you have already exported, so the relocation survives the re-run
+within the same shell.
+
+If you have already wedged a pod, recover the node rather than the database:
+restart konnectivity-agent, and restart the kubelet if `kubectl exec` still
+times out afterwards. **Do not restart `core-postgres-0`** — the fault is in the
+exec transport, not in PostgreSQL, and restarting the database pod neither
+clears it nor is a safe reflex during an upgrade.
+
+### The inverse trap: `kubectl exec` *without* `-i` runs nothing and exits 0
+
+The same mechanism has a second, worse face. Without `-i`, stdin is never
+attached, so a heredoc supplied to the container is never delivered: `psql`
+reads EOF immediately, executes **zero** statements, and exits 0.
+
+This is not hypothetical. A heredoc'd block of `ALTER DATABASE` / `DROP
+DATABASE` / `CREATE DATABASE` ran no statements and reported success. The
+`pg_restore` that followed — which takes its input as an argument, and therefore
+*did* run — then reported 643 "already exists" errors. The natural reading is
+that something re-created the schema. Nothing had: the drop never happened. One
+block, two commands, only one of them honouring stdin.
+
+The tell is that `psql` prints nothing whatsoever and returns 0. Genuine
+administrative SQL always prints something (`ALTER DATABASE`, `DROP DATABASE`).
+Silence plus `rc=0` means no statement ran.
+
+**Use `-c` per statement as the default for administrative SQL**, and always
+with `-v ON_ERROR_STOP=1`. Multiple `-c` arguments run in sequence and are *not*
+wrapped in a single transaction — which is what makes statements like `DROP
+DATABASE` legal in this form, where a heredoc would fail on them even if its
+input were delivered.
+
+The form is safe to run as written — it only reads:
+
+```bash
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  psql -U core -d postgres -v ON_ERROR_STOP=1 \
+  -c "SELECT current_database(), current_user" \
+  -c "SELECT count(*) FROM pg_stat_activity WHERE datname = 'kamiwaza'"
+```
+
+**`ON_ERROR_STOP=1` is not optional.** Without it `psql` reports a failed
+statement, carries on to the next one, and still **exits 0** — so a sequence
+whose first half failed looks like a success to the `test`/`&&` that follows it.
+With it, `psql` stops at the first error and exits nonzero.
+
+The destructive rename-and-recreate that uses this same form lives in
+[If Support approves a reset to the 1.0.0 baseline](#if-support-approves-a-reset-to-the-100-baseline).
+**Do not run it from here.** It requires Support approval, a completed
+[step 3](#3-back-up-and-validate-the-database) backup, and the readiness gate
+documented alongside it.
+
+Reserve `-i` for input you pipe deliberately and keep small; never combine it
+with a redirect of a dump-sized file.
+
+One related way this stayed invisible: **piping to `tail` makes `$?` the exit
+status of `tail`**, which is essentially always 0. Check the status of the
+command itself — `${PIPESTATUS[0]}` in bash — or do not pipe at all when the
+exit status is the thing you are gating on.
+
+### Keep pasted commands short
+
+Long multi-line blocks corrupt on paste. A multi-line `kubectl exec` assignment
+pasted into a terminal arrived mashed together and left bash waiting at a `PS2`
+continuation prompt — which looks exactly like another hang, and which is
+especially confusing alongside the trap above, because the shell may be
+displaying garbled *later* lines while execution is actually stuck on an
+earlier one.
+
+Keep each `kubectl exec` assignment short enough to paste as one line, or put
+the block in a `.sh` file and run that instead of pasting it.
+
 ## 3. Back up and validate the database
 
 Create a PostgreSQL custom-format logical dump. The redirect runs on the
@@ -313,15 +716,119 @@ test -s "${BACKUP_FILE}"
 sha256sum "${BACKUP_FILE}" >"${BACKUP_FILE}.sha256"
 BACKUP_SIZE_BYTES=$(stat -c '%s' "${BACKUP_FILE}")
 BACKUP_SHA256=$(sha256sum "${BACKUP_FILE}" | awk '{print $1}')
-kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  pg_restore --list <"${BACKUP_FILE}" >/dev/null
+```
+
+### Stage the dump into the pod
+
+The dump has to exist inside the pod for the table-of-contents read below, and
+again for the reset and rehearsal copies much later in this runbook. Those later
+sections send you back **here, to this block only** — never to the `pg_dump`
+above, which would overwrite `${BACKUP_FILE}`.
+
+Coming back here in a **new shell** — which is the usual case, since both later
+copies happen after a pod roll — first re-export the two variables this block
+reads, to the values the earlier steps already used:
+
+```bash
+export NAMESPACE="kamiwaza"
+export BACKUP_FILE="/path/from/step-1/backup/kamiwaza-1.0.0.dump"
+```
+
+**Do not re-run [step 1](#1-create-the-evidence-workspace) to get them.** It
+mints a fresh `RUN_ID` from the current timestamp, so `PRIVATE_DIR` — and with
+it `BACKUP_FILE` — would point at a new, empty evidence directory rather than
+the one holding your backup. Read the real path off the step 1 workspace on
+disk. Without these, the block below stops with an empty byte count rather than
+a message naming what is missing.
+
+Copy the dump in and check its table of contents from a path. Never redirect it
+into `kubectl exec -i`: that wedges the node's exec transport for every later
+command, per [Working inside the database
+pod](#working-inside-the-database-pod).
+
+```bash
+# Staging path inside the pod. If /tmp is short on room, `export POD_DUMP=...`
+# to a writable file path with known capacity **before** running this block --
+# the capacity check below measures the directory holding it. The export carries
+# the relocation to the rest of THIS shell's commands; a later re-copy in a new
+# shell has to re-run this block, which is exactly what the `:?` guards at those
+# sites tell you to do.
+export POD_DUMP="${POD_DUMP:-/tmp/kamiwaza-1.0.0.dump}"
+
+# Clear any staging copy left by an earlier attempt, before measuring anything.
+# Nothing below may be allowed to read a stale file: a copy that this block
+# refuses, or that fails outright (a full target, no `tar` in the pod, an exec
+# transport error), would otherwise leave the TOC read and the restore check
+# validating an old dump -- so a host backup that was never staged reads as
+# verified. Removing it first also keeps the free-space figure below honest,
+# rather than counting a doomed retry's own leftovers against it.
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  rm -f "${POD_DUMP}"
+
+# Confirm the pod has room for the staging copy, and copy -- and read the TOC --
+# only if it does. This filesystem is neither the operator host nor the
+# PostgreSQL data volume, so neither the prerequisites nor the 120% check below
+# covers it.
+#
+# Sized from the dump on this host rather than from BACKUP_SIZE_BYTES, so the
+# same block can be re-run before the reset and rehearsal copies -- both of
+# which happen after a pod roll, often in a new shell.
+DUMP_BYTES=$(stat -c '%s' "${BACKUP_FILE:?path to the dump on this host}")
+POD_TMP_FREE=$(kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  df -PB1 "$(dirname "${POD_DUMP}")" | awk 'NR == 2 {print $4}')
+
+if test -n "${DUMP_BYTES}" && test -n "${POD_TMP_FREE}" \
+  && test "${POD_TMP_FREE}" -ge "${DUMP_BYTES}"; then
+  # One `&&` chain, not three statements. In an interactive shell -- which is
+  # what you are pasting into -- a failed statement does not stop the ones after
+  # it, so an unchained sequence would let the TOC read report success against a
+  # stale file the copy never replaced. The leading `test ! -e` catches the case
+  # where the `rm` above silently failed (read-only staging dir, permissions).
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    test ! -e "${POD_DUMP}" &&
+    kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}" &&
+    kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+      pg_restore --list "${POD_DUMP}" >/dev/null
+else
+  echo "stop: dump is '${DUMP_BYTES}' bytes, $(dirname "${POD_DUMP}") has '${POD_TMP_FREE}' free" >&2
+  false
+fi
+```
+
+With the staging copy in place and its table of contents readable, record the
+backup metadata and prove the archive actually restores:
+
+```bash
 POSTGRESQL_VERSION=$(kubectl exec -n "${NAMESPACE}" \
   core-postgres-0 -c postgres -- \
   psql -U core -d kamiwaza -Atqc 'SHOW server_version;')
 BACKUP_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-printf 'size_bytes=%s\nsha256=%s\npostgresql_version=%s\nbackup_timestamp=%s\n' \
-  "${BACKUP_SIZE_BYTES}" "${BACKUP_SHA256}" \
-  "${POSTGRESQL_VERSION}" "${BACKUP_TIMESTAMP}"
+
+# Refuse to print the stanza unless every field was actually collected. An
+# earlier revision printed it unconditionally, so a `kubectl exec` that failed
+# with a dial timeout produced `postgresql_version=` — a record that reads as a
+# successful backup whose Postgres version merely went unrecorded. A printed
+# stanza is not proof that the commands behind it ran.
+#
+# The guards are CHAINED to the printf on purpose. As separate statements they
+# would not gate anything in an interactive shell: a failing `test` returns 1
+# and the next line runs regardless. Only `errexit` would stop it, and you are
+# pasting these into a shell that does not have it set.
+#
+# For the same reason, this stanza still prints after the staging copy above was
+# refused and its `false` ran. That is not a contradiction: the stanza describes
+# ${BACKUP_FILE}, the host dump, which did succeed. It says nothing about the
+# in-pod staging copy. Act on the `stop:` line regardless.
+if test -n "${BACKUP_SIZE_BYTES}" \
+  && test -n "${BACKUP_SHA256}" \
+  && test -n "${POSTGRESQL_VERSION}"; then
+  printf 'size_bytes=%s\nsha256=%s\npostgresql_version=%s\nbackup_timestamp=%s\n' \
+    "${BACKUP_SIZE_BYTES}" "${BACKUP_SHA256}" \
+    "${POSTGRESQL_VERSION}" "${BACKUP_TIMESTAMP}"
+else
+  echo "stop: backup metadata incomplete; a kubectl exec above failed" >&2
+  false
+fi
 
 # Prove the archive's data is restorable, not merely that its TOC is readable.
 DATABASE_SIZE_BYTES=$(kubectl exec -n "${NAMESPACE}" \
@@ -350,9 +857,9 @@ export BACKUP_CHECK_DB="kamiwaza_backup_check_$(date -u +%Y%m%dT%H%M%S)"
 
     kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
       createdb -U core "${BACKUP_CHECK_DB}" || exit 1
-    kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
       pg_restore -U core --exit-on-error --no-owner --no-privileges \
-      -d "${BACKUP_CHECK_DB}" <"${BACKUP_FILE}" || exit 1
+      -d "${BACKUP_CHECK_DB}" "${POD_DUMP}" || exit 1
     kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
       psql -U core -d "${BACKUP_CHECK_DB}" -Atqc \
       "SELECT version FROM kamiwaza_schema_version WHERE schema_name = 'core';" \
@@ -383,12 +890,71 @@ Do not continue unless every command above succeeds. Keep the dump itself and
 its checksum private; the shareable evidence bundle contains the manifest, not
 the database contents.
 
+`${POD_DUMP}` is a staging copy inside the pod's filesystem, not a backup. The
+authoritative copy is `${BACKUP_FILE}` on the operator host. The pod is
+recreated by any StatefulSet roll — including the one the upgrade itself
+performs — and anything staged in it is gone afterwards, so **re-run [Stage the
+dump into the pod](#stage-the-dump-into-the-pod) before any later step that
+needs the dump in the pod**. Re-run that whole block, not a bare `kubectl cp`:
+the capacity check, the stale-copy removal, and the chained table-of-contents
+read are what make the staged copy trustworthy. Remove the staging copy once the
+validation above has passed:
+
+```bash
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  rm -f "${POD_DUMP}"
+```
+
 ## 4. Run the supported installer once
+
+> **Point of no return.** Take the host snapshot now if you have not already —
+> see [Snapshot the host before step 4](#snapshot-the-host-before-step-4).
+> Past this point the [recovery boundary](#recovery-boundary) offers no way back
+> to a 1.0.0 baseline without one.
 
 Use the same supported production path as a clean installation. Preserve the
 exact invocation and exit status. The examples below omit real credentials;
 provide them using your approved secret-handling process and do not add them to
 the evidence bundle.
+
+### Keep `NAMESPACE` out of the installer's environment
+
+Both invocations below run through `env -u NAMESPACE`. That is not decoration.
+
+[Step 1](#1-create-the-evidence-workspace) has you `export NAMESPACE="kamiwaza"`
+for this runbook's `kubectl` commands. The installer's post-install
+`make patch-coredns` step runs `scripts/patch-coredns.sh`, which reads
+`NAMESPACE` as something else entirely — its **ingress-service namespace
+override** — and prefers a pre-set value over its provider default of
+`istio-system`. Following this runbook and then running step 4 in the same
+shell, which is exactly what it prescribes, therefore sends the script looking
+for `istio-ingressgateway` in `kamiwaza`, where it does not exist:
+
+```
+=== CoreDNS Patch: <domain> -> istio-ingressgateway.kamiwaza ClusterIP (provider: istio) ===
+  Attempt 1/30: waiting for istio-ingressgateway service (retry in 10s)...
+ERROR: istio-ingressgateway.kamiwaza has no ClusterIP after 30 attempts
+make[1]: *** [Makefile:427: patch-coredns] Error 1
+```
+
+Five minutes of retries, then a nonzero installer exit — **after** the database
+migration, the Ray head roll, and every Helm release have already succeeded. The
+platform is fine; the install reports failure. Observed on a real validation
+run, and initially misfiled as an installer defect before the collision was
+traced.
+
+`env -u NAMESPACE` removes the variable for the installer process only, so the
+runbook's own `kubectl` steps keep working before and after. It does not depend
+on the operator remembering to `unset`, and it survives being pasted out of
+order.
+
+One caveat on the offline path, which runs it as `sudo -E env -u NAMESPACE
+<installer>`: the sudo target becomes `/usr/bin/env`, not the installer. This
+runbook already assumes full `sudo` with `setenv`, so it is fine as written —
+but on a site whose sudoers allowlists the installer path specifically, that
+form is denied where a direct `sudo -E <installer>` would be permitted. There,
+`unset NAMESPACE` in the shell before the `sudo` line instead, and re-export it
+afterwards for the remaining `kubectl` steps.
 
 ### Online upgrade
 
@@ -423,7 +989,10 @@ setting while still capturing a failed installer:
 
 (
   set +e
-  KEYGEN_LICENSE_KEY="${KEYGEN_LICENSE_KEY}" \
+  # The license key is a shell assignment prefix, not an argument to `env`, so
+  # it never appears in any process's argv -- `env`'s own included, where
+  # /proc/<pid>/cmdline and execve audit rules would both pick it up.
+  KEYGEN_LICENSE_KEY="${KEYGEN_LICENSE_KEY}" env -u NAMESPACE \
     ./kamiwaza-online-install.sh \
     --domain "${DOMAIN}" \
     --admin-password "${ADMIN_PASSWORD}" \
@@ -531,7 +1100,7 @@ the upgraded installer once:
 ```bash
 (
   set +e
-  sudo -E /opt/kamiwaza/scripts/install-prod.sh \
+  sudo -E env -u NAMESPACE /opt/kamiwaza/scripts/install-prod.sh \
     --offline \
     --domain "${DOMAIN}" \
     --admin-password "${ADMIN_PASSWORD}" \
@@ -576,13 +1145,15 @@ kubectl get pods -n "${NAMESPACE}" \
   --sort-by=.metadata.creationTimestamp -o wide
 ```
 
-While this Job is running, the Ray head is expected to be `Running` but **not
-Ready** and `core-api` is expected to have no endpoints. That is the
-schema-readiness gate holding, not a fault — see
-[What normal looks like](#what-normal-looks-like-during-the-upgrade). Do not
-restart the head, delete its pod, or roll back the release in response to it.
-The head rejoins `core-api` on its own within about ten seconds of the schema
-reaching head.
+While this Job is running, the Ray head **may** be `Running` but not Ready, with
+`core-api` showing no endpoints. That is the schema-readiness gate holding, not a
+fault. It is equally normal to see none of it: whether the 1.2.0 head is up
+before the Job finishes is a race, and it is frequently won by the Job — see
+[how long the outage lasts](#how-long-the-outage-lasts-is-a-race-and-it-is-often-zero).
+Neither observation is a finding on its own; confirm the gate positively rather
+than inferring it from downtime. If the head is holding, do not restart it,
+delete its pod, or roll back the release in response — it rejoins `core-api` on
+its own within about ten seconds of the schema reaching head.
 
 Do not delete the Job or pods. The completed Job and its pods are retained for
 `core.scheduler.dbInit.ttlSecondsAfterFinished` (3600 seconds by default) and
@@ -835,9 +1406,19 @@ test -s "${EVIDENCE_DIR}/schema/marker.tsv"
 test -s "${EVIDENCE_DIR}/schema/revision.tsv"
 ```
 
+**The success condition is the transition `v1_marker_only -> at_head`, together
+with a single expected head revision.** That is what `core-db-init` reports, and
+it is how this procedure states success throughout. There is no schema value
+`1.2` — not in `kamiwaza_schema_version`, not in `alembic_version` (whose
+revisions are dated identifiers such as `20260801_007`), not from the runner,
+and not from `schema-status.py`. Anyone expecting to read `1.2` somewhere will
+read `1.0` instead and call a successful upgrade failed.
+
 Required result:
 
-- `state` is `at_head`;
+- `state` is `at_head`. `core-db-init` reports the transition it performed as
+  `v1_marker_only -> at_head`; this step observes only the `at_head` end of it,
+  since the procedure does not run `schema-status.py` before the upgrade;
 - `supported` is `true`;
 - `migration_required` is `false`;
 - `marker_version` is `1.0` and `marker.tsv` contains exactly `core<TAB>1.0`.
@@ -951,6 +1532,207 @@ Do not restore a logical dump over the active database. Do not point an old
 binary at a database after the 1.2.0 migration unless the exact compatibility
 has passed release qualification and Support explicitly approves it.
 
+**Say plainly what this means: without a pre-step-4 host snapshot there is no
+path back to a 1.0.0 baseline from inside this runbook.** Every in-procedure
+mechanism is ruled out above — there are no downgrade migrations, a Helm
+rollback leaves the schema where it is, and restoring the dump over the live
+database is prohibited. A dump restore plus a Helm rollback is not equivalent
+either: it leaves 1.2.0 CRDs, hook state, and extension records in place. If you
+reach a failed upgrade with no snapshot, the remaining options are a
+Support-owned forward fix or a rebuild — decide that with Support rather than
+improvising. Take the snapshot before step 4 precisely so this paragraph never
+applies to you.
+
+### If Support approves a reset to the 1.0.0 baseline
+
+A Support-approved reset rolls the release back and restores the dump into a
+freshly created database. Two things about that sequence have already misled an
+operator on a real run, both worth knowing before you start it.
+
+**Wait for PostgreSQL before restoring.** A `helm rollback` to the 1.0.0
+revision rolls the Postgres StatefulSet exactly as an upgrade does. A restore
+attempted immediately afterwards fails against a database that is still coming
+down:
+
+```
+psql: FATAL:  the database system is shutting down
+pg_restore: error: connection to server ... FATAL: the database system is shutting down
+```
+
+An operator whose upgrade has just failed, restoring a dump they took
+themselves, sees `pg_restore` fail and reasonably concludes **the backup is
+bad**. That is the worst available wrong conclusion at that moment: it sends
+them hunting for another recovery route while holding a perfectly good one. The
+dump is intact. Gate the restore on readiness and it succeeds on the first
+attempt:
+
+```bash
+PG_READY=0
+for _ in $(seq 1 60); do
+  if kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+       psql -U core -d postgres -Atqc 'SELECT 1' >/dev/null 2>&1; then
+    PG_READY=1
+    break
+  fi
+  sleep 5
+done
+test "${PG_READY}" -eq 1 \
+  || { echo "stop: PostgreSQL not ready after 300s; do not continue" >&2; false; }
+```
+
+**The `PG_READY` flag is the point of the block, not decoration.** A bare
+`for … && break; sleep 5; done` ends with `sleep` as its last command, so on
+timeout the whole loop reports success and nothing marks the failure at all.
+The final `test` is what turns a timeout into a visible `stop:` line and a
+nonzero status.
+
+It cannot physically prevent the next paste — nothing in an interactive shell
+can. **Read its output before continuing**, and if you are scripting this,
+chain the sequence below onto it with `&&` so the timeout actually stops the
+run.
+
+On the affected host this returned after about 10 seconds — short enough that a
+human typing the next command by hand usually misses the window, and short
+enough that a scripted step hits it almost every time.
+
+**Re-copy the dump after the roll.** The rollback recreates `core-postgres-0`,
+so anything staged into its filesystem with `kubectl cp` beforehand is gone.
+Copy it in again after the readiness gate, not before the rollback.
+
+**Preserve the failed database before you remove it.** The rest of this section
+is the one Support-approved exception to *"Preserve the failed database and
+evidence first"* below — but the exception is to *replace* it, not to destroy
+it. Renaming keeps the failed 1.2.0 state (and any post-upgrade writes) available
+for diagnosis at no cost, and it is the only copy that exists:
+
+```bash
+# Lower-cased on purpose. An unquoted SQL identifier is folded to lower case by
+# PostgreSQL, and RUN_ID always contains upper case (the `T` and `Z` of its
+# timestamp) -- so building the name in mixed case would store
+# `..._20260814t055333z` while every later lookup searched for
+# `..._20260814T055333Z` and silently found nothing.
+FAILED_DB="kamiwaza_failed_$(printf '%s' "${RUN_ID:?RUN_ID from step 1 is required}" \
+  | tr -c 'A-Za-z0-9' '_' | tr 'A-Z' 'a-z')"
+
+# Check the suffix separately: the `:?` above dies inside `$( )` only, so an
+# unset RUN_ID would leave the bare, still-valid identifier `kamiwaza_failed_`
+# and rename the database to it.
+if test "${FAILED_DB}" = "kamiwaza_failed_"; then
+  echo "stop: RUN_ID is unset; refusing to rename to a bare name" >&2
+  false
+else
+  echo "preserving the failed database as: ${FAILED_DB}"
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    psql -U core -d postgres -v ON_ERROR_STOP=1 \
+    -c "ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS false" \
+    -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+          WHERE datname = 'kamiwaza' AND pid <> pg_backend_pid()" \
+    -c "ALTER DATABASE kamiwaza RENAME TO ${FAILED_DB}" \
+    -c "ALTER DATABASE ${FAILED_DB} WITH ALLOW_CONNECTIONS true"
+fi
+```
+
+The rename sits **inside** the `if`, not after a preceding `test`. That is the
+difference between a guard and a comment: a bare `test … || { echo; false; }`
+on its own line prints and returns 1, and the next pasted command runs anyway —
+so the destructive rename would still execute with the bare name. This page
+uses the same enclosing form for the [backup metadata stanza](#3-back-up-and-validate-the-database);
+follow it for anything destructive.
+
+The final `ALLOW_CONNECTIONS true` is what makes the preservation worth
+anything: the connection block set two statements earlier survives the rename,
+so without it the database you kept for diagnosis cannot be connected to.
+
+Record the original database's settings before creating its replacement — a
+`CREATE DATABASE` that inherits cluster defaults silently produces a baseline
+whose encoding or collation differs from the one you backed up. Capture them
+into shell variables rather than transcribing by hand:
+
+```bash
+# Tab-delimited, not space: a locale name containing a space would otherwise
+# split across the wrong variables and still pass a non-empty check.
+IFS=$'\t' read -r DB_ENCODING DB_COLLATE DB_CTYPE < <(
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    psql -U core -d postgres -AtF $'\t' -c \
+    "SELECT pg_encoding_to_char(encoding), datcollate, datctype
+       FROM pg_database WHERE datname = '${FAILED_DB}'")
+
+test -n "${DB_ENCODING}" && test -n "${DB_COLLATE}" && test -n "${DB_CTYPE}" \
+  || { echo "stop: could not read the failed database's settings" >&2; false; }
+printf 'encoding=%s collate=%s ctype=%s\n' \
+  "${DB_ENCODING}" "${DB_COLLATE}" "${DB_CTYPE}"
+```
+
+**If this stops, you are past the rename**, so there is no `kamiwaza` database
+at the moment it fails — do not read that as a lost database. `${FAILED_DB}`
+holds everything, and connections to it were re-enabled above. Two known causes:
+the database uses PostgreSQL 16's ICU provider, where `datcollate` and
+`datctype` can be NULL (read `daticulocale` / `datlocprovider` instead), or the
+`FAILED_DB` name does not match. Resolve the values by hand from
+`\l+ ${FAILED_DB}` and continue; nothing below depends on this block having
+succeeded automatically.
+
+Then create the replacement with those exact values and restore into it, one
+`-c` per statement for the reasons in
+[Working inside the database pod](#working-inside-the-database-pod):
+`ALTER DATABASE … RENAME` and `CREATE DATABASE` cannot run inside a transaction
+block, separate `-c` arguments are not wrapped in one, and a heredoc would both
+fail *and* silently execute nothing while returning 0. The
+`pg_terminate_backend` step above is required in practice — platform pods
+reconnect during a rollback and hold the database open:
+
+```bash
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  psql -U core -d postgres -v ON_ERROR_STOP=1 \
+  -c "CREATE DATABASE kamiwaza OWNER core
+        ENCODING '${DB_ENCODING}'
+        LC_COLLATE '${DB_COLLATE}' LC_CTYPE '${DB_CTYPE}'
+        TEMPLATE template0"
+
+# Re-stage first: the rollback rolled the pod, so any earlier staging copy is
+# gone. Re-run ONLY step 3's "Stage the dump into the pod" block -- it exports
+# POD_DUMP and checks the pod has room. Do NOT re-run the `pg_dump` block above
+# it: `kamiwaza` was just dropped and re-created empty a few lines up, so a
+# re-dump would write an empty archive over ${BACKUP_FILE} -- the only remaining
+# 1.0.0 backup -- and `test -s` would still pass.
+#
+# No POD_DUMP default here on purpose. In a new shell the guard below aborts
+# until you have re-run that block; in this same shell POD_DUMP is still
+# exported and the guard passes, which is why re-running the staging block
+# rather than relying on the guard is what actually re-checks capacity.
+#
+# That block already performed the copy and read the archive's table of
+# contents, so this does not copy again -- re-uploading a multi-gigabyte dump
+# would only add a second chance to fail. It asserts the staged copy is present
+# and non-empty, chained to the restore so a missing one stops here.
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  test -s "${POD_DUMP:?re-run step 3 Stage the dump into the pod first, which exports POD_DUMP and stages the copy}" &&
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    pg_restore -U core --exit-on-error --no-owner --no-privileges \
+    -d kamiwaza "${POD_DUMP}"
+```
+
+`TEMPLATE template0` is required whenever the encoding or locale differs from
+the cluster default; it is harmless when they match.
+
+`ON_ERROR_STOP=1` is what makes the sequence fail loudly. Without it `psql`
+reports a failed statement and still exits 0, so a rename or create that did not
+happen looks like success — and the `pg_restore` that follows lands on top of
+whatever survived, producing "already exists" errors that read as a corrupt
+dump. That is the same misdiagnosis this whole section exists to prevent.
+`--exit-on-error` does the same job for the restore.
+
+If the sequence aborts between the `ALTER … ALLOW_CONNECTIONS false` and the
+rename, the database is left refusing every connection. Undo it with
+`ALTER DATABASE kamiwaza WITH ALLOW_CONNECTIONS true` before diagnosing further.
+After the rename has succeeded the same block re-enables connections under the
+new name, so use `${FAILED_DB}` in place of `kamiwaza` from that point on.
+
+Verify the result before declaring the reset done: `alembic_version` absent,
+`kamiwaza_schema_version` reading `core | 1.0`, the expected table count, and no
+`core-db-init` Jobs left in the namespace. Keep `kamiwaza_failed_*` until Support
+confirms it is no longer needed; drop it only then, and only with their sign-off.
+
 Customer operators stop here and preserve the verified backup. Any restore,
 old-binary compatibility test, or production cutover requires a Support-owned
 recovery plan; it is not a routine continuation of a failed upgrade. Skip the
@@ -962,13 +1744,35 @@ rehearsal in the disposable M1 environment. It restores the dump into a newly
 created database while the active `kamiwaza` database remains untouched:
 
 ```bash
+# Mixed case is safe here, unlike the reset path's FAILED_DB: `createdb` quotes
+# the identifier for you, and every later use passes it to `-d`, never as a bare
+# SQL identifier that PostgreSQL would fold. Do not "correct" this to match.
 export RESTORE_DB="kamiwaza_restore_${RUN_ID//[^A-Za-z0-9]/_}"
 
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   createdb -U core "${RESTORE_DB}"
-kubectl exec -i -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  pg_restore -U core --no-owner --no-privileges -d "${RESTORE_DB}" \
-  <"${BACKUP_FILE}"
+
+# Re-stage first: the upgrade rolled the pod, so any earlier staging copy is
+# gone. Guarded because this section runs long after step 3, often in a new
+# shell -- re-run ONLY step 3's "Stage the dump into the pod" block. It
+# exports POD_DUMP and checks the pod has room. Do NOT re-run the `pg_dump`
+# block above it: that would overwrite ${BACKUP_FILE}, the 1.0.0 backup, with a
+# dump of the already-upgraded database.
+#
+# No POD_DUMP default here on purpose. In a new shell the guard below aborts
+# until you have re-run that block; in this same shell POD_DUMP is still
+# exported and the guard passes, which is why re-running the staging block
+# rather than relying on the guard is what actually re-checks capacity.
+#
+# That block already performed the copy and read the archive's table of
+# contents, so this does not copy again -- re-uploading a multi-gigabyte dump
+# would only add a second chance to fail. It asserts the staged copy is present
+# and non-empty, chained to the restore so a missing one stops here.
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  test -s "${POD_DUMP:?re-run step 3 Stage the dump into the pod first, which exports POD_DUMP and stages the copy}" &&
+  kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+    pg_restore -U core --exit-on-error --no-owner --no-privileges -d "${RESTORE_DB}" \
+    "${POD_DUMP}"
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   psql -U core -d "${RESTORE_DB}" -Atqc \
   'SELECT schema_name, version FROM kamiwaza_schema_version ORDER BY schema_name;'
