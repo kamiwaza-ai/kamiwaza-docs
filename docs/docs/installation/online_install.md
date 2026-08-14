@@ -17,7 +17,7 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
   - **`/var` ≥ 1.1 TB** — the install consumes roughly **890 GB** here: the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`. Size the volume so that 890 GB leaves you under the ~85% disk-pressure threshold described below: 890 GB on a 1 TB volume is 89% and still inside the eviction range, so **1.1 TB** (≈81%) is the practical floor.
   - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
 
-  **On a smaller host, reduce the OSD image** rather than provisioning 1.1 TB. Passing `-e storage_host_prep_virtual_block_size=80G` — the size the offline installer uses by default — brings the requirement down to **350 GB on `/var`**:
+  **On a smaller host, reduce the OSD image** rather than provisioning 1.1 TB. Passing `-e storage_host_prep_virtual_block_size=80G` — the same 80 GB OSD size the offline install guide recommends — brings the requirement down to **350 GB on `/var`**:
 
   ```bash
   KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
