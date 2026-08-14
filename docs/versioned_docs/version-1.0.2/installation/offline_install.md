@@ -178,12 +178,6 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
 
 ## Step 5: Install Kamiwaza
 
-> **Upgrading a 1.0.0 production database to 1.2.0?** Stop here and follow the
-> [Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
-> before invoking `install-prod.sh`. The runbook requires the exact 1.2.0
-> candidate and its `release_origination.md`; the 1.0.2 values below are not
-> upgrade inputs for 1.2.0.
-
 Set the image tags for the bundle and run the offline installer. The tag and image-override values below are the 1.0.2 release-scheme tags; the pinned dependency versions in `KAMIWAZA_IMAGE_OVERRIDES` are unchanged from 1.0.1 and match the published 1.0.2 build. If `release_origination.md` lists different values for your build, use those instead.
 
 > **Keep `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G`** in the block below unless you have sized `/var/lib` for the 700 GB default — it is what brings the requirement down to the 350 GB floor in [Prerequisites](#prerequisites). This env var and the online guide's `-e storage_host_prep_virtual_block_size` extra-var are the same setting expressed two ways; the offline path sets it via the environment, the online path via an installer argument.
