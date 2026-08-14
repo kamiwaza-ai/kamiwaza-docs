@@ -1210,10 +1210,12 @@ them is not:
   --kubectl-bin "${KUBECTL_PATH}" --helm-bin "${HELM_PATH}"
 ```
 
-The block above uses the positional form; either is fine, but do not edit it
-into a mixture of the two. Both binary options need a path to an executable regular file
-containing a `/`: a bare name would be re-resolved through `PATH` when the
-command runs, so the binary that executes need not be the one that was checked.
+The canonical invocation block earlier in this section uses the positional
+form. Either form is fine there, but do not edit it into a mixture of the two.
+
+Both binary options need a path to an executable regular file containing a
+`/`: a bare name would be re-resolved through `PATH` when the command runs, so
+the binary that executes need not be the one that was checked.
 A *non-empty* value that fails either test is not a usage error — the tool is
 simply unresolvable, and the run ends at exit 1 with `result=not-collected`
 naming it. An *empty* value is rejected as a usage error, at exit 2, before the
@@ -1294,12 +1296,25 @@ resolved but had every one of its invocations fail — and `manifest.txt` names
 what is missing. `COLLECTOR_RC` of 2 is a usage error or an evidence path that
 is unsafe to write (an existing non-empty directory, a symbolic link, or a
 non-directory); correct the argument or choose a new `COLLECTOR_DIR` and re-run.
-Each of those refusals names the offending path, and the non-empty case also
-prints the `rm -rf` that clears it — so a first attempt that failed does not
-leave you deducing why the corrected one is also refused. Removing the
-directory is only ever right for a bundle you do not intend to keep; when the
-first attempt collected anything worth preserving, choose a new
-`COLLECTOR_DIR` instead.
+Each of those *path* refusals names the offending path, so a first attempt
+that failed does not leave you deducing why the corrected one is also refused.
+
+Whether the refusal also prints a `rm -rf` depends on what is in the way, and
+the asymmetry is deliberate. When the directory holds an earlier run of this
+collector — identified by its own `manifest.txt` — the refusal prints the
+exact removal command, quoted so a path containing spaces pastes as-is. A
+non-empty directory the collector did **not** write is never offered for
+removal, however plainly it is in the way; point `COLLECTOR_DIR` at a new path
+instead. That case is the mistyped `--output-dir`, and the collector is
+documented to run as root, so it will not hand a root shell a deletion
+command for data it did not create — **and neither should you.** Move or
+remove such a directory yourself, deliberately and outside this runbook, or
+leave it alone.
+
+Even for a bundle the collector did write, removal is only right when you do
+not intend to keep it. If the first attempt collected anything worth
+preserving — in particular anything you hand-copied into its `installer/`
+directory — choose a new `COLLECTOR_DIR` rather than clearing the old one.
 Exit zero means both collectors produced evidence — it does **not** mean every
 command succeeded. A run where some commands failed (a Job that does not exist,
 an RBAC denial on one resource) still exits zero, prints
