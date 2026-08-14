@@ -99,9 +99,13 @@ disk you are trying to detect. Read `spec.storage`, which is where the backing
 device, PVC template, or file-backed image is declared:
 
 ```bash
-kubectl get cephcluster -A \
-  -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{.spec.storage}{"\n"}{end}'
+kubectl get cephcluster -A -o json \
+  | jq '.items[] | {ns: .metadata.namespace, name: .metadata.name, storage: .spec.storage}'
 ```
+
+(Use `-o json | jq` rather than `-o jsonpath` here: a jsonpath expression
+renders a CR's nested object in Go's `map[deviceFilter:… useAllDevices:…]`
+form, which is awkward to read against the table below.)
 
 Interpret the result:
 
@@ -111,25 +115,30 @@ Interpret the result:
 | `storageClassDeviceSets` | PVCs from another storage class | That storage class's underlying disk type |
 | A host path (file-backed OSD) | A file on a node filesystem | The mount holding that file — the case below |
 
-For the file-backed case the ticket's host hit, set `OSD_IMAGE_PATH` to that
-file's path and resolve its mount. **Put the guard on the command itself**, not
-on a line of its own:
+For the file-backed case — the shape the reporting host had — export the backing
+file's path from `spec.storage` and resolve its mount. **Export it yourself; the
+block deliberately does not supply a default**, because any default here would
+be a guess about the very thing being measured:
 
 ```bash
-# Substitute the path from spec.storage above.
-OSD_IMAGE_PATH=/var/lib/rook/osd-image
+export OSD_IMAGE_PATH=   # <- paste the backing file's path from spec.storage
 
 findmnt -T "${OSD_IMAGE_PATH:?set this to the OSD backing file from spec.storage}"
 ls -la /mnt/DATALOSS_WARNING_README.txt   # present => /mnt is Azure-ephemeral
 ```
 
-The guard has to be attached to `findmnt` because of how you are running this.
-A bare `: "${OSD_IMAGE_PATH:?…}"` on its own line prints the message but **does
-not stop an interactive shell** — bash aborts only non-interactive ones, and
-these blocks are meant to be pasted into a terminal. The next line would run
-anyway, and `findmnt -T ""` reports the mount holding your *current directory*
-and exits 0: a confident, wrong, clean-looking answer on the check that decides
-whether any of the protection below is worth anything.
+Two deliberate choices in those three lines. The value is left **empty** so the
+guard actually fires if you paste without substituting — a plausible-looking
+default such as `/var/lib/rook/...` would make the guard unreachable and hand
+back a confident reading of `dataDirHostPath`'s filesystem, which is the wrong
+one this section exists to steer you off. And the guard is attached to
+`findmnt` rather than sitting on a line of its own: a bare
+`: "${OSD_IMAGE_PATH:?…}"` prints its message but **does not stop an
+interactive shell** — bash aborts only non-interactive ones, and these blocks
+are written to be pasted into a terminal. The next line would run regardless,
+and `findmnt -T ""` reports the mount holding your *current directory* and exits
+0: a confident, wrong, clean-looking answer on the check that decides whether
+any of the protection below is worth anything.
 
 `findmnt` also needs `-T`. Without it, `findmnt` matches only exact mount points
 and returns nothing at all for a path inside one — silence that reads like a
@@ -159,10 +168,17 @@ Helm rollback still leaves 1.2.0 CRDs, hook state, and extension records behind.
 a restore point collection over the whole VM:
 
 ```bash
-az restore-point collection create \
+# Resolve the id in its own statement and check it. A `${VM:?…}` written inside
+# the `$( )` below would kill only the subshell: the outer `az` would still run,
+# with an empty --source-id.
+VM_ID=$(az vm show \
   -g "${RG:?export the resource group holding the VM}" \
-  --collection-name kamiwaza-pre-upgrade \
-  --source-id "$(az vm show -g "${RG}" -n "${VM:?export the VM name}" --query id -o tsv)"
+  -n "${VM:?export the VM name}" --query id -o tsv)
+test -n "${VM_ID}" \
+  || { echo "stop: could not resolve the VM id" >&2; false; }
+
+az restore-point collection create -g "${RG}" \
+  --collection-name kamiwaza-pre-upgrade --source-id "${VM_ID}"
 az restore-point create -g "${RG}" \
   --collection-name kamiwaza-pre-upgrade --name pre-step4
 ```
@@ -543,31 +559,25 @@ once before the maintenance window rather than discovering it mid-restore, since
 this procedure now depends on `kubectl cp` in three places:
 
 ```bash
-kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- command -v tar
+kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- sh -c 'command -v tar'
 ```
 
-**It also needs room for a second copy of the dump, inside the pod.** This is
-space the prerequisites do not otherwise account for: the
+The `sh -c` wrapper is required. `kubectl exec -- command -v tar` execs `argv`
+directly with no shell, and `command` is a shell *builtin* with no binary on
+disk — so that form always fails with
+`exec: "command": executable file not found in $PATH` no matter how present
+`tar` is. Reading that as a missing `tar` is the same false negative this
+section warns about elsewhere.
+
+**`kubectl cp` also needs room for a second copy of the dump, inside the pod.**
+This is space the prerequisites do not otherwise account for: the
 ["enough storage outside the data volume"](#prerequisites) requirement covers
 the operator host, and the 120% check in step 3 measures the filesystem holding
 `data_directory`. The staging path is neither — `/tmp` in the container is
-usually the node's writable layer, so a large database can fail here, or fill
-the node root mid-window, while satisfying every documented capacity check.
-Check before the first copy:
-
-```bash
-# Sized from the dump on this host, so the check works wherever it is run --
-# step 3, the reset path, or the M1 rehearsal.
-DUMP_BYTES=$(stat -c '%s' "${BACKUP_FILE:?path to the dump on this host}")
-POD_TMP_FREE=$(kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-  df -PB1 /tmp | awk 'NR == 2 {print $4}')
-test "${POD_TMP_FREE}" -ge "${DUMP_BYTES}" \
-  || { echo "stop: dump is ${DUMP_BYTES} bytes, pod /tmp has ${POD_TMP_FREE} free" >&2; false; }
-```
-
-If the margin is thin, stage onto a path with known capacity instead of `/tmp`
-and set `POD_DUMP` accordingly — anywhere the `postgres` container can write
-works, provided you account for the space and remove the file afterwards.
+usually the node's writable layer, so a large database can fail at the copy, or
+fill the node root mid-window, while satisfying every documented capacity check.
+[Step 3](#3-back-up-and-validate-the-database) runs that check, once the dump
+exists to size it against; run it again before the reset and rehearsal copies.
 
 If you have already wedged a pod, recover the node rather than the database:
 restart konnectivity-agent, and restart the kubelet if `kubectl exec` still
@@ -666,6 +676,15 @@ BACKUP_SHA256=$(sha256sum "${BACKUP_FILE}" | awk '{print $1}')
 # transport for every later command. See
 # "Working inside the database pod" above.
 export POD_DUMP=/tmp/kamiwaza-1.0.0.dump
+
+# Confirm the pod has room for the staging copy first. This filesystem is
+# neither the operator host nor the PostgreSQL data volume, so neither the
+# prerequisites nor the 120% check below covers it.
+POD_TMP_FREE=$(kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
+  df -PB1 /tmp | awk 'NR == 2 {print $4}')
+test -n "${POD_TMP_FREE}" && test "${POD_TMP_FREE}" -ge "${BACKUP_SIZE_BYTES}" \
+  || { echo "stop: dump is ${BACKUP_SIZE_BYTES} bytes, pod /tmp has '${POD_TMP_FREE}' free" >&2; false; }
+
 kubectl cp -c postgres "${BACKUP_FILE}" "${NAMESPACE}/core-postgres-0:${POD_DUMP}"
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
   pg_restore --list "${POD_DUMP}" >/dev/null
@@ -1227,13 +1246,13 @@ test -s "${EVIDENCE_DIR}/schema/marker.tsv"
 test -s "${EVIDENCE_DIR}/schema/revision.tsv"
 ```
 
-**The success condition is `before=v1_marker_only after=at_head`, together with
-the expected `head_revision`.** That is the transition `core-db-init` reports
-and the only phrasing this procedure uses. There is no schema value `1.2` — not
-in `kamiwaza_schema_version`, not in `alembic_version` (whose revisions are
-dated identifiers such as `20260801_007`), not from the runner, and not from
-`schema-status.py`. Anyone expecting to read `1.2` somewhere will read `1.0`
-instead and call a successful upgrade failed.
+**The success condition is the transition `v1_marker_only -> at_head`, together
+with a single expected head revision.** That is what `core-db-init` reports, and
+it is how this procedure states success throughout. There is no schema value
+`1.2` — not in `kamiwaza_schema_version`, not in `alembic_version` (whose
+revisions are dated identifiers such as `20260801_007`), not from the runner,
+and not from `schema-status.py`. Anyone expecting to read `1.2` somewhere will
+read `1.0` instead and call a successful upgrade failed.
 
 Required result:
 
@@ -1434,6 +1453,12 @@ for diagnosis at no cost, and it is the only copy that exists:
 # `..._20260814T055333Z` and silently found nothing.
 FAILED_DB="kamiwaza_failed_$(printf '%s' "${RUN_ID:?RUN_ID from step 1 is required}" \
   | tr -c 'A-Za-z0-9' '_' | tr 'A-Z' 'a-z')"
+
+# Check the suffix separately: the `:?` above dies inside `$( )` only, so an
+# unset RUN_ID would leave the bare, still-valid identifier `kamiwaza_failed_`
+# and rename the database to it.
+test "${FAILED_DB}" != "kamiwaza_failed_" \
+  || { echo "stop: RUN_ID is unset; refusing to rename to a bare name" >&2; false; }
 echo "preserving the failed database as: ${FAILED_DB}"
 
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
@@ -1455,9 +1480,11 @@ whose encoding or collation differs from the one you backed up. Capture them
 into shell variables rather than transcribing by hand:
 
 ```bash
-read -r DB_ENCODING DB_COLLATE DB_CTYPE < <(
+# Tab-delimited, not space: a locale name containing a space would otherwise
+# split across the wrong variables and still pass a non-empty check.
+IFS=$'\t' read -r DB_ENCODING DB_COLLATE DB_CTYPE < <(
   kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
-    psql -U core -d postgres -AtF ' ' -c \
+    psql -U core -d postgres -AtF $'\t' -c \
     "SELECT pg_encoding_to_char(encoding), datcollate, datctype
        FROM pg_database WHERE datname = '${FAILED_DB}'")
 
@@ -1466,6 +1493,15 @@ test -n "${DB_ENCODING}" && test -n "${DB_COLLATE}" && test -n "${DB_CTYPE}" \
 printf 'encoding=%s collate=%s ctype=%s\n' \
   "${DB_ENCODING}" "${DB_COLLATE}" "${DB_CTYPE}"
 ```
+
+**If this stops, you are past the rename**, so there is no `kamiwaza` database
+at the moment it fails — do not read that as a lost database. `${FAILED_DB}`
+holds everything, and connections to it were re-enabled above. Two known causes:
+the database uses PostgreSQL 16's ICU provider, where `datcollate` and
+`datctype` can be NULL (read `daticulocale` / `datlocprovider` instead), or the
+`FAILED_DB` name does not match. Resolve the values by hand from
+`\l+ ${FAILED_DB}` and continue; nothing below depends on this block having
+succeeded automatically.
 
 Then create the replacement with those exact values and restore into it, one
 `-c` per statement for the reasons in
@@ -1524,6 +1560,9 @@ rehearsal in the disposable M1 environment. It restores the dump into a newly
 created database while the active `kamiwaza` database remains untouched:
 
 ```bash
+# Mixed case is safe here, unlike the reset path's FAILED_DB: `createdb` quotes
+# the identifier for you, and every later use passes it to `-d`, never as a bare
+# SQL identifier that PostgreSQL would fold. Do not "correct" this to match.
 export RESTORE_DB="kamiwaza_restore_${RUN_ID//[^A-Za-z0-9]/_}"
 
 kubectl exec -n "${NAMESPACE}" core-postgres-0 -c postgres -- \
