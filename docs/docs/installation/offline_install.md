@@ -38,7 +38,7 @@ You need:
 - A connected staging machine if the target cannot download the artifacts.
 - Root access on the target. For a remote private host, Session Manager (SSM)
   or an equivalent managed shell is preferred over SSH.
-- Bash 4 or newer plus GNU `coreutils`, `findutils`, `curl`, `jq`, `gpg`, and
+- Bash 4.4 or newer plus GNU `coreutils`, `findutils`, `curl`, `jq`, `gpg`, and
   `tar` on the connected staging machine. The verification snippets use GNU
   options and do not run in stock macOS Bash; use a trusted Linux staging host
   or container when the connected workstation is a Mac. If the target has no
@@ -192,7 +192,7 @@ cp /secure/path/artifacts.tsv "${ARTIFACT_DIR}/artifacts.tsv"
 cd "${ARTIFACT_DIR}"
 
 artifact_count=0
-while IFS=$'\t' read -r file expected_sha extra; do
+while IFS=$'\t' read -r file expected_sha extra || [[ -n "${file}" ]]; do
   [[ -n "${file}" && "${file}" != \#* ]] || continue
   [[ -z "${extra:-}" ]]
   [[ "${file}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
@@ -399,7 +399,7 @@ existing_bundle_file="$({
 })"
 if [[ -n "${existing_bundle_file}" ]]; then
   printf 'existing staged bundle artifact: %s\n' "${existing_bundle_file}" >&2
-  printf 'verify and archive or remove the complete old set before staging this release\n' >&2
+  printf 'verify and archive or remove the complete staged set before retrying, even for the same release\n' >&2
   exit 1
 fi
 
@@ -407,7 +407,7 @@ sudo install -o root -g root -m 0600 "${ARTIFACT_DIR}/artifacts.tsv" \
   /opt/kamiwaza/prereqs/artifacts.tsv
 
 declare -A INVENTORY=()
-while IFS=$'\t' read -r file expected_sha extra; do
+while IFS=$'\t' read -r file expected_sha extra || [[ -n "${file}" ]]; do
   [[ -n "${file}" && "${file}" != \#* ]] || continue
   [[ -z "${extra:-}" ]]
   [[ "${file}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
@@ -474,9 +474,8 @@ sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
 )
 ```
 
-If this exact packaged bootstrap does not support `--yes`, use its documented
-noninteractive option. Do not pipe repeated `yes` or press Enter to drive a
-long unattended install.
+The release/1.2.0 RPM overlay accepts `--yes` for noninteractive bootstrap.
+Do not pipe repeated `yes` or press Enter to drive a long unattended install.
 
 The install runs as root, so verify tools using root's actual environment:
 
@@ -524,6 +523,7 @@ set -euo pipefail
 [[ "${EXT_BUNDLE}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
 HELPER_DIR="$(sudo mktemp -d -p /var/tmp \
   "kamiwaza-extension-helper-${RUN_ID}.XXXXXX")"
+trap 'sudo rm -rf -- "${HELPER_DIR}"' EXIT
 
 sudo cp "${ARTIFACT_DIR}/${EXT_BUNDLE}" \
   "${ARTIFACT_DIR}/${EXT_BUNDLE}.sha256" \
@@ -696,6 +696,7 @@ unset NAMESPACE
 
 CONTRACT=/run/kamiwaza-install-contract.json
 PASSWORD_FILE=/run/kamiwaza-admin-password
+DOMAIN='<domain>'
 RUN_ID="${1:?pass the recorded run ID}"
 ATTEMPT_ID="${2:?pass the recorded attempt number}"
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
@@ -725,6 +726,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+[[ -n "${DOMAIN}" && "${DOMAIN}" != *'<'* ]]
 test -s "${CONTRACT}"
 test -s "${PASSWORD_FILE}"
 test -f /opt/kamiwaza/prereqs/kamiwaza-helm.sha256
@@ -760,7 +762,7 @@ KAMIWAZA_ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
   /opt/kamiwaza/scripts/install-prod.sh \
   --offline \
   --skip-prereq-bootstrap \
-  --domain '<domain>' \
+  --domain "${DOMAIN}" \
   --wrap-bundle '/opt/kamiwaza/prereqs/kamiwaza-helm.*.tar' \
   --wrap-sha256 /opt/kamiwaza/prereqs/kamiwaza-helm.sha256 \
   --wrap-signature /opt/kamiwaza/prereqs/kamiwaza-helm.asc \
@@ -911,14 +913,18 @@ export DOMAIN="<domain>"
 
 (
 set -euo pipefail
-NODES_JSON="$(sudo kubectl get nodes -o json)"
+ROOT_TOOLS=(sudo env \
+  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  HELM_PLUGINS=/usr/local/share/helm/plugins \
+  KUBECONFIG=/var/lib/k0s/pki/admin.conf)
+NODES_JSON="$("${ROOT_TOOLS[@]}" kubectl get nodes -o json)"
 jq -e '
   (.items | length) > 0 and
   all(.items[]; any(.status.conditions[]?;
     .type == "Ready" and .status == "True"))
 ' <<<"${NODES_JSON}" >/dev/null
 
-PODS_JSON="$(sudo kubectl get pods -A -o json)"
+PODS_JSON="$("${ROOT_TOOLS[@]}" kubectl get pods -A -o json)"
 jq -e '
   (.items | length) > 0 and
   all(.items[];
@@ -933,11 +939,11 @@ jq -e '
       (.imageID // "") | contains("sha256:")))
 ' <<<"${PODS_JSON}" >/dev/null
 
-HELM_JSON="$(sudo helm list -A -o json)"
+HELM_JSON="$("${ROOT_TOOLS[@]}" helm list -A -o json)"
 jq -e 'length > 0 and all(.[]; .status == "deployed")' \
   <<<"${HELM_JSON}" >/dev/null
 
-NODE_IP="$(sudo kubectl get nodes \
+NODE_IP="$("${ROOT_TOOLS[@]}" kubectl get nodes \
   -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')"
 test -n "${NODE_IP}"
 HTTP_CODE="$(curl -kfsS --resolve "${DOMAIN}:443:${NODE_IP}" \
@@ -945,9 +951,9 @@ HTTP_CODE="$(curl -kfsS --resolve "${DOMAIN}:443:${NODE_IP}" \
   "https://${DOMAIN}/api/auth/health")"
 test "${HTTP_CODE}" = 200
 
-sudo kubectl get nodes -o wide
-sudo kubectl get pods -A
-sudo helm list -A
+"${ROOT_TOOLS[@]}" kubectl get nodes -o wide
+"${ROOT_TOOLS[@]}" kubectl get pods -A
+"${ROOT_TOOLS[@]}" helm list -A
 printf 'health HTTP %s\n' "${HTTP_CODE}"
 )
 ```
@@ -1002,6 +1008,7 @@ export HOME=/root
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export HELM_PLUGINS=/usr/local/share/helm/plugins
 export KUBECONFIG=/var/lib/k0s/pki/admin.conf
+unset NAMESPACE
 
 DOMAIN='<domain>'
 RUN_ID="${1:?pass the recorded run ID}"
@@ -1033,6 +1040,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+[[ -n "${DOMAIN}" && "${DOMAIN}" != *'<'* ]]
 test -d "${BUNDLE_ROOT}"
 test -x "${BUNDLE_ROOT}/scripts/install-extensions-bundle.sh"
 
@@ -1118,7 +1126,10 @@ for expected in \
 done
 grep -Eq '^InvocationID=.+$' <<<"${EXT_STATE}"
 test "$(sudo cat "${EXT_STATUS}")" = 0
-sudo kubectl get pods -A
+sudo env \
+  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  KUBECONFIG=/var/lib/k0s/pki/admin.conf \
+  kubectl get pods -A
 )
 ```
 
@@ -1190,6 +1201,7 @@ export HOME=/root
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export HELM_PLUGINS=/usr/local/share/helm/plugins
 export KUBECONFIG=/var/lib/k0s/pki/admin.conf
+unset NAMESPACE
 
 DOMAIN='<domain>'
 RUN_ID="${1:?pass the recorded run ID}"
@@ -1222,6 +1234,9 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+[[ -n "${DOMAIN}" && "${DOMAIN}" != *'<'* ]]
+[[ "${GATE_TEMPLATE}" != *'<'* ]]
+[[ "${GATE_WAIT_TIMEOUT}" != *'<'* ]]
 test -x "${GATE_SCRIPT}"
 ADMIN_PASSWORD="$(
   kubectl -n kamiwaza get secret kamiwaza-user-admin \
@@ -1350,14 +1365,18 @@ extension bundle installed.
 Useful focused diagnostics:
 
 ```bash
+ROOT_TOOLS=(sudo env \
+  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  HELM_PLUGINS=/usr/local/share/helm/plugins \
+  KUBECONFIG=/var/lib/k0s/pki/admin.conf)
 sudo systemctl show <unit>.service \
   -p LoadState -p ActiveState -p SubState -p Result \
   -p ExecMainCode -p ExecMainStatus -p InvocationID
 sudo journalctl -u <unit>.service -o cat
-sudo kubectl get nodes -o wide
-sudo kubectl get pods -A -o wide
-sudo kubectl get events -A --sort-by=.lastTimestamp
-sudo helm list -A
+"${ROOT_TOOLS[@]}" kubectl get nodes -o wide
+"${ROOT_TOOLS[@]}" kubectl get pods -A -o wide
+"${ROOT_TOOLS[@]}" kubectl get events -A --sort-by=.lastTimestamp
+"${ROOT_TOOLS[@]}" helm list -A
 sudo podman ps -a
 df -hT / /tmp /var/tmp /var/lib /opt
 ```
