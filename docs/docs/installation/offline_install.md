@@ -39,12 +39,12 @@ You need:
 - Root access on the target. For a remote private host, Session Manager (SSM)
   or an equivalent managed shell is preferred over SSH.
 - Bash 4.4 or newer plus GNU `coreutils`, `findutils`, `curl`, `jq`, `gpg`, and
-  `tar` on the connected staging machine. The verification snippets use GNU
-  options and do not run in stock macOS Bash; use a trusted Linux staging host
-  or container when the connected workstation is a Mac. If the target has no
-  reachable RHEL repositories, those tools and all OS packages required by the
-  selected prerequisite bootstrap must already be available through a trusted
-  local repository or the verified handoff.
+  `tar` on every machine that runs the snippets. They use GNU options and do not
+  run in stock macOS Bash; use a trusted Linux staging host or container when
+  the connected workstation is a Mac. If the target has no reachable RHEL
+  repositories, those tools and all OS packages required by the selected
+  prerequisite bootstrap must already be available through a trusted local
+  repository or the verified handoff.
 
 ### Check the actual filesystems
 
@@ -85,6 +85,13 @@ set -euo pipefail
 test "$(uname -m)" = x86_64
 grep -E 'release 9([. ]|$)' /etc/redhat-release
 test "$(hostnamectl --static | wc -c)" -le 55
+((BASH_VERSINFO[0] > 4 ||
+  (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4)))
+for command_name in \
+  awk curl find findmnt gpg jq lsblk rpm sha256sum sort stat sudo systemctl \
+  systemd-run tar; do
+  command -v "${command_name}" >/dev/null
+done
 )
 ```
 
@@ -174,10 +181,13 @@ export RELEASE="<release>"
 export PACKAGE_KEY="<exact-package-key-from-the-selected-release>"
 export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@${PACKAGE_KEY}/${RELEASE}"
 export ARTIFACT_DIR="${PWD}/kamiwaza-offline-${RELEASE}"
+export INVENTORY_SOURCE="<secure-path-to-artifacts.tsv>"
 
 (
 set -euo pipefail
 [[ "${RELEASE}" =~ ^[A-Za-z0-9._-]+$ ]]
+[[ "${INVENTORY_SOURCE}" != *'<'* ]]
+test -f "${INVENTORY_SOURCE}"
 
 read -rsp 'Kamiwaza license token: ' KEYGEN_TOKEN; printf '\n'
 
@@ -188,7 +198,7 @@ printf 'Authorization: License %s\n' "${KEYGEN_TOKEN}" >"${AUTH_HEADER}"
 unset KEYGEN_TOKEN
 
 install -d -m 0755 "${ARTIFACT_DIR}"
-cp /secure/path/artifacts.tsv "${ARTIFACT_DIR}/artifacts.tsv"
+cp "${INVENTORY_SOURCE}" "${ARTIFACT_DIR}/artifacts.tsv"
 cd "${ARTIFACT_DIR}"
 
 artifact_count=0
@@ -559,7 +569,10 @@ test "${#BUNDLE_TOP_LEVELS[@]}" -eq 1
 export BUNDLE_DIR_NAME="${BUNDLE_TOP_LEVELS[0]}"
 [[ "${BUNDLE_DIR_NAME}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
 
-sudo tar -xzf "/opt/kamiwaza/prereqs/${EXT_BUNDLE}" -C "${HELPER_DIR}"
+sudo tar -xzf "/opt/kamiwaza/prereqs/${EXT_BUNDLE}" -C "${HELPER_DIR}" -- \
+  "${BUNDLE_DIR_NAME}/scripts/install-extensions-bundle.sh"
+sudo test -x \
+  "${HELPER_DIR}/${BUNDLE_DIR_NAME}/scripts/install-extensions-bundle.sh"
 sudo bash "${HELPER_DIR}/${BUNDLE_DIR_NAME}/scripts/install-extensions-bundle.sh" \
   --bundle "/opt/kamiwaza/prereqs/${EXT_BUNDLE}" \
   --sha256-file "/opt/kamiwaza/prereqs/${EXT_BUNDLE}.sha256" \
@@ -612,7 +625,9 @@ it root-owned:
 ```bash
 (
 set -euo pipefail
-CONTRACT_SOURCE=/secure/path/kamiwaza-install-contract.json
+CONTRACT_SOURCE='<secure-path-to-kamiwaza-install-contract.json>'
+[[ "${CONTRACT_SOURCE}" != *'<'* ]]
+test -f "${CONTRACT_SOURCE}"
 if ! jq -e '
   type == "object" and
   (keys | sort) == ([
@@ -632,9 +647,27 @@ if ! jq -e '
     "KAMIWAZA_ROOK_OSD_IMAGE_SIZE",
     "KAMIWAZA_VERSION"
   ] | sort) and
-  all(.[]; type == "string")
+  all(.[]; type == "string") and
+  all(.[]; (contains("<") or contains(">")) | not) and
+  .KAMIWAZA_K8S_RUNTIME == "k0s-podman" and
+  (. as $contract | all([
+    "KAMIWAZA_IMAGE_OVERRIDES",
+    "KAMIWAZA_IMAGE_TAG",
+    "KAMIWAZA_K8S_RUNTIME",
+    "KAMIWAZA_OFFLINE_APP_IMAGE_TAG",
+    "KAMIWAZA_OFFLINE_CHAINGUARD_BASE_TAG",
+    "KAMIWAZA_OFFLINE_CONTAINERS_IMAGE_TAG",
+    "KAMIWAZA_OFFLINE_CORE_TAG",
+    "KAMIWAZA_OFFLINE_CURL_SHELL_IMAGE_TAG",
+    "KAMIWAZA_OFFLINE_DATAHUB_TAG",
+    "KAMIWAZA_OFFLINE_FRONTEND_TAG",
+    "KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG",
+    "KAMIWAZA_RESOURCE_PROFILE",
+    "KAMIWAZA_ROOK_OSD_IMAGE_SIZE",
+    "KAMIWAZA_VERSION"
+  ][]; ($contract[.] | length > 0)))
 ' "${CONTRACT_SOURCE}" >/dev/null; then
-  printf 'install contract is missing, contains extra keys, or has non-string values\n' >&2
+  printf 'install contract has missing, extra, empty, placeholder, or topology-invalid values\n' >&2
   exit 1
 fi
 sudo install -o root -g root -m 0600 \
@@ -657,12 +690,12 @@ not add it to this runtime contract.
 
 ### Password handling
 
-The release/1.2.0 installer accepts `KAMIWAZA_ADMIN_PASSWORD`, copies it into a
-shell variable, and removes it from the environment before starting child
-processes. The launcher below uses that interface, so the password is not placed
-in installer or child-process arguments. Root can still inspect the launcher's
-memory while it is running; keep full process-environment diagnostics out of
-captures.
+The packaged release/1.2.0 RPM passes unknown arguments through to Ansible. The
+launcher below writes `admin_password` to a root-only, attempt-bound JSON
+extra-vars file under `/run` and passes only that file's path. The password is
+not placed in the installer or child-process arguments or environment. Root can
+still read the temporary file while the phase is running; the launcher's exit
+trap removes it.
 
 Read the password without echoing it and create a transient root-only file:
 
@@ -704,9 +737,11 @@ ATTEMPT_ID="${2:?pass the recorded attempt number}"
 STATUS_ROOT="/var/lib/kajiya-reports/offline-install/${RUN_ID}/core-attempts"
 ATTEMPT_DIR="${STATUS_ROOT}/attempt${ATTEMPT_ID}"
 STATUS_FILE="${ATTEMPT_DIR}/result.rc"
+ADMIN_VARS_FILE="/run/kamiwaza-admin-extra-vars-${RUN_ID}-attempt${ATTEMPT_ID}.json"
 
 test -d "${ATTEMPT_DIR}"
 test ! -e "${STATUS_FILE}"
+test ! -e "${ADMIN_VARS_FILE}"
 umask 077
 cat /proc/sys/kernel/random/boot_id >"${ATTEMPT_DIR}/boot-id"
 exec >"${ATTEMPT_DIR}/console.log" 2>&1
@@ -714,7 +749,7 @@ exec >"${ATTEMPT_DIR}/console.log" 2>&1
 finish() {
   rc=$?
   trap - EXIT
-  rm -f "${PASSWORD_FILE}"
+  rm -f "${PASSWORD_FILE}" "${ADMIN_VARS_FILE}"
   status_tmp="$(mktemp "${STATUS_FILE}.tmp.XXXXXX")"
   printf '%s\n' "${rc}" >"${status_tmp}"
   chmod 0600 "${status_tmp}"
@@ -757,9 +792,10 @@ for name in "${CONTRACT_KEYS[@]}"; do
 done
 unset value
 
-ADMIN_PASSWORD="$(<"${PASSWORD_FILE}")"
-KAMIWAZA_ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
-  /opt/kamiwaza/scripts/install-prod.sh \
+jq -Rs '{admin_password: .}' <"${PASSWORD_FILE}" >"${ADMIN_VARS_FILE}"
+test -s "${ADMIN_VARS_FILE}"
+rm -f "${PASSWORD_FILE}"
+/opt/kamiwaza/scripts/install-prod.sh \
   --offline \
   --skip-prereq-bootstrap \
   --domain "${DOMAIN}" \
@@ -767,13 +803,14 @@ KAMIWAZA_ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
   --wrap-sha256 /opt/kamiwaza/prereqs/kamiwaza-helm.sha256 \
   --wrap-signature /opt/kamiwaza/prereqs/kamiwaza-helm.asc \
   --wrap-pubkey /opt/kamiwaza/prereqs/kamiwaza-tools-rpm.pub.gpg \
+  --extra-vars "@${ADMIN_VARS_FILE}" \
   -y
-unset ADMIN_PASSWORD
 KAMIWAZA_INSTALL
 )
 ```
 
-Replace `<domain>`, then validate and protect the launcher:
+Replace `<domain>` with `sudoedit /run/kamiwaza-offline-install.sh`, then
+validate and protect the launcher:
 
 ```bash
 (
@@ -898,7 +935,10 @@ printf '%s\n' "${CORE_STATE}"
 for expected in \
   LoadState=loaded ActiveState=active SubState=exited \
   Result=success ExecMainCode=1 ExecMainStatus=0; do
-  grep -Fxq "${expected}" <<<"${CORE_STATE}"
+  if ! grep -Fxq "${expected}" <<<"${CORE_STATE}"; then
+    printf 'core unit state gate failed: missing %s\n' "${expected}" >&2
+    exit 1
+  fi
 done
 grep -Eq '^InvocationID=.+$' <<<"${CORE_STATE}"
 test "$(sudo cat "${CORE_STATUS}")" = 0
@@ -1122,7 +1162,10 @@ printf '%s\n' "${EXT_STATE}"
 for expected in \
   LoadState=loaded ActiveState=active SubState=exited \
   Result=success ExecMainCode=1 ExecMainStatus=0; do
-  grep -Fxq "${expected}" <<<"${EXT_STATE}"
+  if ! grep -Fxq "${expected}" <<<"${EXT_STATE}"; then
+    printf 'extension unit state gate failed: missing %s\n' "${expected}" >&2
+    exit 1
+  fi
 done
 grep -Eq '^InvocationID=.+$' <<<"${EXT_STATE}"
 test "$(sudo cat "${EXT_STATUS}")" = 0
@@ -1161,7 +1204,7 @@ Install the verified gate into a fresh root-only directory:
 
 ```bash
 export RUN_ID="<release-or-run>"
-export GATE_SOURCE="/secure/validation-pack/smoke-extension-deploy.sh"
+export GATE_SOURCE="<secure-path-to-smoke-extension-deploy.sh>"
 export GATE_SHA256="<sha256-from-selected-validation-pack>"
 export GATE_HELPER_DIR="/var/lib/kajiya-reports/offline-install/${RUN_ID}/release-validation"
 
@@ -1169,6 +1212,8 @@ export GATE_HELPER_DIR="/var/lib/kajiya-reports/offline-install/${RUN_ID}/releas
 set -euo pipefail
 [[ "${RUN_ID}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]
 [[ "${GATE_SHA256}" =~ ^[0-9a-fA-F]{64}$ ]]
+[[ "${GATE_SOURCE}" != *'<'* ]]
+test -f "${GATE_SOURCE}"
 printf '%s  %s\n' "${GATE_SHA256}" "${GATE_SOURCE}" | sha256sum -c -
 sudo install -d -o root -g root -m 0700 "$(dirname "${GATE_HELPER_DIR}")"
 sudo mkdir -m 0700 "${GATE_HELPER_DIR}"
@@ -1308,7 +1353,10 @@ printf '%s\n' "${GATE_STATE}"
 for expected in \
   LoadState=loaded ActiveState=active SubState=exited \
   Result=success ExecMainCode=1 ExecMainStatus=0; do
-  grep -Fxq "${expected}" <<<"${GATE_STATE}"
+  if ! grep -Fxq "${expected}" <<<"${GATE_STATE}"; then
+    printf 'deploy-gate unit state gate failed: missing %s\n' "${expected}" >&2
+    exit 1
+  fi
 done
 grep -Eq '^InvocationID=.+$' <<<"${GATE_STATE}"
 test "$(sudo cat "${GATE_STATUS}")" = 0
@@ -1341,7 +1389,9 @@ extension bundle installed.
 - Use monotonically named units and fresh per-attempt directories. Never reuse
   an attempt number or overwrite a terminal receipt, log, or recap before the
   cause is understood. After preserving evidence, stop a retained unit to
-  release its systemd state.
+  release its systemd state. If a launcher was killed before its exit trap,
+  confirm that its unit and children have stopped, then remove its exact
+  `/run/kamiwaza-admin-extra-vars-<run>-attempt<n>.json` file before retrying.
 - Reuse a verified pre-extracted extension root. Do not select among stale
   directories with an unordered search.
 - Do not blindly rerun an extension or deploy-gate phase after interruption.
