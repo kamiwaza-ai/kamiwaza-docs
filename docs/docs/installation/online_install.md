@@ -1,6 +1,6 @@
 # Online Installation
 
-The online installer is the recommended way to install Kamiwaza 1.0.2 on an internet-connected host. It is a single self-contained script that bundles the deploy payload, playbooks, and Helm chart dependencies. Host tools are installed from your OS package manager, and the Kamiwaza platform images are pulled from Keygen.
+The online installer is the recommended way to install Kamiwaza 1.2.0 on an internet-connected host. It is a single self-contained script that bundles the deploy payload, playbooks, and Helm chart dependencies. Host tools are installed from your OS package manager, and the Kamiwaza platform images are pulled from Keygen.
 
 **Supported hosts:**
 
@@ -64,7 +64,7 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
 Download the installer and its checksum, verify the checksum, then make the installer executable:
 
 ```bash
-base_url="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-online-installer/@kamiwaza-online-installer/1.0.2"
+base_url="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-online-installer/@kamiwaza-online-installer/1.2.0"
 
 for file in kamiwaza-online-install.sh kamiwaza-online-install.sh.sha256; do
   curl -fsSLO "${base_url}/${file}"
@@ -102,31 +102,36 @@ Before extracting its payload or installing any prerequisites, the installer val
 
 > Passing the license key through the `KEYGEN_LICENSE_KEY` environment variable keeps it out of the installer's command-line arguments, where it could otherwise be visible in `ps` output or logs. You can also use `KAMIWAZA_KEYGEN_LICENSE_KEY` or the `--keygen-license-key` option. If you also want to keep the key out of your interactive shell history, set the variable from somewhere other than the command line — for example a `.env` file you source, or your shell profile — following your environment's own conventions for handling secrets.
 
-## GPU and Inference Images
+## Optional raw image preload
 
-Large inference images are not all downloaded during installation. To enable GPU-accelerated inference, add the one image package that matches your hardware with `--keygen-raw-image-package`:
+The installer normally uses `k0s-podman`, and the charts pull inference images from the authenticated registry when a model is deployed. The `--keygen-raw-image-packages` option applies only to the legacy Kind runtime. It preloads a space- or comma-separated replacement list of raw image archives into the Kind nodes.
 
-| Hardware | Package |
+The default list is `kamiwaza-opensearch kamiwaza-vllm kamiwaza-kaizen-agent kamiwaza-kaizen-backend kamiwaza-omniparse`. A custom list replaces that default, so include every default package that the installation still needs.
+
+Kamiwaza 1.2.0 provides the following hardware-specific raw package basenames:
+
+| Hardware and engine | Package basename |
 | --- | --- |
-| NVIDIA with CUDA 12 | `kamiwaza-llamacpp-cuda12` |
-| NVIDIA with CUDA 13 | `kamiwaza-llamacpp-cuda13` |
-| AMD CDNA | `kamiwaza-llamacpp-rocm-cdna` |
-| AMD RDNA | `kamiwaza-llamacpp-rocm-rdna` |
-| AMD gfx1151 | `kamiwaza-llamacpp-rocm-gfx1151` |
-| NVIDIA vLLM (Ampere or newer) | `kamiwaza-vllm` |
+| NVIDIA with CUDA 12, llama.cpp | `kamiwaza-llamacpp-cuda12` |
+| NVIDIA with CUDA 13, llama.cpp | `kamiwaza-llamacpp-cuda13` |
+| NVIDIA amd64, vLLM | `kamiwaza-vllm` |
+| NVIDIA ARM64, including DGX Spark, vLLM | `kamiwaza-vllm-cuda-arm64` |
+| AMD CDNA, llama.cpp | `kamiwaza-llamacpp-rocm-cdna` |
+| AMD RDNA, including gfx1151, llama.cpp | `kamiwaza-llamacpp-rocm-rdna` |
 
-For example, to install on an NVIDIA CUDA 12 host:
+For example, this Kind installation replaces the default amd64 vLLM archive with the ARM64 vLLM archive while retaining the other default packages:
 
 ```bash
 KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
 ./kamiwaza-online-install.sh \
-  --keygen-raw-image-package kamiwaza-llamacpp-cuda12 \
+  --keygen-raw-image-packages "kamiwaza-opensearch kamiwaza-vllm-cuda-arm64 kamiwaza-kaizen-agent kamiwaza-kaizen-backend kamiwaza-omniparse" \
   --domain <domain> \
   --admin-password "<initial-admin-password>" \
-  -y
+  -y \
+  -e k8s_runtime=kind
 ```
 
-The same `-e storage_host_prep_virtual_block_size=80G` note above applies here. The installer always includes the required core and Kaizen agent images. If your NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
+The same `-e storage_host_prep_virtual_block_size=80G` note above applies here. The core image follows the installer's required image path; retain the Kaizen packages in a custom raw list when installing Kaizen. If your NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
 
 ## Common Options
 
@@ -143,7 +148,7 @@ Frequently used **install arguments**:
 Frequently used **installer options**:
 
 - `--keygen-license-key <key>`: Keygen license key used for image pulls. Prefer the `KEYGEN_LICENSE_KEY` environment variable so the key does not appear in the installer's command-line arguments.
-- `--keygen-raw-image-package <name>`: Preload one optional image package (see [GPU and Inference Images](#gpu-and-inference-images)). Repeat for each package you need.
+- `--keygen-raw-image-packages <list>`: Replace the raw image package preload list for a Kind installation. Supply a space- or comma-separated list; the option has no effect on the default `k0s-podman` runtime. See [Optional raw image preload](#optional-raw-image-preload).
 - `--keep-extract`: Preserve the extracted payload after the install.
 - `--phase1-only`: Stop after host prerequisites and cluster bootstrap.
 

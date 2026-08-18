@@ -30,7 +30,7 @@ Both methods install the same platform. The difference is only how the installer
 | RHEL-compatible 9.x | ✅ | ✅ |
 | macOS | ✅ | — |
 
-> All installs require a Kamiwaza Prod license key. GPU acceleration (NVIDIA CUDA, AMD ROCm, or NVIDIA vLLM) is optional and selected during installation — see [Online Installation](online_install.md#gpu-and-inference-images) and the [System Requirements](system_requirements.md).
+> All installs require a Kamiwaza Prod license key. GPU acceleration (NVIDIA CUDA, AMD ROCm, or NVIDIA vLLM) is optional. The default k0s runtime pulls inference images when needed; Kind installations can use an [optional raw image preload](online_install.md#optional-raw-image-preload). See [System Requirements](system_requirements.md) for supported host software.
 
 ## What Happens During Installation
 
