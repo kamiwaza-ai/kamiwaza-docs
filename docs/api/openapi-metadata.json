@@ -1,6 +1,6 @@
 {
-  "syncedAt": "2026-08-18T15:53:37.115Z",
-  "sourceRemote": "git@github.com:kamiwaza-internal/kamiwaza.git",
+  "syncedAt": "2026-08-18T16:02:41.900Z",
+  "sourceRemote": "https://github.com/kamiwaza-internal/kamiwaza",
   "sourceBranch": "develop",
   "sourceCommit": "32fbf6acb4965aaa7328926555469bfe3095e247",
   "originalApiVersion": "0.1.0",

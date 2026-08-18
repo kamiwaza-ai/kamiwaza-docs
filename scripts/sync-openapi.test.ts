@@ -11,6 +11,12 @@ const publishedSpec = fs.readFileSync(
 	path.resolve(__dirname, "../docs/api/openapi.json"),
 	"utf-8",
 );
+const publishedMetadata = JSON.parse(
+	fs.readFileSync(
+		path.resolve(__dirname, "../docs/api/openapi-metadata.json"),
+		"utf-8",
+	),
+);
 
 test("local OpenAPI generation uses the selected core project environment", () => {
 	assert.match(
@@ -23,4 +29,11 @@ test("local OpenAPI generation uses the selected core project environment", () =
 
 test("published OpenAPI surface does not name the retired Traefik provider", () => {
 	assert.doesNotMatch(publishedSpec, /traefik/i);
+});
+
+test("published OpenAPI metadata uses a portable GitHub source URL", () => {
+	assert.equal(
+		publishedMetadata.sourceRemote,
+		"https://github.com/kamiwaza-internal/kamiwaza",
+	);
 });

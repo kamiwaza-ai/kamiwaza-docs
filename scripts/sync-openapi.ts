@@ -96,12 +96,17 @@ function getCurrentCommit(repoPath: string): string {
  * before persisting it to tracked metadata. Git lets users embed access
  * tokens directly in `remote.origin.url`, and a previous fix that swapped a
  * leaky absolute path for the remote URL would otherwise re-introduce a
- * different leak. SSH-style URLs (`git@github.com:org/repo.git`) don't
- * contain secrets and survive untouched.
+ * different leak. Normalize GitHub SSH remotes to portable HTTPS metadata so
+ * the generated artifact does not vary with the checkout transport.
  */
 function sanitizeRemoteUrl(raw: string): string {
 	if (!raw) {
 		return raw;
+	}
+	const githubSshRemote = raw.match(/^git@github\.com:(.+)$/);
+	if (githubSshRemote) {
+		const repository = githubSshRemote[1].replace(/\.git$/, "");
+		return `https://github.com/${repository}`;
 	}
 	if (/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(raw)) {
 		try {
