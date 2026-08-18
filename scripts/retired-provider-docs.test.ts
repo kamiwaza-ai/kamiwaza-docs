@@ -48,6 +48,7 @@ test("current public, SDK, and API docs do not restore retired-provider guidance
     "docs/extensions",
     "docs/sdk",
     "docs/api",
+    "docs/research",
   ].map((directory) => path.join(root, directory));
   const offenders: string[] = [];
 
@@ -106,6 +107,7 @@ test("CI materializes and watches every guarded documentation root", () => {
     "docs/extensions",
     "docs/sdk",
     "docs/api",
+    "docs/research",
   ]) {
     assert.ok(workflow.includes(`- "${guardedRoot}/**"`), guardedRoot);
   }
@@ -114,4 +116,7 @@ test("CI materializes and watches every guarded documentation root", () => {
   assert.doesNotMatch(workflow, /ref: develop/);
   assert.match(workflow, /npm run sync-sdk/);
   assert.match(workflow, /KW_SDK_DOCS:/);
+  assert.match(workflow, /Verify generated SDK documentation/);
+  assert.match(workflow, /docs\/sdk\/current\/services/);
+  assert.match(workflow, /grep -q \./);
 });

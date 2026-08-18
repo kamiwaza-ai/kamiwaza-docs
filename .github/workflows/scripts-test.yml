@@ -14,6 +14,7 @@ on:
       - "docs/extensions/**"
       - "docs/sdk/**"
       - "docs/api/**"
+      - "docs/research/**"
       - "docs/versioned_docs/**"
       - "docs/versioned_sidebars/**"
       - "docs/docusaurus.config.ts"
@@ -74,6 +75,12 @@ jobs:
         run: npm run sync-sdk
         env:
           KW_SDK_DOCS: ${{ github.workspace }}/kamiwaza-sdk
+
+      - name: Verify generated SDK documentation
+        run: >-
+          find docs/sdk/current/services -type f
+          \( -name '*.md' -o -name '*.mdx' \)
+          -print -quit | grep -q .
 
       - name: Run scripts unit tests
         run: npm test
