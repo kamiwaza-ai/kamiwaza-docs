@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
+import { sanitizeRemoteUrl } from "./sync-openapi";
+
 const syncScript = fs.readFileSync(
 	path.resolve(__dirname, "sync-openapi.ts"),
 	"utf-8",
@@ -36,4 +38,17 @@ test("published OpenAPI metadata uses a portable GitHub source URL", () => {
 		publishedMetadata.sourceRemote,
 		"https://github.com/kamiwaza-internal/kamiwaza",
 	);
+});
+
+test("GitHub source remotes normalize to one portable HTTPS URL", () => {
+	const expected = "https://github.com/kamiwaza-internal/kamiwaza";
+	for (const remote of [
+		"git@github.com:kamiwaza-internal/kamiwaza.git",
+		"git@github.com:kamiwaza-internal/kamiwaza.git/",
+		"ssh://git@github.com/kamiwaza-internal/kamiwaza.git",
+		"https://github.com/kamiwaza-internal/kamiwaza.git",
+		"https://token@github.com/kamiwaza-internal/kamiwaza/",
+	]) {
+		assert.equal(sanitizeRemoteUrl(remote), expected);
+	}
 });

@@ -99,20 +99,29 @@ function getCurrentCommit(repoPath: string): string {
  * different leak. Normalize GitHub SSH remotes to portable HTTPS metadata so
  * the generated artifact does not vary with the checkout transport.
  */
-function sanitizeRemoteUrl(raw: string): string {
+function canonicalGitHubRemote(repositoryPath: string): string {
+	const repository = repositoryPath
+		.replace(/^\/+|\/+$/g, "")
+		.replace(/\.git$/i, "");
+	return `https://github.com/${repository}`;
+}
+
+export function sanitizeRemoteUrl(raw: string): string {
 	if (!raw) {
 		return raw;
 	}
-	const githubSshRemote = raw.match(/^git@github\.com:(.+)$/);
+	const githubSshRemote = raw.trim().match(/^git@github\.com:(.+)$/);
 	if (githubSshRemote) {
-		const repository = githubSshRemote[1].replace(/\.git$/, "");
-		return `https://github.com/${repository}`;
+		return canonicalGitHubRemote(githubSshRemote[1]);
 	}
 	if (/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(raw)) {
 		try {
 			const parsed = new URL(raw);
 			parsed.username = "";
 			parsed.password = "";
+			if (parsed.hostname.toLowerCase() === "github.com") {
+				return canonicalGitHubRemote(parsed.pathname);
+			}
 			return parsed.toString();
 		} catch {
 			// Fall through and return the raw value if URL parsing failed —
@@ -426,7 +435,9 @@ async function main() {
 	console.log("  2. Review changes at /sdk/api-reference");
 }
 
-main().catch((err) => {
-	console.error("\nError:", err.message);
-	process.exit(1);
-});
+if (require.main === module) {
+	main().catch((err) => {
+		console.error("\nError:", err.message);
+		process.exit(1);
+	});
+}
