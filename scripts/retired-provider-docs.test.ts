@@ -118,6 +118,7 @@ test("CI materializes and watches every guarded documentation root", () => {
   assert.match(workflow, /KW_SDK_DOCS:/);
   assert.match(workflow, /Verify generated SDK documentation/);
   assert.match(workflow, /docs\/sdk\/current\/services/);
-  assert.match(workflow, /-size \+0c/);
-  assert.match(workflow, /grep -q \./);
+  assert.match(workflow, /test -n "\$\{generated_page\}"/);
+  assert.match(workflow, /-size 0c/);
+  assert.match(workflow, /Generated SDK page is empty/);
 });

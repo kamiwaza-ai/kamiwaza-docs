@@ -77,10 +77,17 @@ jobs:
           KW_SDK_DOCS: ${{ github.workspace }}/kamiwaza-sdk
 
       - name: Verify generated SDK documentation
-        run: >-
-          find docs/sdk/current/services -type f
-          \( -name '*.md' -o -name '*.mdx' \)
-          -size +0c -print -quit | grep -q .
+        run: |
+          generated_page=$(find docs/sdk/current/services -type f \
+            \( -name '*.md' -o -name '*.mdx' \) -print -quit)
+          test -n "${generated_page}"
+
+          empty_page=$(find docs/sdk/current/services -type f \
+            \( -name '*.md' -o -name '*.mdx' \) -size 0c -print -quit)
+          if [[ -n "${empty_page}" ]]; then
+            echo "Generated SDK page is empty: ${empty_page}" >&2
+            exit 1
+          fi
 
       - name: Run scripts unit tests
         run: npm test
