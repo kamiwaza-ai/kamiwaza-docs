@@ -11,6 +11,9 @@ on:
       - "docs/scripts/**"
       - "docs/sidebars.ts"
       - "docs/docs/**"
+      - "docs/extensions/**"
+      - "docs/sdk/**"
+      - "docs/api/**"
       - "docs/versioned_docs/**"
       - "docs/versioned_sidebars/**"
       - "docs/docusaurus.config.ts"
@@ -38,6 +41,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Checkout SDK documentation source
+        uses: actions/checkout@v4
+        with:
+          repository: kamiwaza-ai/kamiwaza-sdk
+          ref: develop
+          path: kamiwaza-sdk
+          persist-credentials: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -55,6 +66,11 @@ jobs:
 
       - name: Install docs dependencies
         run: npm ci --ignore-scripts --prefix docs
+
+      - name: Materialize generated SDK documentation
+        run: npm run sync-sdk
+        env:
+          KW_SDK_DOCS: ${{ github.workspace }}/kamiwaza-sdk
 
       - name: Run scripts unit tests
         run: npm test
