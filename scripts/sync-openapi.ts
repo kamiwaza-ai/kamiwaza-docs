@@ -202,36 +202,43 @@ print(json.dumps(app.openapi()))
 `.trim();
 
 	try {
-		return execFileSync("./scripts/kw_py", ["-c", pythonScript], {
-			cwd: repoPath,
-			encoding: "utf-8",
-			stdio: ["pipe", "pipe", "pipe"],
-			env: {
-				...process.env,
-				KAMIWAZA_ENV: process.env.KAMIWAZA_ENV || "dev",
-				KAMIWAZA_LITE: process.env.KAMIWAZA_LITE || "true",
-				KAMIWAZA_ROOT: process.env.KAMIWAZA_ROOT || tempRoot,
-				// create_app() -> init_auth() requires the RBAC policy file; its
-				// default derives from KAMIWAZA_ROOT (<root>/runtime/auth_gateway_policy.yaml),
-				// which the ephemeral tempRoot does not have. Point at the policy
-				// shipped in the kamiwaza repo so from-source generation is
-				// self-contained (no running platform, no manual staging).
-				AUTH_GATEWAY_POLICY_FILE:
-					process.env.AUTH_GATEWAY_POLICY_FILE ||
-					path.join(repoPath, "config", "auth_gateway_policy.yaml"),
-				DATABASE_URL:
-					process.env.DATABASE_URL || `sqlite:///${path.join(tempDir, "main.db")}`,
-				CLUSTER_DATABASE_URL:
-					process.env.CLUSTER_DATABASE_URL ||
-					`sqlite:///${path.join(tempDir, "cluster.db")}`,
-				AUTH_DATABASE_URL:
-					process.env.AUTH_DATABASE_URL || `sqlite:///${path.join(tempDir, "auth.db")}`,
-				// Ephemeral per-invocation secret so no literal is committed.
-				AUTH_FORWARD_HEADER_SECRET:
-					process.env.AUTH_FORWARD_HEADER_SECRET ||
-					crypto.randomBytes(32).toString("hex"),
+		return execFileSync(
+			"uv",
+			["--project", repoPath, "run", "python", "-c", pythonScript],
+			{
+				cwd: repoPath,
+				encoding: "utf-8",
+				stdio: ["pipe", "pipe", "pipe"],
+				maxBuffer: 16 * 1024 * 1024,
+				env: {
+					...process.env,
+					KAMIWAZA_ENV: process.env.KAMIWAZA_ENV || "dev",
+					KAMIWAZA_LITE: process.env.KAMIWAZA_LITE || "true",
+					KAMIWAZA_ROOT: process.env.KAMIWAZA_ROOT || tempRoot,
+					// create_app() -> init_auth() requires the RBAC policy file; its
+					// default derives from KAMIWAZA_ROOT (<root>/runtime/auth_gateway_policy.yaml),
+					// which the ephemeral tempRoot does not have. Point at the policy
+					// shipped in the kamiwaza repo so from-source generation is
+					// self-contained (no running platform, no manual staging).
+					AUTH_GATEWAY_POLICY_FILE:
+						process.env.AUTH_GATEWAY_POLICY_FILE ||
+						path.join(repoPath, "config", "auth_gateway_policy.yaml"),
+					DATABASE_URL:
+						process.env.DATABASE_URL ||
+						`sqlite:///${path.join(tempDir, "main.db")}`,
+					CLUSTER_DATABASE_URL:
+						process.env.CLUSTER_DATABASE_URL ||
+						`sqlite:///${path.join(tempDir, "cluster.db")}`,
+					AUTH_DATABASE_URL:
+						process.env.AUTH_DATABASE_URL ||
+						`sqlite:///${path.join(tempDir, "auth.db")}`,
+					// Ephemeral per-invocation secret so no literal is committed.
+					AUTH_FORWARD_HEADER_SECRET:
+						process.env.AUTH_FORWARD_HEADER_SECRET ||
+						crypto.randomBytes(32).toString("hex"),
+				},
 			},
-		});
+		);
 	} catch (error: any) {
 		const stderr =
 			typeof error?.stderr === "string" && error.stderr.trim()
