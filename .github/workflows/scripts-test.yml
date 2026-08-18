@@ -80,7 +80,7 @@ jobs:
         run: >-
           find docs/sdk/current/services -type f
           \( -name '*.md' -o -name '*.mdx' \)
-          -print -quit | grep -q .
+          -size +0c -print -quit | grep -q .
 
       - name: Run scripts unit tests
         run: npm test
