@@ -1210,8 +1210,11 @@ them is not:
   --kubectl-bin "${KUBECTL_PATH}" --helm-bin "${HELM_PATH}"
 ```
 
-The canonical invocation block earlier in this section uses the positional
-form. Either form is fine there, but do not edit it into a mixture of the two.
+Those two lines show argument shape only. Run the canonical block earlier in
+this section rather than either of them on its own — a bare collector line
+loses the `COLLECTOR_RC` capture and the ownership reclaim that block performs.
+That block uses the positional form; either form is fine there, but do not edit
+it into a mixture of the two.
 
 Both binary options need a path to an executable regular file containing a
 `/`: a bare name would be re-resolved through `PATH` when the command runs, so
@@ -1305,16 +1308,17 @@ collector — identified by its own `manifest.txt` — the refusal prints the
 exact removal command, quoted so a path containing spaces pastes as-is. A
 non-empty directory the collector did **not** write is never offered for
 removal, however plainly it is in the way; point `COLLECTOR_DIR` at a new path
-instead. That case is the mistyped `--output-dir`, and the collector is
-documented to run as root, so it will not hand a root shell a deletion
+instead. That case is the mistyped `--output-dir`, and the collector may be
+run under `sudo`, so it will not hand a root shell a deletion
 command for data it did not create — **and neither should you.** Move or
 remove such a directory yourself, deliberately and outside this runbook, or
 leave it alone.
 
 Even for a bundle the collector did write, removal is only right when you do
 not intend to keep it. If the first attempt collected anything worth
-preserving — in particular anything you hand-copied into its `installer/`
-directory — choose a new `COLLECTOR_DIR` rather than clearing the old one.
+preserving — in particular anything you hand-copied into the collector
+bundle's own `${COLLECTOR_DIR}/installer` — choose a new `COLLECTOR_DIR` rather than clearing the old one.
+
 Exit zero means both collectors produced evidence — it does **not** mean every
 command succeeded. A run where some commands failed (a Job that does not exist,
 an RBAC denial on one resource) still exits zero, prints
