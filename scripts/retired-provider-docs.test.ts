@@ -33,9 +33,12 @@ function markdownFiles(directory: string): string[] {
 }
 
 test("current public, SDK, and API docs do not restore retired-provider guidance", () => {
-  const currentRoots = ["docs/docs", "docs/sdk", "docs/api"].map((directory) =>
-    path.join(root, directory),
-  );
+  const currentRoots = [
+    "docs/docs",
+    "docs/extensions",
+    "docs/sdk",
+    "docs/api",
+  ].map((directory) => path.join(root, directory));
   const offenders: string[] = [];
 
   for (const file of currentRoots.flatMap(markdownFiles)) {
