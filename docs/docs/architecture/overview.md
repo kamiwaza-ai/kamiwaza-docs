@@ -25,7 +25,7 @@ flowchart BT
     end
 
     subgraph Platform[Shared Platform Layer]
-        Routing[Traefik or Istio Ingress]
+        Routing[Istio or Greymatter Ingress]
         IdP[Identity Provider]
         Postgres[(Postgres or SQLite in lite mode)]
         Etcd[(etcd)]
@@ -69,7 +69,7 @@ This layer contains the platform APIs and business logic.
 
 This layer provides the shared services the platform depends on.
 
-- **Traefik or Istio** for ingress and routing, depending on environment
+- **Istio or Greymatter** for ingress and routing, depending on environment
 - **Identity provider integration** for authenticated deployments
 - **Postgres** as the standard persistent database in auth-enabled deployments
 - **SQLite** as a reduced-scope database option in lite mode
@@ -93,7 +93,7 @@ This layer runs the workloads that power the platform.
 | Backend | Python, FastAPI, Ray |
 | Frontend | React |
 | Data and metadata | Postgres, SQLite in lite mode, etcd, DataHub |
-| Routing and ingress | Traefik, optional Istio |
+| Routing and ingress | Istio, or Greymatter on supported external-mesh deployments |
 | Deployment | Kubernetes, Helm |
 
 ## Design Principles

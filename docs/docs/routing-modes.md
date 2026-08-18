@@ -43,7 +43,9 @@ For customer-facing documentation, integrations, bookmarks, and extension guidan
 - treat the platform HTTPS origin as the stable entrypoint
 - avoid documenting port-specific runtime URLs as the preferred access pattern
 
-This aligns with the current Kubernetes deployment model, which uses Istio for `k0s` runtime deployments (Kamiwaza Mesh M1) and Traefik for `Kind` deployments, along with the runtime routing API.
+This aligns with the current Kubernetes deployment model. Istio is the default
+routing provider. Greymatter is the supported alternative on deployments where
+Greymatter Core is installed and managed outside the Kamiwaza chart.
 
 *(Note: In local development deployments using the `k0s-podman` or `k0s-lima` Mesh M1 configuration, TLS is handled via a self-signed placeholder certificate. For production, see [Production Certificate Swaps](#production-certificate-swaps).)*
 
@@ -80,7 +82,7 @@ The deployment charts seed routing with path-based defaults similar to:
   "routing": {
     "mode": "path",
     "model_routing_method": "path",
-    "base_host": "https://<internal-traefik-url-or-origin>",
+    "base_host": "https://<platform-origin>",
     "service_prefixes": {
       "api": "/api",
       "frontend": "/",
@@ -110,6 +112,26 @@ Best practice:
 Some code paths still retain compatibility for legacy port-based or dual-mode routing behavior. That exists for backward compatibility, internal transitions, or older integrations.
 
 For public docs and new integrations, path-based routing should be considered the supported standard unless your deployment team has explicitly documented a different compatibility requirement.
+
+## Migrating from Traefik
+
+Traefik routing support was removed after the platform moved to Istio and
+Envoy `ext_authz`. An installation that explicitly sets
+`KAMIWAZA_ROUTING_PROVIDER=traefik` now fails during startup with migration
+guidance instead of silently selecting another provider.
+
+To migrate an older installation:
+
+1. Remove the `traefik` provider override and any `network.traefik` values.
+2. Set `KAMIWAZA_ROUTING_PROVIDER=istio`, or select `greymatter` only when the
+   cluster has a supported Greymatter Core installation.
+3. Replace custom Traefik `IngressRoute` and `Middleware` resources with the
+   route mechanism owned by the selected provider.
+4. Render the deployment values and verify the canonical runtime paths before
+   upgrading production traffic.
+
+Do not translate Traefik ForwardAuth headers into application configuration.
+Both surviving providers carry the authoritative request path in `:path`.
 
 ## App and Tool URL Behavior
 
