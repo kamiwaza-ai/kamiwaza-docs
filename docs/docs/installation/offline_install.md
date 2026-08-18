@@ -211,7 +211,7 @@ export KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG="${APP_TAG}"
 export KAMIWAZA_OFFLINE_CONTAINERS_IMAGE_TAG="${CONTAINERS_TAG}"
 export KAMIWAZA_OFFLINE_CHAINGUARD_BASE_TAG="${CONTAINERS_TAG}"
 
-export KAMIWAZA_IMAGE_OVERRIDES="keycloak=${CONTAINERS_TAG},postgres=v18.4,etcd=v3.6.10,kubectl=v1.35.5-dev,chainguard-base=${CONTAINERS_TAG},kafka-iamguarded=v4.3.0,neo4j=v5.26.25-kz.1,datahub-gms=${CONTAINERS_TAG},datahub-frontend=${CONTAINERS_TAG},datahub-upgrade=${CONTAINERS_TAG},datahub-postgres-setup=${CONTAINERS_TAG},vram-plugin=${APP_TAG},opensearch=v2.19.5,extension-operator=${EXTENSION_OPERATOR_TAG}"
+export KAMIWAZA_IMAGE_OVERRIDES="keycloak=${CONTAINERS_TAG},postgres=v18.4,etcd=v3.6.10,kubectl=v1.35.5-dev,chainguard-base=${CONTAINERS_TAG},traefik=v3.6.20-kz.1,kafka-iamguarded=v4.3.0,neo4j=v5.26.25-kz.1,datahub-gms=${CONTAINERS_TAG},datahub-frontend=${CONTAINERS_TAG},datahub-upgrade=${CONTAINERS_TAG},datahub-postgres-setup=${CONTAINERS_TAG},vram-plugin=${APP_TAG},opensearch=v2.19.5,extension-operator=${EXTENSION_OPERATOR_TAG}"
 
 sudo -E /opt/kamiwaza/scripts/install-prod.sh \
   --offline \
