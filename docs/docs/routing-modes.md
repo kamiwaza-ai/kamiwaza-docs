@@ -123,8 +123,11 @@ guidance instead of silently selecting another provider.
 To migrate an older installation:
 
 1. Remove the `traefik` provider override and any `network.traefik` values.
-2. Set `KAMIWAZA_ROUTING_PROVIDER=istio`, or select `greymatter` only when the
-   cluster has a supported Greymatter Core installation.
+2. For chart installs, set `global.mesh.provider=istio` and
+   `global.ingress.provider=istio`. Select `greymatter` in both keys only when
+   the cluster has a supported Greymatter Core installation. The chart renders
+   `KAMIWAZA_ROUTING_PROVIDER`; set that environment variable directly only
+   for a non-chart process launch.
 3. Replace custom Traefik `IngressRoute` and `Middleware` resources with the
    route mechanism owned by the selected provider.
 4. Render the deployment values and verify the canonical runtime paths before
