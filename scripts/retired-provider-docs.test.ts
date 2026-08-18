@@ -110,6 +110,8 @@ test("CI materializes and watches every guarded documentation root", () => {
     assert.ok(workflow.includes(`- "${guardedRoot}/**"`), guardedRoot);
   }
   assert.match(workflow, /Checkout SDK documentation source/);
+  assert.match(workflow, /ref: [0-9a-f]{40}/);
+  assert.doesNotMatch(workflow, /ref: develop/);
   assert.match(workflow, /npm run sync-sdk/);
   assert.match(workflow, /KW_SDK_DOCS:/);
 });

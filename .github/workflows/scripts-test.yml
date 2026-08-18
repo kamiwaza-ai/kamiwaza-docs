@@ -45,9 +45,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: kamiwaza-ai/kamiwaza-sdk
-          ref: develop
+          # Reviewed source for the generated SDK surface. Bump this SHA when
+          # synchronizing SDK documentation so CI remains reproducible.
+          ref: 06398a7905eee36861436ba8d3a6847f84de4eb1
           path: kamiwaza-sdk
           persist-credentials: false
+          fetch-depth: 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
