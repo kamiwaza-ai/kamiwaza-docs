@@ -8,15 +8,21 @@ const retiredProvider = "trae" + "fik";
 
 const intentionalHistory: Record<string, RegExp[]> = {
   "docs/docs/installation/offline_install.md": [
-    /KAMIWAZA_IMAGE_OVERRIDES=.*trae.?fik=v3\.6\.20-kz\.1/i,
+    new RegExp(
+      `KAMIWAZA_IMAGE_OVERRIDES=.*${retiredProvider}=v3\\.6\\.20-kz\\.1`,
+      "i",
+    ),
   ],
   "docs/docs/routing-modes.md": [
-    /Migrating from Trae.?fik/i,
-    /Trae.?fik routing support was removed/i,
-    /KAMIWAZA_ROUTING_PROVIDER=trae.?fik/i,
-    /Remove the `trae.?fik` provider override/i,
-    /custom Trae.?fik `IngressRoute` and `Middleware`/i,
-    /Trae.?fik ForwardAuth headers/i,
+    new RegExp(`Migrating from ${retiredProvider}`, "i"),
+    new RegExp(`${retiredProvider} routing support was removed`, "i"),
+    new RegExp(`KAMIWAZA_ROUTING_PROVIDER=${retiredProvider}`, "i"),
+    new RegExp("Remove the `" + retiredProvider + "` provider override", "i"),
+    new RegExp(
+      "custom " + retiredProvider + " `IngressRoute` and `Middleware`",
+      "i",
+    ),
+    new RegExp(`${retiredProvider} ForwardAuth headers`, "i"),
   ],
 };
 
@@ -43,7 +49,7 @@ test("current public, SDK, and API docs do not restore retired-provider guidance
 
   for (const file of currentRoots.flatMap(markdownFiles)) {
     const relative = path.relative(root, file).split(path.sep).join("/");
-    const allowed = intentionalHistory[relative] ?? [];
+    const allowed = [...(intentionalHistory[relative] ?? [])];
     const matchingLines = fs
       .readFileSync(file, "utf8")
       .split(/\r?\n/)
