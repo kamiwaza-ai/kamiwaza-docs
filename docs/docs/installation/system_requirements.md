@@ -126,18 +126,22 @@ The Kamiwaza installer provisions the container runtime, local Kubernetes cluste
 Install the appropriate driver for your GPU hardware:
 
 **NVIDIA GPUs:**
-| Component | Requirement | Installation Guide |
+| Component | Requirement | Installation guide |
 |-----------|-------------|-------------------|
-| NVIDIA Driver | 550-server or later | [NVIDIA Driver Downloads](https://www.nvidia.com/download/index.aspx) |
-| NVIDIA Container Toolkit | Required for GPU containers | [Container Toolkit Install](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) |
+| NVIDIA driver for CUDA 12 images | 550-server or later | [NVIDIA driver downloads](https://www.nvidia.com/download/index.aspx) |
+| NVIDIA driver for CUDA 13 images and DGX Spark | 580.65.06 or later | [CUDA 13 release notes](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-toolkit-release-notes/index.html) |
+| NVIDIA Container Toolkit | Required for GPU containers | [Container Toolkit installation](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) |
+
+DGX Spark software releases include the matching R580 driver and CUDA 13 stack. See the [DGX Spark release notes](https://docs.nvidia.com/dgx/dgx-spark/release-notes.html) for the versions in each release.
 
 **AMD GPUs (ROCm):**
-| Component | Requirement | Installation Guide |
+| Component | Requirement | Installation guide |
 |-----------|-------------|-------------------|
-| ROCm | 7.1.1+ (see note for gfx1151) | [ROCm Installation](https://rocm.docs.amd.com/en/latest/deploy/linux/index.html) |
+| ROCm for Ryzen AI Max+ 395 (gfx1151) | ROCm 7.2.1 or later on Ubuntu 24.04 | [Ryzen native Linux compatibility](https://rocm.docs.amd.com/projects/radeon-ryzen/en/docs-7.2.1/docs/compatibility/compatibilityryz/native_linux/native_linux_compatibility.html) |
+| Other AMD GPUs | A ROCm release that lists the GPU and operating system as supported | [ROCm compatibility matrix](https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html) |
 | Container GPU access | `/dev/kfd` and `/dev/dri` exposed to the container runtime | [ROCm containers guide](https://rocm.docs.amd.com/en/latest/how-to/docker.html) |
 
-> **Note:** AMD Strix Halo (gfx1151) requires ROCm 7.10.0 preview or later. See [ROCm 7.10.0 Preview](https://rocm.docs.amd.com/en/7.10.0-preview/) - this is a preview release and not intended for production use.
+AMD lists the Radeon 8060S in Ryzen AI Max+ 395 systems as production-supported on the ROCm 7.2.x native Linux path. Follow the [Ryzen native Linux installation guide](https://rocm.docs.amd.com/projects/radeon-ryzen/en/docs-7.2/docs/install/installryz/native_linux/install-ryzen.html); the retired ROCm 7.10 preview path is not required.
 
 ### Auto-Installed by Kamiwaza
 
@@ -158,7 +162,8 @@ Use these commands to verify your system meets the requirements before installat
 ```bash
 # Check NVIDIA driver
 nvidia-smi
-# Expected: Driver version 550 or later
+# Expected for CUDA 12 images: Driver version 550 or later
+# Expected for CUDA 13 images and DGX Spark: Driver version 580.65.06 or later
 # Should display GPU name, driver version, and CUDA version
 
 # Check NVIDIA Container Toolkit
@@ -177,7 +182,7 @@ rocm-smi
 
 # Check ROCm version
 cat /opt/rocm/.info/version
-# Expected: 7.1.1 or later (7.10.0+ for Strix Halo gfx1151)
+# Expected for Ryzen AI Max+ 395 (gfx1151): 7.2.1 or later
 
 # Verify GPU device access
 ls -la /dev/kfd /dev/dri
@@ -536,7 +541,7 @@ AMD's Strix Halo platform provides powerful AI inference in a compact form facto
 
 ## Version Compatibility
 
-- NVIDIA Driver: 550-server or later
+- NVIDIA driver: 550-server or later for CUDA 12 images; 580.65.06 or later for CUDA 13 images and DGX Spark
 - ETCD: 3.5 or later
 
 ---
