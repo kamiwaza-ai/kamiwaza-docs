@@ -24,10 +24,16 @@ The online installer is the recommended way to install Kamiwaza on an internet-c
 
 ## Step 1: Download and Verify the Installer
 
-Set `KAMIWAZA_VERSION` to a published installer version, then download and verify the installer and its checksum:
+Choose and record an explicit published installer version. Do not use an
+unrecorded `latest` alias for a production install. The example uses the
+currently published 1.0.1 artifact; the release owner must change it to the
+exact approved candidate when a later installer is published:
 
 ```bash
 KAMIWAZA_VERSION="1.0.1"
+case "$KAMIWAZA_VERSION" in
+  *[!0-9A-Za-z._-]*|'') echo "invalid version" >&2; exit 1 ;;
+esac
 base_url="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-online-installer/@kamiwaza-online-installer/${KAMIWAZA_VERSION}"
 
 for file in kamiwaza-online-install.sh kamiwaza-online-install.sh.sha256; do
@@ -38,6 +44,10 @@ sha256sum -c kamiwaza-online-install.sh.sha256
 
 chmod +x kamiwaza-online-install.sh
 ```
+
+Keep the version, resolved download URL, checksum file, and verified SHA-256 in
+the installation record. A checksum fetched from a different version does not
+verify the selected installer.
 
 On macOS, replace the verification command with:
 

@@ -1,6 +1,7 @@
 # Uninstalling Kamiwaza
 
-This page describes how to remove Kamiwaza 1.0.1 from a host.
+This page describes how to remove Kamiwaza 1.2.0 from a host using the
+supported uninstall wrappers shipped with the deployment payload.
 
 > **This is destructive.** Uninstalling removes the local Kubernetes cluster, all Kamiwaza containers and images, and platform data. Back up anything you need — models, configuration, and any data in the platform database — before you begin.
 
@@ -17,9 +18,10 @@ A Kamiwaza install consists of:
 
 Before removing anything, export or copy any data you need to keep. Once the cluster and `/opt/kamiwaza` are removed, platform data cannot be recovered.
 
-## Step 2: Remove the Cluster and Runtime
+## Step 2: Run the matching uninstall wrapper
 
-Uninstalling Kamiwaza means tearing down the single-host cluster the installer created. The exact commands depend on the cluster runtime used for your install (for example `k0s-podman` on RHEL offline installs, or Kind on online installs). Confirm the runtime for your install before proceeding:
+Confirm whether the host is a production/package install or a source-based
+developer install. Do not mix the two wrappers.
 
 ```bash
 # Inspect the running cluster and its nodes
@@ -27,14 +29,34 @@ kubectl get nodes -o wide
 kubectl get pods -A
 ```
 
-Stop and remove the cluster using the tooling that matches your runtime, then confirm no Kamiwaza containers remain:
+For a production or offline-package install, use the wrapper installed by the
+package payload:
 
 ```bash
-# List any remaining containers (podman shown; use your runtime's CLI)
+sudo /opt/kamiwaza/bin/uninstall-prod.sh
+```
+
+For a source-based development install, run from the matching `deploy`
+checkout:
+
+```bash
+cd /path/to/kamiwaza-stack/deploy
+./scripts/uninstall-dev.sh
+```
+
+Both commands are destructive and ask for confirmation. Add `--full-cleanup`
+only when you also intend to remove the retained runtime/prerequisite state.
+Use `--help` to inspect the exact release's options before running it.
+
+After the wrapper finishes, confirm that no Kamiwaza containers remain:
+
+```bash
 sudo podman ps -a
 ```
 
-> If you are unsure how your cluster was provisioned, or need a fully scripted teardown, contact Kamiwaza support before removing the cluster — the safe teardown path depends on the runtime and on whether you intend to reinstall on the same host.
+If `/opt/kamiwaza/bin/uninstall-prod.sh` is absent, stop and identify the
+installer/package version before removing directories manually. The payload
+and its uninstall playbooks must remain present until the wrapper completes.
 
 ## Step 3: Remove the Prerequisites Package (Offline RHEL Installs)
 
