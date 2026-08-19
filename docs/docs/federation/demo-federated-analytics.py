@@ -234,19 +234,25 @@ def submit_analytics_job(
     # It reads from the local retrieval service, computes analytics, and prints
     # the result via the marker protocol.
     entrypoint_script = textwrap.dedent(f"""\
-        import json, os, requests as req
+        import json, os
+        from urllib import request
 
         DATASET_URN = "{dataset_urn}"
         BASE = os.environ.get("KAMIWAZA_API_URL", "http://core-api:8000")
 
         # Retrieve data locally on the remote cluster
-        resp = req.post(
+        body = json.dumps(
+            {{"dataset_urn": DATASET_URN, "transport": "inline"}}
+        ).encode("utf-8")
+        req = request.Request(
             f"{{BASE}}/api/retrieval/jobs",
-            json={{"dataset_urn": DATASET_URN, "transport": "inline"}},
-            timeout=30,
+            data=body,
+            headers={{"Content-Type": "application/json"}},
+            method="POST",
         )
-        resp.raise_for_status()
-        rows = resp.json().get("rows") or resp.json().get("data") or []
+        with request.urlopen(req, timeout=30) as resp:
+            response_body = json.load(resp)
+        rows = response_body.get("rows") or response_body.get("data") or []
 
         # Compute analytics
         total = len(rows)
@@ -271,8 +277,16 @@ def submit_analytics_job(
 
     payload = {
         "entrypoint": f"python -c {json.dumps(entrypoint_script)}",
-        "runtime_env": {"pip": ["requests"]},
         "timeout_seconds": 120,
+        "delegated_access": {
+            "datasets": [
+                {
+                    "urn": dataset_urn,
+                    "operations": ["discover", "retrieve"],
+                }
+            ],
+            "models": [],
+        },
     }
 
     print(f"Job timeout: {payload['timeout_seconds']}s")

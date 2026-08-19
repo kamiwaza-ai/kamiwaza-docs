@@ -10,17 +10,13 @@ presents to the remote cluster, and how the remote cluster verifies it.** This i
 the federation's **identity mode** — a per-federation setting chosen by the
 cluster that receives the calls (the *grantor*).
 
-Kamiwaza 1.1 ships two identity modes:
+Kamiwaza 1.2.0 ships three identity modes:
 
 | Mode | Trust | Who validates the caller | Use when |
 |---|---|---|---|
 | **`shared_idp`** | Receiver-controlled | The receiver validates the caller's token against a **shared realm** both clusters trust | Both clusters can trust one shared identity provider (single operator, or a tightly-coupled pair) |
+| **`receiver_realm`** | Receiver-controlled | The receiver provisions a distinct guest identity for each approved remote user | The clusters do not share an issuer and the receiver must own guest identity lifecycle |
 | **`peer_kc`** | Source-trusted (legacy 1.0) | The receiver validates against the **peer cluster's own** Keycloak realm | Grandfathered pairings, or when you explicitly accept the source cluster as an identity authority |
-
-:::note
-A third mode, `receiver_realm`, is planned for a future release and is **not
-available in 1.1**. Only `shared_idp` and `peer_kc` can be configured today.
-:::
 
 ## Core principle: shared identity ≠ shared authority
 
@@ -80,6 +76,25 @@ realm — it trusts the source cluster to be the identity authority. This is the
   from the `ALLOW_UNTRUSTED_FEDERATION` refusal, and surfaced as the weaker
   posture so operators can see which pairings rest on trusting the source.
 
+`peer_kc` remains supported in 1.2.0. It is not the recommended mode for a new
+pair, but it is not scheduled for removal. Keep it disabled unless the operator
+explicitly accepts the source-trusted posture.
+
+## `receiver_realm` — receiver-owned guests
+
+The receiver provisions and owns a separate guest identity for every approved
+remote user. Pairing uses a receiver-owned request/approve flow, and each user
+then completes an onboarding request that the receiver approves before issuing
+guest credentials.
+
+Use this mode when the clusters cannot share an issuer and the receiver must be
+able to disable, rotate, or audit guest identities independently. The receiver
+still applies its own ReBAC and policy gates after identity validation.
+
+The `shared_idp` setup in this guide does not exercise `receiver_realm`.
+Receiver-realm onboarding should be validated as a separate release lane; do
+not infer its behavior from a shared-IDP pairing.
+
 ## Choosing and configuring a mode
 
 The **grantor** (the cluster receiving the calls) decides the mode from its own
@@ -89,8 +104,11 @@ is not auto-trusted — the receiver's policy decides.
 The mode is selected implicitly by what you supply when you create the federation:
 
 - **Supply `shared_issuer_url`** → the federation is `shared_idp`.
-- **Omit it** → the federation is legacy `peer_kc` (subject to
-  `ALLOW_UNTRUSTED_FEDERATION`).
+- **Omit it on the legacy create path** → the federation is `peer_kc` (subject
+  to `ALLOW_UNTRUSTED_FEDERATION`).
+- **Use the receiver-realm request/approve workflow** → the federation is
+  `receiver_realm`; do not try to construct this mode by inventing shared-IDP
+  fields.
 
 :::warning
 **The identity mode cannot be changed in place.** Switching a federation between

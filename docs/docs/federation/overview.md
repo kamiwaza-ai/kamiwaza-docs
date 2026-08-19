@@ -13,7 +13,7 @@ Kamiwaza cluster federation enables cross-cluster operations between paired Kami
 
 **Federation Trust** — Each federation pair shares a pre-shared key. All cross-cluster requests are HMAC-signed with this key, and the receiving cluster verifies the signature before processing the request. The PSK/HMAC secures the *transport*; the caller's *identity* is validated separately, according to the federation's [identity mode](./identity-trust-modes.md). Trust is per-federation, not per-cluster.
 
-**Identity Modes** — A federation's [identity mode](./identity-trust-modes.md) decides whose identity a cross-cluster caller presents and how the receiver validates it: **`shared_idp`** (receiver-controlled — both clusters trust a shared realm) or **`peer_kc`** (source-trusted — the legacy 1.0 model, gated by cluster policy).
+**Identity Modes** — A federation's [identity mode](./identity-trust-modes.md) decides whose identity a cross-cluster caller presents and how the receiver validates it: **`shared_idp`** (receiver-controlled shared realm), **`receiver_realm`** (receiver-owned guest identities), or **`peer_kc`** (source-trusted compatibility mode, gated by cluster policy).
 
 **Receiver-controlled authorization** — Cross-cluster egress on the source is **authenticated-only**: any authenticated caller may reach the mesh proxy — there is no `operator`-relation gate. Authorization is decided by the **receiving** cluster, which validates the caller's identity per the identity mode and then evaluates the request against its **own** per-resource ReBAC guards (catalog, retrieval, jobs) and per-record gates. Roles do **not** cross clusters (see [shared identity ≠ shared authority](./identity-trust-modes.md#core-principle-shared-identity--shared-authority)).
 
@@ -54,16 +54,21 @@ Cluster A (source)                          Cluster B (target)
 
 ## Prerequisites
 
-- Two Kamiwaza clusters running on Istio with `KAMIWAZA_ROUTING_PROVIDER=istio`
+- Two compatible Kamiwaza 1.2.0 clusters using the Istio deployment profile
 - STRICT mTLS (`PeerAuthentication`) in both namespaces
 - Network connectivity between clusters on port 443
-- Each cluster's Istio gateway TLS cert must include its node IP in SANs
+- Distinct, mutually reachable peer hostnames covered by each gateway TLS
+  certificate. When connecting by IP, set `remote_ips[].hostname` for Host/SNI
+  routing and include both the IP and hostname in the certificate SANs.
+- A receiver-controlled identity mode. Use `shared_idp` for the first-wave
+  workflow documented here; keep `peer_kc` default-off unless its weaker trust
+  posture is explicitly accepted.
 
 ## Federation lifecycle at a glance
 
 | Step | What | Where it's documented |
 |------|------|----------------------|
-| Pair two clusters | Exchange PSK + CA certs; provision the federation record on both sides | [Setup](./setup.md) |
+| Pair two clusters | Preflight both routes, create reciprocal records, and let the handshake exchange CA trust | [Setup](./setup.md) |
 | Allowlist federated users | Decide which remote users can act on this cluster | [Setup](./setup.md) |
 | Query remote data | Federated retrieval over the mesh proxy | [Retrieval](./retrieval.md) |
 | Submit remote jobs | Cluster-job execution with on-behalf-of (OBO) identity | [Job Submission](./job-submission.md) |

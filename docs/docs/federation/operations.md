@@ -7,105 +7,34 @@ title: Operations & Troubleshooting
 
 Operational runbook for federated mesh operations. Covers setup verification, common failure modes, job monitoring, and diagnostic queries.
 
-## 1. Federation Setup
+## 1. Pairing and first verification
 
-### Prerequisites
+Use the receiver-controlled `shared_idp` workflow in the
+[Federation Setup](./setup.md) guide. Preflight both routes, create the
+receiver record first, create and pair the initiator, then onboard the shared
+subject on the receiver. The handshake exchanges platform CA trust; do not
+inject certificates or PSKs with SQL.
 
-Before attempting to pair two clusters, verify:
-
-1. **Both clusters run Istio** with `KAMIWAZA_ROUTING_PROVIDER=istio`
-2. **STRICT mTLS** is configured (`PeerAuthentication` in the `kamiwaza` namespace)
-3. **ReBAC is enabled** on both clusters
-4. **Network connectivity** exists between clusters on port 443
-5. **Gateway certs include node IPs** in Subject Alternative Names (SANs)
-6. **NTP is synchronized** on both clusters (clock skew must be under 300 seconds)
-
-### Step-by-Step Pairing
-
-**1. Authenticate to both clusters:**
-
-```bash
-# Remote cluster (the receiver)
-REMOTE_TOKEN=$(curl -sk "https://192.168.50.13/api/auth/token" -X POST \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'username=admin%40kamiwaza.localhost&password=kamiwaza&grant_type=password' \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
-
-# Local cluster (the initiator)
-LOCAL_TOKEN=$(curl -sk "https://kamiwaza.test/api/auth/token" -X POST \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'username=admin%40kamiwaza.localhost&password=kamiwaza&grant_type=password' \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
-```
-
-**2. Create WAITING receiver on the remote cluster:**
-
-```bash
-curl -sk -X POST "https://192.168.50.13/api/cluster/federations" \
-  -H "Authorization: Bearer $REMOTE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "remote_cluster_name": "dev-laptop",
-    "remote_ips": [{"ip": "192.168.50.168", "primary": true}],
-    "preshared_key": "my-strong-shared-secret",
-    "callback_hostname": "192.168.50.13",
-    "role": "receiver"
-  }'
-```
-
-**3. Create PAIRING initiator on the local cluster:**
-
-```bash
-FEDERATION_RESPONSE=$(curl -sk -X POST "https://kamiwaza.test/api/cluster/federations" \
-  -H "Authorization: Bearer $LOCAL_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "remote_cluster_name": "studio-1",
-    "remote_ips": [{"ip": "192.168.50.13", "primary": true}],
-    "preshared_key": "my-strong-shared-secret",
-    "callback_hostname": "192.168.50.168"
-  }')
-
-FEDERATION_ID=$(echo "$FEDERATION_RESPONSE" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
-echo "Federation ID: $FEDERATION_ID"
-```
-
-**4. Initiate pairing:**
-
-```bash
-curl -sk -X POST "https://kamiwaza.test/api/cluster/federations/$FEDERATION_ID/pair" \
-  -H "Authorization: Bearer $LOCAL_TOKEN"
-```
-
-**5. Store remote CA certificate:**
-
-```bash
-# Fetch the remote cluster's root CA (run on the remote cluster or via SSH)
-REMOTE_CA=$(kubectl get secret root-ca -n kamiwaza -o jsonpath='{.data.ca\.crt}' | base64 -d)
-
-# Store in federation record on the local cluster
-kubectl exec core-postgres-0 -n kamiwaza -- psql -U core -d kamiwaza -c \
-  "UPDATE cluster_federations SET remote_ca_cert = '$(echo "$REMOTE_CA" | sed "s/'/''/g")' WHERE id = '$FEDERATION_ID';"
-```
-
-Repeat the CA cert step in the other direction (store the local CA on the remote cluster's federation record).
-
-### Verifying Pairing Succeeded
+After both cards reach `PAIRED`, verify the exact record and route:
 
 ```bash
 # Check federation status
-curl -sk "https://kamiwaza.test/api/cluster/federations/$FEDERATION_ID" \
-  -H "Authorization: Bearer $LOCAL_TOKEN" | python3 -m json.tool
+curl --fail --silent --show-error \
+  --header "Authorization: Bearer $LOCAL_TOKEN" \
+  "$LOCAL_API/cluster/federations/$FEDERATION_ID" | jq \
+  '{id,status,identity_mode,trust_posture,remote_ips,shared_issuer_url}'
 
 # Expected: "status": "PAIRED"
 
 # Test cross-cluster connectivity by listing remote datasets
-curl -sk "https://kamiwaza.test/api/mesh/studio-1/api/catalog/datasets/" \
-  -H "Authorization: Bearer $LOCAL_TOKEN"
+curl --fail --silent --show-error \
+  --header "Authorization: Bearer $SHARED_USER_TOKEN" \
+  "$LOCAL_API/mesh/$FEDERATION_ID/api/catalog/datasets/" | jq .
 
 # Test remote model listing
-curl -sk "https://kamiwaza.test/api/mesh/studio-1/api/serving/deployments" \
-  -H "Authorization: Bearer $LOCAL_TOKEN"
+curl --fail --silent --show-error \
+  --header "Authorization: Bearer $SHARED_USER_TOKEN" \
+  "$LOCAL_API/mesh/$FEDERATION_ID/api/serving/deployments" | jq .
 ```
 
 ---
@@ -118,15 +47,14 @@ curl -sk "https://kamiwaza.test/api/mesh/studio-1/api/serving/deployments" \
 
 **Diagnosis:**
 
-1. **Check PSK match** -- The `preshared_key` must be identical on both sides of the federation:
+1. **Run the typed route diagnostic** -- do not read PSK material from the
+   database:
 
    ```bash
-   # On the local cluster
-   kubectl exec core-postgres-0 -n kamiwaza -- psql -U core -d kamiwaza -c \
-     "SELECT id, remote_cluster_name, preshared_key FROM cluster_federations WHERE status = 'PAIRED';"
+   curl --fail --silent --show-error --request POST \
+     --header "Authorization: Bearer $LOCAL_TOKEN" \
+     "$LOCAL_API/cluster/federations/$FEDERATION_ID/diagnose" | jq .
    ```
-
-   Compare with the same query on the remote cluster. The PSK values must match exactly.
 
 2. **Check clock skew** -- The HMAC signature includes a timestamp. The receiving cluster rejects signatures older than 300 seconds (configurable via `auth_forward_header_signature_ttl_seconds`):
 
@@ -144,7 +72,9 @@ curl -sk "https://kamiwaza.test/api/mesh/studio-1/api/serving/deployments" \
 
 **Resolution:**
 
-- If PSKs do not match: disconnect and re-pair the federation with matching keys.
+- If the diagnostic reports an HMAC or PSK failure: rotate the PSK through the
+  supported federation lifecycle, or disconnect and re-pair. Never compare or
+  copy stored secret references as if they were raw keys.
 - If clock skew exceeds 300 seconds: synchronize NTP on both clusters.
 - If headers are missing from ext-authz config: update the Istio mesh config and restart the ext-authz pod.
 
@@ -198,14 +128,8 @@ per-resource ReBAC or per-record gate, not a missing source-side operator relati
 
 **Diagnosis:**
 
-1. Check that `remote_ca_cert` is populated in the `cluster_federations` table:
-
-   ```bash
-   kubectl exec core-postgres-0 -n kamiwaza -- psql -U core -d kamiwaza -c \
-     "SELECT id, remote_cluster_name,
-             CASE WHEN remote_ca_cert IS NOT NULL THEN 'SET' ELSE 'NULL' END AS ca_cert_status
-      FROM cluster_federations WHERE status = 'PAIRED';"
-   ```
+1. Run `POST /api/cluster/federations/{id}/diagnose` and inspect the TLS layer's
+   stable reason. Re-pair if the handshake did not persist peer trust.
 
 2. Verify the remote cluster's gateway cert includes its node IP in SANs:
 
@@ -223,8 +147,10 @@ per-resource ReBAC or per-record gate, not a missing source-side operator relati
 
 **Resolution:**
 
-- If `remote_ca_cert` is NULL: re-pair the federation, or manually inject the CA cert (see setup step 5).
-- If the remote cert does not include the node IP: update the gateway certificate SANs (see [Federation Setup](./setup.md#add-node-ip-to-gateway-certificate)).
+- If peer trust is absent: re-pair the federation. Do not manually inject a CA.
+- If the remote certificate does not cover the configured route, update
+  `global.ingress.gateway.{ipAddresses,extraDnsNames}` and reconcile the
+  deployment.
 
 ### Trailing Slash Redirects (307 -> auth loss)
 

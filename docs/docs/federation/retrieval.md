@@ -10,8 +10,9 @@ Federated retrieval lets you discover and query data on remote clusters without 
 ## Prerequisites
 
 - A [paired federation](./setup.md) between the clusters
-- Remote CA cert stored in the federation record
-- The mesh user must have per-dataset ReBAC grants on the target cluster (admin users with `extauthz` trust are exempt)
+- An active receiver-side onboarding entry for the shared subject
+- Explicit per-dataset ReBAC grants on the target cluster. Mesh-originated
+  requests do not receive the native-cluster admin bypass.
 
 ## Discover Remote Datasets
 
@@ -87,13 +88,12 @@ The inference request routes through the mesh proxy to the remote cluster's Ray 
 
 ## Access Control
 
-### Admin Users
+### Receiver-owned grants
 
-On Istio clusters with the `extauthz` trust model, admin users bypass per-resource ReBAC checks on the target cluster (standard admin bypass). No additional seeding is needed.
-
-### Non-Admin Users
-
-Non-admin users require explicit per-dataset ReBAC grants on the target cluster. The admin bypass is suppressed for mesh-originated requests — federated callers must have explicit `viewer` access to each dataset they query or browse. The catalog listing endpoint filters results so federated users only see datasets they have grants for.
+All mesh users require explicit per-dataset ReBAC grants on the target cluster.
+The native-cluster admin bypass is suppressed for mesh-originated requests.
+The catalog listing endpoint filters results so federated users see only
+datasets they have receiver-local grants for.
 
 Grant access **at federation-pairing time** through the brokered-user allowlist's `initial_tuples` field — **not** through `/api/auth/tuples`.
 
@@ -129,7 +129,7 @@ All federated operations use the mesh proxy at `/api/mesh/{cluster_selector}/`:
 
 | Parameter | Description |
 |-----------|-------------|
-| `cluster_selector` | Remote cluster name, UUID, or federation ID. Prefix matching supported (e.g., `studio` matches `studio-1`). |
+| `cluster_selector` | Exact federation UUID is recommended. An exact remote-cluster name is accepted when unique; ambiguous prefixes are rejected rather than routed arbitrarily. |
 | `{path}` | The API path on the remote cluster. Paths starting with `runtime/` are routed as-is; all others get an `/api/` prefix. |
 
 ### Timeouts

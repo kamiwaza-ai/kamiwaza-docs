@@ -36,20 +36,28 @@ Returns all federations the current user has operator or viewer access to.
 ]
 ```
 
-### Pair a Federation
+### Create and Pair a Federation
 
 ```
-POST /api/cluster/federations/pair
+POST /api/cluster/federations
+POST /api/cluster/federations/{federation_id}/pair
 ```
 
-Initiates a pairing handshake with a remote cluster. Exchanges CA certificates and pre-shared HMAC keys. Requires admin role.
+Create the receiver's `WAITING` record first, then the initiator record. Call
+`/{federation_id}/pair` on the initiator to drive the signed handshake and CA
+exchange. Both endpoints require a native-realm administrator.
 
 **Request:**
 ```json
 {
-  "remote_cluster_name": "string",
-  "remote_ips": ["192.168.50.168"],
-  "local_ca_cert": "-----BEGIN CERTIFICATE-----\n..."
+  "remote_cluster_name": "fed-b",
+  "remote_ips": [
+    {"ip": "10.0.0.12", "hostname": "fed-b.example.internal", "primary": true}
+  ],
+  "preshared_key": "read-from-private-input",
+  "role": "initiator",
+  "shared_issuer_url": "https://idp.example.internal/realms/federation",
+  "shared_jwks_url": "https://idp.example.internal/realms/federation/protocol/openid-connect/certs"
 }
 ```
 
@@ -64,10 +72,23 @@ Tears down the federation. Removes ReBAC grants and cleans up the pre-shared key
 ### Ping a Federation
 
 ```
-GET /api/cluster/federations/{federation_id}/ping
+POST /api/cluster/federations/{federation_id}/ping
 ```
 
-Tests end-to-end connectivity through the mesh proxy. Returns reachability status without requiring authentication to succeed on the remote side.
+Tests authenticated end-to-end connectivity through the signed peer path and
+returns `{ "federation_id": "...", "reachable": true }` on success.
+
+### Preflight and Diagnose
+
+```
+POST /api/cluster/federations/preflight
+POST /api/cluster/federations/{federation_id}/diagnose
+POST /api/cluster/federations/resolve-address
+```
+
+Preflight probes a proposed route before persistence. Diagnose probes the
+stored route. Resolve-address derives the IP/FQDN complement used by the
+console pairing wizard. These endpoints are admin-only.
 
 ---
 
@@ -99,7 +120,8 @@ by the **receiving** cluster (its allowlist, per-resource ReBAC, and per-record 
 | `X-KZ-Mesh-Signature` | HMAC-SHA256 | Verified on the remote cluster |
 | `X-KZ-Mesh-Signature-Ts` | Unix timestamp | Replay protection (5-minute window) |
 | `X-KZ-Mesh-Correlation-Id` | Per-request UUID | Observability tracing |
-| `X-KZ-Mesh-User-Attributes` | Source's `X-User-Attributes` | Source-asserted attributes (see note) |
+| `X-KZ-Mesh-Peer-Token` | Caller's bearer token | Validated by the receiver in receiver-controlled identity modes and hashed into the signed envelope |
+| `X-KZ-Mesh-User-Attributes` | Source's `X-User-Attributes` | Source-asserted attributes (ignored in receiver-controlled modes) |
 
 :::warning Identity-mode-dependent trust
 Whether the receiver **trusts** the source-asserted identity headers
@@ -112,7 +134,8 @@ headers are trusted only in source-trusted **`peer_kc`** / grandfathered mode.
 :::
 
 **Stripped before forwarding:**
-- `Authorization` (the local token is not valid on the remote cluster)
+- `Authorization` (the value is carried in the dedicated peer-token field,
+  not as the receiver's normal bearer header)
 - `Cookie`
 - `Proxy-*` headers
 
@@ -132,8 +155,10 @@ headers are trusted only in source-trusted **`peer_kc`** / grandfathered mode.
 |--------|-----------|
 | `401` | Local auth failed (invalid JWT / PAT) |
 | `403` `rebac_denied` | The **receiver's** per-resource ReBAC blocks the operation (there is no source-side `federation:operator` egress gate in 1.1) |
-| `503` | Remote cluster unreachable or HMAC verification failed on the remote side |
-| `504` | Remote request exceeded the proxy timeout |
+| `400` / `404` | Invalid route, local target, or no exact paired federation |
+| `502` `mesh_proxy_bad_gateway` | Receiver connection, TLS, or upstream gateway failure |
+| `504` `mesh_proxy_timeout` | Remote request exceeded the proxy timeout |
+| `508` | Mesh hop/loop limit exceeded |
 
 ---
 
@@ -155,13 +180,26 @@ Submits a job to Ray and returns immediately. Poll `/status` or `/result` to tra
   "cluster_selector": "local" | "federation_name",
   "entrypoint": "python analysis.py",
   "runtime_env": {
-    "env_vars": {"KEY": "value"},
-    "working_dir": "s3://..."
+    "env_vars": {"KEY": "value"}
   },
   "metadata": {"label": "value"},
-  "timeout_seconds": 300
+  "timeout_seconds": 300,
+  "delegated_access": {
+    "datasets": [
+      {
+        "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,orders,PROD)",
+        "operations": ["discover", "retrieve"]
+      }
+    ],
+    "models": []
+  },
+  "python_packages": ["humanize==4.13.0"]
 }
 ```
+
+`runtime_env` accepts environment variables only. Delegated jobs may request
+exact package versions from the receiver's approved package catalog; arbitrary
+Ray `pip`, `working_dir`, `py_modules`, and `conda` settings are stripped.
 
 **Response:**
 ```json
@@ -186,9 +224,10 @@ Submits the job, polls until completion (or timeout), extracts the result marker
 ```json
 {
   "id": "uuid",
-  "status": "SUCCEEDED" | "FAILED" | "TIMEOUT" | "CANCELLED",
+  "status": "SUCCEEDED" | "FAILED" | "STOPPED",
   "result": { ... },
   "duration_seconds": 3.1,
+  "timed_out": false,
   "error_message": "string | null"
 }
 ```

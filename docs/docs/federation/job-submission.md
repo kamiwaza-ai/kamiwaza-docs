@@ -12,6 +12,10 @@ Submit and manage Ray jobs on local or remote clusters. Jobs run Python entrypoi
 - Admin authentication (JWT token with admin role)
 - Ray cluster running on the target cluster
 
+Federated delegated jobs additionally require receiver-side onboarding,
+`cluster_jobs:__all__#executor`, the delegated-job deployment profile, and
+exact receiver-local resource grants.
+
 ## Submit a Job (Async)
 
 ```bash
@@ -20,10 +24,75 @@ curl -sk -X POST "https://kamiwaza.test/api/cluster/jobs/submit" \
   -H "Content-Type: application/json" \
   -d '{
     "entrypoint": "python train.py --epochs 10",
-    "runtime_env": {"pip": ["numpy", "pandas"]},
+    "runtime_env": {"env_vars": {"REPORT_FORMAT": "json"}},
     "timeout_seconds": 300
   }'
 ```
+
+`runtime_env` accepts environment variables only. Kamiwaza strips Ray
+execution-environment keys such as `pip`, `working_dir`, `py_modules`, and
+`conda`. Use the approved dependency mechanism below for Python packages.
+
+## Governed delegated access and approved dependencies
+
+A receiver-executed job must name every dataset or model operation it needs.
+The receiver checks the submitting identity against those exact resources
+before dispatch and issues renewable, job-bound authority only for that set.
+
+Python dependencies use exact `name==version` coordinates from the
+receiver-owned package catalog:
+
+```json
+{
+  "entrypoint": "python analysis.py",
+  "timeout_seconds": 900,
+  "delegated_access": {
+    "datasets": [
+      {
+        "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,nps_verbatims,PROD)",
+        "operations": ["discover", "retrieve"]
+      }
+    ],
+    "models": []
+  },
+  "python_packages": ["humanize==4.13.0"]
+}
+```
+
+Packages are not resolved from public PyPI at request time. The operator must
+enable the package contract, approve each exact version and wheel SHA-256, and
+configure one PyPI-compatible repository. The request receives no repository
+URL or credential and cannot add an unapproved package.
+
+For an air-gapped or restricted receiver, point the package installer at an
+operator-owned mirror by mounting a Secret containing a mode-`0600`
+`pip.conf`. Keep the repository URL, CA configuration, and credential out of
+Helm values and job payloads. Restrict the delegated driver NetworkPolicy to
+the repository's exact CIDRs and ports:
+
+```yaml
+core:
+  scheduler:
+    delegatedJobs:
+      pythonPackages:
+        enabled: true
+        catalog:
+          - name: humanize
+            version: 4.13.0
+            sha256:
+              - <exact-64-character-wheel-sha256>
+        repository:
+          existingSecret: private-pypi
+        repositoryCIDRs:
+          - 10.42.0.8/32
+        repositoryPorts:
+          - 8443
+```
+
+Kubernetes NetworkPolicy works with CIDRs, not repository DNS names. Keep the
+address set exact and update it when the mirror moves. A package coordinate
+that is absent from the catalog, has the wrong digest, or cannot be fetched
+fails closed before the entrypoint starts.
 
 Response:
 ```json

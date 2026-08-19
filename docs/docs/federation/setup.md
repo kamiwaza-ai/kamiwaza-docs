@@ -3,192 +3,223 @@ sidebar_position: 2
 title: Federation Setup
 ---
 
-# Federation Setup Guide
+# Federation Setup
 
-This guide walks through creating a federation between two Kamiwaza clusters and verifying cross-cluster operations.
+This guide pairs two Kamiwaza 1.2.0 clusters using the receiver-controlled
+`shared_idp` identity mode. The receiver validates the caller's shared-realm
+token, then applies its own onboarding, ReBAC, and policy gates.
+
+`receiver_realm` is also shipped in 1.2.0 and has its own request/approve and
+per-user onboarding workflow. `peer_kc` remains available for compatibility,
+but new `peer_kc` pairs are refused unless the operator explicitly enables
+`ALLOW_UNTRUSTED_FEDERATION`.
 
 ## Prerequisites
 
-Before pairing, ensure each cluster has:
+- Two Kamiwaza 1.2.0 clusters with mutually reachable HTTPS endpoints.
+- Istio selected through the supported deployment values for both clusters.
+- Distinct cluster display names and distinct, mutually reachable hostnames.
+- Gateway certificates whose SANs cover the hostnames used for Host and TLS
+  SNI routing.
+- One independently owned shared OIDC realm and its issuer and JWKS URLs.
+- The shared issuer enrolled in `core.scheduler.trustedSharedIssuers` on both
+  clusters.
+- A native-realm cluster administrator on each cluster.
 
-1. **Istio routing enabled**: `KAMIWAZA_ROUTING_PROVIDER=istio`
-2. **STRICT mTLS**: `PeerAuthentication` in the `kamiwaza` namespace
-3. **Node IP in gateway cert SANs**: The mesh proxy connects by IP; the TLS cert must include it
+For an IP-based connection, provide both the connect address and the hostname:
 
-### Add Node IP to Gateway Certificate
+```json
+{"ip": "10.0.0.12", "hostname": "fed-b.example.internal", "primary": true}
+```
 
-Each cluster's Istio gateway cert must include its node IP as a Subject Alternative Name (SAN). Without this, TLS verification fails when the mesh proxy connects by IP.
-
-**Option A: Via overrides.yaml (persistent)**
-
-Add to `cluster/values/overrides.yaml`:
+Kamiwaza connects to `ip` but sends `hostname` as the HTTP Host and TLS SNI.
+Use the same hostname in the gateway certificate. Configure certificate SANs
+with the current chart keys:
 
 ```yaml
 global:
-  istio:
-    ingress:
+  ingress:
+    gateway:
       ipAddresses:
-        - "192.168.50.168"       # This cluster's node IP
+        - "10.0.0.12"
       extraDnsNames:
-        - "studio-1.example.com" # Optional hostname
+        - "fed-b.example.internal"
 ```
 
-Then sync: `helmfile -f cluster/helmfile.yaml.gotmpl sync -l name=kamiwaza`
+## 1. Verify both routes before pairing
 
-**Option B: Direct kubectl patch (quick)**
+In the console, select **Cluster > Federations > Add Request**, enter the peer
+address, and use **Test Connection**. Resolve DNS, TCP, TLS, or L7 failures
+before creating either record.
+
+The API equivalent is admin-only:
 
 ```bash
-kubectl patch certificate kamiwaza-gateway-tls -n istio-system --type merge -p '{
-  "spec": {
-    "ipAddresses": ["192.168.50.168"],
-    "dnsNames": ["localhost","kamiwaza.test","*.kamiwaza.test","studio-1.example.com"]
-  }
-}'
-# Force re-issue
-kubectl delete secret kamiwaza-tls -n istio-system
+curl --fail --silent --show-error \
+  --request POST \
+  --header "Authorization: Bearer $ADMIN_TOKEN" \
+  --header 'Content-Type: application/json' \
+  --data '{"remote_ips":[{"ip":"10.0.0.12","hostname":"fed-b.example.internal","primary":true}]}' \
+  "$LOCAL_API/cluster/federations/preflight" | jq .
 ```
 
-**Verify:**
+Run the same check in the opposite direction. Pairing needs bidirectional
+reachability.
+
+## 2. Create the receiver record
+
+On the receiving cluster:
+
+1. Select **Cluster > Federations > Add Request**.
+2. Choose **Wait for remote cluster**.
+3. Enter the initiator's unique cluster name, connect address, and hostname.
+4. Enter a strong PSK from your approved secret manager.
+5. Choose **shared_idp**.
+6. Enter the shared issuer and JWKS URLs. If the issuer uses a private CA,
+   supply the complete CA chain.
+7. Create the request.
+
+The receiver should show a `WAITING` record.
+
+## 3. Create and pair the initiator
+
+On the initiating cluster:
+
+1. Select **Cluster > Federations > Add Request**.
+2. Choose **Initiate connection**.
+3. Enter the receiver's unique name, connect address, and hostname.
+4. Use **Test Connection**.
+5. Enter the same PSK and shared-realm values.
+6. Create the request and approve the confirmation.
+
+Both cards should reach `PAIRED` and show **Receiver-controlled** with the same
+shared issuer. Use **Ping** and verify that **Last Ping** updates.
+
+Pairing automatically exchanges the platform CA certificates. Do not update
+`cluster_federations.remote_ca_cert` with SQL and do not copy a raw PSK from
+the database.
+
+## Raw API equivalent
+
+The console uses a two-step API:
+
+1. `POST /api/cluster/federations` creates the receiver and initiator records.
+2. `POST /api/cluster/federations/{id}/pair` on the initiator drives the
+   handshake.
+
+Keep the PSK in mode-`0600` request files so it does not appear in process
+arguments or shell history. The initiator request shape is:
+
+```json
+{
+  "remote_cluster_name": "fed-b",
+  "remote_ips": [
+    {
+      "ip": "10.0.0.12",
+      "hostname": "fed-b.example.internal",
+      "primary": true
+    }
+  ],
+  "preshared_key": "read-from-a-private-file",
+  "callback_hostname": "fed-a.example.internal",
+  "role": "initiator",
+  "shared_issuer_url": "https://idp.example.internal/realms/federation",
+  "shared_jwks_url": "https://idp.example.internal/realms/federation/protocol/openid-connect/certs",
+  "shared_ca_pem": "optional-private-ca-chain"
+}
+```
+
+The receiver request uses `role: "receiver"` and the reciprocal name and
+route. Create the receiver first, then the initiator, then pair the returned
+initiator ID:
 
 ```bash
-kubectl get secret kamiwaza-tls -n istio-system -o jsonpath='{.data.tls\.crt}' \
-  | base64 -d | openssl x509 -noout -text | grep -A5 "Subject Alternative Name"
-# Should include: IP Address:192.168.50.168
+curl --fail --silent --show-error \
+  --request POST --header "Authorization: Bearer $B_ADMIN_TOKEN" \
+  --header 'Content-Type: application/json' \
+  --data-binary @receiver-create-private.json \
+  "$B_API/cluster/federations" > receiver.json
+
+curl --fail --silent --show-error \
+  --request POST --header "Authorization: Bearer $A_ADMIN_TOKEN" \
+  --header 'Content-Type: application/json' \
+  --data-binary @initiator-create-private.json \
+  "$A_API/cluster/federations" > initiator.json
+
+FEDERATION_ID="$(jq -er .id initiator.json)"
+curl --fail --silent --show-error \
+  --request POST --header "Authorization: Bearer $A_ADMIN_TOKEN" \
+  "$A_API/cluster/federations/$FEDERATION_ID/pair" | jq .
 ```
 
-:::note
-On k0s-lima clusters, `install-dev.sh` auto-detects the node IP and writes it to `overrides.yaml`.
-:::
+Delete the private request files after pairing.
 
-## Step 1: Create Receiver on Remote Cluster
+## 4. Onboard receiver-local access
 
-The receiver creates a WAITING federation record. Authenticate to the remote cluster and create it:
+Pairing establishes trust; it does not grant access to datasets, models, or
+jobs. On the receiver, open the federation's **Access** panel and add each
+shared-realm subject that may use the pair. Assign only the required
+receiver-local grants, for example:
+
+- `dataset:<dataset-urn>#viewer` for discovery and retrieval;
+- the exact model relation required for chat; and
+- `cluster_jobs:__all__#executor` for job submission.
+
+The receiver creates and controls the local brokered identity. Source-cluster
+administrator roles do not cross the federation boundary.
+
+## 5. Verify the pair
+
+Use the exact federation UUID when scripting. Name prefixes are rejected when
+they are ambiguous.
 
 ```bash
-# Login to remote cluster
-REMOTE_TOKEN=$(curl -sk "https://<REMOTE_IP>/api/auth/token" -X POST \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'username=admin%40kamiwaza.localhost&password=<PASSWORD>&grant_type=password' \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
+curl --fail --silent --show-error \
+  --request POST --header "Authorization: Bearer $A_ADMIN_TOKEN" \
+  "$A_API/cluster/federations/$FEDERATION_ID/ping" | jq -e '.reachable == true'
 
-# Create WAITING receiver
-curl -sk -X POST "https://<REMOTE_IP>/api/cluster/federations" \
-  -H "Authorization: Bearer $REMOTE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "remote_cluster_name": "<local-cluster-name>",
-    "remote_ips": [{"ip": "<LOCAL_IP>", "primary": true}],
-    "preshared_key": "<shared-secret>",
-    "callback_hostname": "<REMOTE_IP>",
-    "role": "receiver"
-  }'
+curl --fail --silent --show-error \
+  --header "Authorization: Bearer $SHARED_USER_TOKEN" \
+  "$A_API/mesh/$FEDERATION_ID/api/catalog/datasets/" | jq .
 ```
 
-:::important
-Use the same `preshared_key` on both clusters. Set `callback_hostname` to the cluster's bridged VM IP — without it, the internal pod hostname is used, which is unreachable from the other cluster.
-:::
+The catalog response must contain only datasets authorized on the receiver.
+Continue with [Federated Retrieval](./retrieval.md) and
+[Job Submission](./job-submission.md).
 
-## Step 2: Create Initiator on Local Cluster
+## Diagnose a failure
+
+Run the stored-route diagnostic before changing records:
 
 ```bash
-# Login to local cluster
-LOCAL_TOKEN=$(curl -sk "https://<LOCAL_IP>/api/auth/token" -X POST \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'username=admin%40kamiwaza.localhost&password=<PASSWORD>&grant_type=password' \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
-
-# Create PAIRING initiator
-curl -sk -X POST "https://<LOCAL_IP>/api/cluster/federations" \
-  -H "Authorization: Bearer $LOCAL_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "remote_cluster_name": "<remote-cluster-name>",
-    "remote_ips": [{"ip": "<REMOTE_IP>", "primary": true}],
-    "preshared_key": "<shared-secret>",
-    "callback_hostname": "<LOCAL_IP>"
-  }'
-# Note the federation ID from the response
+curl --fail --silent --show-error \
+  --request POST --header "Authorization: Bearer $A_ADMIN_TOKEN" \
+  "$A_API/cluster/federations/$FEDERATION_ID/diagnose" | jq .
 ```
 
-## Step 3: Pair
+Common stable reasons include `dns_unresolvable`, `connection_failed`,
+`connection_timeout`, `tls_untrusted_ca`, `tls_hostname_mismatch`,
+`peer_identity_aliases_local`, `psk_propagation_timeout`, and
+`peer_ca_projection_forbidden`.
+
+If CA inspection is required, support both deployed certificate layouts and
+never assume `root-ca` lives in the `kamiwaza` namespace:
 
 ```bash
-curl -sk -X POST "https://<LOCAL_IP>/api/cluster/federations/<FEDERATION_ID>/pair" \
-  -H "Authorization: Bearer $LOCAL_TOKEN"
-# Response: status should be "PAIRED"
+if kubectl get secret core-internal-ca-tls -n kamiwaza >/dev/null 2>&1; then
+  kubectl get secret core-internal-ca-tls -n kamiwaza \
+    -o jsonpath='{.data.ca\.crt}' | base64 -d
+else
+  kubectl get secret root-ca -n kamiwaza-ca \
+    -o jsonpath='{.data.ca\.crt}' | base64 -d
+fi
 ```
 
-On success, both clusters transition to `PAIRED`. The receiver seeds
-`cluster_jobs:__all__:executor` for the remote admin so federated jobs can run.
-Cross-cluster mesh egress is **authenticated-only** — no `federation:operator`
-relation is required to use the mesh proxy.
+This command is diagnostic only. Normal pairing exchanges and stores the CA.
 
-:::warning Choose an identity mode before pairing
-The steps above create a source-trusted **`peer_kc`** federation. On a stock
-cluster that is **refused with HTTP 400** unless the operator has set
-`ALLOW_UNTRUSTED_FEDERATION=true` (it defaults to `false`).
+## Disconnect
 
-To pair in the receiver-controlled **`shared_idp`** mode instead, the **receiver**
-supplies `shared_issuer_url` (plus `shared_jwks_url` / `shared_ca_pem`) when it
-**creates its own federation row** — each cluster stamps its mode from what it was
-given at create, and the mode is grantor-decided. The receiver must **also** have
-the shared realm's issuer enrolled in its trusted-shared-issuers list
-(`scheduler.trustedSharedIssuers`), which is empty and fail-closed by default —
-otherwise the caller's token is rejected with `403`.
-
-The identity mode cannot be changed later without deleting and re-pairing. Full
-details and the recommended flow: [Identity Trust Modes](./identity-trust-modes.md).
-:::
-
-## Step 4: Store Remote CA Certificate
-
-The mesh proxy needs to trust the remote cluster's TLS certificate. Fetch the remote cluster's root CA and store it in the federation record:
-
-```bash
-# Get remote cluster's root CA cert
-REMOTE_CA=$(kubectl get secret root-ca -n kamiwaza -o jsonpath='{.data.ca\.crt}' | base64 -d)
-# On the remote cluster, or via SSH
-
-# Store in federation record
-kubectl exec core-postgres-0 -n kamiwaza -- psql -U core -d kamiwaza -c \
-  "UPDATE cluster_federations SET remote_ca_cert = '$(echo "$REMOTE_CA" | sed "s/'/''/g")' WHERE id = '<FEDERATION_ID>';"
-```
-
-:::note
-CA cert exchange will be automated in the pairing handshake in a future release. For now, manual storage is required.
-:::
-
-## Step 5: Verify
-
-```bash
-# Query remote catalog through mesh proxy
-curl -sk "https://<LOCAL_IP>/api/mesh/<remote-cluster-name>/api/catalog/datasets/" \
-  -H "Authorization: Bearer $LOCAL_TOKEN"
-# Should return dataset list from the remote cluster
-
-# List remote models
-curl -sk "https://<LOCAL_IP>/api/mesh/<remote-cluster-name>/api/serving/deployments" \
-  -H "Authorization: Bearer $LOCAL_TOKEN"
-# Should return deployment list from the remote cluster
-```
-
-## Disconnecting
-
-```bash
-curl -sk -X POST "https://<IP>/api/cluster/federations/<FEDERATION_ID>/disconnect" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Disconnecting immediately blocks new mesh proxy requests. Running operations on the remote cluster are not cancelled.
-
-## Troubleshooting
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| 502 `mesh_proxy_bad_gateway` | TLS verification failed | Store remote CA cert (Step 4) or add IP to gateway cert SANs |
-| 401 on remote cluster | Mesh HMAC verification failed | Check PSK matches; check Istio `includeRequestHeadersInCheck` includes `x-kz-mesh-*` headers |
-| 403 on source before the request forwards | Cross-cluster egress is authenticated-only in 1.1 — there is no `federation:operator` gate; a 403 here means the caller is not authenticated | Ensure the caller presents a valid token to the source cluster |
-| 403 `namespace_unsupported` | `federation` namespace not registered | Ensure `authz/constants.py` includes `federation` in `ALLOWED_OBJECT_NAMESPACES` |
-| 400 `missing_object_id` | Cluster selector did not resolve to a PAIRED federation (unknown name/UUID, a local-cluster selector, or a non-PAIRED federation). The mesh guard's id-resolver (`mesh/guards.py resolve_federation_id`) returns `None`, so `@guarded` raises this *before* the route runs — the service-layer `mesh_target_not_found` (404) / `mesh_target_is_local` (400) codes are never reached on this path (ENG-7520). | Check federation status; selector must match a PAIRED federation by name, UUID, or prefix |
-| 403 `not_authorized_to_probe_cluster` on `/api/cluster/cluster_capabilities` | Mesh-origin capabilities probe lacks a `cluster:<local_uuid>` viewer grant, which federation pairing does not seed (ENG-7892) | Grant the federated subject the `cluster:<local_uuid>` viewer relation explicitly before probing |
-| 307 redirect | Missing trailing slash | Add `/` to the API path |
+Use **Disconnect** in the federation card or call the disconnect endpoint.
+Disconnect blocks new mesh admission and revokes delegated authority. Running
+work is reconciled through the job lifecycle; confirm terminal status before
+deleting evidence or receiver-local grants.

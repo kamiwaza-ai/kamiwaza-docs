@@ -7,7 +7,7 @@ ai_review_status: pending
 
 # Gate Packages
 
-Gate packages let you install custom **ExecutionGate** and **AttributeGate** classes onto a paired cluster from a Python package index — without rebuilding the platform image. Shipped in `kamiwaza-mesh-v1.0.0`.
+Gate packages let you install custom **ExecutionGate** and **AttributeGate** classes onto a paired cluster from a Python package index — without rebuilding the platform image. This capability is available in Kamiwaza 1.2.0.
 
 A gate package is an ordinary Python package whose modules contribute one or more gate classes (subclasses of `ExecutionGate` or `AttributeGate`). The cluster's `kz.gates.packages` API (Python module: `kamiwaza_sdk.gates.packages`) installs the package into an isolated per-package directory, makes its classes reachable from `kz.gates.discover`, and persists the install record. The classes are then bindable via the existing `cluster.set_execution_gate(...)` and `datasets.set_gate(...)` APIs covered in [Execution Gates](./execution-gates.md).
 
