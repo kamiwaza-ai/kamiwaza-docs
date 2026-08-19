@@ -9,10 +9,10 @@ This guide pairs two Kamiwaza 1.2.0 clusters using the receiver-controlled
 `shared_idp` identity mode. The receiver validates the caller's shared-realm
 token, then applies its own onboarding, ReBAC, and policy gates.
 
-`receiver_realm` is also shipped in 1.2.0 and has its own request/approve and
-per-user onboarding workflow. `peer_kc` remains available for compatibility,
-but new `peer_kc` pairs are refused unless the operator explicitly enables
-`ALLOW_UNTRUSTED_FEDERATION`.
+`receiver_realm` is reserved for the future receiver-owned guest-identity
+workflow and is rejected by Kamiwaza 1.2.0. `peer_kc` remains available for
+compatibility, but new `peer_kc` pairs are refused unless the operator
+explicitly enables `ALLOW_UNTRUSTED_FEDERATION`.
 
 ## Prerequisites
 

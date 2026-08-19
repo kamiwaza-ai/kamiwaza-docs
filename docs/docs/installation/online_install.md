@@ -1,6 +1,10 @@
 # Online Installation
 
-The online installer is the recommended way to install Kamiwaza on an internet-connected host. It is a single self-contained script that bundles the deploy payload, playbooks, and Helm chart dependencies. Host tools are installed from your OS package manager, and the Kamiwaza platform images are pulled from Keygen.
+The online installer is the recommended way to install a published Kamiwaza
+release on an internet-connected host. It is a single self-contained script
+that bundles the deploy payload, playbooks, and Helm chart dependencies. Host
+tools are installed from your OS package manager, and the Kamiwaza platform
+images are pulled from Keygen.
 
 **Supported hosts:**
 
@@ -24,13 +28,15 @@ The online installer is the recommended way to install Kamiwaza on an internet-c
 
 ## Step 1: Download and Verify the Installer
 
-Choose and record an explicit published installer version. Do not use an
-unrecorded `latest` alias for a production install. The example uses the
-currently published 1.0.1 artifact; the release owner must change it to the
-exact approved candidate when a later installer is published:
+Download the installer and its checksum, verify the checksum, then make the installer executable:
+
+Choose and record an explicit version that has been published to the online
+installer channel. Do not assume that the documentation version is already
+available as an installer artifact, and do not use an unrecorded `latest` alias
+for a production install. The release owner must supply the version explicitly:
 
 ```bash
-KAMIWAZA_VERSION="1.0.1"
+: "${KAMIWAZA_VERSION:?set KAMIWAZA_VERSION to a published installer version}"
 case "$KAMIWAZA_VERSION" in
   *[!0-9A-Za-z._-]*|'') echo "invalid version" >&2; exit 1 ;;
 esac

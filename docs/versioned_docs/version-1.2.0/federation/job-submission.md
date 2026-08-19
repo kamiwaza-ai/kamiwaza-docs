@@ -72,21 +72,21 @@ the repository's exact CIDRs and ports:
 
 ```yaml
 core:
-  scheduler:
-    delegatedJobs:
-      pythonPackages:
-        enabled: true
-        catalog:
-          - name: humanize
-            version: 4.13.0
-            sha256:
-              - <exact-64-character-wheel-sha256>
-        repository:
-          existingSecret: private-pypi
-        repositoryCIDRs:
-          - 10.42.0.8/32
-        repositoryPorts:
-          - 8443
+  delegatedJobs:
+    enabled: true
+    pythonPackages:
+      enabled: true
+      catalog:
+        - name: humanize
+          version: 4.13.0
+          sha256:
+            - <exact-64-character-wheel-sha256>
+      repository:
+        existingSecret: private-pypi
+      repositoryCIDRs:
+        - 10.42.0.8/32
+      repositoryPorts:
+        - 8443
 ```
 
 Kubernetes NetworkPolicy works with CIDRs, not repository DNS names. Keep the
