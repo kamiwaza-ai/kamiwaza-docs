@@ -81,7 +81,7 @@ curl -sk -X POST "https://kamiwaza.test/api/cluster/federations/$FEDERATION_ID/p
 
 ```bash
 # Fetch the remote cluster's root CA (run on the remote cluster or via SSH)
-REMOTE_CA=$(kubectl get secret root-ca -n kamiwaza -o jsonpath='{.data.ca\.crt}' | base64 -d)
+REMOTE_CA=$(kubectl get secret root-ca -n kamiwaza-ca -o jsonpath='{.data.ca\.crt}' | base64 -d)
 
 # Store in federation record on the local cluster
 kubectl exec core-postgres-0 -n kamiwaza -- psql -U core -d kamiwaza -c \

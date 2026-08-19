@@ -68,6 +68,7 @@ const sidebars: SidebarsConfig = {
 			label: "Federation",
 			items: [
 				"federation/overview",
+				"federation/identity-trust-modes",
 				"federation/setup",
 				"federation/retrieval",
 				"federation/job-submission",
@@ -163,7 +164,10 @@ const sidebars: SidebarsConfig = {
 		{
 			type: "category",
 			label: "Runbooks",
-			items: ["runbooks/ontology-graph-viewer"],
+			items: [
+				"runbooks/core-database-upgrade-1.2",
+				"runbooks/ontology-graph-viewer",
+			],
 		},
 		{
 			type: "category",
