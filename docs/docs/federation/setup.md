@@ -26,6 +26,26 @@ explicitly enables `ALLOW_UNTRUSTED_FEDERATION`.
   clusters.
 - A native-realm cluster administrator on each cluster.
 
+### Set distinct cluster display names
+
+Supported Helmfile installations derive the display name from the first label of
+a custom DNS domain. Default or non-DNS domains fall back to the short install
+hostname; raw Helm installations retain the chart's `Default Cluster` value.
+Set an explicit name in the persistent site overlay when the derived value is
+not suitable:
+
+```yaml
+# deploy/cluster/values/overrides.yaml
+core:
+  initialClusterName: "fed-a"
+```
+
+Use a different value on each cluster and apply the normal Helmfile sync before
+pairing. A later change takes effect after the scheduler restarts, but an
+already-paired peer retains its cached name until the federation is re-paired.
+The display name labels and selects a federation; the hostname in `remote_ips`
+controls the HTTP Host header and TLS SNI.
+
 For an IP-based connection, provide both the connect address and the hostname:
 
 ```json
