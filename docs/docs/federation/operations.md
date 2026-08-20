@@ -41,6 +41,30 @@ curl --fail --silent --show-error \
 
 ## 2. Mesh Proxy Troubleshooting
 
+### Duplicate or stale cluster names
+
+**Symptoms:** Federation cards show the same peer label, a renamed peer still
+shows its old label, a new name returns `404 mesh_target_not_found`, or a shared
+name or prefix returns `409 mesh_target_ambiguous`.
+
+**Diagnosis:** Read the stored selector and UUID for every active federation:
+
+```bash
+curl --fail --silent --show-error \
+  --header "Authorization: Bearer $LOCAL_TOKEN" \
+  "$LOCAL_API/cluster/federations?status=PAIRED" | jq \
+  '.[] | {id, remote_cluster_id, remote_cluster_name, status}'
+```
+
+`remote_cluster_name` is stored when the federation is created or paired.
+Renaming the peer changes its local cluster row, but ping does not refresh the
+cached federation row.
+
+**Resolution:** Use the exact federation UUID for automation. Assign a distinct
+`core.initialClusterName` on every cluster, then re-pair existing federations to
+adopt renamed peer labels. Until re-pairing, the cached old name and federation
+UUID continue to select the existing pair.
+
 ### HMAC Signature Failures (403)
 
 **Symptoms:** 403 response on mesh proxy requests. No `rebac_denied` detail in the response body -- the request is rejected before reaching the endpoint.
