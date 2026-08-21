@@ -128,7 +128,7 @@ The mesh proxy needs to trust the remote cluster's TLS certificate. Fetch the re
 
 ```bash
 # Get remote cluster's root CA cert
-REMOTE_CA=$(kubectl get secret root-ca -n kamiwaza -o jsonpath='{.data.ca\.crt}' | base64 -d)
+REMOTE_CA=$(kubectl get secret root-ca -n kamiwaza-ca -o jsonpath='{.data.ca\.crt}' | base64 -d)
 # On the remote cluster, or via SSH
 
 # Store in federation record

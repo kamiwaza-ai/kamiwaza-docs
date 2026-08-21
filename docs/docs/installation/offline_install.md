@@ -5,6 +5,10 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
 **Supported host:** RHEL-compatible 9.x (x86_64).
 
 > This is an advanced, operator-driven path. If your host has internet access, use the simpler [Online Installation](online_install.md) instead.
+>
+> For an install that must be verified artifact-by-artifact against a specific
+> immutable release — or that is driven over SSM or another managed shell — follow
+> the [Offline Installation Runbook](offline_install_runbook.md).
 
 ## Prerequisites
 
