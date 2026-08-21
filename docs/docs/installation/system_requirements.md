@@ -53,10 +53,15 @@ Storage *performance* requirements are the same across all platforms. Storage **
 
 #### Storage Capacity
 
-> **The installer preallocates cluster storage** on the volume backing `/var/lib`, so it needs far more free space than the generic figures below. Budget **≥ 350 GB on `/var/lib`** with the `80G` OSD override, up to **≈ 1.1 TB at the default OSD size**. See [Online Installation](online_install.md) and [Offline Installation](offline_install.md) for the authoritative per-filesystem floor and how to size the OSD image.
+> **The installer preallocates cluster storage** on the volume backing `/var/lib`, so that filesystem — not the total disk — is the binding constraint. How much you need depends on the storage image size, and the two install paths default differently:
 
-- **Minimum**: 350GB free on the volume backing `/var/lib` (with the `80G` OSD override)
-- **Recommended**: 1.1TB+ on `/var/lib` at the default OSD size
+| Install path | Storage image | Free space needed on `/var/lib` |
+|---|---|---|
+| **Offline** | `80G` — [the guide sets this](offline_install.md#step-5-install-kamiwaza) | **≥ 350 GB** |
+| **Online**, default | `700G` | **≈ 1.1 TB** |
+| **Online**, reduced | pass [`-e storage_host_prep_virtual_block_size=80G`](online_install.md#common-options) | **≥ 350 GB** |
+
+The image is preallocated at install time and also holds all stateful data, so size it for the data you expect to keep, not merely to complete the install.
 - Additional space for `/opt/kamiwaza` persistence
 
 #### Capacity Planning
@@ -70,9 +75,9 @@ Storage *performance* requirements are the same across all platforms. Storage **
 | **Vector Database** | 10GB | 100GB+ | For embeddings (if enabled) |
 | **Logs & Metrics** | 10GB | 50GB | Rotated logs, Ray dashboard data |
 | **Scratch Space** | 20GB | 100GB | Temporary files, downloads, builds |
-| **Total** | **350GB** | **1.1TB+** | Governed by the `/var` floor above, not the sum of the rows |
+| **Total** | **350GB** | **1.1TB+** | Governed by the `/var/lib` floor above, not the sum of the rows |
 
-> The rows above describe how space is *used* once running. The binding constraint at install time is the preallocated cluster storage on `/var/lib` — **350 GB** with the `80G` OSD override, **1.1 TB** at the default OSD size. Sizing to the per-component sum alone will fail at host prep.
+> The rows above describe how space is *used* once running. Sizing to their sum alone will fail at host prep: the binding constraint is the preallocated storage image, whose figure depends on your install path — see the table above.
 
 #### Storage Performance Requirements
 
@@ -207,13 +212,15 @@ nproc
 
 # Check available disk space on the volume backing /var/lib (the binding constraint)
 df -h /var/lib
-# Expected: At least 350GB free with the `80G` OSD override; 1.1TB+ at the default OSD size
+# Expected: At least 350GB for an offline install, or an online install passing
+# -e storage_host_prep_virtual_block_size=80G; 1.1TB+ for an online install at
+# the default storage image size
 
 # Check the root filesystem too
 df -h /
 # Expected: At least 30GB free (50GB for the offline install path)
 # If /var is not a separate mount, both commands report the same filesystem —
-# size the root volume to the /var figure, not the sum of the two.
+# size the root volume to the /var/lib figure, not the sum of the two.
 ```
 
 ---

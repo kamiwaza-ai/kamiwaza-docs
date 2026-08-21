@@ -65,6 +65,14 @@ export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs
 cd /opt/kamiwaza/prereqs
 
+# Pass the license key to curl through a private header file rather than an
+# argument. Anything in argv is visible in `ps` output for the whole download.
+# Keep this file outside /opt/kamiwaza/prereqs so it is not carried along when
+# that directory is transferred to the target host.
+KEYGEN_HEADER="$(mktemp)"
+chmod 600 "${KEYGEN_HEADER}"
+printf 'Authorization: License %s\n' "${KEYGEN_TOKEN}" > "${KEYGEN_HEADER}"
+
 for file in \
   release_origination.md \
   kamiwaza-tools-rpm.pub.gpg \
@@ -95,7 +103,7 @@ do
   # resumes a partial one, so rerunning the block after an interruption
   # repairs truncated downloads instead of skipping them.
   curl -fL --retry 5 --retry-delay 10 --retry-all-errors --continue-at - \
-    -H "Authorization: License ${KEYGEN_TOKEN}" \
+    -H @"${KEYGEN_HEADER}" \
     -o "$file" \
     "${BASE}/${file}"
 done
@@ -120,6 +128,8 @@ sha256sum -c "${EXT_BUNDLE}.sha256"
 grep -oE '^- kamiwaza-prod-[^:]+\.rpm: [0-9a-f]{64}' release_origination.md \
   | sed -E 's/^- ([^:]+): ([0-9a-f]{64})$/\2  \1/' > kamiwaza-prod.sha256
 sha256sum -c kamiwaza-prod.sha256
+
+rm -f "${KEYGEN_HEADER}"
 ```
 
 The `release_origination.md` artifact records the build provenance, the artifact hashes used in the check above, and the app, containers, and frontend image tags for this bundle. It does not enumerate the dependency image versions used in `KAMIWAZA_IMAGE_OVERRIDES` below.
@@ -277,7 +287,11 @@ Omitting the bulk tag, or any one of the three overrides, leaves a workload requ
 
 ```bash
 export DOMAIN="<domain>"
-export ADMIN_PASSWORD="<admin-password>"
+
+# install-prod.sh reads the admin password from this variable and unsets it
+# immediately, so it never appears in the installer's arguments where `ps` would
+# expose it for the whole run.
+export KAMIWAZA_ADMIN_PASSWORD="<admin-password>"
 
 export APP_TAG="release-1.2.0"
 export FRONTEND_TAG="${APP_TAG}"
@@ -303,7 +317,6 @@ export KAMIWAZA_IMAGE_OVERRIDES="postgres=v18.4,keycloak=${CONTAINERS_TAG},etcd=
 sudo -E /opt/kamiwaza/scripts/install-prod.sh \
   --offline \
   --domain "${DOMAIN}" \
-  --admin-password "${ADMIN_PASSWORD}" \
   --wrap-bundle '/opt/kamiwaza/prereqs/kamiwaza-helm.*.tar' \
   --wrap-sha256 /opt/kamiwaza/prereqs/kamiwaza-helm.sha256 \
   --wrap-signature /opt/kamiwaza/prereqs/kamiwaza-helm.asc \
@@ -319,6 +332,7 @@ Make sure `${DOMAIN}` resolves from the install host, then install the extension
 ```bash
 export DOMAIN="<domain>"
 export ADMIN_PASSWORD="<admin-password>"
+export EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
 
 # Add a hosts-file entry if the domain does not already resolve locally
 if ! curl -ksS "https://${DOMAIN}/api/health" >/dev/null; then
@@ -326,10 +340,11 @@ if ! curl -ksS "https://${DOMAIN}/api/health" >/dev/null; then
   echo "${NODE_IP:-127.0.0.1} ${DOMAIN}" | sudo tee -a /etc/hosts
 fi
 
-BUNDLE_ROOT="$(sudo find /var/lib/kajiya-reports/extensions-bundle-preinstall \
-  -maxdepth 1 -type d -name 'kamiwaza-extensions-bundle-*' | sort | tail -1)"
+# Derive the staged path from the bundle name rather than searching for it, so a
+# retry or a second staged release cannot select the wrong extension tree.
+BUNDLE_ROOT="/var/lib/kajiya-reports/extensions-bundle-preinstall/${EXT_BUNDLE%.tar.gz}"
 
-test -n "${BUNDLE_ROOT}" || { echo "No pre-extracted extension bundle found"; exit 1; }
+sudo test -d "${BUNDLE_ROOT}" || { echo "No pre-staged extension bundle at ${BUNDLE_ROOT}"; exit 1; }
 
 printf '%s\n' "${ADMIN_PASSWORD}" | sudo "${BUNDLE_ROOT}/scripts/install-extensions-bundle.sh" \
   --bundle-root "${BUNDLE_ROOT}" \
