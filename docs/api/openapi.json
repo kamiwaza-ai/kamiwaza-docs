@@ -21694,6 +21694,7 @@
           "retrieval"
         ],
         "summary": "Create Retrieval Job",
+        "description": "Create a legacy retrieval job without structured query semantics.",
         "operationId": "create_retrieval_job_retrieval_jobs_post",
         "security": [
           {
@@ -21708,7 +21709,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RetrievalRequest"
+                "$ref": "#/components/schemas/LegacyRetrievalRequest"
               }
             }
           }
@@ -21966,6 +21967,7 @@
           "retrieval"
         ],
         "summary": "Stream Retrieval Job",
+        "description": "Stream only legacy retrieval jobs.",
         "operationId": "stream_retrieval_job_retrieval_jobs__job_id__stream_get",
         "security": [
           {
@@ -47779,7 +47781,7 @@
           },
           "relation": {
             "type": "string",
-            "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|member|mission|mission_member|mission_owner|operator|owner|shared_to_workroom|viewer|writer)$",
+            "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|invoker|member|mission|mission_member|mission_owner|operator|owner|shared_to_workroom|viewer|writer)$",
             "title": "Relation"
           },
           "object": {
@@ -56364,6 +56366,86 @@
         "title": "FactSourceAttribution",
         "description": "C9 source-attribution for a single fact (T3.1 / ENG-4095).\n\nMaps fact_uuid → up to 5 contributing sources (INF-G4)."
       },
+      "FederatedIdentityChallenge": {
+        "properties": {
+          "challenge_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Challenge Id"
+          },
+          "issuer": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Issuer"
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "identity_mode": {
+            "type": "string",
+            "enum": [
+              "peer_kc",
+              "shared_idp",
+              "receiver_realm"
+            ],
+            "title": "Identity Mode"
+          },
+          "requested_freshness_seconds": {
+            "type": "integer",
+            "maximum": 300,
+            "minimum": 60,
+            "title": "Requested Freshness Seconds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "challenge_id",
+          "issuer",
+          "subject",
+          "identity_mode",
+          "requested_freshness_seconds"
+        ],
+        "title": "FederatedIdentityChallenge",
+        "description": "Content carried inside the existing PSK-HMAC federation envelope."
+      },
+      "FederatedIdentityChallengeResponse": {
+        "properties": {
+          "challenge_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Challenge Id"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observed At"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid Until"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "challenge_id",
+          "active",
+          "observed_at",
+          "valid_until"
+        ],
+        "title": "FederatedIdentityChallengeResponse",
+        "description": "Minimal response: no roles, attributes, tokens, or credentials."
+      },
       "FederationDisconnectRequest": {
         "properties": {
           "federation_id": {
@@ -58432,6 +58514,14 @@
             ],
             "title": "Runtime Env"
           },
+          "python_packages": {
+            "items": {
+              "$ref": "#/components/schemas/ApprovedPythonPackage"
+            },
+            "type": "array",
+            "title": "Python Packages",
+            "default": []
+          },
           "metadata_": {
             "anyOf": [
               {
@@ -59041,6 +59131,120 @@
         ],
         "title": "LeaveWorkroomResponse",
         "description": "Response from leaving a workroom (return to no-workroom scope)."
+      },
+      "LegacyRetrievalRequest": {
+        "properties": {
+          "dataset_urn": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Urn",
+            "description": "Catalog URN identifying the dataset"
+          },
+          "transport": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transport",
+            "default": "auto"
+          },
+          "limit_rows": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Rows"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          },
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columns"
+          },
+          "credential_override": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "password",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Override"
+          },
+          "format_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format Hint"
+          },
+          "batch_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Size"
+          },
+          "sdk_session": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sdk Session"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dataset_urn"
+        ],
+        "title": "LegacyRetrievalRequest",
+        "description": "Released request contract for ``POST /retrieval/jobs``."
       },
       "LocalUserCreateRequest": {
         "properties": {
@@ -65791,7 +65995,7 @@
           },
           "relation": {
             "type": "string",
-            "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|member|mission|mission_member|mission_owner|operator|owner|shared_to_workroom|viewer|writer)$",
+            "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|invoker|member|mission|mission_member|mission_owner|operator|owner|shared_to_workroom|viewer|writer)$",
             "title": "Relation"
           },
           "object": {
@@ -65827,7 +66031,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|member|mission|mission_member|mission_owner|operator|owner|shared_to_workroom|viewer|writer)$"
+                "pattern": "^(can_access|cleared_for|connector_operator|editor|executor|includes|invoker|member|mission|mission_member|mission_owner|operator|owner|shared_to_workroom|viewer|writer)$"
               },
               {
                 "type": "null"
@@ -66601,149 +66805,6 @@
         ],
         "title": "RetrievalJobStatus",
         "description": "Status payload for polling job progress."
-      },
-      "RetrievalRequest": {
-        "properties": {
-          "dataset_urn": {
-            "type": "string",
-            "title": "Dataset Urn",
-            "description": "Catalog URN identifying the dataset"
-          },
-          "transport": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Transport",
-            "description": "Preferred transport ('auto', 'inline', 'sse', 'grpc')",
-            "default": "auto"
-          },
-          "limit_rows": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Limit Rows",
-            "description": "Maximum number of rows to materialise (if applicable)"
-          },
-          "offset": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Offset"
-          },
-          "filters": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Filters"
-          },
-          "options": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Options",
-            "description": "Backend-specific options (e.g., kafka bootstrap servers)"
-          },
-          "columns": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Columns"
-          },
-          "credential_override": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "password",
-                "writeOnly": true
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Credential Override",
-            "description": "Caller-provided credential to access the dataset"
-          },
-          "format_hint": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Format Hint",
-            "description": "Optional hint for dataset format (parquet,csv,json,binary,text,slack)"
-          },
-          "batch_size": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Batch Size",
-            "description": "Preferred batch size for streaming transports"
-          },
-          "sdk_session": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sdk Session",
-            "description": "Identifier supplied by the SDK to aid telemetry"
-          }
-        },
-        "type": "object",
-        "required": [
-          "dataset_urn"
-        ],
-        "title": "RetrievalRequest",
-        "description": "Request payload for starting a retrieval job."
       },
       "RetrieveRequest": {
         "properties": {
@@ -69507,6 +69568,76 @@
         ],
         "title": "SourceReference",
         "description": "Reference to a source document for RAG retrieval."
+      },
+      "SourceRegistrationRequest": {
+        "properties": {
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "s3",
+              "postgres"
+            ],
+            "title": "Source Type"
+          },
+          "connection": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Connection",
+            "description": "Source-specific location and Catalog secret references"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_type"
+        ],
+        "title": "SourceRegistrationRequest",
+        "description": "Register a source without materializing source content."
+      },
+      "SourceRegistrationResponse": {
+        "properties": {
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "s3",
+              "postgres"
+            ],
+            "title": "Source Type"
+          },
+          "source_id": {
+            "type": "string",
+            "title": "Source Id"
+          },
+          "container_urn": {
+            "type": "string",
+            "title": "Container Urn"
+          },
+          "dataset_urns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dataset Urns"
+          },
+          "content_materialized": {
+            "type": "boolean",
+            "const": false,
+            "title": "Content Materialized",
+            "default": false
+          },
+          "next_action": {
+            "type": "string",
+            "title": "Next Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_type",
+          "source_id",
+          "container_urn",
+          "next_action"
+        ],
+        "title": "SourceRegistrationResponse",
+        "description": "Catalog objects created by source registration."
       },
       "SourceType": {
         "type": "string",
