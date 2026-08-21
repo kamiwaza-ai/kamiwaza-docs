@@ -27,7 +27,7 @@ findmnt -T /var/lib
 lsblk -f
 ```
 
-The host's static hostname must be **55 characters or fewer**. Longer names
+The host's static hostname must be **54 characters or fewer**. Longer names
 overflow the certificate subject fields the cluster generates:
 
 ```bash
@@ -58,9 +58,17 @@ The extension-bundle filename is likewise release-specific. The value below matc
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
-export RELEASE="1.2.0"
-export EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
-export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
+
+# The whole block runs fail-fast in a subshell: any failed download, checksum, or
+# reassembly stops it immediately rather than leaving partial artifacts to be
+# transferred or installed. The trap removes the credential file on every exit
+# path, including failure.
+(
+set -euo pipefail
+
+RELEASE="1.2.0"
+EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
+BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs
 cd /opt/kamiwaza/prereqs
@@ -71,6 +79,7 @@ cd /opt/kamiwaza/prereqs
 # that directory is transferred to the target host.
 KEYGEN_HEADER="$(mktemp)"
 chmod 600 "${KEYGEN_HEADER}"
+trap 'rm -f "${KEYGEN_HEADER}"' EXIT
 printf 'Authorization: License %s\n' "${KEYGEN_TOKEN}" > "${KEYGEN_HEADER}"
 
 for file in \
@@ -128,8 +137,7 @@ sha256sum -c "${EXT_BUNDLE}.sha256"
 grep -oE '^- kamiwaza-prod-[^:]+\.rpm: [0-9a-f]{64}' release_origination.md \
   | sed -E 's/^- ([^:]+): ([0-9a-f]{64})$/\2  \1/' > kamiwaza-prod.sha256
 sha256sum -c kamiwaza-prod.sha256
-
-rm -f "${KEYGEN_HEADER}"
+)
 ```
 
 The `release_origination.md` artifact records the build provenance, the artifact hashes used in the check above, and the app, containers, and frontend image tags for this bundle. It does not enumerate the dependency image versions used in `KAMIWAZA_IMAGE_OVERRIDES` below.
@@ -228,7 +236,7 @@ Stage the extension bundle before installing the platform:
 ```bash
 cd /opt/kamiwaza/prereqs
 
-EXT_BUNDLE="${EXT_BUNDLE:-$(ls -1 kamiwaza-extensions-bundle-*.tar.gz | tail -1)}"
+EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
 rm -rf /tmp/kamiwaza-ext-extract
 mkdir -p /tmp/kamiwaza-ext-extract
 tar -xzf "$EXT_BUNDLE" -C /tmp/kamiwaza-ext-extract
