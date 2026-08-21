@@ -222,7 +222,7 @@ Both `KAMIWAZA_IMAGE_TAG` and `KAMIWAZA_IMAGE_OVERRIDES` are required, and they 
 - `postgres` and `keycloak` are excluded from that bulk tag and would otherwise fall back to chart pins the bundle does not contain.
 - `etcd` is moved *by* the bulk tag and must be pinned back to the version in the bundle.
 
-Omitting any of the four leaves a workload requesting a tag the local registry does not have.
+Omitting the bulk tag, or any one of the three overrides, leaves a workload requesting a tag the local registry does not have.
 
 > **Keep `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G`** in the block below unless you have sized `/var/lib` for the 700 GB default — it is what brings the requirement down to the 350 GB floor in [Prerequisites](#prerequisites). This env var and the online guide's `-e storage_host_prep_virtual_block_size` extra-var are the same setting expressed two ways; the offline path sets it via the environment, the online path via an installer argument.
 
