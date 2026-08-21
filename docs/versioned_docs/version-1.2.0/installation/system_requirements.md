@@ -57,6 +57,10 @@ Storage requirements are the same across all platforms.
 - **Recommended**: 200GB+ free disk space
 - Additional space for `/opt/kamiwaza` persistence
 
+> **Linux:** additionally size `/var/lib` for the Ceph OSD backing image —
+> 700GiB by default, plus a 1GiB margin. Set `KAMIWAZA_ROOK_OSD_IMAGE_SIZE`
+> before installing to use a smaller image.
+
 #### Capacity Planning
 
 | Component | Minimum | Recommended | Notes |
@@ -204,6 +208,10 @@ nproc
 # Check available disk space
 df -h /
 # Expected: At least 100GB free (200GB+ recommended)
+
+# Linux: check /var/lib separately for the Ceph OSD image
+df -h /var/lib
+# Expected: OSD image size + 1GiB (about 701GiB at the default)
 ```
 
 ---

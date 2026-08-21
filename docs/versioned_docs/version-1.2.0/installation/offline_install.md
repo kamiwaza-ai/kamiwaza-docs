@@ -487,6 +487,17 @@ sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
 The release/1.2.0 RPM overlay accepts `--yes` for noninteractive bootstrap.
 Do not pipe repeated `yes` or press Enter to drive a long unattended install.
 
+On Red Hat 9, if the bootstrap exits nonzero reporting a bundled command
+missing, expose the bundled tools on sudo's path and re-run it unchanged:
+
+```bash
+for tool in helm helmfile k0s kind kubectl; do
+  sudo ln -sfn "/usr/local/bin/${tool}" "/usr/bin/${tool}"
+done
+```
+
+The second run reports `==> Bootstrap complete`.
+
 The install runs as root, so verify tools using root's actual environment:
 
 ```bash
@@ -682,6 +693,15 @@ contract names another runtime, stop and use that runtime's runbook.
 `KAMIWAZA_OFFLINE_EXTRA_IMAGES` is a Kajiya wrap-build input, not an installer
 environment variable; record it in build provenance when it is nonempty, but do
 not add it to this runtime contract.
+
+Take `KAMIWAZA_IMAGE_TAG` and `KAMIWAZA_IMAGE_OVERRIDES` from the same run; the
+bulk tag also moves infrastructure images that carry their own pinned versions.
+For 1.2.0 those two values are:
+
+```json
+  "KAMIWAZA_IMAGE_TAG": "release-1.2.0",
+  "KAMIWAZA_IMAGE_OVERRIDES": "postgres:v18.4,keycloak:release-1.2.0,etcd:v3.6.10"
+```
 
 > **Upgrading a 1.0.0 production database to 1.2.0?** Stop here and follow the
 > [Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
