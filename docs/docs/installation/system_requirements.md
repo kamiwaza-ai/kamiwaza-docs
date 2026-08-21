@@ -42,7 +42,7 @@ See [Special Considerations](#special-considerations) for detailed unified memor
 
 ### Storage
 
-Storage *performance* requirements are the same across all platforms. Storage **capacity** figures below are for Linux hosts, where the installer preallocates cluster storage on the volume backing `/var`. On macOS the cluster runs inside a user-scoped Podman machine — size that machine's disk to the same totals. See [Online Installation](online_install.md).
+Storage *performance* requirements are the same across all platforms. Storage **capacity** figures below are for Linux hosts, where the installer preallocates cluster storage on the volume backing `/var/lib`. On macOS the cluster runs inside a user-scoped Podman machine — size that machine's disk to the same totals. See [Online Installation](online_install.md).
 
 #### Storage Performance
 
@@ -53,10 +53,10 @@ Storage *performance* requirements are the same across all platforms. Storage **
 
 #### Storage Capacity
 
-> **The installer preallocates cluster storage** on the volume backing `/var`, so it needs far more free space than the generic figures below. Budget **≥ 350 GB on `/var`** with the `80G` OSD override, up to **≈ 1.1 TB at the default OSD size**. See [Online Installation](online_install.md) and [Offline Installation](offline_install.md) for the authoritative per-filesystem floor and how to size the OSD image.
+> **The installer preallocates cluster storage** on the volume backing `/var/lib`, so it needs far more free space than the generic figures below. Budget **≥ 350 GB on `/var/lib`** with the `80G` OSD override, up to **≈ 1.1 TB at the default OSD size**. See [Online Installation](online_install.md) and [Offline Installation](offline_install.md) for the authoritative per-filesystem floor and how to size the OSD image.
 
-- **Minimum**: 350GB free on the volume backing `/var` (with the `80G` OSD override)
-- **Recommended**: 1.1TB+ on `/var` at the default OSD size
+- **Minimum**: 350GB free on the volume backing `/var/lib` (with the `80G` OSD override)
+- **Recommended**: 1.1TB+ on `/var/lib` at the default OSD size
 - Additional space for `/opt/kamiwaza` persistence
 
 #### Capacity Planning
@@ -72,7 +72,7 @@ Storage *performance* requirements are the same across all platforms. Storage **
 | **Scratch Space** | 20GB | 100GB | Temporary files, downloads, builds |
 | **Total** | **350GB** | **1.1TB+** | Governed by the `/var` floor above, not the sum of the rows |
 
-> The rows above describe how space is *used* once running. The binding constraint at install time is the preallocated cluster storage on `/var` — **350 GB** with the `80G` OSD override, **1.1 TB** at the default OSD size. Sizing to the per-component sum alone will fail at host prep.
+> The rows above describe how space is *used* once running. The binding constraint at install time is the preallocated cluster storage on `/var/lib` — **350 GB** with the `80G` OSD override, **1.1 TB** at the default OSD size. Sizing to the per-component sum alone will fail at host prep.
 
 #### Storage Performance Requirements
 
@@ -205,8 +205,8 @@ free -h
 nproc
 # Expected: 8 or more cores
 
-# Check available disk space on the volume backing /var (the binding constraint)
-df -h /var
+# Check available disk space on the volume backing /var/lib (the binding constraint)
+df -h /var/lib
 # Expected: At least 350GB free with the `80G` OSD override; 1.1TB+ at the default OSD size
 
 # Check the root filesystem too
@@ -251,7 +251,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Hardware Specifications:**
 - **CPU:** 8-16 cores / 16-32 threads
 - **RAM:** 32GB (16GB minimum for development only)
-- **Storage:** 400GB NVMe SSD (350GB minimum, on the volume backing `/var` — see [Storage Capacity](#storage-capacity)). This assumes the `80G` OSD override; at the default OSD size budget 1.1TB+.
+- **Storage:** 400GB NVMe SSD (350GB minimum, on the volume backing `/var/lib` — see [Storage Capacity](#storage-capacity)). This assumes the `80G` OSD override; at the default OSD size budget 1.1TB+.
 - **GPU:** Optional - Single GPU with 16-24GB VRAM
   - NVIDIA RTX 4090 (24GB)
   - NVIDIA RTX 4080 (16GB)
@@ -340,7 +340,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: All Nodes** | `p4d.24xlarge` | 96 | 1152GB | 8x A100 (320GB) | 2TB gp3 |
 
 **Notes:**
-- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var` (see [Storage Capacity](#storage-capacity))
+- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
 - Use `gp3` SSD volumes (not `gp2`) for better performance/cost
 - For Tier 3 shared storage: Amazon FSx for Lustre or EFS (with Provisioned Throughput)
 - Use Placement Groups for low-latency multi-node clusters (Tier 3)
@@ -359,7 +359,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: All Nodes** | `a2-highgpu-8g` | 96 | 680GB | 8x A100 (320GB) | 2TB SSD |
 
 **Notes:**
-- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var` (see [Storage Capacity](#storage-capacity))
+- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
 - Use `pd-ssd` or `pd-balanced` persistent disks (not `pd-standard`)
 - For Tier 3 shared storage: Filestore High Scale tier (up to 10 GB/s)
 - Use Compact Placement for low-latency multi-node clusters (Tier 3)
@@ -381,7 +381,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: A100 Alternative** | `Standard_ND96asr_v4` | 96 | 900GB | 8x A100 (320GB) | 2TB Premium SSD |
 
 **Notes:**
-- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var` (see [Storage Capacity](#storage-capacity))
+- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
 - Use Premium SSD (not Standard HDD or Standard SSD)
 - For Tier 3 shared storage: Azure NetApp Files Premium or Ultra tier
 - Use Proximity Placement Groups for low-latency multi-node clusters (Tier 3)

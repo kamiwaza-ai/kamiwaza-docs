@@ -31,7 +31,7 @@ The host's static hostname must be **55 characters or fewer**. Longer names
 overflow the certificate subject fields the cluster generates:
 
 ```bash
-hostnamectl --static | wc -c
+hostnamectl --static | tr -d '\n' | wc -c
 ```
 
 Throughout this guide, replace the placeholders:
@@ -248,18 +248,19 @@ Omitting the bulk tag, or any one of the three overrides, leaves a workload requ
 
 > **Installing over SSM, or any connection that can drop?** The install runs for
 > roughly 15-20 minutes in the foreground, and losing the session loses the
-> controlling process. Launch it as a transient systemd unit instead, so it
-> survives the shell:
+> controlling process. Run the whole Step 5 block inside a detached terminal
+> multiplexer, so the exported values below stay in the same shell as the
+> installer and the run survives a disconnect:
 >
 > ```bash
-> sudo systemd-run --no-block --service-type=oneshot --remain-after-exit \
->   --unit=kamiwaza-offline-install \
->   /opt/kamiwaza/scripts/install-prod.sh <the same arguments as below>
+> tmux new -s kamiwaza-install     # or: screen -S kamiwaza-install
 > ```
 >
-> Then judge the result from `systemctl show kamiwaza-offline-install` —
-> `Result=success` and `ExecMainStatus=0` — not from log activity. A quiet log
-> is not a finished install.
+> Export the block below and run `install-prod.sh` inside that session; reattach
+> after a drop with `tmux attach -t kamiwaza-install`. Judge the result from the
+> installer's exit status and the final Ansible recap (`failed=0`,
+> `unreachable=0`), not from log activity — a quiet log is not a finished
+> install.
 
 > **Keep `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G`** in the block below unless you have sized `/var/lib` for the 700 GB default — it is what brings the requirement down to the 350 GB floor in [Prerequisites](#prerequisites). This env var and the online guide's `-e storage_host_prep_virtual_block_size` extra-var are the same setting expressed two ways; the offline path sets it via the environment, the online path via an installer argument.
 
