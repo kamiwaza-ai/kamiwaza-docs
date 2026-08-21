@@ -186,7 +186,7 @@ Stage the extension bundle before installing the platform:
 ```bash
 cd /opt/kamiwaza/prereqs
 
-EXT_BUNDLE="$(ls -1 kamiwaza-extensions-bundle-*.tar.gz | head -1)"
+EXT_BUNDLE="${EXT_BUNDLE:-$(ls -1 kamiwaza-extensions-bundle-*.tar.gz | tail -1)}"
 rm -rf /tmp/kamiwaza-ext-extract
 mkdir -p /tmp/kamiwaza-ext-extract
 tar -xzf "$EXT_BUNDLE" -C /tmp/kamiwaza-ext-extract
@@ -212,8 +212,8 @@ there.
 > **Upgrading a 1.0.0 production database to 1.2.0?** Stop here and follow the
 > [Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
 > before invoking `install-prod.sh`. The runbook requires the exact 1.2.0
-> candidate and its `release_origination.md`; the 1.2.0 values below are not
-> upgrade inputs for 1.2.0.
+> candidate and its `release_origination.md`; the fresh-install values below
+> are not upgrade inputs.
 
 Set the image tags for the bundle and run the offline installer. The values below match the published 1.2.0 build. If you are installing a different build, obtain its image override map from the publisher — `release_origination.md` records the app, containers, and frontend tags only.
 
