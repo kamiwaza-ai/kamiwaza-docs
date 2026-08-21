@@ -114,9 +114,15 @@ cat "${EXT_BUNDLE}".part-{000..004} > "${EXT_BUNDLE}"
 ln -sf kamiwaza-helm.00.tar kamiwaza-helm.tar
 sha256sum -c kamiwaza-helm.sha256
 sha256sum -c "${EXT_BUNDLE}.sha256"
+
+# Verify the prerequisites RPM against the hash recorded in release_origination.md.
+# Step 2 installs it as root, so establish its integrity first.
+grep -oE '^- kamiwaza-prod-[^:]+\.rpm: [0-9a-f]{64}' release_origination.md \
+  | sed -E 's/^- ([^:]+): ([0-9a-f]{64})$/\2  \1/' > kamiwaza-prod.sha256
+sha256sum -c kamiwaza-prod.sha256
 ```
 
-The `release_origination.md` artifact records the build provenance and the app, containers, and frontend image tags for this bundle. It does not enumerate the dependency image versions used in `KAMIWAZA_IMAGE_OVERRIDES` below.
+The `release_origination.md` artifact records the build provenance, the artifact hashes used in the check above, and the app, containers, and frontend image tags for this bundle. It does not enumerate the dependency image versions used in `KAMIWAZA_IMAGE_OVERRIDES` below.
 
 > If a download stalls, rerun the block — `curl --continue-at -` resumes partial files. If you downloaded on a separate connected machine, transfer the entire `/opt/kamiwaza/prereqs` directory to the same path on the target host before continuing.
 
