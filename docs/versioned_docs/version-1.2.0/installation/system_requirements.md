@@ -42,7 +42,7 @@ See [Special Considerations](#special-considerations) for detailed unified memor
 
 ### Storage
 
-Storage requirements are the same across all platforms.
+Storage *performance* requirements are the same across all platforms. Storage **capacity** figures below are for Linux hosts, where the installer preallocates cluster storage on the volume backing `/var/lib`. On macOS the cluster runs inside a user-scoped Podman machine — size that machine's disk to the same totals. See [Online Installation](online_install.md).
 
 #### Storage Performance
 
@@ -53,8 +53,15 @@ Storage requirements are the same across all platforms.
 
 #### Storage Capacity
 
-- **Minimum**: 100GB free disk space
-- **Recommended**: 200GB+ free disk space
+> **The installer preallocates cluster storage** on the volume backing `/var/lib`, so that filesystem — not the total disk — is the binding constraint. How much you need depends on the storage image size, and the two install paths default differently:
+
+| Install path | Storage image | Free space needed on `/var/lib` |
+|---|---|---|
+| **Offline** | `80G` — [the guide sets this](offline_install.md#step-5-install-kamiwaza) | **≥ 350 GB** |
+| **Online**, default | `700G` | **≈ 1.1 TB** |
+| **Online**, reduced | pass [`-e storage_host_prep_virtual_block_size=80G`](online_install.md#common-options) | **≥ 350 GB** |
+
+The image is preallocated at install time and also holds all stateful data, so size it for the data you expect to keep, not merely to complete the install.
 - Additional space for `/opt/kamiwaza` persistence
 
 #### Capacity Planning
@@ -68,7 +75,9 @@ Storage requirements are the same across all platforms.
 | **Vector Database** | 10GB | 100GB+ | For embeddings (if enabled) |
 | **Logs & Metrics** | 10GB | 50GB | Rotated logs, Ray dashboard data |
 | **Scratch Space** | 20GB | 100GB | Temporary files, downloads, builds |
-| **Total** | **170GB** | **900GB+** | |
+| **Total** | **350GB** | **1.1TB+** | Governed by the `/var/lib` floor above, not the sum of the rows |
+
+> The rows above describe how space is *used* once running. Sizing to their sum alone will fail at host prep: the binding constraint is the preallocated storage image, whose figure depends on your install path — see the table above.
 
 #### Storage Performance Requirements
 
@@ -201,9 +210,17 @@ free -h
 nproc
 # Expected: 8 or more cores
 
-# Check available disk space
+# Check available disk space on the volume backing /var/lib (the binding constraint)
+df -h /var/lib
+# Expected: At least 350GB for an offline install, or an online install passing
+# -e storage_host_prep_virtual_block_size=80G; 1.1TB+ for an online install at
+# the default storage image size
+
+# Check the root filesystem too
 df -h /
-# Expected: At least 100GB free (200GB+ recommended)
+# Expected: At least 30GB free (50GB for the offline install path)
+# If /var is not a separate mount, both commands report the same filesystem —
+# size the root volume to the /var/lib figure, not the sum of the two.
 ```
 
 ---
@@ -241,7 +258,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Hardware Specifications:**
 - **CPU:** 8-16 cores / 16-32 threads
 - **RAM:** 32GB (16GB minimum for development only)
-- **Storage:** 200GB NVMe SSD (100GB minimum)
+- **Storage:** 400GB NVMe SSD (350GB minimum, on the volume backing `/var/lib` — see [Storage Capacity](#storage-capacity)). This assumes the `80G` OSD override; at the default OSD size budget 1.1TB+.
 - **GPU:** Optional - Single GPU with 16-24GB VRAM
   - NVIDIA RTX 4090 (24GB)
   - NVIDIA RTX 4080 (16GB)
@@ -260,7 +277,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Hardware Specifications:**
 - **CPU:** 32 cores / 64 threads
 - **RAM:** 128-256GB system RAM
-- **Storage:** 1-2TB NVMe SSD
+- **Storage:** 1.2-2TB NVMe SSD (the 1.1TB default-OSD floor applies). The `80G` override drops the *install* floor to 350GB (provision 400GB to clear it comfortably), but size well above that for a Tier 2 model library — see Model Storage in [Capacity Planning](#capacity-planning)
 - **GPU:** 1-4 GPUs with 40GB+ VRAM each
   - 1-4x NVIDIA B200 (192GB HBM3e)
   - 1-4x NVIDIA H200 (141GB HBM3e)
@@ -287,7 +304,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Head Node (Control Plane):**
 - **CPU:** 16 cores / 32 threads
 - **RAM:** 64GB
-- **Storage:** 500GB NVMe SSD
+- **Storage:** 500GB NVMe SSD (assumes the `80G` OSD override; 1.1TB+ at the default OSD size)
 - **GPU:** Same class as worker nodes (homogeneous cluster recommended)
 - **Role:** Ray head, API gateway, scheduling, monitoring (head performs minimal extra work; Ray backend load is distributed across nodes)
 
@@ -322,14 +339,15 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 | Tier | Instance Type | vCPU | RAM | GPU | Storage |
 |------|--------------|------|-----|-----|---------|
-| **Tier 1: CPU-only** | `m6i.2xlarge` | 8 | 32GB | None | 200GB gp3 |
-| **Tier 1: With GPU** | `g5.xlarge` | 4 | 16GB | 1x A10G (24GB) | 200GB gp3 |
-| **Tier 1: Alternative** | `g5.2xlarge` | 8 | 32GB | 1x A10G (24GB) | 200GB gp3 |
+| **Tier 1: CPU-only** | `m6i.2xlarge` | 8 | 32GB | None | 400GB gp3 |
+| **Tier 1: With GPU** | `g5.xlarge` | 4 | 16GB | 1x A10G (24GB) | 400GB gp3 |
+| **Tier 1: Alternative** | `g5.2xlarge` | 8 | 32GB | 1x A10G (24GB) | 400GB gp3 |
 | **Tier 2: Multi-GPU** | `g5.12xlarge` | 48 | 192GB | 4x A10G (96GB) | 2TB gp3 |
 | **Tier 2: Alternative** | `p4d.24xlarge` | 96 | 1152GB | 8x A100 (320GB) | 2TB gp3 |
 | **Tier 3: All Nodes** | `p4d.24xlarge` | 96 | 1152GB | 8x A100 (320GB) | 2TB gp3 |
 
 **Notes:**
+- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
 - Use `gp3` SSD volumes (not `gp2`) for better performance/cost
 - For Tier 3 shared storage: Amazon FSx for Lustre or EFS (with Provisioned Throughput)
 - Use Placement Groups for low-latency multi-node clusters (Tier 3)
@@ -340,14 +358,15 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 | Tier | Machine Type | vCPU | RAM | GPU | Storage |
 |------|-------------|------|-----|-----|---------|
-| **Tier 1: CPU-only** | `n2-standard-8` | 8 | 32GB | None | 200GB SSD |
-| **Tier 1: With GPU** | `n1-standard-8` + `1x T4` | 8 | 30GB | 1x T4 (16GB) | 200GB SSD |
-| **Tier 1: Alternative** | `g2-standard-8` + `1x L4` | 8 | 32GB | 1x L4 (24GB) | 200GB SSD |
+| **Tier 1: CPU-only** | `n2-standard-8` | 8 | 32GB | None | 400GB SSD |
+| **Tier 1: With GPU** | `n1-standard-8` + `1x T4` | 8 | 30GB | 1x T4 (16GB) | 400GB SSD |
+| **Tier 1: Alternative** | `g2-standard-8` + `1x L4` | 8 | 32GB | 1x L4 (24GB) | 400GB SSD |
 | **Tier 2: Multi-GPU** | `a2-highgpu-4g` | 48 | 340GB | 4x A100 (160GB) | 2TB SSD |
 | **Tier 2: Alternative** | `g2-standard-48` + `4x L4` | 48 | 192GB | 4x L4 (96GB) | 2TB SSD |
 | **Tier 3: All Nodes** | `a2-highgpu-8g` | 96 | 680GB | 8x A100 (320GB) | 2TB SSD |
 
 **Notes:**
+- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
 - Use `pd-ssd` or `pd-balanced` persistent disks (not `pd-standard`)
 - For Tier 3 shared storage: Filestore High Scale tier (up to 10 GB/s)
 - Use Compact Placement for low-latency multi-node clusters (Tier 3)
@@ -358,9 +377,9 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 | Tier | VM Size | vCPU | RAM | GPU | Storage |
 |------|---------|------|-----|-----|---------|
-| **Tier 1: CPU-only** | `Standard_D8s_v5` | 8 | 32GB | None | 200GB Premium SSD |
-| **Tier 1: With GPU** | `Standard_NC4as_T4_v3` | 4 | 28GB | 1x T4 (16GB) | 200GB Premium SSD |
-| **Tier 1: Alternative** | `Standard_NC6s_v3` | 6 | 112GB | 1x V100 (16GB) | 200GB Premium SSD |
+| **Tier 1: CPU-only** | `Standard_D8s_v5` | 8 | 32GB | None | 400GB Premium SSD |
+| **Tier 1: With GPU** | `Standard_NC4as_T4_v3` | 4 | 28GB | 1x T4 (16GB) | 400GB Premium SSD |
+| **Tier 1: Alternative** | `Standard_NC6s_v3` | 6 | 112GB | 1x V100 (16GB) | 400GB Premium SSD |
 | **Tier 2: H100 (recommended)** | `Standard_NC40ads_H100_v5` | 40 | 320GB | 1x H100 (80GB) | 2TB Premium SSD |
 | **Tier 2: H100 Multi-GPU** | `Standard_NC80adis_H100_v5` | 80 | 640GB | 2x H100 (160GB) | 2TB Premium SSD |
 | **Tier 2: A100 Multi-GPU** | `Standard_NC96ads_A100_v4` | 96 | 880GB | 4x A100 (320GB) | 2TB Premium SSD |
@@ -369,6 +388,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: A100 Alternative** | `Standard_ND96asr_v4` | 96 | 900GB | 8x A100 (320GB) | 2TB Premium SSD |
 
 **Notes:**
+- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
 - Use Premium SSD (not Standard HDD or Standard SSD)
 - For Tier 3 shared storage: Azure NetApp Files Premium or Ultra tier
 - Use Proximity Placement Groups for low-latency multi-node clusters (Tier 3)
