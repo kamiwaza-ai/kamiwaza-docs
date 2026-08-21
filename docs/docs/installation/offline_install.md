@@ -44,16 +44,21 @@ Throughout this guide, replace the placeholders:
 
 The 1.2.0 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
 
-`RELEASE` must name the bundle exactly as it is published on Keygen. At the time of
-writing the published 1.2.0 bundle is `1.2.0-rc.3`; once a plain `1.2.0` bundle is
-published, use that instead. Check the artifact listing for your release rather than
-assuming — a `RELEASE` value that does not exist fails at the first download.
+`RELEASE` names the bundle as it is published on Keygen and must match an entry in
+your release's artifact listing — a value that does not exist fails at the first
+download.
+
+> **Installing before 1.2.0 is generally available?** The pre-release bundle is
+> published as `1.2.0-rc.3`. Set `RELEASE="1.2.0-rc.3"` and take the `EXT_BUNDLE`
+> filename from that bundle's artifact listing. Everything else on this page,
+> including the image tags and the override map, is unchanged — the pre-release
+> bundle already carries `release-1.2.0` images.
 
 The extension-bundle filename is likewise release-specific. The value below matches the published 1.2.0 bundle. If you are installing a different build, take the filename from the artifact listing for that release.
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
-export RELEASE="1.2.0-rc.3"
+export RELEASE="1.2.0"
 export EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
 export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
