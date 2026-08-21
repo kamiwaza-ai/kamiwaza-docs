@@ -11,7 +11,7 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
 - A **Kamiwaza Prod license key**, used to download the bundle artifacts from Keygen.
 - A RHEL-compatible 9.x host (x86_64) that meets the [System Requirements](system_requirements.md).
 - **Free disk space, on the right filesystems.** The offline flow stages large artifacts and provisions cluster storage under `/`, `/tmp`, and `/var/lib`. Confirm each path has room on the **volume that actually backs it** — on hosts with LVM or separate partitions (most cloud RHEL images ship this way), a large total disk does **not** help if `/var` is a small separate volume. Recommended free space:
-  - **`/var/lib` ≥ 350 GB** — the largest consumer, and mostly **preallocated**: the Rook/Ceph OSD image and the TopoLVM volume group backing stateful PVCs (150 GB) are both created up front, before any container image is pulled. The 350 GB figure assumes the OSD image is set to **80 GB**, which is what the `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G` export in [Step 5](#step-5-install-kamiwaza) does. **The installer's own default is 700 GB** — if you omit that export, budget **1.1 TB** on `/var/lib` instead. With the 80 GB OSD, adding the container images under `/var/lib/k0s` and `/var/lib/containers` and the extension bundle staged under `/var/lib/kajiya-reports`, a single-node install consumes roughly 270 GB. Leave headroom above that — Kubernetes begins evicting pods once the filesystem passes ~85% full.
+  - **`/var/lib` ≥ 350 GB**, assuming `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G` is set in [Step 5](#step-5-install-kamiwaza). Without that export the OSD image defaults to 700 GB and you need **1.1 TB** instead. The OSD image is preallocated at install time and also holds all stateful data, so size it for the data you expect to keep, not just to complete the install.
   - **`/tmp` ≥ 25 GB** — bundle extraction and install scratch space.
   - **`/` ≥ 50 GB** — the downloaded bundle and its recombined tarballs under `/opt/kamiwaza/prereqs` (~25 GB), plus installed tooling under `/opt` and `/usr/local`.
 
@@ -32,8 +32,8 @@ The extension-bundle filename is release-specific. The value below matches the p
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
-export RELEASE="1.2.0-rc.2"
-export EXT_BUNDLE="kamiwaza-extensions-bundle-20260820-155300.tar.gz"
+export RELEASE="1.2.0-rc.3"
+export EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
 export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs
@@ -107,8 +107,9 @@ sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
   --embedded-root /opt/kamiwaza/prereqs \
   --os rhel
 
-# Put the bundled tools on sudo's PATH, then re-run the bootstrap so its own
-# verification can see them. The second run reports "Bootstrap complete".
+# Put the bundled tools on sudo's PATH. Later steps call `sudo kubectl`, and the
+# bootstrap's own verification cannot see them either, so re-run it afterwards —
+# the second run reports "Bootstrap complete".
 for tool in helm helmfile k0s kind kubectl; do
   if [[ -x "/usr/local/bin/${tool}" ]]; then
     sudo ln -sfn "/usr/local/bin/${tool}" "/usr/bin/${tool}"
