@@ -26,14 +26,14 @@ Throughout this guide, replace the placeholders:
 
 ## Step 1: Download the Bundle Artifacts
 
-The 1.0.2 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
+The 1.2.0 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
 
-The extension-bundle filename is release-specific. The value below matches the published 1.0.2 bundle; if `release_origination.md` lists a different name for your build, use that instead.
+The extension-bundle filename is release-specific. The value below matches the published 1.2.0 bundle; if `release_origination.md` lists a different name for your build, use that instead.
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
-export RELEASE="1.0.2"
-export EXT_BUNDLE="kamiwaza-extensions-bundle-20260804-232618.tar.gz"
+export RELEASE="1.2.0-rc.2"
+export EXT_BUNDLE="kamiwaza-extensions-bundle-20260820-155300.tar.gz"
 export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs
@@ -51,7 +51,7 @@ for file in \
   kamiwaza-helm.00.tar.part-002 \
   kamiwaza-helm.00.tar.part-002.sha256 \
   kamiwaza-helm.00.tar.parts.json \
-  kamiwaza-prod-1.0.2-1.el9.x86_64.rpm \
+  kamiwaza-prod-1.2.0-1.el9.x86_64.rpm \
   "${EXT_BUNDLE}.sha256" \
   "${EXT_BUNDLE}.part-000" \
   "${EXT_BUNDLE}.part-000.sha256" \
@@ -61,6 +61,8 @@ for file in \
   "${EXT_BUNDLE}.part-002.sha256" \
   "${EXT_BUNDLE}.part-003" \
   "${EXT_BUNDLE}.part-003.sha256" \
+  "${EXT_BUNDLE}.part-004" \
+  "${EXT_BUNDLE}.part-004.sha256" \
   "${EXT_BUNDLE}.parts.json"
 do
   # Always attempt a resume: curl --continue-at - fetches a fresh file or
@@ -82,7 +84,7 @@ done
 
 # Recombine split parts and verify the full-artifact checksums
 cat kamiwaza-helm.00.tar.part-{000..002} > kamiwaza-helm.00.tar
-cat "${EXT_BUNDLE}".part-{000..003} > "${EXT_BUNDLE}"
+cat "${EXT_BUNDLE}".part-{000..004} > "${EXT_BUNDLE}"
 ln -sf kamiwaza-helm.00.tar kamiwaza-helm.tar
 sha256sum -c kamiwaza-helm.sha256
 sha256sum -c "${EXT_BUNDLE}.sha256"
@@ -105,10 +107,18 @@ sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
   --embedded-root /opt/kamiwaza/prereqs \
   --os rhel
 
-if [[ -x /usr/local/bin/kubectl ]]; then
-  sudo ln -sfn /usr/local/bin/kubectl /usr/bin/kubectl
-fi
+for tool in helm helmfile k0s kind kubectl; do
+  if [[ -x "/usr/local/bin/${tool}" ]]; then
+    sudo ln -sfn "/usr/local/bin/${tool}" "/usr/bin/${tool}"
+  fi
+done
 ```
+
+On RHEL 9 the bootstrap can exit nonzero reporting a bundled command missing
+even though every tool installed correctly, because it installs into
+`/usr/local/bin` and sudo's `secure_path` omits that directory. The symlink loop
+above resolves it — re-run the bootstrap afterwards and it reports
+`==> Bootstrap complete`.
 
 Verify the tools are present:
 
@@ -181,10 +191,10 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
 > **Upgrading a 1.0.0 production database to 1.2.0?** Stop here and follow the
 > [Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
 > before invoking `install-prod.sh`. The runbook requires the exact 1.2.0
-> candidate and its `release_origination.md`; the 1.0.2 values below are not
+> candidate and its `release_origination.md`; the 1.2.0 values below are not
 > upgrade inputs for 1.2.0.
 
-Set the image tags for the bundle and run the offline installer. The tag and image-override values below are the 1.0.2 release-scheme tags; the pinned dependency versions in `KAMIWAZA_IMAGE_OVERRIDES` are unchanged from 1.0.1 and match the published 1.0.2 build. If `release_origination.md` lists different values for your build, use those instead.
+Set the image tags for the bundle and run the offline installer. The values below match the published 1.2.0 build. `KAMIWAZA_IMAGE_OVERRIDES` is not optional: the bulk `KAMIWAZA_IMAGE_TAG` also moves dependency images that carry their own pinned versions, and omitting an entry leaves that workload requesting a tag the bundle does not contain. If `release_origination.md` lists different values for your build, use those instead.
 
 > **Keep `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G`** in the block below unless you have sized `/var/lib` for the 700 GB default — it is what brings the requirement down to the 350 GB floor in [Prerequisites](#prerequisites). This env var and the online guide's `-e storage_host_prep_virtual_block_size` extra-var are the same setting expressed two ways; the offline path sets it via the environment, the online path via an installer argument.
 
@@ -192,10 +202,10 @@ Set the image tags for the bundle and run the offline installer. The tag and ima
 export DOMAIN="<domain>"
 export ADMIN_PASSWORD="<admin-password>"
 
-export APP_TAG="release-1.0.2"
+export APP_TAG="release-1.2.0"
 export FRONTEND_TAG="${APP_TAG}"
-export CONTAINERS_TAG="release-1.0.2"
-export EXTENSION_OPERATOR_TAG="release-1.0.2"
+export CONTAINERS_TAG="release-1.2.0"
+export EXTENSION_OPERATOR_TAG="release-1.2.0"
 
 export KAMIWAZA_VERSION="${APP_TAG}"
 export KAMIWAZA_IMAGE_TAG="${APP_TAG}"
@@ -211,7 +221,7 @@ export KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG="${APP_TAG}"
 export KAMIWAZA_OFFLINE_CONTAINERS_IMAGE_TAG="${CONTAINERS_TAG}"
 export KAMIWAZA_OFFLINE_CHAINGUARD_BASE_TAG="${CONTAINERS_TAG}"
 
-export KAMIWAZA_IMAGE_OVERRIDES="keycloak=${CONTAINERS_TAG},postgres=v18.4,etcd=v3.6.10,kubectl=v1.35.5-dev,chainguard-base=${CONTAINERS_TAG},traefik=v3.6.20-kz.1,kafka-iamguarded=v4.3.0,neo4j=v5.26.25-kz.1,datahub-gms=${CONTAINERS_TAG},datahub-frontend=${CONTAINERS_TAG},datahub-upgrade=${CONTAINERS_TAG},datahub-postgres-setup=${CONTAINERS_TAG},vram-plugin=${APP_TAG},opensearch=v2.19.5,extension-operator=${EXTENSION_OPERATOR_TAG}"
+export KAMIWAZA_IMAGE_OVERRIDES="keycloak=${CONTAINERS_TAG},postgres=v18.4,etcd=v3.6.10,kubectl=v1.35.5-dev,chainguard-base=${CONTAINERS_TAG},traefik=v3.6.20-kz.1,kafka-iamguarded=v4.3.0,neo4j=v5.26.25-kz.1,datahub-gms=${CONTAINERS_TAG},datahub-frontend=${CONTAINERS_TAG},datahub-upgrade=${CONTAINERS_TAG},datahub-postgres-setup=${CONTAINERS_TAG},llamacpp=${CONTAINERS_TAG},whispercpp=${CONTAINERS_TAG},vram-plugin=${APP_TAG},opensearch=v2.19.5,extension-operator=${EXTENSION_OPERATOR_TAG}"
 
 sudo -E /opt/kamiwaza/scripts/install-prod.sh \
   --offline \
