@@ -42,7 +42,7 @@ See [Special Considerations](#special-considerations) for detailed unified memor
 
 ### Storage
 
-Storage *performance* requirements are the same across all platforms. Storage **capacity** figures below are for Linux hosts, where the installer preallocates cluster storage on the volume backing `/var`. On macOS the cluster runs inside a user-scoped Podman machine — size that machine's disk to the same totals. See [Online Installation](online_install.md).
+Storage *performance* requirements are the same across all platforms. Storage **capacity** figures below are for Linux hosts, where the installer preallocates cluster storage on the volume backing `/var`. On macOS the k0s cluster runs inside a user-scoped Lima virtual machine — size that virtual machine's disk to the same totals. See [Online Installation](online_install.md).
 
 #### Storage Performance
 

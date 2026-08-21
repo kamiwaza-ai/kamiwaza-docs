@@ -44,6 +44,8 @@ The installer provisions a single-host Kubernetes cluster and deploys the Kamiwa
 
 You provide a domain name (`--domain`) and an initial admin password (`--admin-password`) when you run the installer.
 
+The installer selects the k0s topology from the host operating system. macOS runs k0s inside a Lima virtual machine. Linux runs k0s directly on the host and uses Podman for supporting container workflows. Installation commands do not require a Kubernetes runtime argument.
+
 ## Multi-Node Deployments
 
 To run inference across a pair of nodes (for example, two NVIDIA DGX Spark systems using tensor parallelism), install Kamiwaza on the head node and follow the [Two-Node Deployment Guide](two-node-deployment.md).

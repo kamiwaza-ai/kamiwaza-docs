@@ -49,7 +49,7 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
 
   Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
 
-  **On macOS** the installer runs the cluster inside a user-scoped Podman machine rather than on the host's `/var`, so the figures above do not apply directly — size the Podman machine's disk (and the free space on your startup volume backing it) to the same totals instead.
+  **On macOS** the installer runs k0s inside a user-scoped Lima virtual machine rather than on the host's `/var`, so the figures above do not apply directly — size the Lima virtual machine's disk (and the free space on your startup volume backing it) to the same totals instead.
 - Outbound DNS and HTTPS access to:
   - your OS package repositories,
   - `raw.pkg.keygen.sh` (installer and fallback artifacts),
@@ -101,8 +101,10 @@ KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
 
 > **If you sized the host to the 350 GB floor rather than 1.1 TB**, add `-e storage_host_prep_virtual_block_size=80G` to the command above. Without it the installer provisions the default 700 GB OSD image and fails at host prep. See [Prerequisites](#prerequisites).
 
-- **On Linux**, the installer re-executes itself through `sudo -E` when it needs elevated privileges.
-- **On macOS**, run as the target admin user rather than as root. The installer uses Homebrew and Podman state scoped to that user and prompts through `sudo` only for privileged setup steps.
+- **On Linux**, the installer runs k0s directly on the host and uses Podman for supporting container workflows. It re-executes itself through `sudo -E` when it needs elevated privileges.
+- **On macOS**, the installer runs k0s inside Lima. Run as the target admin user rather than as root. The installer uses Homebrew and Lima state scoped to that user and prompts through `sudo` only for privileged setup steps.
+
+The host operating system selects the cluster topology automatically. Do not pass a Kubernetes runtime argument: macOS uses k0s in Lima, and Linux uses native k0s.
 
 Before extracting its payload or installing any prerequisites, the installer validates that your license can access the required Keygen images and exits immediately if it cannot. On a supported Linux host without `curl`, it first installs only `curl` and the CA certificate package needed for that check; the remaining prerequisites are not installed until the license check succeeds.
 
