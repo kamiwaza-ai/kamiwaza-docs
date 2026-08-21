@@ -28,7 +28,7 @@ Throughout this guide, replace the placeholders:
 
 The 1.2.0 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
 
-The extension-bundle filename is release-specific. The value below matches the published 1.2.0 bundle; if `release_origination.md` lists a different name for your build, use that instead.
+The extension-bundle filename is release-specific. The value below matches the published 1.2.0 bundle. If you are installing a different build, take the filename from the artifact listing for that release.
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
@@ -90,7 +90,7 @@ sha256sum -c kamiwaza-helm.sha256
 sha256sum -c "${EXT_BUNDLE}.sha256"
 ```
 
-The `release_origination.md` artifact records the exact build provenance and image tags for this bundle. Refer to it if any of the version tags below differ from what shipped in your release.
+The `release_origination.md` artifact records the build provenance and the app, containers, and frontend image tags for this bundle. It does not enumerate the dependency image versions used in `KAMIWAZA_IMAGE_OVERRIDES` below.
 
 > If a download stalls, rerun the block — `curl --continue-at -` resumes partial files. If you downloaded on a separate connected machine, transfer the entire `/opt/kamiwaza/prereqs` directory to the same path on the target host before continuing.
 
@@ -101,24 +101,30 @@ Install the prerequisites RPM and run the bootstrap script, which installs the c
 ```bash
 cd /opt/kamiwaza/prereqs
 
-sudo dnf install -y perl
 sudo rpm -Uvh --replacepkgs ./kamiwaza-prod-*.x86_64.rpm
+
 sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
   --embedded-root /opt/kamiwaza/prereqs \
   --os rhel
 
+# Put the bundled tools on sudo's PATH, then re-run the bootstrap so its own
+# verification can see them. The second run reports "Bootstrap complete".
 for tool in helm helmfile k0s kind kubectl; do
   if [[ -x "/usr/local/bin/${tool}" ]]; then
     sudo ln -sfn "/usr/local/bin/${tool}" "/usr/bin/${tool}"
   fi
 done
+
+sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
+  --embedded-root /opt/kamiwaza/prereqs \
+  --os rhel
 ```
 
-On RHEL 9 the bootstrap can exit nonzero reporting a bundled command missing
-even though every tool installed correctly, because it installs into
-`/usr/local/bin` and sudo's `secure_path` omits that directory. The symlink loop
-above resolves it — re-run the bootstrap afterwards and it reports
-`==> Bootstrap complete`.
+The first bootstrap run commonly exits nonzero on RHEL 9 with `ERROR: required
+bundled command missing after install: helm`, even though every tool installed
+correctly: the bootstrap installs into `/usr/local/bin`, which sudo's
+`secure_path` omits, so its own verification cannot see them. The symlink loop
+and second run in the block above resolve it.
 
 Verify the tools are present:
 
@@ -131,7 +137,7 @@ checks=(
   "kubectl::kubectl version --client"
   "helm::helm version --short"
   "helmfile::helmfile --version"
-  "helm diff::helm dt version"
+  "helm dt::helm dt version"
 )
 
 for check in "${checks[@]}"; do
@@ -146,7 +152,13 @@ for check in "${checks[@]}"; do
 done
 ```
 
-If verification reports a missing tool, install it from the OS package manager and re-verify:
+Every tool above ships in the bundle, so a failure here means the bootstrap did
+not complete rather than that something is missing from the host. Re-run the
+bootstrap and re-verify before considering other sources.
+
+On a host that still has repository access you can install a missing tool
+directly, but this reaches the OS package repositories and is not available on
+an air-gapped host:
 
 ```bash
 sudo dnf install -y ansible-core podman kubectl
@@ -184,7 +196,15 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
   --extract-dir /var/lib/kajiya-reports/extensions-bundle-preinstall \
   --skip-images \
   --skip-catalog
+
+# The /tmp copy only supplies the helper script. The install itself runs from
+# the --extract-dir copy, so reclaim the scratch space before installing.
+rm -rf /tmp/kamiwaza-ext-extract
 ```
+
+This stages the bundle under `/var/lib/kajiya-reports/extensions-bundle-preinstall`
+(about 24 GB); [Step 6](#step-6-finish-extension-installation) installs from
+there.
 
 ## Step 5: Install Kamiwaza
 
@@ -194,7 +214,15 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
 > candidate and its `release_origination.md`; the 1.2.0 values below are not
 > upgrade inputs for 1.2.0.
 
-Set the image tags for the bundle and run the offline installer. The values below match the published 1.2.0 build. `KAMIWAZA_IMAGE_OVERRIDES` is not optional: the bulk `KAMIWAZA_IMAGE_TAG` also moves dependency images that carry their own pinned versions, and omitting an entry leaves that workload requesting a tag the bundle does not contain. If `release_origination.md` lists different values for your build, use those instead.
+Set the image tags for the bundle and run the offline installer. The values below match the published 1.2.0 build. If you are installing a different build, obtain its image override map from the publisher — `release_origination.md` records the app, containers, and frontend tags only.
+
+Both `KAMIWAZA_IMAGE_TAG` and `KAMIWAZA_IMAGE_OVERRIDES` are required, and they correct each other:
+
+- `KAMIWAZA_IMAGE_TAG` moves the platform images to the release tag. Without it, `extension-operator` and `placement-operator` request `develop` and stay in `ImagePullBackOff`.
+- `postgres` and `keycloak` are excluded from that bulk tag and would otherwise fall back to chart pins the bundle does not contain.
+- `etcd` is moved *by* the bulk tag and must be pinned back to the version in the bundle.
+
+Omitting any of the four leaves a workload requesting a tag the local registry does not have.
 
 > **Keep `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G`** in the block below unless you have sized `/var/lib` for the 700 GB default — it is what brings the requirement down to the 350 GB floor in [Prerequisites](#prerequisites). This env var and the online guide's `-e storage_host_prep_virtual_block_size` extra-var are the same setting expressed two ways; the offline path sets it via the environment, the online path via an installer argument.
 
@@ -221,7 +249,7 @@ export KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG="${APP_TAG}"
 export KAMIWAZA_OFFLINE_CONTAINERS_IMAGE_TAG="${CONTAINERS_TAG}"
 export KAMIWAZA_OFFLINE_CHAINGUARD_BASE_TAG="${CONTAINERS_TAG}"
 
-export KAMIWAZA_IMAGE_OVERRIDES="keycloak=${CONTAINERS_TAG},postgres=v18.4,etcd=v3.6.10,kubectl=v1.35.5-dev,chainguard-base=${CONTAINERS_TAG},traefik=v3.6.20-kz.1,kafka-iamguarded=v4.3.0,neo4j=v5.26.25-kz.1,datahub-gms=${CONTAINERS_TAG},datahub-frontend=${CONTAINERS_TAG},datahub-upgrade=${CONTAINERS_TAG},datahub-postgres-setup=${CONTAINERS_TAG},llamacpp=${CONTAINERS_TAG},whispercpp=${CONTAINERS_TAG},vram-plugin=${APP_TAG},opensearch=v2.19.5,extension-operator=${EXTENSION_OPERATOR_TAG}"
+export KAMIWAZA_IMAGE_OVERRIDES="postgres=v18.4,keycloak=${CONTAINERS_TAG},etcd=v3.6.10"
 
 sudo -E /opt/kamiwaza/scripts/install-prod.sh \
   --offline \
