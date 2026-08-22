@@ -42,7 +42,7 @@ See [Special Considerations](#special-considerations) for detailed unified memor
 
 ### Storage
 
-Storage *performance* requirements are the same across all platforms. Storage **capacity** figures below are for Linux hosts, where the installer preallocates cluster storage on the volume backing `/var`. On macOS the cluster runs inside a user-scoped Podman machine — size that machine's disk to the same totals. See [Online Installation](online_install.md).
+Storage *performance* requirements are the same across all platforms. Storage **capacity** figures below are for Linux hosts, where the installer preallocates cluster storage on the volume backing `/var/lib`. On macOS the cluster runs inside a user-scoped Podman machine — size that machine's disk to the same totals. See [Online Installation](online_install.md).
 
 #### Storage Performance
 
@@ -53,10 +53,15 @@ Storage *performance* requirements are the same across all platforms. Storage **
 
 #### Storage Capacity
 
-> **1.0.x installer (k0s):** the cluster's storage is **preallocated** on the volume backing `/var`, so it needs far more free space than the generic figures below. Budget **≥ 350 GB on `/var`** with the `80G` OSD override, up to **≈ 1.1 TB at the default OSD size**. See [Online Installation](online_install.md) and [Offline Installation](offline_install.md) for the authoritative per-filesystem floor and how to size the OSD image.
+> **The installer preallocates cluster storage** on the volume backing `/var/lib`, so that filesystem — not the total disk — is the binding constraint. How much you need depends on the storage image size, and the two install paths default differently:
 
-- **Minimum**: 350GB free on the volume backing `/var` (with the `80G` OSD override)
-- **Recommended**: 1.1TB+ on `/var` at the default OSD size
+| Install path | Storage image | Free space needed on `/var/lib` |
+|---|---|---|
+| **Offline** | `80G` — [the guide sets this](offline_install.md#step-5-install-kamiwaza) | **≥ 350 GB** |
+| **Online**, default | `700G` | **≈ 1.1 TB** |
+| **Online**, reduced | pass [`-e storage_host_prep_virtual_block_size=80G`](online_install.md#common-options) | **≥ 350 GB** |
+
+The image is preallocated at install time and also holds all stateful data, so size it for the data you expect to keep, not merely to complete the install.
 - Additional space for `/opt/kamiwaza` persistence
 
 #### Capacity Planning
@@ -70,9 +75,9 @@ Storage *performance* requirements are the same across all platforms. Storage **
 | **Vector Database** | 10GB | 100GB+ | For embeddings (if enabled) |
 | **Logs & Metrics** | 10GB | 50GB | Rotated logs, Ray dashboard data |
 | **Scratch Space** | 20GB | 100GB | Temporary files, downloads, builds |
-| **Total** | **350GB** | **1.1TB+** | Governed by the `/var` floor above, not the sum of the rows |
+| **Total** | **350GB** | **1.1TB+** | Governed by the `/var/lib` floor above, not the sum of the rows |
 
-> The rows above describe how space is *used* once running. The binding constraint at install time is the preallocated cluster storage on `/var` — **350 GB** with the `80G` OSD override, **1.1 TB** at the default OSD size. Sizing to the per-component sum alone will fail at host prep.
+> The rows above describe how space is *used* once running. Sizing to their sum alone will fail at host prep: the binding constraint is the preallocated storage image, whose figure depends on your install path — see the table above.
 
 #### Storage Performance Requirements
 
@@ -205,15 +210,17 @@ free -h
 nproc
 # Expected: 8 or more cores
 
-# Check available disk space on the volume backing /var (the binding constraint)
-df -h /var
-# Expected: At least 350GB free with the `80G` OSD override; 1.1TB+ at the default OSD size
+# Check available disk space on the volume backing /var/lib (the binding constraint)
+df -h /var/lib
+# Expected: At least 350GB for an offline install, or an online install passing
+# -e storage_host_prep_virtual_block_size=80G; 1.1TB+ for an online install at
+# the default storage image size
 
 # Check the root filesystem too
 df -h /
 # Expected: At least 30GB free (50GB for the offline install path)
 # If /var is not a separate mount, both commands report the same filesystem —
-# size the root volume to the /var figure, not the sum of the two.
+# size the root volume to the /var/lib figure, not the sum of the two.
 ```
 
 ---
@@ -251,7 +258,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Hardware Specifications:**
 - **CPU:** 8-16 cores / 16-32 threads
 - **RAM:** 32GB (16GB minimum for development only)
-- **Storage:** 400GB NVMe SSD (350GB minimum, on the volume backing `/var` — see [Storage Capacity](#storage-capacity)). This assumes the `80G` OSD override; at the default OSD size budget 1.1TB+.
+- **Storage:** 400GB NVMe SSD (350GB minimum, on the volume backing `/var/lib` — see [Storage Capacity](#storage-capacity)). This assumes the `80G` OSD override; at the default OSD size budget 1.1TB+.
 - **GPU:** Optional - Single GPU with 16-24GB VRAM
   - NVIDIA RTX 4090 (24GB)
   - NVIDIA RTX 4080 (16GB)
@@ -340,7 +347,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: All Nodes** | `p4d.24xlarge` | 96 | 1152GB | 8x A100 (320GB) | 2TB gp3 |
 
 **Notes:**
-- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var` (see [Storage Capacity](#storage-capacity))
+- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
 - Use `gp3` SSD volumes (not `gp2`) for better performance/cost
 - For Tier 3 shared storage: Amazon FSx for Lustre or EFS (with Provisioned Throughput)
 - Use Placement Groups for low-latency multi-node clusters (Tier 3)
@@ -359,7 +366,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: All Nodes** | `a2-highgpu-8g` | 96 | 680GB | 8x A100 (320GB) | 2TB SSD |
 
 **Notes:**
-- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var` (see [Storage Capacity](#storage-capacity))
+- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
 - Use `pd-ssd` or `pd-balanced` persistent disks (not `pd-standard`)
 - For Tier 3 shared storage: Filestore High Scale tier (up to 10 GB/s)
 - Use Compact Placement for low-latency multi-node clusters (Tier 3)
@@ -381,7 +388,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: A100 Alternative** | `Standard_ND96asr_v4` | 96 | 900GB | 8x A100 (320GB) | 2TB Premium SSD |
 
 **Notes:**
-- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var` (see [Storage Capacity](#storage-capacity))
+- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
 - Use Premium SSD (not Standard HDD or Standard SSD)
 - For Tier 3 shared storage: Azure NetApp Files Premium or Ultra tier
 - Use Proximity Placement Groups for low-latency multi-node clusters (Tier 3)
