@@ -99,10 +99,21 @@ The mesh proxy forwards requests to remote federated clusters. Every request is 
 ### Proxy Path Pattern
 
 ```
-{METHOD} /api/mesh/{federation_name}/{remote_path}
+{METHOD} /api/mesh/{federation_selector}/{remote_path}
 ```
 
-The `{federation_name}` is the `remote_cluster_name` from the federation record. The `{remote_path}` is the path on the remote cluster (without the `/api` prefix — it's re-added by the proxy).
+`{federation_selector}` accepts an exact federation UUID, an exact remote cluster
+UUID, or the federation record's `remote_cluster_name` as an exact or prefix
+match. Use the federation UUID for automation. A name or prefix that matches
+multiple paired rows returns `409 mesh_target_ambiguous` instead of choosing a
+peer.
+
+`remote_cluster_name` is the peer label stored when the federation is created
+or paired. Ping does not refresh it after a peer rename. The cached old name
+and federation UUID continue to work; re-pairing adopts the new display name.
+
+`{remote_path}` is the path on the remote cluster. The proxy adds `/api` when
+the path does not already begin with `/api` or `/runtime`.
 
 **Authorization:** Mesh egress is **authenticated-only** — any authenticated local
 user may call `/api/mesh/{fed}/*`. There is **no** `federation:operator` gate on the
