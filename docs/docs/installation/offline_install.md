@@ -5,10 +5,6 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
 **Supported host:** RHEL-compatible 9.x (x86_64).
 
 > This is an advanced, operator-driven path. If your host has internet access, use the simpler [Online Installation](online_install.md) instead.
->
-> For an install that must be verified artifact-by-artifact against a specific
-> immutable release — or that is driven over SSM or another managed shell — follow
-> the [Offline Installation Runbook](offline_install_runbook.md).
 
 ## Prerequisites
 
@@ -22,6 +18,22 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
   A small default `/tmp` or `/var` is the most common cause of install failure. It surfaces in one of three ways, none of which mentions disk space directly: the preflight aborts at `storage_host_prep` with an `fs-virtual-block free space` error; an image import fails with `no space left on device`; or the helmfile sync fails roughly ten minutes in with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods — that last one is the kubelet disk-pressure taint, not a cert-manager fault. Grow the backing LV or partition (or mount adequate storage at `/var/lib`) **before** you begin.
 - A machine with internet access to download the bundle, and a way to transfer files to the target host.
 
+Confirm which filesystem actually backs each path before you transfer anything — a
+large total disk tells you nothing if `/var` is a separate logical volume:
+
+```bash
+df -hT / /tmp /var/tmp /var/lib /opt
+findmnt -T /var/lib
+lsblk -f
+```
+
+The host's static hostname must be **54 characters or fewer**. Longer names
+overflow the certificate subject fields the cluster generates:
+
+```bash
+hostnamectl --static | tr -d '\n' | wc -c
+```
+
 Throughout this guide, replace the placeholders:
 
 - `<license-key>` — your Kamiwaza Prod license key.
@@ -32,16 +44,43 @@ Throughout this guide, replace the placeholders:
 
 The 1.2.0 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
 
-The extension-bundle filename is release-specific. The value below matches the published 1.2.0 bundle. If you are installing a different build, take the filename from the artifact listing for that release.
+`RELEASE` names the bundle as it is published on Keygen and must match an entry in
+your release's artifact listing — a value that does not exist fails at the first
+download.
+
+> **Installing before 1.2.0 is generally available?** The pre-release bundle is
+> published as `1.2.0-rc.3`. Set `RELEASE="1.2.0-rc.3"` and take the `EXT_BUNDLE`
+> filename from that bundle's artifact listing. Everything else on this page,
+> including the image tags and the override map, is unchanged — the pre-release
+> bundle already carries `release-1.2.0` images.
+
+The extension-bundle filename is likewise release-specific. The value below matches the published 1.2.0 bundle. If you are installing a different build, take the filename from the artifact listing for that release.
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
-export RELEASE="1.2.0-rc.3"
-export EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
-export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
+
+# The whole block runs fail-fast in a subshell: any failed download, checksum, or
+# reassembly stops it immediately rather than leaving partial artifacts to be
+# transferred or installed. The trap removes the credential file on every exit
+# path, including failure.
+(
+set -euo pipefail
+
+RELEASE="1.2.0"
+EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
+BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs
 cd /opt/kamiwaza/prereqs
+
+# Pass the license key to curl through a private header file rather than an
+# argument. Anything in argv is visible in `ps` output for the whole download.
+# Keep this file outside /opt/kamiwaza/prereqs so it is not carried along when
+# that directory is transferred to the target host.
+KEYGEN_HEADER="$(mktemp)"
+chmod 600 "${KEYGEN_HEADER}"
+trap 'rm -f "${KEYGEN_HEADER}"' EXIT
+printf 'Authorization: License %s\n' "${KEYGEN_TOKEN}" > "${KEYGEN_HEADER}"
 
 for file in \
   release_origination.md \
@@ -73,7 +112,7 @@ do
   # resumes a partial one, so rerunning the block after an interruption
   # repairs truncated downloads instead of skipping them.
   curl -fL --retry 5 --retry-delay 10 --retry-all-errors --continue-at - \
-    -H "Authorization: License ${KEYGEN_TOKEN}" \
+    -H @"${KEYGEN_HEADER}" \
     -o "$file" \
     "${BASE}/${file}"
 done
@@ -92,9 +131,16 @@ cat "${EXT_BUNDLE}".part-{000..004} > "${EXT_BUNDLE}"
 ln -sf kamiwaza-helm.00.tar kamiwaza-helm.tar
 sha256sum -c kamiwaza-helm.sha256
 sha256sum -c "${EXT_BUNDLE}.sha256"
+
+# Verify the prerequisites RPM against the hash recorded in release_origination.md.
+# Step 2 installs it as root, so establish its integrity first.
+grep -oE '^- kamiwaza-prod-[^:]+\.rpm: [0-9a-f]{64}' release_origination.md \
+  | sed -E 's/^- ([^:]+): ([0-9a-f]{64})$/\2  \1/' > kamiwaza-prod.sha256
+sha256sum -c kamiwaza-prod.sha256
+)
 ```
 
-The `release_origination.md` artifact records the build provenance and the app, containers, and frontend image tags for this bundle. It does not enumerate the dependency image versions used in `KAMIWAZA_IMAGE_OVERRIDES` below.
+The `release_origination.md` artifact records the build provenance, the artifact hashes used in the check above, and the app, containers, and frontend image tags for this bundle. It does not enumerate the dependency image versions used in `KAMIWAZA_IMAGE_OVERRIDES` below.
 
 > If a download stalls, rerun the block — `curl --continue-at -` resumes partial files. If you downloaded on a separate connected machine, transfer the entire `/opt/kamiwaza/prereqs` directory to the same path on the target host before continuing.
 
@@ -190,7 +236,7 @@ Stage the extension bundle before installing the platform:
 ```bash
 cd /opt/kamiwaza/prereqs
 
-EXT_BUNDLE="${EXT_BUNDLE:-$(ls -1 kamiwaza-extensions-bundle-*.tar.gz | tail -1)}"
+EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
 rm -rf /tmp/kamiwaza-ext-extract
 mkdir -p /tmp/kamiwaza-ext-extract
 tar -xzf "$EXT_BUNDLE" -C /tmp/kamiwaza-ext-extract
@@ -229,11 +275,31 @@ Both `KAMIWAZA_IMAGE_TAG` and `KAMIWAZA_IMAGE_OVERRIDES` are required, and they 
 
 Omitting the bulk tag, or any one of the three overrides, leaves a workload requesting a tag the local registry does not have.
 
+> **Installing over SSM, or any connection that can drop?** The install runs for
+> roughly 15-20 minutes in the foreground, and losing the session loses the
+> controlling process. Run the whole Step 5 block inside a detached terminal
+> multiplexer, so the exported values below stay in the same shell as the
+> installer and the run survives a disconnect:
+>
+> ```bash
+> tmux new -s kamiwaza-install     # or: screen -S kamiwaza-install
+> ```
+>
+> Export the block below and run `install-prod.sh` inside that session; reattach
+> after a drop with `tmux attach -t kamiwaza-install`. Judge the result from the
+> installer's exit status and the final Ansible recap (`failed=0`,
+> `unreachable=0`), not from log activity — a quiet log is not a finished
+> install.
+
 > **Keep `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G`** in the block below unless you have sized `/var/lib` for the 700 GB default — it is what brings the requirement down to the 350 GB floor in [Prerequisites](#prerequisites). This env var and the online guide's `-e storage_host_prep_virtual_block_size` extra-var are the same setting expressed two ways; the offline path sets it via the environment, the online path via an installer argument.
 
 ```bash
 export DOMAIN="<domain>"
-export ADMIN_PASSWORD="<admin-password>"
+
+# install-prod.sh reads the admin password from this variable and unsets it
+# immediately, so it never appears in the installer's arguments where `ps` would
+# expose it for the whole run.
+export KAMIWAZA_ADMIN_PASSWORD="<admin-password>"
 
 export APP_TAG="release-1.2.0"
 export FRONTEND_TAG="${APP_TAG}"
@@ -259,7 +325,6 @@ export KAMIWAZA_IMAGE_OVERRIDES="postgres=v18.4,keycloak=${CONTAINERS_TAG},etcd=
 sudo -E /opt/kamiwaza/scripts/install-prod.sh \
   --offline \
   --domain "${DOMAIN}" \
-  --admin-password "${ADMIN_PASSWORD}" \
   --wrap-bundle '/opt/kamiwaza/prereqs/kamiwaza-helm.*.tar' \
   --wrap-sha256 /opt/kamiwaza/prereqs/kamiwaza-helm.sha256 \
   --wrap-signature /opt/kamiwaza/prereqs/kamiwaza-helm.asc \
@@ -275,6 +340,7 @@ Make sure `${DOMAIN}` resolves from the install host, then install the extension
 ```bash
 export DOMAIN="<domain>"
 export ADMIN_PASSWORD="<admin-password>"
+export EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
 
 # Add a hosts-file entry if the domain does not already resolve locally
 if ! curl -ksS "https://${DOMAIN}/api/health" >/dev/null; then
@@ -282,10 +348,11 @@ if ! curl -ksS "https://${DOMAIN}/api/health" >/dev/null; then
   echo "${NODE_IP:-127.0.0.1} ${DOMAIN}" | sudo tee -a /etc/hosts
 fi
 
-BUNDLE_ROOT="$(sudo find /var/lib/kajiya-reports/extensions-bundle-preinstall \
-  -maxdepth 1 -type d -name 'kamiwaza-extensions-bundle-*' | head -1)"
+# Derive the staged path from the bundle name rather than searching for it, so a
+# retry or a second staged release cannot select the wrong extension tree.
+BUNDLE_ROOT="/var/lib/kajiya-reports/extensions-bundle-preinstall/${EXT_BUNDLE%.tar.gz}"
 
-test -n "${BUNDLE_ROOT}" || { echo "No pre-extracted extension bundle found"; exit 1; }
+sudo test -d "${BUNDLE_ROOT}" || { echo "No pre-staged extension bundle at ${BUNDLE_ROOT}"; exit 1; }
 
 printf '%s\n' "${ADMIN_PASSWORD}" | sudo "${BUNDLE_ROOT}/scripts/install-extensions-bundle.sh" \
   --bundle-root "${BUNDLE_ROOT}" \

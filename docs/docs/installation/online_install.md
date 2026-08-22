@@ -21,6 +21,13 @@ images are pulled from Keygen.
   - **`/var` ≥ 1.1 TB** — the install consumes roughly **890 GB** here: the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`. Size the volume so that 890 GB leaves you under the ~85% disk-pressure threshold described below: 890 GB on a 1 TB volume is 89% and still inside the eviction range, so **1.1 TB** (≈81%) is the practical floor.
   - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
 
+  Confirm which filesystem actually backs the path before you begin:
+
+  ```bash
+  df -hT /var/lib
+  findmnt -T /var/lib
+  ```
+
   **On a smaller host, reduce the OSD image** rather than provisioning 1.1 TB. Passing `-e storage_host_prep_virtual_block_size=80G` — the same 80 GB OSD size the offline install guide recommends — brings the requirement down to **350 GB on `/var`**:
 
   ```bash
@@ -173,6 +180,7 @@ Frequently used **install arguments**:
 - `--admin-password <value>`: Initial admin password.
 - `-y`, `--yes`: Non-interactive install.
 - `-e k8s_runtime=kind`: Select the legacy Kind runtime when using the optional raw-image preload.
+- `-e storage_host_prep_virtual_block_size=<size>`: Size of the preallocated OSD image on the volume backing `/var`. Defaults to `700G`, which requires roughly 1.1 TB free; `80G` reduces the requirement to about 350 GB. See [Prerequisites](#prerequisites).
 
 Frequently used **installer options**:
 
