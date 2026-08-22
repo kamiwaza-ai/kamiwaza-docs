@@ -5,13 +5,17 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
 **Supported host:** RHEL-compatible 9.x (x86_64).
 
 > This is an advanced, operator-driven path. If your host has internet access, use the simpler [Online Installation](online_install.md) instead.
+>
+> For an install that must be verified artifact-by-artifact against a specific
+> immutable release — or that is driven over SSM or another managed shell — follow
+> the [Offline Installation Runbook](offline_install_runbook.md).
 
 ## Prerequisites
 
 - A **Kamiwaza Prod license key**, used to download the bundle artifacts from Keygen.
 - A RHEL-compatible 9.x host (x86_64) that meets the [System Requirements](system_requirements.md).
 - **Free disk space, on the right filesystems.** The offline flow stages large artifacts and provisions cluster storage under `/`, `/tmp`, and `/var/lib`. Confirm each path has room on the **volume that actually backs it** — on hosts with LVM or separate partitions (most cloud RHEL images ship this way), a large total disk does **not** help if `/var` is a small separate volume. Recommended free space:
-  - **`/var/lib` ≥ 350 GB** — the largest consumer, and mostly **preallocated**: the Rook/Ceph OSD image and the TopoLVM volume group backing stateful PVCs (150 GB) are both created up front, before any container image is pulled. The 350 GB figure assumes the OSD image is set to **80 GB**, which is what the `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G` export in [Step 5](#step-5-install-kamiwaza) does. **The installer's own default is 700 GB** — if you omit that export, budget **1.1 TB** on `/var/lib` instead. With the 80 GB OSD, adding the container images under `/var/lib/k0s` and `/var/lib/containers` and the extension bundle staged under `/var/lib/kajiya-reports`, a single-node install consumes roughly 270 GB. Leave headroom above that — Kubernetes begins evicting pods once the filesystem passes ~85% full.
+  - **`/var/lib` ≥ 350 GB**, assuming `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G` is set in [Step 5](#step-5-install-kamiwaza). Without that export the OSD image defaults to 700 GB and you need **1.1 TB** instead. The OSD image is preallocated at install time and also holds all stateful data, so size it for the data you expect to keep, not just to complete the install.
   - **`/tmp` ≥ 25 GB** — bundle extraction and install scratch space.
   - **`/` ≥ 50 GB** — the downloaded bundle and its recombined tarballs under `/opt/kamiwaza/prereqs` (~25 GB), plus installed tooling under `/opt` and `/usr/local`.
 
@@ -26,14 +30,14 @@ Throughout this guide, replace the placeholders:
 
 ## Step 1: Download the Bundle Artifacts
 
-The 1.0.2 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
+The 1.2.0 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
 
-The extension-bundle filename is release-specific. The value below matches the published 1.0.2 bundle; if `release_origination.md` lists a different name for your build, use that instead.
+The extension-bundle filename is release-specific. The value below matches the published 1.2.0 bundle. If you are installing a different build, take the filename from the artifact listing for that release.
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
-export RELEASE="1.0.2"
-export EXT_BUNDLE="kamiwaza-extensions-bundle-20260804-232618.tar.gz"
+export RELEASE="1.2.0-rc.3"
+export EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
 export BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs
@@ -51,7 +55,7 @@ for file in \
   kamiwaza-helm.00.tar.part-002 \
   kamiwaza-helm.00.tar.part-002.sha256 \
   kamiwaza-helm.00.tar.parts.json \
-  kamiwaza-prod-1.0.2-1.el9.x86_64.rpm \
+  kamiwaza-prod-1.2.0-1.el9.x86_64.rpm \
   "${EXT_BUNDLE}.sha256" \
   "${EXT_BUNDLE}.part-000" \
   "${EXT_BUNDLE}.part-000.sha256" \
@@ -61,6 +65,8 @@ for file in \
   "${EXT_BUNDLE}.part-002.sha256" \
   "${EXT_BUNDLE}.part-003" \
   "${EXT_BUNDLE}.part-003.sha256" \
+  "${EXT_BUNDLE}.part-004" \
+  "${EXT_BUNDLE}.part-004.sha256" \
   "${EXT_BUNDLE}.parts.json"
 do
   # Always attempt a resume: curl --continue-at - fetches a fresh file or
@@ -82,13 +88,13 @@ done
 
 # Recombine split parts and verify the full-artifact checksums
 cat kamiwaza-helm.00.tar.part-{000..002} > kamiwaza-helm.00.tar
-cat "${EXT_BUNDLE}".part-{000..003} > "${EXT_BUNDLE}"
+cat "${EXT_BUNDLE}".part-{000..004} > "${EXT_BUNDLE}"
 ln -sf kamiwaza-helm.00.tar kamiwaza-helm.tar
 sha256sum -c kamiwaza-helm.sha256
 sha256sum -c "${EXT_BUNDLE}.sha256"
 ```
 
-The `release_origination.md` artifact records the exact build provenance and image tags for this bundle. Refer to it if any of the version tags below differ from what shipped in your release.
+The `release_origination.md` artifact records the build provenance and the app, containers, and frontend image tags for this bundle. It does not enumerate the dependency image versions used in `KAMIWAZA_IMAGE_OVERRIDES` below.
 
 > If a download stalls, rerun the block — `curl --continue-at -` resumes partial files. If you downloaded on a separate connected machine, transfer the entire `/opt/kamiwaza/prereqs` directory to the same path on the target host before continuing.
 
@@ -99,16 +105,31 @@ Install the prerequisites RPM and run the bootstrap script, which installs the c
 ```bash
 cd /opt/kamiwaza/prereqs
 
-sudo dnf install -y perl
 sudo rpm -Uvh --replacepkgs ./kamiwaza-prod-*.x86_64.rpm
+
 sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
   --embedded-root /opt/kamiwaza/prereqs \
   --os rhel
 
-if [[ -x /usr/local/bin/kubectl ]]; then
-  sudo ln -sfn /usr/local/bin/kubectl /usr/bin/kubectl
-fi
+# Put the bundled tools on sudo's PATH. Later steps call `sudo kubectl`, and the
+# bootstrap's own verification cannot see them either, so re-run it afterwards —
+# the second run reports "Bootstrap complete".
+for tool in helm helmfile k0s kubectl; do
+  if [[ -x "/usr/local/bin/${tool}" ]]; then
+    sudo ln -sfn "/usr/local/bin/${tool}" "/usr/bin/${tool}"
+  fi
+done
+
+sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
+  --embedded-root /opt/kamiwaza/prereqs \
+  --os rhel
 ```
+
+The first bootstrap run commonly exits nonzero on RHEL 9 with `ERROR: required
+bundled command missing after install: helm`, even though every tool installed
+correctly: the bootstrap installs into `/usr/local/bin`, which sudo's
+`secure_path` omits, so its own verification cannot see them. The symlink loop
+and second run in the block above resolve it.
 
 Verify the tools are present:
 
@@ -121,7 +142,7 @@ checks=(
   "kubectl::kubectl version --client"
   "helm::helm version --short"
   "helmfile::helmfile --version"
-  "helm diff::helm dt version"
+  "helm dt::helm dt version"
 )
 
 for check in "${checks[@]}"; do
@@ -136,7 +157,13 @@ for check in "${checks[@]}"; do
 done
 ```
 
-If verification reports a missing tool, install it from the OS package manager and re-verify:
+Every tool above ships in the bundle, so a failure here means the bootstrap did
+not complete rather than that something is missing from the host. Re-run the
+bootstrap and re-verify before considering other sources.
+
+On a host that still has repository access you can install a missing tool
+directly, but this reaches the OS package repositories and is not available on
+an air-gapped host:
 
 ```bash
 sudo dnf install -y ansible-core podman kubectl
@@ -163,7 +190,7 @@ Stage the extension bundle before installing the platform:
 ```bash
 cd /opt/kamiwaza/prereqs
 
-EXT_BUNDLE="$(ls -1 kamiwaza-extensions-bundle-*.tar.gz | head -1)"
+EXT_BUNDLE="${EXT_BUNDLE:-$(ls -1 kamiwaza-extensions-bundle-*.tar.gz | tail -1)}"
 rm -rf /tmp/kamiwaza-ext-extract
 mkdir -p /tmp/kamiwaza-ext-extract
 tar -xzf "$EXT_BUNDLE" -C /tmp/kamiwaza-ext-extract
@@ -174,17 +201,33 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
   --extract-dir /var/lib/kajiya-reports/extensions-bundle-preinstall \
   --skip-images \
   --skip-catalog
+
+# The /tmp copy only supplies the helper script. The install itself runs from
+# the --extract-dir copy, so reclaim the scratch space before installing.
+rm -rf /tmp/kamiwaza-ext-extract
 ```
+
+This stages the bundle under `/var/lib/kajiya-reports/extensions-bundle-preinstall`
+(about 24 GB); [Step 6](#step-6-finish-extension-installation) installs from
+there.
 
 ## Step 5: Install Kamiwaza
 
 > **Upgrading a 1.0.0 production database to 1.2.0?** Stop here and follow the
 > [Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
 > before invoking `install-prod.sh`. The runbook requires the exact 1.2.0
-> candidate and its `release_origination.md`; the 1.0.2 values below are not
-> upgrade inputs for 1.2.0.
+> candidate and its `release_origination.md`; the fresh-install values below
+> are not upgrade inputs.
 
-Set the image tags for the bundle and run the offline installer. The tag and image-override values below are the 1.0.2 release-scheme tags; the pinned dependency versions in `KAMIWAZA_IMAGE_OVERRIDES` are unchanged from 1.0.1 and match the published 1.0.2 build. If `release_origination.md` lists different values for your build, use those instead.
+Set the image tags for the bundle and run the offline installer. The values below match the published 1.2.0 build. If you are installing a different build, obtain its image override map from the publisher — `release_origination.md` records the app, containers, and frontend tags only.
+
+Both `KAMIWAZA_IMAGE_TAG` and `KAMIWAZA_IMAGE_OVERRIDES` are required, and they correct each other:
+
+- `KAMIWAZA_IMAGE_TAG` moves the platform images to the release tag. Without it, `extension-operator` and `placement-operator` request `develop` and stay in `ImagePullBackOff`.
+- `postgres` and `keycloak` are excluded from that bulk tag and would otherwise fall back to chart pins the bundle does not contain.
+- `etcd` is moved *by* the bulk tag and must be pinned back to the version in the bundle.
+
+Omitting the bulk tag, or any one of the three overrides, leaves a workload requesting a tag the local registry does not have.
 
 > **Keep `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G`** in the block below unless you have sized `/var/lib` for the 700 GB default — it is what brings the requirement down to the 350 GB floor in [Prerequisites](#prerequisites). This env var and the online guide's `-e storage_host_prep_virtual_block_size` extra-var are the same setting expressed two ways; the offline path sets it via the environment, the online path via an installer argument.
 
@@ -192,14 +235,13 @@ Set the image tags for the bundle and run the offline installer. The tag and ima
 export DOMAIN="<domain>"
 export ADMIN_PASSWORD="<admin-password>"
 
-export APP_TAG="release-1.0.2"
+export APP_TAG="release-1.2.0"
 export FRONTEND_TAG="${APP_TAG}"
-export CONTAINERS_TAG="release-1.0.2"
-export EXTENSION_OPERATOR_TAG="release-1.0.2"
+export CONTAINERS_TAG="release-1.2.0"
+export EXTENSION_OPERATOR_TAG="release-1.2.0"
 
 export KAMIWAZA_VERSION="${APP_TAG}"
 export KAMIWAZA_IMAGE_TAG="${APP_TAG}"
-export KAMIWAZA_K8S_RUNTIME="k0s-podman"
 export KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G
 export KAMIWAZA_RESOURCE_PROFILE=small
 export HELMFILE_EXTRA_SET="--set global.security.allowInsecureImages=true"
@@ -211,7 +253,7 @@ export KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG="${APP_TAG}"
 export KAMIWAZA_OFFLINE_CONTAINERS_IMAGE_TAG="${CONTAINERS_TAG}"
 export KAMIWAZA_OFFLINE_CHAINGUARD_BASE_TAG="${CONTAINERS_TAG}"
 
-export KAMIWAZA_IMAGE_OVERRIDES="keycloak=${CONTAINERS_TAG},postgres=v18.4,etcd=v3.6.10,kubectl=v1.35.5-dev,chainguard-base=${CONTAINERS_TAG},traefik=v3.6.20-kz.1,kafka-iamguarded=v4.3.0,neo4j=v5.26.25-kz.1,datahub-gms=${CONTAINERS_TAG},datahub-frontend=${CONTAINERS_TAG},datahub-upgrade=${CONTAINERS_TAG},datahub-postgres-setup=${CONTAINERS_TAG},vram-plugin=${APP_TAG},opensearch=v2.19.5,extension-operator=${EXTENSION_OPERATOR_TAG}"
+export KAMIWAZA_IMAGE_OVERRIDES="postgres=v18.4,keycloak=${CONTAINERS_TAG},etcd=v3.6.10"
 
 sudo -E /opt/kamiwaza/scripts/install-prod.sh \
   --offline \

@@ -1,14 +1,14 @@
 # Installing Kamiwaza
 
-This guide covers how to install Kamiwaza 1.0.2 on a supported host.
+This guide covers how to install Kamiwaza on a supported host.
 
 ## Before You Begin
 
 **Review the [System Requirements](system_requirements.md) first.** They cover supported operating systems, hardware sizing (CPU, RAM, storage), GPU support, and the network access the installer needs.
 
-You also need a **Kamiwaza license key**. Kamiwaza 1.0.2 is distributed through [Keygen](https://keygen.sh/): the installer and platform images are pulled from Keygen using a Kamiwaza Prod license key. Contact your Kamiwaza representative if you do not have one.
+You also need a **Kamiwaza license key**. Kamiwaza is distributed through [Keygen](https://keygen.sh/): the installer and platform images are pulled from Keygen using a Kamiwaza Prod license key. Contact your Kamiwaza representative if you do not have one.
 
-> Kamiwaza 1.0.2 is licensed software. There is no free "Community Edition" build, and the previous `.deb` / `.rpm` packages from `packages.kamiwaza.ai` are no longer used. If you are looking for the older packages or the Windows installer, select an earlier version from the version dropdown at the top of this site.
+> Kamiwaza is licensed software. There is no free "Community Edition" build, and the previous `.deb` / `.rpm` packages from `packages.kamiwaza.ai` are no longer used. If you are looking for the older packages or the Windows installer, select an earlier version from the version dropdown at the top of this site.
 
 ## Choose an Installation Method
 
@@ -30,7 +30,7 @@ Both methods install the same platform. The difference is only how the installer
 | RHEL-compatible 9.x | ✅ | ✅ |
 | macOS | ✅ | — |
 
-> All installs require a Kamiwaza Prod license key. GPU acceleration (NVIDIA CUDA, AMD ROCm, or NVIDIA vLLM) is optional and selected during installation — see [Online Installation](online_install.md#gpu-and-inference-images) and the [System Requirements](system_requirements.md).
+> All installs require a Kamiwaza Prod license key. GPU acceleration (NVIDIA CUDA, AMD ROCm, or NVIDIA vLLM) is optional, and inference images are pulled when a model is deployed. See [System Requirements](system_requirements.md) for supported host software.
 
 ## What Happens During Installation
 

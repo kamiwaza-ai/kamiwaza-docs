@@ -1,6 +1,7 @@
 # Uninstalling Kamiwaza
 
-This page describes how to remove Kamiwaza 1.0.2 from a host.
+This page describes how to remove Kamiwaza 1.2.0 from a host using the
+supported uninstall wrappers shipped with the deployment payload.
 
 > **This is destructive.** Uninstalling removes the local Kubernetes cluster, all Kamiwaza containers and images, and platform data. Back up anything you need — models, configuration, and any data in the platform database — before you begin.
 
@@ -17,23 +18,49 @@ A Kamiwaza install consists of:
 
 Before removing anything, export or copy any data you need to keep. Once the cluster and `/opt/kamiwaza` are removed, platform data cannot be recovered.
 
-## Step 2: Remove the cluster and runtime
+## Step 2: Run the matching uninstall wrapper
 
-All supported single-host installs use k0s. The installer records whether k0s runs inside Lima on macOS or directly on Linux, and the matching uninstall wrapper uses that record. Do not delete the cluster with raw `k0s`, Lima, or Podman commands.
+All supported single-host installs use k0s. The installer records whether k0s
+runs inside Lima on macOS or directly on Linux, and the matching uninstall
+wrapper uses that record. Do not delete the cluster with raw `k0s`, Lima, or
+Podman commands.
 
-For an installation created from a `deploy` checkout, run the wrapper from the same checkout:
+Confirm whether the host is a production/package install or a source-based
+developer install. Do not mix the two wrappers.
+
+For a production or offline-package install, use the wrapper installed by the
+package payload:
 
 ```bash
+sudo /opt/kamiwaza/bin/uninstall-prod.sh
+```
+
+For a source-based development install, run from the matching `deploy`
+checkout:
+
+```bash
+cd /path/to/kamiwaza-stack/deploy
 ./scripts/uninstall-dev.sh
 ```
 
-For an offline RHEL installation, run the packaged production wrapper:
+For an online installation, use the production uninstall wrapper from the
+matching extracted installer payload. The `--keep-extract` installer option
+preserves that payload. Contact Kamiwaza support if it is no longer available;
+using a wrapper from a different release can apply the wrong cleanup contract.
+
+These commands are destructive and ask for confirmation. Add `--full-cleanup`
+only when you also intend to remove the retained runtime/prerequisite state.
+Use `--help` to inspect the exact release's options before running it.
+
+After the wrapper finishes, confirm that no Kamiwaza containers remain:
 
 ```bash
-sudo /opt/kamiwaza/scripts/uninstall-prod.sh
+sudo podman ps -a
 ```
 
-For an online installation, use the uninstall wrapper from the matching extracted installer payload. The `--keep-extract` installer option preserves that payload. Contact Kamiwaza support if the matching payload is no longer available; using a wrapper from a different release can apply the wrong cleanup contract.
+If `/opt/kamiwaza/bin/uninstall-prod.sh` is absent, stop and identify the
+installer/package version before removing directories manually. The payload
+and its uninstall playbooks must remain present until the wrapper completes.
 
 The standard wrappers remove Kamiwaza-owned runtime resources while preserving unrelated Podman resources. Review the wrapper's `--help` output before using its full-cleanup option, which also removes shared tooling and Podman state.
 

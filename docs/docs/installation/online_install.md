@@ -1,6 +1,10 @@
 # Online Installation
 
-The online installer is the recommended way to install Kamiwaza 1.0.2 on an internet-connected host. It is a single self-contained script that bundles the deploy payload, playbooks, and Helm chart dependencies. Host tools are installed from your OS package manager, and the Kamiwaza platform images are pulled from Keygen.
+The online installer is the recommended way to install a published Kamiwaza
+release on an internet-connected host. It is a single self-contained script
+that bundles the deploy payload, playbooks, and Helm chart dependencies. Host
+tools are installed from your OS package manager, and the Kamiwaza platform
+images are pulled from Keygen.
 
 **Supported hosts:**
 
@@ -63,8 +67,17 @@ The online installer is the recommended way to install Kamiwaza 1.0.2 on an inte
 
 Download the installer and its checksum, verify the checksum, then make the installer executable:
 
+Choose and record an explicit version that has been published to the online
+installer channel. Do not assume that the documentation version is already
+available as an installer artifact, and do not use an unrecorded `latest` alias
+for a production install. The release owner must supply the version explicitly:
+
 ```bash
-base_url="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-online-installer/@kamiwaza-online-installer/1.0.2"
+: "${KAMIWAZA_VERSION:?set KAMIWAZA_VERSION to a published installer version}"
+case "$KAMIWAZA_VERSION" in
+  *[!0-9A-Za-z._-]*|'') echo "invalid version" >&2; exit 1 ;;
+esac
+base_url="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-online-installer/@kamiwaza-online-installer/${KAMIWAZA_VERSION}"
 
 for file in kamiwaza-online-install.sh kamiwaza-online-install.sh.sha256; do
   curl -fsSLO "${base_url}/${file}"
@@ -75,6 +88,10 @@ sha256sum -c kamiwaza-online-install.sh.sha256
 chmod +x kamiwaza-online-install.sh
 ```
 
+Keep the version, resolved download URL, checksum file, and verified SHA-256 in
+the installation record. A checksum fetched from a different version does not
+verify the selected installer.
+
 On macOS, replace the verification command with:
 
 ```bash
@@ -83,11 +100,12 @@ shasum -a 256 -c kamiwaza-online-install.sh.sha256
 
 ## Step 2: Run the Installer
 
-> **Upgrading a 1.0.0 production database to 1.2.0?** Stop here and follow the
+> **Upgrading an existing production database?** Follow the
 > [Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
-> before invoking an installer. The runbook requires the exact 1.2.0 candidate,
-> a pre-mutation backup, schema gates, stop rules, and recovery evidence. The
-> 1.0.2 download example above is not an upgrade artifact for 1.2.0.
+> before invoking the installer. The runbook requires the exact release
+> candidate, a pre-mutation backup, schema gates, stop rules, and recovery
+> evidence. Do not use the example download above for an upgrade unless it
+> matches the exact artifact specified by the runbook.
 
 Run the installer on the target host, supplying your license key, domain, and an initial admin password:
 
@@ -110,31 +128,9 @@ Before extracting its payload or installing any prerequisites, the installer val
 
 > Passing the license key through the `KEYGEN_LICENSE_KEY` environment variable keeps it out of the installer's command-line arguments, where it could otherwise be visible in `ps` output or logs. You can also use `KAMIWAZA_KEYGEN_LICENSE_KEY` or the `--keygen-license-key` option. If you also want to keep the key out of your interactive shell history, set the variable from somewhere other than the command line — for example a `.env` file you source, or your shell profile — following your environment's own conventions for handling secrets.
 
-## GPU and Inference Images
+## Inference images
 
-Large inference images are not all downloaded during installation. To enable GPU-accelerated inference, add the one image package that matches your hardware with `--keygen-raw-image-package`:
-
-| Hardware | Package |
-| --- | --- |
-| NVIDIA with CUDA 12 | `kamiwaza-llamacpp-cuda12` |
-| NVIDIA with CUDA 13 | `kamiwaza-llamacpp-cuda13` |
-| AMD CDNA | `kamiwaza-llamacpp-rocm-cdna` |
-| AMD RDNA | `kamiwaza-llamacpp-rocm-rdna` |
-| AMD gfx1151 | `kamiwaza-llamacpp-rocm-gfx1151` |
-| NVIDIA vLLM (Ampere or newer) | `kamiwaza-vllm` |
-
-For example, to install on an NVIDIA CUDA 12 host:
-
-```bash
-KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
-./kamiwaza-online-install.sh \
-  --keygen-raw-image-package kamiwaza-llamacpp-cuda12 \
-  --domain <domain> \
-  --admin-password "<initial-admin-password>" \
-  -y
-```
-
-The same `-e storage_host_prep_virtual_block_size=80G` note above applies here. The installer always includes the required core and Kaizen agent images. If your NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
+Supported k0s installs pull inference images from the authenticated registry when a model is deployed; no raw-image preload or Kubernetes runtime argument is required. Select a model engine compatible with the host hardware. If an NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
 
 ## Common Options
 
@@ -151,7 +147,6 @@ Frequently used **install arguments**:
 Frequently used **installer options**:
 
 - `--keygen-license-key <key>`: Keygen license key used for image pulls. Prefer the `KEYGEN_LICENSE_KEY` environment variable so the key does not appear in the installer's command-line arguments.
-- `--keygen-raw-image-package <name>`: Preload one optional image package (see [GPU and Inference Images](#gpu-and-inference-images)). Repeat for each package you need.
 - `--keep-extract`: Preserve the extracted payload after the install.
 - `--phase1-only`: Stop after host prerequisites and cluster bootstrap.
 
