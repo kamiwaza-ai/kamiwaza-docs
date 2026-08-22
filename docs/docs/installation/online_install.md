@@ -53,7 +53,7 @@ images are pulled from Keygen.
 
   Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
 
-  **On macOS** the installer runs the cluster inside a user-scoped Podman machine rather than on the host's `/var`, so the figures above do not apply directly — size the Podman machine's disk (and the free space on your startup volume backing it) to the same totals instead.
+  **On macOS** the installer runs k0s inside a user-scoped Lima virtual machine rather than on the host's `/var`, so the figures above do not apply directly — size the Lima virtual machine's disk (and the free space on your startup volume backing it) to the same totals instead.
 - Outbound DNS and HTTPS access to:
   - your OS package repositories,
   - `raw.pkg.keygen.sh` (installer and fallback artifacts),
@@ -119,47 +119,18 @@ KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
 
 > **If you sized the host to the 350 GB floor rather than 1.1 TB**, add `-e storage_host_prep_virtual_block_size=80G` to the command above. Without it the installer provisions the default 700 GB OSD image and fails at host prep. See [Prerequisites](#prerequisites).
 
-- **On Linux**, the installer re-executes itself through `sudo -E` when it needs elevated privileges.
-- **On macOS**, run as the target admin user rather than as root. The installer uses Homebrew and Podman state scoped to that user and prompts through `sudo` only for privileged setup steps.
+- **On Linux**, the installer runs k0s directly on the host and uses Podman for supporting container workflows. It re-executes itself through `sudo -E` when it needs elevated privileges.
+- **On macOS**, the installer runs k0s inside Lima. Run as the target admin user rather than as root. The installer uses Homebrew and Lima state scoped to that user and prompts through `sudo` only for privileged setup steps.
+
+The host operating system selects the cluster topology automatically. Do not pass a Kubernetes runtime argument: macOS uses k0s in Lima, and Linux uses native k0s.
 
 Before extracting its payload or installing any prerequisites, the installer validates that your license can access the required Keygen images and exits immediately if it cannot. On a supported Linux host without `curl`, it first installs only `curl` and the CA certificate package needed for that check; the remaining prerequisites are not installed until the license check succeeds.
 
 > Passing the license key through the `KEYGEN_LICENSE_KEY` environment variable keeps it out of the installer's command-line arguments, where it could otherwise be visible in `ps` output or logs. You can also use `KAMIWAZA_KEYGEN_LICENSE_KEY` or the `--keygen-license-key` option. If you also want to keep the key out of your interactive shell history, set the variable from somewhere other than the command line — for example a `.env` file you source, or your shell profile — following your environment's own conventions for handling secrets.
 
-## Optional raw image preload
+## Inference images
 
-The installer normally uses `k0s-podman`, and the charts pull inference images from the authenticated registry when a model is deployed. The `--keygen-raw-image-packages` option applies only to the legacy Kind runtime. It preloads a space- or comma-separated replacement list of raw image archives into the Kind nodes.
-
-The default list is `kamiwaza-opensearch kamiwaza-vllm kamiwaza-kaizen-agent kamiwaza-kaizen-backend kamiwaza-omniparse`. A custom list replaces that default, so include every default package that the installation still needs.
-
-The plural `--keygen-raw-image-packages` option is the current installer interface. The singular form shown in older release documentation is not a supported current installer option.
-
-This release provides the following hardware-specific raw package basenames:
-
-| Hardware and engine | Package basename |
-| --- | --- |
-| NVIDIA with CUDA 12, llama.cpp | `kamiwaza-llamacpp-cuda12` |
-| NVIDIA with CUDA 13, llama.cpp | `kamiwaza-llamacpp-cuda13` |
-| NVIDIA amd64, Ampere or newer, vLLM | `kamiwaza-vllm` |
-| NVIDIA ARM64, including DGX Spark, vLLM | `kamiwaza-vllm-cuda-arm64` |
-| AMD CDNA, llama.cpp | `kamiwaza-llamacpp-rocm-cdna` |
-| AMD RDNA, including gfx1151, llama.cpp | `kamiwaza-llamacpp-rocm-rdna` |
-
-For gfx1151, the generic RDNA package replaces the earlier hardware-specific bridge and is the Strix Halo path validated for this release.
-
-For example, this Kind installation replaces the default amd64 vLLM archive with the ARM64 vLLM archive while retaining the other default packages:
-
-```bash
-KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
-./kamiwaza-online-install.sh \
-  --keygen-raw-image-packages "kamiwaza-opensearch kamiwaza-vllm-cuda-arm64 kamiwaza-kaizen-agent kamiwaza-kaizen-backend kamiwaza-omniparse" \
-  --domain <domain> \
-  --admin-password "<initial-admin-password>" \
-  -y \
-  -e k8s_runtime=kind
-```
-
-The same `-e storage_host_prep_virtual_block_size=80G` note above applies here. The installer always includes the required core and Kaizen agent images; because a custom raw-image list replaces the defaults, retain the Kaizen agent and backend packages when installing Kaizen. If your NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
+Supported k0s installs pull inference images from the authenticated registry when a model is deployed; no raw-image preload or Kubernetes runtime argument is required. Select a model engine compatible with the host hardware. If an NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
 
 ## Common Options
 
@@ -172,12 +143,10 @@ Frequently used **install arguments**:
 - `--domain <value>`: Public base domain for Kamiwaza.
 - `--admin-password <value>`: Initial admin password.
 - `-y`, `--yes`: Non-interactive install.
-- `-e k8s_runtime=kind`: Select the legacy Kind runtime when using the optional raw-image preload.
 
 Frequently used **installer options**:
 
 - `--keygen-license-key <key>`: Keygen license key used for image pulls. Prefer the `KEYGEN_LICENSE_KEY` environment variable so the key does not appear in the installer's command-line arguments.
-- `--keygen-raw-image-packages <list>`: Replace the raw image package preload list for a Kind installation. Supply a space- or comma-separated list; the option has no effect on the default `k0s-podman` runtime. See [Optional raw image preload](#optional-raw-image-preload).
 - `--keep-extract`: Preserve the extracted payload after the install.
 - `--phase1-only`: Stop after host prerequisites and cluster bootstrap.
 

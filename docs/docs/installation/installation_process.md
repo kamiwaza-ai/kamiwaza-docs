@@ -30,7 +30,7 @@ Both methods install the same platform. The difference is only how the installer
 | RHEL-compatible 9.x | ✅ | ✅ |
 | macOS | ✅ | — |
 
-> All installs require a Kamiwaza Prod license key. GPU acceleration (NVIDIA CUDA, AMD ROCm, or NVIDIA vLLM) is optional. The default `k0s-podman` runtime pulls inference images when needed; Kind installations can use an [optional raw image preload](online_install.md#optional-raw-image-preload). See [System Requirements](system_requirements.md) for supported host software.
+> All installs require a Kamiwaza Prod license key. GPU acceleration (NVIDIA CUDA, AMD ROCm, or NVIDIA vLLM) is optional, and inference images are pulled when a model is deployed. See [System Requirements](system_requirements.md) for supported host software.
 
 ## What Happens During Installation
 
@@ -43,6 +43,8 @@ The installer provisions a single-host Kubernetes cluster and deploys the Kamiwa
 5. Configures access at `https://<your-domain>/`.
 
 You provide a domain name (`--domain`) and an initial admin password (`--admin-password`) when you run the installer.
+
+The installer selects the k0s topology from the host operating system. macOS runs k0s inside a Lima virtual machine. Linux runs k0s directly on the host and uses Podman for supporting container workflows. Installation commands do not require a Kubernetes runtime argument.
 
 ## Multi-Node Deployments
 

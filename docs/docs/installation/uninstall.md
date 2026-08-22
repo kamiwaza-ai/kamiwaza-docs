@@ -20,14 +20,13 @@ Before removing anything, export or copy any data you need to keep. Once the clu
 
 ## Step 2: Run the matching uninstall wrapper
 
+All supported single-host installs use k0s. The installer records whether k0s
+runs inside Lima on macOS or directly on Linux, and the matching uninstall
+wrapper uses that record. Do not delete the cluster with raw `k0s`, Lima, or
+Podman commands.
+
 Confirm whether the host is a production/package install or a source-based
 developer install. Do not mix the two wrappers.
-
-```bash
-# Inspect the running cluster and its nodes
-kubectl get nodes -o wide
-kubectl get pods -A
-```
 
 For a production or offline-package install, use the wrapper installed by the
 package payload:
@@ -44,7 +43,12 @@ cd /path/to/kamiwaza-stack/deploy
 ./scripts/uninstall-dev.sh
 ```
 
-Both commands are destructive and ask for confirmation. Add `--full-cleanup`
+For an online installation, use the production uninstall wrapper from the
+matching extracted installer payload. The `--keep-extract` installer option
+preserves that payload. Contact Kamiwaza support if it is no longer available;
+using a wrapper from a different release can apply the wrong cleanup contract.
+
+These commands are destructive and ask for confirmation. Add `--full-cleanup`
 only when you also intend to remove the retained runtime/prerequisite state.
 Use `--help` to inspect the exact release's options before running it.
 
@@ -58,7 +62,9 @@ If `/opt/kamiwaza/bin/uninstall-prod.sh` is absent, stop and identify the
 installer/package version before removing directories manually. The payload
 and its uninstall playbooks must remain present until the wrapper completes.
 
-## Step 3: Remove the Prerequisites Package (Offline RHEL Installs)
+The standard wrappers remove Kamiwaza-owned runtime resources while preserving unrelated Podman resources. Review the wrapper's `--help` output before using its full-cleanup option, which also removes shared tooling and Podman state.
+
+## Step 3: Remove the prerequisites package (offline RHEL installs)
 
 Offline RHEL installs place the prerequisites via the `kamiwaza-prod` RPM. Remove it once the cluster is torn down:
 
@@ -68,7 +74,7 @@ sudo dnf remove kamiwaza-prod
 
 Online installs do not install a Kamiwaza package and can skip this step.
 
-## Step 4: Remove Install Directories
+## Step 4: Remove install directories
 
 Once the cluster is gone, remove the Kamiwaza directories:
 
@@ -79,7 +85,7 @@ sudo rm -rf /etc/kamiwaza
 
 > Keep these directories if you are reinstalling and want to preserve configuration.
 
-## Step 5: Verify Removal
+## Step 5: Verify removal
 
 ```bash
 # Install directories removed
