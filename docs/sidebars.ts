@@ -130,6 +130,7 @@ const sidebars: SidebarsConfig = {
 					label: "Overview",
 				},
 				"data-connectors",
+				"dynamic-data-connectors",
 				"data-catalog",
 				"retrieval-service",
 			],
