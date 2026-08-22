@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Kamiwaza REST API",
-    "version": "1.0.2"
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -11049,6 +11049,93 @@
         }
       }
     },
+    "/catalog/containers/registered-sources": {
+      "get": {
+        "tags": [
+          "catalog",
+          "catalog",
+          "containers"
+        ],
+        "summary": "List Registered Source Containers",
+        "description": "List registered source summaries without enumerating child datasets.",
+        "operationId": "list_registered_source_containers_catalog_containers_registered_sources_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque source cursor",
+              "title": "Cursor"
+            },
+            "description": "Opaque source cursor"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredSourceContainerPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/catalog/containers/by-urn": {
       "get": {
         "tags": [
@@ -16559,6 +16646,69 @@
         }
       }
     },
+    "/cluster/remote/identity-status": {
+      "post": {
+        "tags": [
+          "cluster-remote"
+        ],
+        "summary": "Handle Remote Identity Status",
+        "description": "Return a bounded IdP-status lease to the exact PSK-authenticated peer.",
+        "operationId": "handle_remote_identity_status_cluster_remote_identity_status_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FederatedIdentityChallenge"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FederatedIdentityChallengeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2Login": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/cluster/remote/disconnect": {
       "post": {
         "tags": [
@@ -20776,6 +20926,69 @@
         }
       }
     },
+    "/ingestion/ingest/register": {
+      "post": {
+        "tags": [
+          "ingestion",
+          "ingestion"
+        ],
+        "summary": "Register Source",
+        "operationId": "register_source_ingestion_ingest_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/ingestion/ingest/emit": {
       "post": {
         "tags": [
@@ -21829,6 +22042,70 @@
         }
       }
     },
+    "/retrieval/query-jobs": {
+      "post": {
+        "tags": [
+          "retrieval",
+          "retrieval"
+        ],
+        "summary": "Create Structured Retrieval Job",
+        "description": "Create a versioned, fail-closed governed-record query job.",
+        "operationId": "create_structured_retrieval_job_retrieval_query_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordQueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/retrieval/jobs/{job_id}/cancel": {
       "post": {
         "tags": [
@@ -21969,6 +22246,70 @@
         "summary": "Stream Retrieval Job",
         "description": "Stream only legacy retrieval jobs.",
         "operationId": "stream_retrieval_job_retrieval_jobs__job_id__stream_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
+    "/retrieval/query-jobs/{job_id}/stream": {
+      "get": {
+        "tags": [
+          "retrieval",
+          "retrieval"
+        ],
+        "summary": "Stream Record Query Job",
+        "description": "Stream one versioned governed-record query job.",
+        "operationId": "stream_record_query_job_retrieval_query_jobs__job_id__stream_get",
         "security": [
           {
             "BearerAuth": []
@@ -46566,6 +46907,36 @@
           "template_type": "app"
         }
       },
+      "ApprovedPythonPackage": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "sha256": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "sha256"
+        ],
+        "title": "ApprovedPythonPackage",
+        "description": "One immutable repository artifact approved for job installation."
+      },
       "ArtifactCreate": {
         "properties": {
           "kind": {
@@ -54201,7 +54572,10 @@
           "approval_required",
           "credential_binding_unavailable",
           "provider_transient_failure",
-          "ambiguous_effect_outcome"
+          "ambiguous_effect_outcome",
+          "delegated_resource_unavailable",
+          "delegated_operation_unavailable",
+          "delegation_revoked"
         ],
         "title": "DelegatedErrorCode"
       },
@@ -55883,7 +56257,7 @@
               }
             ],
             "title": "Healthcheck",
-            "description": "Health check configuration for readiness/liveness/startup probes. When both are positive, startPeriod must be at least periodSeconds."
+            "description": "Health check configuration for readiness/liveness/startup probes"
           },
           "persistence": {
             "anyOf": [
@@ -58684,6 +59058,16 @@
               }
             ],
             "description": "Exact receiver resources made available through the job agent."
+          },
+          "python_packages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Python Packages",
+            "description": "Exact name==version coordinates resolved through the operator-owned approved package catalog for an isolated delegated job.",
+            "default": []
           }
         },
         "type": "object",
@@ -58840,6 +59224,16 @@
               }
             ],
             "description": "Exact receiver resources made available through the job agent."
+          },
+          "python_packages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Python Packages",
+            "description": "Exact name==version coordinates resolved through the operator-owned approved package catalog for an isolated delegated job.",
+            "default": []
           }
         },
         "type": "object",
@@ -63166,6 +63560,15 @@
         ],
         "title": "OperationView"
       },
+      "OrderDirection": {
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "title": "OrderDirection",
+        "description": "Supported result ordering directions."
+      },
       "PAT": {
         "properties": {
           "id": {
@@ -63672,7 +64075,6 @@
             "description": "Validated container mounts; an empty list clears existing mounts"
           }
         },
-        "additionalProperties": false,
         "type": "object",
         "required": [
           "name"
@@ -65815,6 +66217,212 @@
         "title": "ReadinessSection",
         "description": "One independently evaluated platform-readiness section."
       },
+      "RecordFilters": {
+        "properties": {
+          "terms": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Terms"
+          },
+          "ranges": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RecordRange"
+            },
+            "type": "object",
+            "title": "Ranges"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RecordFilters",
+        "description": "AND-composed equality/list and inclusive range predicates."
+      },
+      "RecordOrder": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/OrderDirection",
+            "default": "asc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "field"
+        ],
+        "title": "RecordOrder",
+        "description": "One allowlisted-by-shape ordering term."
+      },
+      "RecordQueryRequest": {
+        "properties": {
+          "dataset_urn": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Urn",
+            "description": "Receiver Catalog dataset identity"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordFilters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "order_by": {
+            "items": {
+              "$ref": "#/components/schemas/RecordOrder"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Order By"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Offset",
+            "default": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Limit"
+          },
+          "projection": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection"
+          },
+          "transport": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "inline",
+              "sse"
+            ],
+            "title": "Transport",
+            "default": "auto"
+          },
+          "batch_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Size"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dataset_urn",
+          "order_by",
+          "limit"
+        ],
+        "title": "RecordQueryRequest",
+        "description": "Closed source-neutral contract for ``POST /retrieval/query-jobs``."
+      },
+      "RecordRange": {
+        "properties": {
+          "gte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gte"
+          },
+          "lte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lte"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RecordRange",
+        "description": "Inclusive range bounds; at least one bound is required."
+      },
       "RegisterIdPRequest": {
         "properties": {
           "provider": {
@@ -65853,6 +66461,31 @@
           "provider"
         ],
         "title": "RegisterIdPRequest"
+      },
+      "RegisteredSourceContainerPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Container"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "title": "RegisteredSourceContainerPage",
+        "description": "One cursor page of registered sources without child enumeration."
       },
       "RegistrationReconcileRequest": {
         "properties": {
