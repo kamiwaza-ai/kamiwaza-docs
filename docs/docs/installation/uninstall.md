@@ -20,10 +20,9 @@ Before removing anything, export or copy any data you need to keep. Once the clu
 
 ## Step 2: Run the matching uninstall wrapper
 
-All supported single-host installs use k0s. The installer records whether k0s
-runs inside Lima on macOS or directly on Linux, and the matching uninstall
-wrapper uses that record. Do not delete the cluster with raw `k0s`, Lima, or
-Podman commands.
+All supported single-host installs use k0s. Production installs run k0s
+directly on Linux; source-based macOS developer installs run it inside Lima.
+Use the matching wrapper rather than raw `k0s`, Lima, or Podman commands.
 
 Confirm whether the host is a production/package install or a source-based
 developer install. Do not mix the two wrappers.
@@ -42,6 +41,10 @@ checkout:
 cd /path/to/kamiwaza-stack/deploy
 ./scripts/uninstall-dev.sh
 ```
+
+Production uninstall on macOS is not currently supported because production
+installation there is also unsupported (ENG-10839). The developer wrapper is
+the supported macOS lifecycle.
 
 For an online installation, use the production uninstall wrapper from the
 matching extracted installer payload. The `--keep-extract` installer option

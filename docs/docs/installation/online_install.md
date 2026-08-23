@@ -11,13 +11,15 @@ images are pulled from Keygen.
 - Ubuntu 22.04
 - Ubuntu 24.04
 - RHEL-compatible 9.x
-- macOS
+
+macOS production installation is not currently supported (ENG-10839). macOS
+developer installs remain available through the source-based Lima workflow.
 
 ## Prerequisites
 
 - A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
 - A host that meets the [System Requirements](system_requirements.md).
-- **Free disk space, on the right filesystem** *(Linux hosts — see the macOS note below)*. The installer provisions cluster storage under `/var/lib` as **preallocated** loopback images, so the space is consumed at install time rather than as you use it. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. At default settings a single-node host needs:
+- **Free disk space, on the right filesystem**. The installer provisions cluster storage under `/var/lib` as **preallocated** loopback images, so the space is consumed at install time rather than as you use it. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. At default settings a single-node host needs:
   - **`/var` ≥ 1.1 TB** — the install consumes roughly **890 GB** here: the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`. Size the volume so that 890 GB leaves you under the ~85% disk-pressure threshold described below: 890 GB on a 1 TB volume is 89% and still inside the eviction range, so **1.1 TB** (≈81%) is the practical floor.
   - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
 
@@ -53,7 +55,6 @@ images are pulled from Keygen.
 
   Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
 
-  **On macOS** the installer runs k0s inside a user-scoped Lima virtual machine rather than on the host's `/var`, so the figures above do not apply directly — size the Lima virtual machine's disk (and the free space on your startup volume backing it) to the same totals instead.
 - Outbound DNS and HTTPS access to:
   - your OS package repositories,
   - `raw.pkg.keygen.sh` (installer and fallback artifacts),
@@ -92,12 +93,6 @@ Keep the version, resolved download URL, checksum file, and verified SHA-256 in
 the installation record. A checksum fetched from a different version does not
 verify the selected installer.
 
-On macOS, replace the verification command with:
-
-```bash
-shasum -a 256 -c kamiwaza-online-install.sh.sha256
-```
-
 ## Step 2: Run the Installer
 
 > **Upgrading an existing production database?** Follow the
@@ -119,10 +114,9 @@ KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
 
 > **If you sized the host to the 350 GB floor rather than 1.1 TB**, add `-e storage_host_prep_virtual_block_size=80G` to the command above. Without it the installer provisions the default 700 GB OSD image and fails at host prep. See [Prerequisites](#prerequisites).
 
-- **On Linux**, the installer runs k0s directly on the host and uses Podman for supporting container workflows. It re-executes itself through `sudo -E` when it needs elevated privileges.
-- **On macOS**, the installer runs k0s inside Lima. Run as the target admin user rather than as root. The installer uses Homebrew and Lima state scoped to that user and prompts through `sudo` only for privileged setup steps.
-
-The host operating system selects the cluster topology automatically. Do not pass a Kubernetes runtime argument: macOS uses k0s in Lima, and Linux uses native k0s.
+The installer runs k0s directly on the Linux host and uses Podman for supporting
+container workflows. It re-executes itself through `sudo -E` when it needs
+elevated privileges. Do not pass a Kubernetes runtime argument.
 
 Before extracting its payload or installing any prerequisites, the installer validates that your license can access the required Keygen images and exits immediately if it cannot. On a supported Linux host without `curl`, it first installs only `curl` and the CA certificate package needed for that check; the remaining prerequisites are not installed until the license check succeeds.
 
@@ -152,10 +146,7 @@ Frequently used **installer options**:
 
 ## Logs
 
-By default the installer writes to:
-
-- **Linux:** `/var/log/kamiwaza_install_online.log`
-- **macOS:** `~/Library/Logs/kamiwaza_install_online.log`
+By default the installer writes to `/var/log/kamiwaza_install_online.log`.
 
 Override the log path with `KAMIWAZA_ONLINE_INSTALL_LOG`:
 
