@@ -114,7 +114,7 @@ sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
 # Put the bundled tools on sudo's PATH. Later steps call `sudo kubectl`, and the
 # bootstrap's own verification cannot see them either, so re-run it afterwards —
 # the second run reports "Bootstrap complete".
-for tool in helm helmfile k0s kind kubectl; do
+for tool in helm helmfile k0s kubectl; do
   if [[ -x "/usr/local/bin/${tool}" ]]; then
     sudo ln -sfn "/usr/local/bin/${tool}" "/usr/bin/${tool}"
   fi
@@ -242,7 +242,6 @@ export EXTENSION_OPERATOR_TAG="release-1.2.0"
 
 export KAMIWAZA_VERSION="${APP_TAG}"
 export KAMIWAZA_IMAGE_TAG="${APP_TAG}"
-export KAMIWAZA_K8S_RUNTIME="k0s-podman"
 export KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G
 export KAMIWAZA_RESOURCE_PROFILE=small
 export HELMFILE_EXTRA_SET="--set global.security.allowInsecureImages=true"

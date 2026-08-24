@@ -42,7 +42,8 @@ See [Special Considerations](#special-considerations) for detailed unified memor
 
 ### Storage
 
-Storage *performance* requirements are the same across all platforms. Storage **capacity** figures below are for Linux hosts, where the installer preallocates cluster storage on the volume backing `/var`. On macOS the cluster runs inside a user-scoped Podman machine — size that machine's disk to the same totals. See [Online Installation](online_install.md).
+The production installer preallocates cluster storage on the Linux volume
+backing `/var`. See [Online Installation](online_install.md).
 
 #### Storage Performance
 
@@ -103,10 +104,14 @@ Storage *performance* requirements are the same across all platforms. Storage **
 
 ### macOS
 
-- **macOS 15.0 (Sequoia) or later**, Apple Silicon (ARM64) only — online install
-- Single-node deployments only
+- **macOS 15.0 (Sequoia) or later**, Apple Silicon (ARM64) only — source-based
+  developer installs with managed Lima
+- Production online installation is not currently supported (ENG-10839)
+- Single-node developer deployments only
 
-All platforms install via the Keygen-based installer and require a Kamiwaza Prod license key. See [Installing Kamiwaza](installation_process.md) for the online and offline install paths.
+Published production releases install through the Keygen-based installer on
+supported Linux hosts and require a Kamiwaza Prod license key. See
+[Installing Kamiwaza](installation_process.md) for the online and offline paths.
 
 ---
 
@@ -119,7 +124,7 @@ The Kamiwaza installer provisions the container runtime, local Kubernetes cluste
 | Component | Requirement | Notes |
 |-----------|-------------|-------|
 | **License key** | Kamiwaza Prod license key | Required to pull platform images from Keygen. Contact your Kamiwaza representative. |
-| **Supported OS** | Ubuntu 22.04/24.04, RHEL 9, or macOS | See [Supported Operating Systems](#supported-operating-systems) |
+| **Supported OS** | Ubuntu 22.04/24.04 or RHEL 9 | See [Supported Operating Systems](#supported-operating-systems) |
 | **Browser** | Chrome 141+ (tested and recommended) | [Download Chrome](https://www.google.com/chrome/) |
 | **GPU drivers** | For GPU inference only — see below | Install before running the installer |
 
