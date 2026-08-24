@@ -16,7 +16,7 @@ Kamiwaza supports two installation paths. Pick the one that matches your environ
 
 | Method | Use when | Platforms | Guide |
 |--------|----------|-----------|-------|
-| **Online** | The host has outbound internet access to Keygen and your OS package repositories. This is the recommended path for most installs. | Ubuntu 22.04 / 24.04, RHEL-compatible 9.x, macOS | [Online Installation](online_install.md) |
+| **Online** | The host has outbound internet access to Keygen and your OS package repositories. This is the recommended path for most installs. | Ubuntu 22.04 / 24.04, RHEL-compatible 9.x | [Online Installation](online_install.md) |
 | **Offline / air-gapped** | The host is in a restricted or air-gapped environment. You download the bundle on a connected machine, transfer it, and install without internet access on the target host. | RHEL-compatible 9.x | [Offline Installation](offline_install.md) |
 
 Both methods install the same platform. The difference is only how the installer and images reach the target host.
@@ -28,9 +28,12 @@ Both methods install the same platform. The difference is only how the installer
 | Ubuntu 24.04 (Noble) | ✅ | — |
 | Ubuntu 22.04 (Jammy) | ✅ | — |
 | RHEL-compatible 9.x | ✅ | ✅ |
-| macOS | ✅ | — |
+| macOS | — | — |
 
-> All installs require a Kamiwaza Prod license key. GPU acceleration (NVIDIA CUDA, AMD ROCm, or NVIDIA vLLM) is optional. The default `k0s-podman` runtime pulls inference images when needed; Kind installations can use an [optional raw image preload](online_install.md#optional-raw-image-preload). See [System Requirements](system_requirements.md) for supported host software.
+Production installation on macOS is not currently supported (ENG-10839).
+Source-based developer installs on Apple Silicon continue to use managed Lima.
+
+> All installs require a Kamiwaza Prod license key. GPU acceleration (NVIDIA CUDA, AMD ROCm, or NVIDIA vLLM) is optional, and inference images are pulled when a model is deployed. See [System Requirements](system_requirements.md) for supported host software.
 
 ## What Happens During Installation
 
@@ -43,6 +46,10 @@ The installer provisions a single-host Kubernetes cluster and deploys the Kamiwa
 5. Configures access at `https://<your-domain>/`.
 
 You provide a domain name (`--domain`) and an initial admin password (`--admin-password`) when you run the installer.
+
+Production installation uses native k0s on Linux, with Podman for supporting
+container workflows. Installation commands do not require a Kubernetes runtime
+argument.
 
 ## Multi-Node Deployments
 
