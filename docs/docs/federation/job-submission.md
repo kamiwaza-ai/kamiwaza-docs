@@ -12,6 +12,34 @@ Submit and manage Ray jobs on local or remote clusters. Jobs run Python entrypoi
 - Admin authentication (JWT token with admin role)
 - Ray cluster running on the target cluster
 
+## Tenant-mode ReBAC
+
+On an authenticated tenant-mode install, ordinary cluster jobs work with
+ReBAC enabled and the community fallback disabled. The request is authorized
+at the Kamiwaza API, then the Core API submits the job to the in-cluster Ray
+Dashboard Jobs API on port `8265`. The Core API is served by the Ray head
+workload, so the chart's Ray-head `AuthorizationPolicy` must allow the
+`core-ray` service account to use that port. The public ingress rule alone is
+not sufficient for this east-west request, and the Ray Dashboard should not
+be exposed as a public job-submission endpoint.
+
+For a fresh strict-ReBAC install, verify the complete lifecycle before making
+the environment available to users:
+
+```bash
+# Run from the stack root with the deploy checkout present.
+KAMIWAZA_HOST=<tenant-host> \
+KUBECONFIG=<tenant-kubeconfig> \
+python3 deploy/scripts/kamiwaza-smoke.py recoverable-job
+```
+
+The check submits a small recoverable job, observes its status transition,
+retrieves the structured result, and exercises cancellation handling. A
+`502` containing `Ray submit failed (403)` indicates a mesh authorization
+policy problem on the Ray Dashboard hop; inspect the rendered `ray-head`
+policy and confirm the `core-ray` principal and port `8265` rule before
+changing ReBAC fallback settings.
+
 ## Submit a Job (Async)
 
 ```bash
