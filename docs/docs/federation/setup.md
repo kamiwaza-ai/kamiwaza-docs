@@ -59,12 +59,12 @@ Add to `cluster/values/overrides.yaml`:
 
 ```yaml
 global:
-  istio:
-    ingress:
+  ingress:
+    gateway:
       ipAddresses:
-        - "192.168.50.168"       # This cluster's node IP
+        - "<THIS_CLUSTER_NODE_IP>"
       extraDnsNames:
-        - "studio-1.example.com" # Optional hostname
+        - "<THIS_CLUSTER_FQDN>"
 ```
 
 Then sync: `helmfile -f cluster/helmfile.yaml.gotmpl sync -l name=kamiwaza`
@@ -195,98 +195,46 @@ in-flight rows. Do not use them for a new federation; they can create the
 source-trusted `peer_kc` posture and are deprecated in the API.
 :::
 
-## Step 1: Create Receiver on Remote Cluster
+## Legacy compatibility (drain only)
 
-The receiver creates a WAITING federation record. Authenticate to the remote cluster and create it:
+Rows created by the deprecated symmetric wizard can still be completed, but the
+flow is source-trusted and may be refused when `ALLOW_UNTRUSTED_FEDERATION` is
+disabled. Keep each request body in a mode-`0600` file and use the supported API;
+do not write federation or certificate columns directly in the database.
 
-```bash
-# Login to remote cluster
-REMOTE_TOKEN=$(curl -sk "https://<REMOTE_IP>/api/auth/token" -X POST \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'username=admin%40kamiwaza.localhost&password=<PASSWORD>&grant_type=password' \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
+1. Authenticate as a native-realm administrator on both clusters using the
+   normal login procedure described in the [Quickstart](../quickstart.md).
+2. Create the reciprocal rows with private files that contain only your actual
+   deployment values:
 
-# Create WAITING receiver
-curl -sk -X POST "https://<REMOTE_IP>/api/cluster/federations" \
-  -H "Authorization: Bearer $REMOTE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "remote_cluster_name": "<local-cluster-name>",
-    "remote_ips": [{"ip": "<LOCAL_IP>", "primary": true}],
-    "preshared_key": "<shared-secret>",
-    "callback_hostname": "<REMOTE_IP>",
-    "role": "receiver"
-  }'
-```
+   ```bash
+   curl --fail --silent --show-error --request POST \
+     --header "Authorization: Bearer $REMOTE_ADMIN_TOKEN" \
+     --header 'Content-Type: application/json' \
+     --data-binary @receiver-create-private.json \
+     "$REMOTE_API/cluster/federations"
 
-:::important
-Use the same `preshared_key` on both clusters. Set `callback_hostname` to the cluster's bridged VM IP — without it, the internal pod hostname is used, which is unreachable from the other cluster.
-:::
+   curl --fail --silent --show-error --request POST \
+     --header "Authorization: Bearer $LOCAL_ADMIN_TOKEN" \
+     --header 'Content-Type: application/json' \
+     --data-binary @initiator-create-private.json \
+     "$LOCAL_API/cluster/federations"
+   ```
 
-## Step 2: Create Initiator on Local Cluster
+3. Pair the initiator row returned by the second call:
 
-```bash
-# Login to local cluster
-LOCAL_TOKEN=$(curl -sk "https://<LOCAL_IP>/api/auth/token" -X POST \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'username=admin%40kamiwaza.localhost&password=<PASSWORD>&grant_type=password' \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
+   ```bash
+   curl --fail --silent --show-error --request POST \
+     --header "Authorization: Bearer $LOCAL_ADMIN_TOKEN" \
+     "$LOCAL_API/cluster/federations/$FEDERATION_ID/pair"
+   ```
 
-# Create PAIRING initiator
-curl -sk -X POST "https://<LOCAL_IP>/api/cluster/federations" \
-  -H "Authorization: Bearer $LOCAL_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "remote_cluster_name": "<remote-cluster-name>",
-    "remote_ips": [{"ip": "<REMOTE_IP>", "primary": true}],
-    "preshared_key": "<shared-secret>",
-    "callback_hostname": "<LOCAL_IP>"
-  }'
-# Note the federation ID from the response
-```
+4. If a legacy peer certificate was rotated, use
+   `POST /api/cluster/federations/{id}/refresh-peer-ca` with the new PEM and its
+   independently compared fingerprint. The request/approve flow performs the
+   CA exchange automatically; no SQL recovery is needed for new pairings.
 
-## Step 3: Pair
-
-```bash
-curl -sk -X POST "https://<LOCAL_IP>/api/cluster/federations/<FEDERATION_ID>/pair" \
-  -H "Authorization: Bearer $LOCAL_TOKEN"
-# Response: status should be "PAIRED"
-```
-
-On success, both clusters transition to `PAIRED`. The receiver seeds
-`cluster_jobs:__all__:executor` for the remote admin so federated jobs can run.
-Cross-cluster mesh egress is **authenticated-only** — no `federation:operator`
-relation is required to use the mesh proxy.
-
-:::warning Legacy compatibility only
-These deprecated steps create the legacy source-trusted `peer_kc` posture and
-may be refused with HTTP 400 unless `ALLOW_UNTRUSTED_FEDERATION=true`. They do
-not select `receiver_realm` or `shared_idp`; use the request/approve flow above
-for either receiver-controlled mode.
-:::
-
-## Step 4: Store Remote CA Certificate
-
-The mesh proxy needs to trust the remote cluster's TLS certificate. Fetch the remote cluster's root CA and store it in the federation record:
-
-```bash
-# Get remote cluster's root CA cert
-REMOTE_CA=$(kubectl get secret root-ca -n kamiwaza -o jsonpath='{.data.ca\.crt}' | base64 -d)
-# On the remote cluster, or via SSH
-
-# Store in federation record
-kubectl exec core-postgres-0 -n kamiwaza -- psql -U core -d kamiwaza -c \
-  "UPDATE cluster_federations SET remote_ca_cert = '$(echo "$REMOTE_CA" | sed "s/'/''/g")' WHERE id = '<FEDERATION_ID>';"
-```
-
-:::note
-The supported request/approve poll performs the signed CA exchange. The manual
-database update shown here is retained only for legacy rows or an operator-led
-CA recovery; prefer `POST /api/cluster/federations/{id}/refresh-peer-ca` with a
-fingerprint acknowledgement for a rotated peer certificate.
-:::
-
-## Step 5: Verify
+## Verify
 
 ```bash
 # Query remote catalog through mesh proxy
@@ -307,13 +255,13 @@ curl -sk -X POST "https://<IP>/api/cluster/federations/<FEDERATION_ID>/disconnec
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Disconnecting immediately blocks new mesh proxy requests. Running operations on the remote cluster are not cancelled.
+Disconnecting immediately blocks new mesh proxy requests. Running operations on the remote cluster are not canceled.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| 502 `mesh_proxy_bad_gateway` | TLS verification failed | Store remote CA cert (Step 4) or add IP to gateway cert SANs |
+| 502 `mesh_proxy_bad_gateway` | TLS verification failed | Re-run the signed pairing/CA exchange or use `refresh-peer-ca` with an independently verified fingerprint; add the peer IP/hostname to gateway cert SANs |
 | 401 on remote cluster | Mesh HMAC verification failed | Check PSK matches; check Istio `includeRequestHeadersInCheck` includes `x-kz-mesh-*` headers |
 | 403 on source before the request forwards | Cross-cluster egress is authenticated-only in the current flow — there is no `federation:operator` gate; a 403 here means the caller is not authenticated | Ensure the caller presents a valid token to the source cluster |
 | 403 `namespace_unsupported` | `federation` namespace not registered | Ensure `authz/constants.py` includes `federation` in `ALLOWED_OBJECT_NAMESPACES` |

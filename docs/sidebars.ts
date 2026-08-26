@@ -77,6 +77,7 @@ const sidebars: SidebarsConfig = {
 				"federation/execution-gates",
 				"federation/gate-packages",
 				"federation/api-reference",
+				"federation/release-notes-1-3",
 			],
 		},
 		{

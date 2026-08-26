@@ -47,78 +47,14 @@ for complete commands.
 
 ### Legacy compatibility pairing
 
-The commands below are retained only to drain old in-flight symmetric rows.
-They create the legacy `peer_kc` posture and should not be used for new
-deployments. Do not put real PSKs in documentation, shell history, tickets, or
-logs.
-
-**1. Authenticate to both clusters:**
-
-```bash
-# Remote cluster (the receiver)
-REMOTE_TOKEN=$(curl -sk "https://192.168.50.13/api/auth/token" -X POST \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'username=admin%40kamiwaza.localhost&password=kamiwaza&grant_type=password' \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
-
-# Local cluster (the initiator)
-LOCAL_TOKEN=$(curl -sk "https://kamiwaza.test/api/auth/token" -X POST \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'username=admin%40kamiwaza.localhost&password=kamiwaza&grant_type=password' \
-  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
-```
-
-**2. Create WAITING receiver on the remote cluster:**
-
-```bash
-curl -sk -X POST "https://192.168.50.13/api/cluster/federations" \
-  -H "Authorization: Bearer $REMOTE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "remote_cluster_name": "dev-laptop",
-    "remote_ips": [{"ip": "192.168.50.168", "primary": true}],
-    "preshared_key": "my-strong-shared-secret",
-    "callback_hostname": "192.168.50.13",
-    "role": "receiver"
-  }'
-```
-
-**3. Create PAIRING initiator on the local cluster:**
-
-```bash
-FEDERATION_RESPONSE=$(curl -sk -X POST "https://kamiwaza.test/api/cluster/federations" \
-  -H "Authorization: Bearer $LOCAL_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "remote_cluster_name": "studio-1",
-    "remote_ips": [{"ip": "192.168.50.13", "primary": true}],
-    "preshared_key": "my-strong-shared-secret",
-    "callback_hostname": "192.168.50.168"
-  }')
-
-FEDERATION_ID=$(echo "$FEDERATION_RESPONSE" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
-echo "Federation ID: $FEDERATION_ID"
-```
-
-**4. Initiate pairing:**
-
-```bash
-curl -sk -X POST "https://kamiwaza.test/api/cluster/federations/$FEDERATION_ID/pair" \
-  -H "Authorization: Bearer $LOCAL_TOKEN"
-```
-
-**5. Store remote CA certificate:**
-
-```bash
-# Fetch the remote cluster's root CA (run on the remote cluster or via SSH)
-REMOTE_CA=$(kubectl get secret root-ca -n kamiwaza -o jsonpath='{.data.ca\.crt}' | base64 -d)
-
-# Store in federation record on the local cluster
-kubectl exec core-postgres-0 -n kamiwaza -- psql -U core -d kamiwaza -c \
-  "UPDATE cluster_federations SET remote_ca_cert = '$(echo "$REMOTE_CA" | sed "s/'/''/g")' WHERE id = '$FEDERATION_ID';"
-```
-
-Repeat the CA cert step in the other direction (store the local CA on the remote cluster's federation record).
+Rows created by the deprecated symmetric wizard are retained only to drain old
+in-flight work. They create the source-trusted `peer_kc` posture and may be
+refused when `ALLOW_UNTRUSTED_FEDERATION` is disabled. Follow the
+[legacy section of the setup guide](./setup.md#legacy-compatibility-drain-only)
+with native-realm administrator tokens and mode-`0600` request files. Never
+place a real PSK in shell history, tickets, logs, or this repository, and never
+edit federation or certificate columns directly in SQL. Use
+`refresh-peer-ca` for an authenticated CA replacement.
 
 ### Verifying Pairing Succeeded
 
@@ -309,7 +245,7 @@ per-resource ReBAC or per-record gate, not a missing source-side operator relati
 
 **Resolution:**
 
-- If `remote_ca_cert` is NULL: re-pair the federation, or manually inject the CA cert (see setup step 5).
+- If `remote_ca_cert` is NULL: re-pair the federation, or use the authenticated `refresh-peer-ca` endpoint with an independently verified CA fingerprint.
 - If the remote cert does not include the node IP: update the gateway certificate SANs (see [Federation Setup](./setup.md#add-node-ip-to-gateway-certificate)).
 
 ### Trailing Slash Redirects (307 -> auth loss)
@@ -375,7 +311,7 @@ timedatectl status
 | `RUNNING` | Actively executing on the Ray cluster |
 | `SUCCEEDED` | Completed successfully |
 | `FAILED` | Exited with an error |
-| `STOPPED` | Cancelled by user or timed out |
+| `STOPPED` | Canceled by user or timed out |
 
 ### Checking Job Status
 
@@ -436,7 +372,7 @@ curl -sk "https://kamiwaza.test/api/cluster/jobs/<job-id>/result" \
 
 When `timeout_seconds` is set on job submission and the job is executed via the synchronous `/run` endpoint, the platform polls Ray until the timeout elapses. If the job is still running at that point:
 
-1. The job is cancelled via the Ray Dashboard API
+1. The job is canceled via the Ray Dashboard API
 2. The `timed_out` flag is set to `true` in the `federated_jobs` table
 3. The job status transitions to `STOPPED`
 

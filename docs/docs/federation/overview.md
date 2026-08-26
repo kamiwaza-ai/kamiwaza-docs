@@ -13,7 +13,7 @@ Kamiwaza cluster federation enables cross-cluster operations between paired Kami
 
 **Federation Trust** — Each federation pair shares a pre-shared key. All cross-cluster requests are HMAC-signed with this key, and the receiving cluster verifies the signature before processing the request. The PSK/HMAC secures the *transport*; the caller's *identity* is validated separately, according to the federation's [identity mode](./identity-trust-modes.md). Trust is per-federation, not per-cluster.
 
-**Identity Modes** — A federation's [identity mode](./identity-trust-modes.md) decides whose identity a cross-cluster caller presents and how the receiver validates it: **`receiver_realm`** (receiver-controlled dedicated realm, the current default), **`shared_idp`** (receiver-controlled shared realm), or **`peer_kc`** (source-trusted legacy posture, gated by cluster policy).
+**Identity Modes** — A federation's [identity mode](./identity-trust-modes.md) decides whose identity a cross-cluster caller presents and how the receiver validates it. The 1.2 baseline supports **`shared_idp`** (receiver-controlled shared realm) and **`peer_kc`** (source-trusted legacy posture); the current 1.3 extension adds **`receiver_realm`** (a receiver-controlled dedicated realm with guest credentials).
 
 **Receiver-controlled authorization** — Cross-cluster egress on the source is **authenticated-only**: any authenticated caller may reach the mesh proxy — there is no `operator`-relation gate. Authorization is decided by the **receiving** cluster, which validates the caller's identity per the identity mode and then evaluates the request against its **own** per-resource ReBAC guards (catalog, retrieval, jobs) and per-record gates. Roles do **not** cross clusters (see [shared identity ≠ shared authority](./identity-trust-modes.md#core-principle-shared-identity--shared-authority)).
 
@@ -61,7 +61,7 @@ Cluster A (source)                          Cluster B (target)
 
 ## Federation lifecycle at a glance
 
-| Step | What | Where it's documented |
+| Step | What | Where it is documented |
 |------|------|----------------------|
 | Pair two clusters | Exchange PSK + CA certs; provision the federation record on both sides | [Setup](./setup.md) |
 | Allowlist federated users | Decide which remote users can act on this cluster | [Setup](./setup.md) |

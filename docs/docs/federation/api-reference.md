@@ -5,7 +5,16 @@ title: API Reference
 
 # Federation API Reference
 
-Complete reference for the mesh proxy and federation endpoints. All endpoints require authentication via Keycloak JWT or PAT.
+Reference for the public federation-management and mesh-proxy contracts. The
+examples below use the `/api` prefix. Management routes are versioned with the
+1.2 contract; the receiver-realm and per-user onboarding routes are the current
+1.3 federation extension. The peer-protocol routes under
+`/api/cluster/remote/*` are included for troubleshooting but are not intended
+for direct user calls.
+
+Unless a row says otherwise, a user-facing route accepts a Keycloak JWT or PAT.
+`NativeRealmRequired` means the credential must be issued by this cluster's
+native realm; a mesh-forwarded credential is rejected before the handler runs.
 
 ## Federation Management
 
@@ -17,7 +26,9 @@ Manage cluster federation pairing and cluster metadata.
 GET /api/cluster/federations
 ```
 
-Returns federations visible to an authenticated native-realm administrator.
+Returns federations visible to any authenticated native-realm user. The route
+does not apply a per-user federation ReBAC relation filter; management writes
+remain administrator-only.
 The optional `status` query parameter accepts `PAIRING`, `PAIRED`,
 `DISCONNECTED`, or `DELETED`; `skip` and `limit` provide pagination. This is
 not a per-user ReBAC-filtered list.
@@ -55,21 +66,32 @@ through this endpoint.
 ### Create and Pair a Federation (legacy flow)
 
 ```
-POST /api/cluster/federations/pair
+POST /api/cluster/federations
+POST /api/cluster/federations/{federation_id}/pair
 ```
 
-This compatibility endpoint completes rows created by the older symmetric
-wizard. New deployments should use the request/approve flow below. It requires
-a native-realm administrator and exchanges the peer CA/trust material.
+The first endpoint creates one half of the deprecated symmetric pairing. The
+second completes the returned row and exchanges the peer CA/trust material.
+Both require a native-realm administrator. New deployments should use the
+request/approve flow below; legacy creation may be refused when
+`ALLOW_UNTRUSTED_FEDERATION` is disabled.
 
-**Request:**
+**Legacy create request (representative):**
 ```json
 {
-  "remote_cluster_name": "string",
-  "remote_ips": ["192.168.50.168"],
-  "local_ca_cert": "-----BEGIN CERTIFICATE-----\n..."
+  "remote_cluster_name": "peer-name",
+  "remote_ips": [{"ip": "<PEER_IP>", "hostname": "<PEER_FQDN>", "primary": true}],
+  "callback_hostname": "<THIS_CLUSTER_FQDN>",
+  "preshared_key": "<PSK_FROM_PRIVATE_FILE>",
+  "role": "initiator"
 }
 ```
+
+The pair request body is a `FederationPairRequest` containing the local CA
+material required by the legacy handshake. The API returns `400` for invalid
+or unsupported mode input, `403` for a non-admin/non-native caller, `404` for
+an unknown federation, and `409` when the row is already paired or otherwise
+in a conflicting state.
 
 ### Request, Approve, and Poll (current flow)
 
@@ -173,6 +195,38 @@ POST /api/cluster/federations/{federation_id}/ping
 Tests authenticated end-to-end connectivity through the signed peer path and
 returns `{ "federation_id": "...", "reachable": true }` on success.
 
+### Realm cleanup
+
+```
+POST /api/cluster/federations/realms/reclaim?dry_run=true&include_disconnected=false
+```
+
+Native-realm administrators can list receiver-owned realms that no longer have
+an active federation. `dry_run=true` (the default) returns the orphan report;
+set it to `false` only after reviewing that report. Disconnected federations are
+excluded unless `include_disconnected=true`. A `403` means the caller is not a
+native administrator; a `409`/`500` indicates a reclamation conflict or cleanup
+failure. Realm reclamation is destructive and cannot be undone.
+
+### Management authorization and status matrix
+
+| Routes | Caller | Success / representative refusal |
+|---|---|---|
+| `GET /federations` | Any authenticated **native-realm** user | `200`; `401` unauthenticated, `403` mesh-origin |
+| `GET/PUT/DELETE /federations/{id}` | Native-realm administrator | `200`; `404` unknown id, `409` invalid lifecycle, `403` non-admin or mesh-origin |
+| `POST /federations`, `POST /federations/{id}/pair` (deprecated) | Native-realm administrator | `200`; `400` validation/policy refusal, `404` unknown id, `409` state conflict |
+| `POST /federations/generate-psk`, `/request`, `/{id}/approve`, `/{id}/deny`, `/{id}/request-status` | Native-realm administrator | `200`; `400` validation, `404` unknown request, `409` request state conflict, `502` peer failure |
+| `POST /federations/preflight`, `/resolve-address`, `/{id}/diagnose`, `/{id}/ping` | Native-realm administrator | `200`; `400` invalid route, `404` unknown id, `502`/`504` peer reachability failure |
+| `POST /federations/{id}/disconnect`, `/reconnect`, `/refresh-peer-ca` | Native-realm administrator | `200`; `400` invalid input, `404` unknown id, `409` lifecycle/fingerprint conflict |
+| `POST /federations/{id}/rotate-preshared-key`, `/adopt-preshared-key-rotation`, `/abort-key-rotation`, `/activate-key-rotation`, `/complete-key-rotation`; `GET .../key-rotation-status` | Native-realm administrator | `200`; `404` unknown id, `409` rotation state/fingerprint conflict, `502` peer refusal/unavailability |
+| `POST/GET /federations/{id}/users*`, guest and relation routes | Native-realm administrator | `200`; `400` invalid relation/body, `404` unknown federation/user, `409` concurrent or lifecycle conflict |
+| `POST /federations/{id}/onboarding/request`, `GET .../onboarding/me`, claim/status/recover | Authenticated caller, scoped to their own identity | `200`; `403` unauthorized delegation, `404` unknown request, `409` already claimed/conflict |
+| `GET .../onboarding`, onboarding approve/deny | Native-realm administrator | `200`; `404` unknown request, `409` request conflict |
+
+Validation failures use FastAPI's `422` response when the JSON shape cannot be
+parsed. A `500` is reserved for an unexpected server failure; clients should
+not interpret it as a successful federation transition.
+
 ### Federation User Allowlist and Guest Lifecycle
 
 These receiver-side operations require a native-realm administrator. They are
@@ -219,6 +273,61 @@ DELETE /api/cluster/federations/{federation_id}/users/{external_id}/relations
 
 Relation mutation bodies contain `object_namespace`, `object_id`, and
 `relation`; privileged/admin relations are rejected by the service layer.
+
+### Per-user onboarding
+
+Receiver-realm and shared-IDP federations use the same self-service/requester
+surface. The requester can see only their own state; the receiver administrator
+controls admission and denial.
+
+```
+POST /api/cluster/federations/{federation_id}/onboarding/request
+GET  /api/cluster/federations/{federation_id}/onboarding
+GET  /api/cluster/federations/{federation_id}/onboarding/me
+POST /api/cluster/federations/{federation_id}/onboarding/{request_id}/approve
+POST /api/cluster/federations/{federation_id}/onboarding/{request_id}/deny
+POST /api/cluster/federations/{federation_id}/onboarding/claim
+GET  /api/cluster/federations/{federation_id}/onboarding/claims/{attempt_id}
+POST /api/cluster/federations/{federation_id}/onboarding/claims/{attempt_id}/recover
+```
+
+`request` accepts a justification/contact and, for an administrator acting for
+another local user, an explicit `external_id`. `approve` may carry the
+receiver-owned attributes and relation recipe; it never accepts authority from
+the source cluster. `claim` exchanges a one-time claim token for the durable
+credential and binds it to the calling user. `GET .../me`, claim status, and
+recovery never return a credential. Typical errors are `403` for an
+unauthorized delegated request, `404` for an unknown federation/request, and
+`409` for a request already approved, denied, or claimed.
+
+### Peer protocol (internal)
+
+These routes are mounted under `/api/cluster/remote`. They are called by a
+paired peer, not by a browser or SDK. Except for the initial request intake and
+the token-scoped poll, they require the authenticated federation HMAC/mTLS
+context (`TrustedFederatedCluster`).
+
+```
+POST /api/cluster/remote/federation-request                 # initial inert intake
+GET  /api/cluster/remote/federation-request/{request_token} # token-scoped poll
+POST /api/cluster/remote/pair
+POST /api/cluster/remote/onboarding-request
+POST /api/cluster/remote/onboarding-status
+POST /api/cluster/remote/onboarding-claim
+POST /api/cluster/remote/onboarding-claim-attempt
+POST /api/cluster/remote/onboarding-claim-status
+POST /api/cluster/remote/key-rotation-activate
+POST /api/cluster/remote/key-rotation-complete
+POST /api/cluster/remote/ping
+POST /api/cluster/remote/identity-status
+POST /api/cluster/remote/disconnect
+```
+
+The unauthenticated intake is bounded and creates only a `REQUESTED` record; it
+does not accept a PSK or trust configuration. The request-token poll is scoped
+to that one non-secret token. Peer-protocol failures return structured `4xx`
+responses (invalid HMAC, replay, unknown federation, or state conflict); the
+caller should not retry a refusal as if it were a successful transition.
 
 ---
 
@@ -280,6 +389,24 @@ headers are trusted only in source-trusted **`peer_kc`** / grandfathered mode.
 - `Authorization` (the local token is not valid on the remote cluster)
 - `Cookie`
 - `Proxy-*` headers
+
+### Terminal response proof headers
+
+When the receiver rejects a caller because its guest or brokered-user admission
+is revoked, it signs the exact status and response body before returning it.
+The source proxy uses these headers to verify the refusal before purging only
+that caller's durable federation credential:
+
+| Header | Meaning |
+|---|---|
+| `X-KZ-Mesh-Response-Signature` | HMAC proof over status, body, timestamp, correlation id, and request signature |
+| `X-KZ-Mesh-Response-Signature-Ts` | Proof timestamp; checked against the same replay window |
+| `X-KZ-Mesh-Response-Correlation-Id` | Correlation id bound to the original request |
+| `X-KZ-Mesh-Response-Request-Signature` | Exact request signature bound into the proof |
+
+Ingress/ext-authz configuration must preserve these four response headers on the
+return path. Missing, malformed, stale, or tampered proof headers never trigger
+credential deletion; the proxy returns the upstream refusal without purging.
 
 ### Common Proxied Endpoints
 

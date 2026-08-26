@@ -10,13 +10,15 @@ presents to the remote cluster, and how the remote cluster verifies it.** This i
 the federation's **identity mode** — a per-federation setting chosen by the
 cluster that receives the calls (the *grantor*).
 
-Kamiwaza 1.2 ships three identity modes:
+The 1.2 baseline supports `shared_idp` and the legacy `peer_kc` posture. The
+current federation extension (targeting 1.3) adds `receiver_realm` and its
+receiver-owned guest lifecycle:
 
 | Mode | Trust | Who validates the caller | Use when |
 |---|---|---|---|
 | **`shared_idp`** | Receiver-controlled | The receiver validates the caller's token against a **shared realm** both clusters trust | Both clusters can trust one shared identity provider (single operator, or a tightly-coupled pair) |
 | **`peer_kc`** | Source-trusted (legacy 1.0) | The receiver validates against the **peer cluster's own** Keycloak realm | Grandfathered pairings, or when you explicitly accept the source cluster as an identity authority |
-| **`receiver_realm`** | Receiver-controlled | The receiver provisions and validates a dedicated `federation-<id>` realm | Strong per-federation isolation with receiver-issued guest credentials |
+| **`receiver_realm`** *(1.3 extension)* | Receiver-controlled | The receiver provisions and validates a dedicated `federation-<id>` realm | Strong per-federation isolation with receiver-issued guest credentials |
 
 `receiver_realm` is the default trust mode for the current request/approve flow.
 It is scoped to `per_federation`; the receiver owns guest enrollment, attributes,
