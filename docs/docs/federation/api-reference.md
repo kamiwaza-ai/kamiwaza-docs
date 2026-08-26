@@ -17,7 +17,10 @@ Manage cluster federation pairing and cluster metadata.
 GET /api/cluster/federations
 ```
 
-Returns all federations the current user has operator or viewer access to.
+Returns federations visible to an authenticated native-realm administrator.
+The optional `status` query parameter accepts `PAIRING`, `PAIRED`,
+`DISCONNECTED`, or `DELETED`; `skip` and `limit` provide pagination. This is
+not a per-user ReBAC-filtered list.
 
 **Response:**
 ```json
@@ -29,37 +32,65 @@ Returns all federations the current user has operator or viewer access to.
     "callback_hostname": "string",
     "local_cluster_id": "uuid",
     "remote_cluster_id": "uuid",
-    "status": "PAIRED | PAIRING | FAILED",
+    "status": "PAIRING | PAIRED | DISCONNECTED | DELETED",
     "last_ping": "timestamp",
     "created_at": "timestamp"
   }
 ]
 ```
 
-### Create and Pair a Federation
+### Get or Update a Federation
 
 ```
-POST /api/cluster/federations
-POST /api/cluster/federations/{federation_id}/pair
+GET /api/cluster/federations/{federation_id}
+PUT /api/cluster/federations/{federation_id}
 ```
 
-Create the receiver's `WAITING` record first, then the initiator record. Call
-`/{federation_id}/pair` on the initiator to drive the signed handshake and CA
-exchange. Both endpoints require a native-realm administrator.
+Both operations require an authenticated native-realm administrator. `GET`
+returns the complete federation record. `PUT` accepts the mutable connection
+metadata (for example `remote_ips`, `callback_hostname`, and the display name)
+and returns the updated record; trust mode and terminal status are not mutable
+through this endpoint.
+
+### Create and Pair a Federation (legacy flow)
+
+```
+POST /api/cluster/federations/pair
+```
+
+This compatibility endpoint completes rows created by the older symmetric
+wizard. New deployments should use the request/approve flow below. It requires
+a native-realm administrator and exchanges the peer CA/trust material.
 
 **Request:**
 ```json
 {
-  "remote_cluster_name": "fed-b",
-  "remote_ips": [
-    {"ip": "10.0.0.12", "hostname": "fed-b.example.internal", "primary": true}
-  ],
-  "preshared_key": "read-from-private-input",
-  "role": "initiator",
-  "shared_issuer_url": "https://idp.example.internal/realms/federation",
-  "shared_jwks_url": "https://idp.example.internal/realms/federation/protocol/openid-connect/certs"
+  "remote_cluster_name": "string",
+  "remote_ips": ["192.168.50.168"],
+  "local_ca_cert": "-----BEGIN CERTIFICATE-----\n..."
 }
 ```
+
+### Request, Approve, and Poll (current flow)
+
+The current flow keeps the receiver in control of identity trust and admission:
+
+```
+POST /api/cluster/federations/request
+POST /api/cluster/federations/{federation_id}/approve
+POST /api/cluster/federations/{federation_id}/deny
+GET  /api/cluster/federations/{federation_id}/request-status
+```
+
+The initiator submits a request with its remote address and a freshly generated
+PSK. The receiver reviews the inert `REQUESTED` card, chooses `shared_idp` or
+`receiver_realm`, and supplies the out-of-band PSK before approving. The
+initiator polls `request-status`; it never treats a local row as paired until
+the signed completion succeeds. `deny` is terminal for that request.
+
+Use `POST /api/cluster/federations/generate-psk` to mint a new PSK without
+creating a federation row. PSKs are secrets: transmit them through an approved
+out-of-band channel and never place them in logs or source control.
 
 ### Unpair a Federation
 
@@ -69,24 +100,65 @@ DELETE /api/cluster/federations/{federation_id}
 
 Tears down the federation. Removes ReBAC grants and cleans up the pre-shared key.
 
+### Disconnect and Reconnect
+
+```
+POST /api/cluster/federations/{federation_id}/disconnect
+POST /api/cluster/federations/{federation_id}/reconnect
+```
+
+`disconnect` is a reversible admission stop: it blocks new mesh requests while
+preserving the federation row, trust material, and receiver realm. `reconnect`
+is allowed only from `DISCONNECTED` and restores the local admission state.
+Neither operation deletes the federation; use `DELETE` for a soft delete.
+
+### Preflight, Diagnose, and Address Resolution
+
+```
+POST /api/cluster/federations/preflight
+POST /api/cluster/federations/{federation_id}/diagnose
+POST /api/cluster/federations/resolve-address
+```
+
+These native-admin endpoints validate a proposed route, diagnose a stored
+route, or derive the IP/hostname pair used by the pairing UI. They do not
+replace the pairing handshake or persist a federation by themselves.
+
 ### Rotate the Pre-Shared Key
 
 ```
 POST /api/cluster/federations/{federation_id}/rotate-preshared-key
 ```
 
-Mints a new pre-shared key and returns it **once**. The outgoing key keeps
-verifying until the rotation is completed, so the mesh stays up while you deliver
-the new value to the peer's operator out of band. Requires admin role.
+Mints K2 and returns the plaintext **once**, plus a non-secret fingerprint and
+generation. K1 remains active while the peer operator receives K2 out of band.
+Requires a native-realm administrator.
 
 ```
+POST /api/cluster/federations/{federation_id}/adopt-preshared-key-rotation
+{ "preshared_key": "<K2>", "fingerprint": "<sha256>" }
+```
+
+The peer operator adopts K2 without changing its active signer. The initiating
+operator then performs the peer-first cutover:
+
+```
+GET  /api/cluster/federations/{federation_id}/key-rotation-status
+POST /api/cluster/federations/{federation_id}/activate-key-rotation
+     { "fingerprint": "<K2 fingerprint>" }
 POST /api/cluster/federations/{federation_id}/complete-key-rotation
-{ "acknowledged": true }
+     { "fingerprint": "<K2 fingerprint>" }
 ```
 
-Retires the outgoing key, ending the rotation. `acknowledged` is required because
-this step breaks any peer still signing with the old key, and the cluster cannot
-observe whether the peer has adopted the new one.
+Activation proves possession of K2 at the peer before making it the local
+active signer. Completion retires K1 at the peer first, then removes the local
+alternate. `key-rotation-status` exposes phase, generation, and fingerprints,
+never plaintext keys. If a staged window must be abandoned before activation:
+
+```
+POST /api/cluster/federations/{federation_id}/abort-key-rotation
+{ "fingerprint": "<K2 fingerprint>", "generation": "<generation>" }
+```
 
 Because the key is symmetric, replacing it on one side alone would sever the mesh
 immediately — rotation exists to provide the window in which both keys are valid.
@@ -101,23 +173,60 @@ POST /api/cluster/federations/{federation_id}/ping
 Tests authenticated end-to-end connectivity through the signed peer path and
 returns `{ "federation_id": "...", "reachable": true }` on success.
 
-### Preflight and Diagnose
+### Federation User Allowlist and Guest Lifecycle
+
+These receiver-side operations require a native-realm administrator. They are
+not mesh-user enumeration endpoints.
 
 ```
-POST /api/cluster/federations/preflight
-POST /api/cluster/federations/{federation_id}/diagnose
-POST /api/cluster/federations/resolve-address
+POST /api/cluster/federations/{federation_id}/users
+GET  /api/cluster/federations/{federation_id}/users
+POST /api/cluster/federations/{federation_id}/users/{external_id}/revoke
+POST /api/cluster/federations/{federation_id}/users/{external_id}/restore
 ```
 
-Preflight probes a proposed route before persistence. Diagnose probes the
-stored route. Resolve-address derives the IP/FQDN complement used by the
-console pairing wizard. These endpoints are admin-only.
+The allowlist controls which source identities may be brokered. Revocation
+marks the receiver row disabled and rejects subsequent calls; `restore` reverses
+that exact allowlist mutation without changing the stored tuple recipe. A
+federation-wide `reconnect` restores access after a disconnect. A
+receiver-realm federation uses the guest endpoints:
+
+```
+POST /api/cluster/federations/{federation_id}/guests
+GET  /api/cluster/federations/{federation_id}/guests/{external_id}/attributes
+PUT  /api/cluster/federations/{federation_id}/guests/{external_id}/attributes
+POST /api/cluster/federations/{federation_id}/guests/{external_id}/revoke
+```
+
+Guest enrollment returns the receiver-issued offline credential once. Store it
+only in the source credential store; do not log or return it again. Attribute
+assignment is receiver-owned and is available only for `receiver_realm` guests.
+
+For a cross-federation administrative roster, use:
+
+```
+GET /api/cluster/federation-guests?with_attributes=true
+```
+
+For an admitted guest, receiver-owned ReBAC relations can be inspected or
+changed with:
+
+```
+GET    /api/cluster/federations/{federation_id}/users/{external_id}/relations
+POST   /api/cluster/federations/{federation_id}/users/{external_id}/relations
+DELETE /api/cluster/federations/{federation_id}/users/{external_id}/relations
+```
+
+Relation mutation bodies contain `object_namespace`, `object_id`, and
+`relation`; privileged/admin relations are rejected by the service layer.
 
 ---
 
 ## Mesh Proxy
 
-The mesh proxy forwards requests to remote federated clusters. Every request is HMAC-signed and ReBAC-gated.
+The mesh proxy forwards requests to remote federated clusters. Every request is
+HMAC-signed; the receiver applies identity-mode validation, allowlisting,
+ReBAC, and attribute gates.
 
 ### Proxy Path Pattern
 
@@ -154,8 +263,8 @@ by the **receiving** cluster (its allowlist, per-resource ReBAC, and per-record 
 | `X-KZ-Mesh-Signature` | HMAC-SHA256 | Verified on the remote cluster |
 | `X-KZ-Mesh-Signature-Ts` | Unix timestamp | Replay protection (5-minute window) |
 | `X-KZ-Mesh-Correlation-Id` | Per-request UUID | Observability tracing |
-| `X-KZ-Mesh-Peer-Token` | Caller's bearer token | Validated by the receiver in receiver-controlled identity modes and hashed into the signed envelope |
-| `X-KZ-Mesh-User-Attributes` | Source's `X-User-Attributes` | Source-asserted attributes (ignored in receiver-controlled modes) |
+| `X-KZ-Mesh-Peer-Token` | Caller bearer or receiver-realm credential | Receiver-side identity validation in receiver-controlled modes |
+| `X-KZ-Mesh-User-Attributes` | Source's `X-User-Attributes` | Source-asserted attributes (see note) |
 
 :::warning Identity-mode-dependent trust
 Whether the receiver **trusts** the source-asserted identity headers
@@ -168,8 +277,7 @@ headers are trusted only in source-trusted **`peer_kc`** / grandfathered mode.
 :::
 
 **Stripped before forwarding:**
-- `Authorization` (the value is carried in the dedicated peer-token field,
-  not as the receiver's normal bearer header)
+- `Authorization` (the local token is not valid on the remote cluster)
 - `Cookie`
 - `Proxy-*` headers
 
@@ -188,9 +296,9 @@ headers are trusted only in source-trusted **`peer_kc`** / grandfathered mode.
 | Status | Condition |
 |--------|-----------|
 | `401` | Local auth failed (invalid JWT / PAT) |
-| `403` `rebac_denied` | The **receiver's** per-resource ReBAC blocks the operation (there is no source-side `federation:operator` egress gate in 1.1) |
-| `400` / `404` | Invalid route, local target, or no exact paired federation |
-| `502` `mesh_proxy_bad_gateway` | Receiver connection, TLS, or upstream gateway failure |
+| `403` `rebac_denied` | The **receiver's** per-resource ReBAC blocks the operation (there is no source-side `federation:operator` egress gate in the current flow) |
+| `400` / `404` | Invalid route, local target, or no paired federation |
+| `502` `mesh_proxy_bad_gateway` | Remote connection, TLS, or upstream gateway failure |
 | `504` `mesh_proxy_timeout` | Remote request exceeded the proxy timeout |
 | `508` | Mesh hop/loop limit exceeded |
 
@@ -214,26 +322,13 @@ Submits a job to Ray and returns immediately. Poll `/status` or `/result` to tra
   "cluster_selector": "local" | "federation_name",
   "entrypoint": "python analysis.py",
   "runtime_env": {
-    "env_vars": {"KEY": "value"}
+    "env_vars": {"KEY": "value"},
+    "working_dir": "s3://..."
   },
   "metadata": {"label": "value"},
-  "timeout_seconds": 300,
-  "delegated_access": {
-    "datasets": [
-      {
-        "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,orders,PROD)",
-        "operations": ["discover", "retrieve"]
-      }
-    ],
-    "models": []
-  },
-  "python_packages": ["humanize==4.13.0"]
+  "timeout_seconds": 300
 }
 ```
-
-`runtime_env` accepts environment variables only. Delegated jobs may request
-exact package versions from the receiver's approved package catalog; arbitrary
-Ray `pip`, `working_dir`, `py_modules`, and `conda` settings are stripped.
 
 **Response:**
 ```json
@@ -258,10 +353,9 @@ Submits the job, polls until completion (or timeout), extracts the result marker
 ```json
 {
   "id": "uuid",
-  "status": "SUCCEEDED" | "FAILED" | "STOPPED",
+  "status": "SUCCEEDED" | "FAILED" | "TIMEOUT" | "CANCELLED",
   "result": { ... },
   "duration_seconds": 3.1,
-  "timed_out": false,
   "error_message": "string | null"
 }
 ```
@@ -326,7 +420,7 @@ This grants a relation to a **local** user — one with an account on the cluste
 
 | Scenario | Namespace | Relation | Notes |
 |----------|-----------|----------|-------|
-| Manage a federation (admin) | `federation` | `operator` | Federation **management** endpoints. **Not** required to call `/api/mesh/{fed}/*` — mesh egress is authenticated-only in 1.1 |
+| Manage a federation (admin) | `federation` | `operator` | Federation **management** endpoints. **Not** required to call `/api/mesh/{fed}/*` — mesh egress is authenticated-only in the current flow |
 | Local user can query a dataset | `dataset` | `viewer` | For native (non-mesh) retrieval on this cluster |
 | User can submit jobs | `cluster_jobs` | `executor` | Object id is the constant `"__all__"` |
 | User can own a dataset | `dataset` | `owner` | Can write and manage |

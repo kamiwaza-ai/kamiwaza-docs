@@ -10,12 +10,17 @@ presents to the remote cluster, and how the remote cluster verifies it.** This i
 the federation's **identity mode** — a per-federation setting chosen by the
 cluster that receives the calls (the *grantor*).
 
-Kamiwaza 1.2.0 ships two identity modes:
+Kamiwaza 1.2 ships three identity modes:
 
 | Mode | Trust | Who validates the caller | Use when |
 |---|---|---|---|
 | **`shared_idp`** | Receiver-controlled | The receiver validates the caller's token against a **shared realm** both clusters trust | Both clusters can trust one shared identity provider (single operator, or a tightly-coupled pair) |
 | **`peer_kc`** | Source-trusted (legacy 1.0) | The receiver validates against the **peer cluster's own** Keycloak realm | Grandfathered pairings, or when you explicitly accept the source cluster as an identity authority |
+| **`receiver_realm`** | Receiver-controlled | The receiver provisions and validates a dedicated `federation-<id>` realm | Strong per-federation isolation with receiver-issued guest credentials |
+
+`receiver_realm` is the default trust mode for the current request/approve flow.
+It is scoped to `per_federation`; the receiver owns guest enrollment, attributes,
+relations, revocation, and the one-time offline credential.
 
 ## Core principle: shared identity ≠ shared authority
 
@@ -44,7 +49,7 @@ authenticates against that shared realm and presents its token; the receiver
 validates that token against the realm's published keys (JWKS) before honoring
 the request.
 
-Per-federation configuration (set on the receiver at pairing time):
+Per-federation configuration (set by the receiver in the approve request):
 
 | Field | Purpose |
 |---|---|
@@ -52,12 +57,28 @@ Per-federation configuration (set on the receiver at pairing time):
 | `shared_jwks_url` | Where the receiver fetches the shared realm's signing keys to validate tokens. |
 | `shared_ca_pem` | (Optional) TLS trust root used to reach the shared realm's JWKS endpoint. |
 
+The issuer is required for `shared_idp`; the JWKS URL is derived when omitted.
+
 :::important
 Naming an issuer on a federation is **not sufficient** for the receiver to accept
 its tokens. The receiver only accepts a shared-realm token if that issuer is
 **enrolled in the cluster's trusted-shared-issuers list** (see
 [Cluster policy](#cluster-policy) below). An unenrolled issuer is rejected.
 :::
+
+## `receiver_realm` — receiver-controlled isolation
+
+The receiver provisions `federation-<federation_id>` in Keycloak after approval.
+An administrator enrolls each source identity through the guest API and receives
+an offline credential once. The source stores that credential encrypted and
+uses it for mesh calls; the receiver can revoke the guest at any time. Receiver
+attributes are assigned through the guest-attributes API and are evaluated by
+the receiver's gates. `realm_scope=per_federation` is currently the only built
+scope; unsupported scopes are rejected rather than silently mapped.
+
+The source's local roles and attribute headers are not authority in this mode:
+the receiver resolves the guest from its own realm and applies its own ReBAC
+and gate policy.
 
 ## `peer_kc` — source-trusted (legacy)
 
@@ -75,43 +96,25 @@ realm — it trusts the source cluster to be the identity authority. This is the
   from the `ALLOW_UNTRUSTED_FEDERATION` refusal, and surfaced as the weaker
   posture so operators can see which pairings rest on trusting the source.
 
-`peer_kc` remains supported in 1.2.0. It is not the recommended mode for a new
-pair, but it is not scheduled for removal. Keep it disabled unless the operator
-explicitly accepts the source-trusted posture.
-
-## Future: `receiver_realm` — receiver-owned guests
-
-The planned `receiver_realm` mode provisions and owns a separate guest identity
-for every approved remote user. Pairing will use a receiver-owned
-request/approve flow, and each user will complete an onboarding request that
-the receiver approves before issuing guest credentials.
-
-This mode is **not available in Kamiwaza 1.2.0**. Core rejects it with
-`identity_mode_unsupported`; do not select it for a 1.2 deployment. It remains
-the intended future pattern when clusters cannot share an issuer and the
-receiver must disable, rotate, or audit guest identities independently.
-
-The `shared_idp` setup in this guide does not exercise `receiver_realm`. Do not
-infer receiver-realm behavior from a shared-IDP pairing.
-
 ## Choosing and configuring a mode
 
 The **grantor** (the cluster receiving the calls) decides the mode from its own
 policy at pairing time. A requester may *propose* a mode, but an inbound proposal
 is not auto-trusted — the receiver's policy decides.
 
-The mode is selected implicitly by what you supply when you create the federation:
+The mode is selected by the receiver's `ApproveFederationRequest`:
 
-- **Supply `shared_issuer_url`** → the federation is `shared_idp`.
-- **Omit it on the legacy create path** → the federation is `peer_kc` (subject
-  to `ALLOW_UNTRUSTED_FEDERATION`).
-- **Do not select `receiver_realm` on 1.2.0** → the reserved value is rejected
-  until the receiver-owned guest-identity implementation is delivered.
+- **`identity_mode: receiver_realm`** (default) → dedicated receiver realm.
+- **`identity_mode: shared_idp`** plus `shared_issuer_url` → shared realm.
+- `peer_kc` is not accepted by the new request/approve schema; it remains only
+  for grandfathered or deprecated symmetric pairings and is subject to
+  `ALLOW_UNTRUSTED_FEDERATION` when newly created through that legacy path.
 
 :::warning
 **The identity mode cannot be changed in place.** Switching a federation between
-`peer_kc` and `shared_idp` requires **deleting and re-pairing** it. (Rotatable
-trust details, such as the shared JWKS URL, *can* be updated without re-pairing.)
+`peer_kc`, `shared_idp`, and `receiver_realm` requires **deleting and re-pairing**
+it. Rotatable trust details, such as the shared JWKS URL, can be updated without
+re-pairing when the mode permits it.
 :::
 
 See the [Setup Guide](./setup.md) for the concrete pairing steps.
@@ -124,7 +127,7 @@ the secure posture.
 
 | Setting | Deploy chart key | Default | Effect |
 |---|---|---|---|
-| `ALLOW_UNTRUSTED_FEDERATION` | `scheduler.allowUntrustedFederation` | `false` | When `false`, creating a **new** `peer_kc` (source-trusted) federation is refused. Existing pairings are grandfathered. |
+| `ALLOW_UNTRUSTED_FEDERATION` | `scheduler.allowUntrustedFederation` | `false` | When `false`, creating a **new legacy `peer_kc`** federation is refused. Existing pairings are grandfathered. The current request/approve flow does not create `peer_kc`. |
 | `AUTH_GATEWAY_TRUSTED_SHARED_ISSUERS` | `scheduler.trustedSharedIssuers` | *(empty)* | The comma-separated list of shared-realm issuer URLs this cluster will accept `shared_idp` tokens from. **Empty means no shared issuers are trusted** — a `shared_idp` token is rejected unless its issuer is on this list. |
 
 ## Next steps

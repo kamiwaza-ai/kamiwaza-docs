@@ -10,9 +10,8 @@ Federated retrieval lets you discover and query data on remote clusters without 
 ## Prerequisites
 
 - A [paired federation](./setup.md) between the clusters
-- An active receiver-side onboarding entry for the shared subject
-- Explicit per-dataset ReBAC grants on the target cluster. Mesh-originated
-  requests do not receive the native-cluster admin bypass.
+- Remote CA cert stored in the federation record
+- The mesh user must have per-dataset ReBAC grants on the target cluster (admin users with `extauthz` trust are exempt)
 
 ## Discover Remote Datasets
 
@@ -88,12 +87,19 @@ The inference request routes through the mesh proxy to the remote cluster's Ray 
 
 ## Access Control
 
-### Receiver-owned grants
+### Receiver authorization
 
-All mesh users require explicit per-dataset ReBAC grants on the target cluster.
-The native-cluster admin bypass is suppressed for mesh-originated requests.
-The catalog listing endpoint filters results so federated users see only
-datasets they have receiver-local grants for.
+Mesh origin is not a source-side admin bypass. The receiver validates the
+caller according to the federation's identity mode and then applies its own
+per-resource ReBAC and attribute gates to every mesh request, including calls
+made by a source-cluster administrator. A receiver-realm guest's attributes
+are assigned by the receiver; a shared-IdP caller's attributes come from its
+validated shared-realm token. The source's roles and forwarded attribute header
+are not authority in receiver-controlled modes.
+
+Callers therefore need explicit receiver-side dataset grants. The catalog list
+and retrieval endpoints filter or deny records that do not satisfy those
+grants and gates.
 
 Grant access **at federation-pairing time** through the brokered-user allowlist's `initial_tuples` field — **not** through `/api/auth/tuples`.
 
@@ -129,7 +135,7 @@ All federated operations use the mesh proxy at `/api/mesh/{cluster_selector}/`:
 
 | Parameter | Description |
 |-----------|-------------|
-| `cluster_selector` | Exact federation UUID is recommended. An exact remote-cluster name is accepted when unique; ambiguous prefixes are rejected rather than routed arbitrarily. |
+| `cluster_selector` | Remote cluster name, UUID, or federation ID. Prefix matching supported (e.g., `studio` matches `studio-1`). |
 | `{path}` | The API path on the remote cluster. Paths starting with `runtime/` are routed as-is; all others get an `/api/` prefix. |
 
 ### Timeouts
@@ -151,10 +157,12 @@ The mesh proxy adds these headers to cross-cluster requests:
 | `X-KZ-Mesh-Signature` | HMAC-SHA256 signature |
 | `X-KZ-Mesh-Correlation-Id` | Request correlation ID for cross-cluster tracing |
 | `X-KZ-Mesh-Route` | Hop trace for loop detection |
+| `X-KZ-Mesh-Peer-Token` | Caller bearer or receiver-realm credential used for receiver-side identity validation |
 
 :::note Identity-mode-dependent trust
-`X-KZ-Mesh-User-Id`/`-Roles` are **source-asserted**. In `shared_idp` (receiver-controlled)
-mode the receiver establishes identity from the caller's own validated shared-realm
-token and strips source-asserted cluster roles; the forwarded values are the identity
-only in source-trusted `peer_kc` mode. See [Identity Trust Modes](./identity-trust-modes.md).
+`X-KZ-Mesh-User-Id`/`-Roles` are **source-asserted**. In `shared_idp` and
+`receiver_realm` (receiver-controlled) modes the receiver establishes identity
+from its own validated token/realm credential and strips source-asserted cluster
+roles; those headers are authoritative only in source-trusted `peer_kc` mode.
+See [Identity Trust Modes](./identity-trust-modes.md).
 :::

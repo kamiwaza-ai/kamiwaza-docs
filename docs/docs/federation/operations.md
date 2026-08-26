@@ -7,34 +7,135 @@ title: Operations & Troubleshooting
 
 Operational runbook for federated mesh operations. Covers setup verification, common failure modes, job monitoring, and diagnostic queries.
 
-## 1. Pairing and first verification
+## 1. Federation Setup
 
-Use the receiver-controlled `shared_idp` workflow in the
-[Federation Setup](./setup.md) guide. Preflight both routes, create the
-receiver record first, create and pair the initiator, then onboard the shared
-subject on the receiver. The handshake exchanges platform CA trust; do not
-inject certificates or PSKs with SQL.
+### Prerequisites
 
-After both cards reach `PAIRED`, verify the exact record and route:
+Before attempting to pair two clusters, verify:
+
+1. **Both clusters run Istio** with `KAMIWAZA_ROUTING_PROVIDER=istio`
+2. **STRICT mTLS** is configured (`PeerAuthentication` in the `kamiwaza` namespace)
+3. **ReBAC is enabled** on both clusters
+4. **Network connectivity** exists between clusters on port 443
+5. **Gateway certs include node IPs** in Subject Alternative Names (SANs)
+6. **NTP is synchronized** on both clusters (clock skew must be under 300 seconds)
+
+### Recommended request/approve pairing
+
+For new federations, use the poll-not-push request flow. The initiator calls
+`POST /api/cluster/federations/generate-psk`, submits
+`POST /api/cluster/federations/request` with its reachable endpoints and the
+fresh PSK, and gives the PSK to the receiver operator through an approved
+out-of-band channel. The receiver reviews the `REQUESTED` row and calls
+`POST /api/cluster/federations/{id}/approve` with:
+
+```json
+{
+  "identity_mode": "receiver_realm",
+  "realm_scope": "per_federation",
+  "preshared_key": "<PSK_FROM_OUT_OF_BAND_CHANNEL>"
+}
+```
+
+Use `identity_mode: "shared_idp"` plus `shared_issuer_url` (and optional JWKS
+and CA fields) for a shared realm. The receiver's trusted issuer policy must
+contain that issuer. The initiator polls
+`GET /api/cluster/federations/{id}/request-status` until the signed handshake
+reports `PAIRED`; a refusal is structured and does not leave source credential
+rows behind. See the [setup guide](./setup.md#recommended-requestapprove-flow)
+for complete commands.
+
+### Legacy compatibility pairing
+
+The commands below are retained only to drain old in-flight symmetric rows.
+They create the legacy `peer_kc` posture and should not be used for new
+deployments. Do not put real PSKs in documentation, shell history, tickets, or
+logs.
+
+**1. Authenticate to both clusters:**
+
+```bash
+# Remote cluster (the receiver)
+REMOTE_TOKEN=$(curl -sk "https://192.168.50.13/api/auth/token" -X POST \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'username=admin%40kamiwaza.localhost&password=kamiwaza&grant_type=password' \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
+
+# Local cluster (the initiator)
+LOCAL_TOKEN=$(curl -sk "https://kamiwaza.test/api/auth/token" -X POST \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'username=admin%40kamiwaza.localhost&password=kamiwaza&grant_type=password' \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
+```
+
+**2. Create WAITING receiver on the remote cluster:**
+
+```bash
+curl -sk -X POST "https://192.168.50.13/api/cluster/federations" \
+  -H "Authorization: Bearer $REMOTE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "remote_cluster_name": "dev-laptop",
+    "remote_ips": [{"ip": "192.168.50.168", "primary": true}],
+    "preshared_key": "my-strong-shared-secret",
+    "callback_hostname": "192.168.50.13",
+    "role": "receiver"
+  }'
+```
+
+**3. Create PAIRING initiator on the local cluster:**
+
+```bash
+FEDERATION_RESPONSE=$(curl -sk -X POST "https://kamiwaza.test/api/cluster/federations" \
+  -H "Authorization: Bearer $LOCAL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "remote_cluster_name": "studio-1",
+    "remote_ips": [{"ip": "192.168.50.13", "primary": true}],
+    "preshared_key": "my-strong-shared-secret",
+    "callback_hostname": "192.168.50.168"
+  }')
+
+FEDERATION_ID=$(echo "$FEDERATION_RESPONSE" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
+echo "Federation ID: $FEDERATION_ID"
+```
+
+**4. Initiate pairing:**
+
+```bash
+curl -sk -X POST "https://kamiwaza.test/api/cluster/federations/$FEDERATION_ID/pair" \
+  -H "Authorization: Bearer $LOCAL_TOKEN"
+```
+
+**5. Store remote CA certificate:**
+
+```bash
+# Fetch the remote cluster's root CA (run on the remote cluster or via SSH)
+REMOTE_CA=$(kubectl get secret root-ca -n kamiwaza -o jsonpath='{.data.ca\.crt}' | base64 -d)
+
+# Store in federation record on the local cluster
+kubectl exec core-postgres-0 -n kamiwaza -- psql -U core -d kamiwaza -c \
+  "UPDATE cluster_federations SET remote_ca_cert = '$(echo "$REMOTE_CA" | sed "s/'/''/g")' WHERE id = '$FEDERATION_ID';"
+```
+
+Repeat the CA cert step in the other direction (store the local CA on the remote cluster's federation record).
+
+### Verifying Pairing Succeeded
 
 ```bash
 # Check federation status
-curl --fail --silent --show-error \
-  --header "Authorization: Bearer $LOCAL_TOKEN" \
-  "$LOCAL_API/cluster/federations/$FEDERATION_ID" | jq \
-  '{id,status,identity_mode,trust_posture,remote_ips,shared_issuer_url}'
+curl -sk "https://kamiwaza.test/api/cluster/federations/$FEDERATION_ID" \
+  -H "Authorization: Bearer $LOCAL_TOKEN" | python3 -m json.tool
 
 # Expected: "status": "PAIRED"
 
 # Test cross-cluster connectivity by listing remote datasets
-curl --fail --silent --show-error \
-  --header "Authorization: Bearer $SHARED_USER_TOKEN" \
-  "$LOCAL_API/mesh/$FEDERATION_ID/api/catalog/datasets/" | jq .
+curl -sk "https://kamiwaza.test/api/mesh/studio-1/api/catalog/datasets/" \
+  -H "Authorization: Bearer $LOCAL_TOKEN"
 
 # Test remote model listing
-curl --fail --silent --show-error \
-  --header "Authorization: Bearer $SHARED_USER_TOKEN" \
-  "$LOCAL_API/mesh/$FEDERATION_ID/api/serving/deployments" | jq .
+curl -sk "https://kamiwaza.test/api/mesh/studio-1/api/serving/deployments" \
+  -H "Authorization: Bearer $LOCAL_TOKEN"
 ```
 
 ---
@@ -71,14 +172,19 @@ UUID continue to select the existing pair.
 
 **Diagnosis:**
 
-1. **Run the typed route diagnostic** -- do not read PSK material from the
-   database:
+1. **Check the rotation/status fingerprints** -- Never print or query the
+   plaintext PSK. Use the non-secret rotation status endpoint and compare the
+   active/alternate fingerprints on both clusters:
 
    ```bash
-   curl --fail --silent --show-error --request POST \
-     --header "Authorization: Bearer $LOCAL_TOKEN" \
-     "$LOCAL_API/cluster/federations/$FEDERATION_ID/diagnose" | jq .
+   curl --fail --silent --show-error -sk \
+     "https://<LOCAL_API>/api/cluster/federations/<FEDERATION_ID>/key-rotation-status" \
+     -H "Authorization: Bearer $LOCAL_TOKEN" | jq
    ```
+
+   Compare only fingerprints and generation with the remote operator. If the
+   active fingerprints differ, stop traffic and run the documented rotation or
+   disconnect/re-pair recovery; do not edit the secret catalog directly.
 
 2. **Check clock skew** -- The HMAC signature includes a timestamp. The receiving cluster rejects signatures older than 300 seconds (configurable via `auth_forward_header_signature_ttl_seconds`):
 
@@ -96,11 +202,37 @@ UUID continue to select the existing pair.
 
 **Resolution:**
 
-- If the diagnostic reports an HMAC or PSK failure: rotate the PSK through the
-  supported federation lifecycle, or disconnect and re-pair. Never compare or
-  copy stored secret references as if they were raw keys.
+- If fingerprints do not match: complete or abort the in-flight rotation, or
+  disconnect and re-pair through the supported request/approve flow.
 - If clock skew exceeds 300 seconds: synchronize NTP on both clusters.
 - If headers are missing from ext-authz config: update the Istio mesh config and restart the ext-authz pod.
+
+### PSK rotation and recovery
+
+Rotation is a peer-first, zero-outage sequence:
+
+1. On the initiator, `POST /federations/{id}/rotate-preshared-key`; deliver the
+   returned K2 and fingerprint out of band.
+2. On the peer, `POST /federations/{id}/adopt-preshared-key-rotation` with K2 and
+   its fingerprint.
+3. On the initiator, `POST /federations/{id}/activate-key-rotation` with the
+   fingerprint. Core proves peer possession before changing its active signer.
+4. After both directions use K2, `POST /federations/{id}/complete-key-rotation`
+   with the fingerprint to retire K1.
+
+Use `GET /federations/{id}/key-rotation-status` for non-secret phase,
+generation, and fingerprint recovery. If K2 is still only `STAGED`, abort with
+`POST /federations/{id}/abort-key-rotation` and the fingerprint + generation.
+Never paste a plaintext key into logs or inspect it through SQL.
+
+### Receiver-realm revocation and credential recovery
+
+Revoking a receiver guest (or a brokered allowlist user) causes the receiver to
+return `403` with `reason: revoked_guest` or `revoked_brokered_user`. The source
+mesh proxy purges only that caller's `(source_user, federation)` credential;
+other users' credentials are untouched. A later onboarding request can mint a
+new credential. `guest_approval_incomplete` is deliberately non-terminal and
+does not purge custody.
 
 ### ReBAC Denied (403 rebac_denied)
 
@@ -139,9 +271,9 @@ curl -sk -X POST "https://<TARGET_IP>/api/cluster/federations/<FEDERATION_ID>/us
   }'
 ```
 
-:::note No longer needed in 1.1
+:::note No longer needed in the current flow
 Earlier releases required a `federation:operator` relation on the source cluster to
-use the mesh proxy. In 1.1 the mesh egress is **authenticated-only** — that grant is
+use the mesh proxy. The mesh egress is **authenticated-only** — that grant is
 no longer required, and a mesh `403` now originates from the **receiver's**
 per-resource ReBAC or per-record gate, not a missing source-side operator relation.
 :::
@@ -152,8 +284,14 @@ per-resource ReBAC or per-record gate, not a missing source-side operator relati
 
 **Diagnosis:**
 
-1. Run `POST /api/cluster/federations/{id}/diagnose` and inspect the TLS layer's
-   stable reason. Re-pair if the handshake did not persist peer trust.
+1. Check that `remote_ca_cert` is populated in the `cluster_federations` table:
+
+   ```bash
+   kubectl exec core-postgres-0 -n kamiwaza -- psql -U core -d kamiwaza -c \
+     "SELECT id, remote_cluster_name,
+             CASE WHEN remote_ca_cert IS NOT NULL THEN 'SET' ELSE 'NULL' END AS ca_cert_status
+      FROM cluster_federations WHERE status = 'PAIRED';"
+   ```
 
 2. Verify the remote cluster's gateway cert includes its node IP in SANs:
 
@@ -171,10 +309,8 @@ per-resource ReBAC or per-record gate, not a missing source-side operator relati
 
 **Resolution:**
 
-- If peer trust is absent: re-pair the federation. Do not manually inject a CA.
-- If the remote certificate does not cover the configured route, update
-  `global.ingress.gateway.{ipAddresses,extraDnsNames}` and reconcile the
-  deployment.
+- If `remote_ca_cert` is NULL: re-pair the federation, or manually inject the CA cert (see setup step 5).
+- If the remote cert does not include the node IP: update the gateway certificate SANs (see [Federation Setup](./setup.md#add-node-ip-to-gateway-certificate)).
 
 ### Trailing Slash Redirects (307 -> auth loss)
 
@@ -391,10 +527,11 @@ All cross-cluster mesh requests include these headers. They are set by the mesh 
 | `X-KZ-Mesh-Signature-Ts` | Unix timestamp (seconds) when the signature was issued. Must be within TTL window (default 300s). |
 | `X-KZ-Mesh-Route` | Comma-separated list of cluster IDs this request has traversed. Used for loop detection (max 8 hops). |
 | `X-KZ-Mesh-Correlation-Id` | UUID for cross-cluster request tracing. Preserved across hops; generated on the first hop if absent. |
+| `X-KZ-Mesh-Peer-Token` | Caller bearer or receiver-realm credential used for receiver-side identity validation. |
 
 :::note Identity-mode-dependent trust
-In `shared_idp` (receiver-controlled) mode the target establishes identity from the
-caller's **own validated shared-realm token**, not the source-asserted
+In `shared_idp` or `receiver_realm` (receiver-controlled) mode the target establishes identity from the
+caller's **own validated token/realm credential**, not the source-asserted
 `X-KZ-Mesh-User-Id`/`-Roles`. The source-asserted values are the identity only in
 source-trusted `peer_kc`/grandfathered mode. See
 [Identity Trust Modes](./identity-trust-modes.md).
