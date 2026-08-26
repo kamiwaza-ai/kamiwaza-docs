@@ -45,9 +45,10 @@ Then install or upgrade as usual. Kamiwaza mounts the Secret as a whole director
 `/app/licenses/license.lic`. Keep the directory mount: a `subPath` mount would never
 receive a rotated license.
 
-Installer-driven installs also require accepting the EULA (`--accept-eula` on the
-installer, or `global.eula.accepted=true` for chart-only installs); the chart refuses
-to render anything until acceptance is recorded.
+Separately from the license file, the chart requires the EULA to be accepted before
+it renders anything: set `global.eula.accepted: true` in your values (the platform
+installers record this for you when they run; if a chart install stops with an EULA
+message, this value is what it is asking for).
 
 ### Enforcement
 
@@ -108,11 +109,13 @@ does not go through the Kamiwaza API.
      rolloutKey: "2026-09-01"
    ```
 
-3. For that upgrade, also set `KAMIWAZA_FORCE_SERVE_REDEPLOY=1` in the core
-   environment. The scheduler normally leaves a healthy model-serving deployment
-   alone, so without this the serving layer keeps reporting the **old** license
-   state even though the new file was accepted. A renewal that "did not take" in the
-   banner is almost always this step.
+3. Make sure the model-serving layer is redeployed on that restart. The chart does
+   this by default (`rayServe.forceRedeployOnStartup: true`, which sets
+   `KAMIWAZA_FORCE_SERVE_REDEPLOY=1` for core). If you have set it to `false`, turn it
+   back on for this upgrade: the scheduler otherwise leaves a healthy serving
+   deployment alone, and the serving layer keeps reporting the **old** license state
+   even though the new file was accepted. A renewal that "did not take" in the banner
+   is almost always this.
 
 4. Re-check the `x-kamiwaza-license-*` headers.
 
@@ -132,7 +135,7 @@ is a warning and the platform continues; with enforcement on, core exits.
 | `license_wrong_product` | Issued for a different Kamiwaza product | Check which product the file was issued for and request the right one |
 | `license_suspended` | The license has been suspended by Kamiwaza | Contact Kamiwaza licensing support |
 | `license_file_stale` | The signed file itself carries an expiry that has passed (distinct from the commercial term, which never blocks startup) | Request a re-issued file |
-| `license_claims_invalid` | A field in the file is malformed, or the file uses a newer format than this Kamiwaza version understands | If the message names a schema version, upgrade Kamiwaza or request a file for your version; otherwise request a re-issued file |
+| `license_claims_invalid` | A field in the file is malformed, or the file uses a newer format than this Kamiwaza version understands | If the message says the file's schema version is above the maximum this build supports, upgrade Kamiwaza or request a file issued for your version; for any other detail, request a re-issued file — upgrading will not help |
 | `license_gate_misconfigured` | The image itself is missing its built-in trust data | Redeploy a correctly published Kamiwaza image; changing the license file cannot fix this |
 
 There is deliberately no `license_expired` condition: an ended commercial term is
