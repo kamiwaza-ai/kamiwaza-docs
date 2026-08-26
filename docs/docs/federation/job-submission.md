@@ -33,8 +33,8 @@ KUBECONFIG=<tenant-kubeconfig> \
 python3 deploy/scripts/kamiwaza-smoke.py recoverable-job
 ```
 
-The check submits a small recoverable job, observes its status transition,
-retrieves the structured result, and exercises cancellation handling. A
+The check submits a small recoverable job, observes its status transition, and
+retrieves the structured result. A
 `502` containing `Ray submit failed (403)` indicates a mesh authorization
 policy problem on the Ray Dashboard hop; inspect the rendered `ray-head`
 policy and confirm the `core-ray` principal and port `8265` rule before
