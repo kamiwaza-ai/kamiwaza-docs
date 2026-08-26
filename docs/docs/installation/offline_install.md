@@ -5,6 +5,10 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
 **Supported host:** RHEL-compatible 9.x (x86_64).
 
 > This is an advanced, operator-driven path. If your host has internet access, use the simpler [Online Installation](online_install.md) instead.
+>
+> For an install that must be verified artifact-by-artifact against a specific
+> immutable release — or that is driven over SSM or another managed shell — follow
+> the [Offline Installation Runbook](offline_install_runbook.md).
 
 ## Prerequisites
 
@@ -15,7 +19,7 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
   - **`/tmp` ≥ 25 GB** — bundle extraction and install scratch space.
   - **`/` ≥ 50 GB** — the downloaded bundle and its recombined tarballs under `/opt/kamiwaza/prereqs` (~25 GB), plus installed tooling under `/opt` and `/usr/local`.
 
-  A small default `/tmp` or `/var` is the most common cause of install failure. It surfaces in one of three ways, none of which mentions disk space directly: the preflight aborts at `storage_host_prep` with an `fs-virtual-block free space` error; an image import fails with `no space left on device`; or the helmfile sync fails roughly ten minutes in with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods — that last one is the kubelet disk-pressure taint, not a cert-manager fault. Grow the backing LV or partition (or mount adequate storage at `/var/lib`) **before** you begin.
+  A small default `/tmp`, or a small filesystem backing `/var/lib`, is the most common cause of install failure. It surfaces in one of three ways, none of which mentions disk space directly: the preflight aborts at `storage_host_prep` with an `fs-virtual-block free space` error; an image import fails with `no space left on device`; or the helmfile sync fails roughly ten minutes in with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods — that last one is the kubelet disk-pressure taint, not a cert-manager fault. Grow the backing LV or partition (or mount adequate storage at `/var/lib`) **before** you begin.
 - A machine with internet access to download the bundle, and a way to transfer files to the target host.
 
 Confirm which filesystem actually backs each path before you transfer anything — a
@@ -160,7 +164,7 @@ sudo /opt/kamiwaza/scripts/bootstrap-prereqs.sh \
 # Put the bundled tools on sudo's PATH. Later steps call `sudo kubectl`, and the
 # bootstrap's own verification cannot see them either, so re-run it afterwards —
 # the second run reports "Bootstrap complete".
-for tool in helm helmfile k0s kind kubectl; do
+for tool in helm helmfile k0s kubectl; do
   if [[ -x "/usr/local/bin/${tool}" ]]; then
     sudo ln -sfn "/usr/local/bin/${tool}" "/usr/bin/${tool}"
   fi
@@ -308,7 +312,6 @@ export EXTENSION_OPERATOR_TAG="release-1.2.0"
 
 export KAMIWAZA_VERSION="${APP_TAG}"
 export KAMIWAZA_IMAGE_TAG="${APP_TAG}"
-export KAMIWAZA_K8S_RUNTIME="k0s-podman"
 export KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G
 export KAMIWAZA_RESOURCE_PROFILE=small
 export HELMFILE_EXTRA_SET="--set global.security.allowInsecureImages=true"

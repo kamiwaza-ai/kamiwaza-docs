@@ -11,24 +11,57 @@ images are pulled from Keygen.
 - Ubuntu 22.04
 - Ubuntu 24.04
 - RHEL-compatible 9.x
-- macOS
+
+macOS production installation is not currently supported (ENG-10839). macOS
+developer installs remain available through the source-based Lima workflow.
 
 ## Prerequisites
 
 - A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
 - A host that meets the [System Requirements](system_requirements.md).
-- **Free disk space on the volume backing `/var/lib`.** The installer preallocates
-  the cluster's storage image there, so this is the binding constraint and a large
-  total disk does not help if `/var` is a separate logical volume. The default
-  image is **700 GB**, which needs roughly **1.1 TB** free. To install on a smaller
-  host, pass `-e storage_host_prep_virtual_block_size=80G` in [Step 2](#step-2-run-the-installer),
-  which brings the requirement down to about **350 GB**. Check the backing
-  filesystem before you begin:
+- **Free disk space, on the right filesystem**. The installer provisions cluster storage under `/var/lib` as **preallocated** loopback images, so the space is consumed at install time rather than as you use it. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. At default settings a single-node host needs:
+  - **`/var/lib` ≥ 1.1 TB** — the install consumes roughly **890 GB** here: the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`. Size the volume so that 890 GB leaves you under the ~85% disk-pressure threshold described below: 890 GB on a 1 TB volume is 89% and still inside the eviction range, so **1.1 TB** (≈81%) is the practical floor.
+  - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
+
+  Confirm which filesystem actually backs the path before you begin:
 
   ```bash
   df -hT /var/lib
   findmnt -T /var/lib
   ```
+
+  **On a smaller host, reduce the OSD image** rather than provisioning 1.1 TB. Passing `-e storage_host_prep_virtual_block_size=80G` — the same 80 GB OSD size the offline install guide recommends — brings the requirement down to **350 GB on `/var/lib`**:
+
+  ```bash
+  KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
+  ./kamiwaza-online-install.sh \
+    --domain <domain> \
+    --admin-password "<initial-admin-password>" \
+    -y \
+    -e storage_host_prep_virtual_block_size=80G
+  ```
+
+  Size the OSD image for the models you intend to store — it backs the in-cluster model registry. With the 80 GB override a single-node install consumes roughly 270 GB of `/var`; leave headroom above that, because Kubernetes starts evicting pods once the filesystem passes ~85% full.
+
+  **Most cloud images need their volumes grown first** — they commonly ship `/` and `/var` small (often 2 GB / 10 GB) with the bulk of the disk unpartitioned. Check `lsblk` for your device, partition index, and volume-group names before running the commands below. The example uses the **RHEL-compatible** cloud-image layout (`rootvg`/`rootlv`/`varlv`):
+
+  ```bash
+  sudo growpart /dev/nvme0n1 4
+  sudo pvresize /dev/nvme0n1p4
+  sudo lvextend -r -L 100G /dev/rootvg/rootlv
+  sudo lvextend -r -L 400G /dev/rootvg/varlv   # 400 GB covers the 80G-OSD override; size to ≥ 1.1 TB for the default OSD
+  ```
+
+  Ubuntu 22.04/24.04 cloud images use the `ubuntu-vg`/`ubuntu-lv` layout and typically ship a single root volume with **no separate `/var`**, so grow the root LV instead (and adjust the `growpart` partition index for your disk).
+
+  If `/var` is too small the install fails in one of three ways, none of which mentions disk space directly:
+
+  - early, at `storage_host_prep` with an `fs-virtual-block free space` error;
+  - during image import, with `no space left on device`;
+  - or roughly ten minutes in, with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods. That last one is the kubelet disk-pressure taint, not a cert-manager fault.
+
+  Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
+
 - Outbound DNS and HTTPS access to:
   - your OS package repositories,
   - `raw.pkg.keygen.sh` (installer and fallback artifacts),
@@ -67,12 +100,6 @@ Keep the version, resolved download URL, checksum file, and verified SHA-256 in
 the installation record. A checksum fetched from a different version does not
 verify the selected installer.
 
-On macOS, replace the verification command with:
-
-```bash
-shasum -a 256 -c kamiwaza-online-install.sh.sha256
-```
-
 ## Step 2: Run the Installer
 
 > **Upgrading an existing production database?** Follow the
@@ -92,47 +119,19 @@ KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
   -y 2>&1 | tee kamiwaza-online-install.log
 ```
 
-- **On Linux**, the installer re-executes itself through `sudo -E` when it needs elevated privileges.
-- **On macOS**, run as the target admin user rather than as root. The installer uses Homebrew and Podman state scoped to that user and prompts through `sudo` only for privileged setup steps.
+> **If you sized the host to the 350 GB floor rather than 1.1 TB**, add `-e storage_host_prep_virtual_block_size=80G` to the command above. Without it the installer provisions the default 700 GB OSD image and fails at host prep. See [Prerequisites](#prerequisites).
+
+The installer runs k0s directly on the Linux host and uses Podman for supporting
+container workflows. It re-executes itself through `sudo -E` when it needs
+elevated privileges. Do not pass a Kubernetes runtime argument.
 
 Before extracting its payload or installing any prerequisites, the installer validates that your license can access the required Keygen images and exits immediately if it cannot. On a supported Linux host without `curl`, it first installs only `curl` and the CA certificate package needed for that check; the remaining prerequisites are not installed until the license check succeeds.
 
 > Passing the license key through the `KEYGEN_LICENSE_KEY` environment variable keeps it out of the installer's command-line arguments, where it could otherwise be visible in `ps` output or logs. You can also use `KAMIWAZA_KEYGEN_LICENSE_KEY` or the `--keygen-license-key` option. If you also want to keep the key out of your interactive shell history, set the variable from somewhere other than the command line — for example a `.env` file you source, or your shell profile — following your environment's own conventions for handling secrets.
 
-## Optional raw image preload
+## Inference images
 
-The installer normally uses `k0s-podman`, and the charts pull inference images from the authenticated registry when a model is deployed. The `--keygen-raw-image-packages` option applies only to the legacy Kind runtime. It preloads a space- or comma-separated replacement list of raw image archives into the Kind nodes.
-
-The default list is `kamiwaza-opensearch kamiwaza-vllm kamiwaza-kaizen-agent kamiwaza-kaizen-backend kamiwaza-omniparse`. A custom list replaces that default, so include every default package that the installation still needs.
-
-The plural `--keygen-raw-image-packages` option is the current installer interface. The singular form shown in older release documentation is not a supported current installer option.
-
-This release provides the following hardware-specific raw package basenames:
-
-| Hardware and engine | Package basename |
-| --- | --- |
-| NVIDIA with CUDA 12, llama.cpp | `kamiwaza-llamacpp-cuda12` |
-| NVIDIA with CUDA 13, llama.cpp | `kamiwaza-llamacpp-cuda13` |
-| NVIDIA amd64, Ampere or newer, vLLM | `kamiwaza-vllm` |
-| NVIDIA ARM64, including DGX Spark, vLLM | `kamiwaza-vllm-cuda-arm64` |
-| AMD CDNA, llama.cpp | `kamiwaza-llamacpp-rocm-cdna` |
-| AMD RDNA, including gfx1151, llama.cpp | `kamiwaza-llamacpp-rocm-rdna` |
-
-For gfx1151, the generic RDNA package replaces the earlier hardware-specific bridge and is the Strix Halo path validated for this release.
-
-For example, this Kind installation replaces the default amd64 vLLM archive with the ARM64 vLLM archive while retaining the other default packages:
-
-```bash
-KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
-./kamiwaza-online-install.sh \
-  --keygen-raw-image-packages "kamiwaza-opensearch kamiwaza-vllm-cuda-arm64 kamiwaza-kaizen-agent kamiwaza-kaizen-backend kamiwaza-omniparse" \
-  --domain <domain> \
-  --admin-password "<initial-admin-password>" \
-  -y \
-  -e k8s_runtime=kind
-```
-
-Because a custom raw-image list replaces the defaults, retain the Kaizen agent and backend packages when installing Kaizen. If your NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
+Supported k0s installs pull inference images from the authenticated registry when a model is deployed; no raw-image preload or Kubernetes runtime argument is required. Select a model engine compatible with the host hardware. If an NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
 
 ## Common Options
 
@@ -145,22 +144,17 @@ Frequently used **install arguments**:
 - `--domain <value>`: Public base domain for Kamiwaza.
 - `--admin-password <value>`: Initial admin password.
 - `-y`, `--yes`: Non-interactive install.
-- `-e k8s_runtime=kind`: Select the legacy Kind runtime when using the optional raw-image preload.
-- `-e storage_host_prep_virtual_block_size=<size>`: Size of the preallocated cluster storage image on the volume backing `/var/lib`. Defaults to `700G`, which requires roughly 1.1 TB free; `80G` reduces the requirement to about 350 GB. Size this for the data you expect to keep, not just to complete the install.
+- `-e storage_host_prep_virtual_block_size=<size>`: Size of the preallocated OSD image on the volume backing `/var/lib`. Defaults to `700G`, which requires roughly 1.1 TB free; `80G` reduces the requirement to about 350 GB. See [Prerequisites](#prerequisites).
 
 Frequently used **installer options**:
 
 - `--keygen-license-key <key>`: Keygen license key used for image pulls. Prefer the `KEYGEN_LICENSE_KEY` environment variable so the key does not appear in the installer's command-line arguments.
-- `--keygen-raw-image-packages <list>`: Replace the raw image package preload list for a Kind installation. Supply a space- or comma-separated list; the option has no effect on the default `k0s-podman` runtime. See [Optional raw image preload](#optional-raw-image-preload).
 - `--keep-extract`: Preserve the extracted payload after the install.
 - `--phase1-only`: Stop after host prerequisites and cluster bootstrap.
 
 ## Logs
 
-By default the installer writes to:
-
-- **Linux:** `/var/log/kamiwaza_install_online.log`
-- **macOS:** `~/Library/Logs/kamiwaza_install_online.log`
+By default the installer writes to `/var/log/kamiwaza_install_online.log`.
 
 Override the log path with `KAMIWAZA_ONLINE_INSTALL_LOG`:
 

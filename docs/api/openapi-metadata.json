@@ -1,10 +1,10 @@
 {
-  "syncedAt": "2026-08-19T00:17:21.338Z",
+  "syncedAt": "2026-08-18T16:12:15.112Z",
   "sourceRemote": "https://github.com/kamiwaza-internal/kamiwaza",
-  "sourceBranch": "release/1.2.0",
-  "sourceCommit": "db518376a09fa62923669c3a75c5041edd0e3fbd",
+  "sourceBranch": "develop",
+  "sourceCommit": "32fbf6acb4965aaa7328926555469bfe3095e247",
   "originalApiVersion": "0.1.0",
-  "patchedApiVersion": "1.2.0",
-  "endpoints": 439,
-  "schemas": 574
+  "patchedApiVersion": "1.0.2",
+  "endpoints": 438,
+  "schemas": 578
 }

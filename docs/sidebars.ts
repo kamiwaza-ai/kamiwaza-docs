@@ -30,6 +30,7 @@ const sidebars: SidebarsConfig = {
 				"installation/system_requirements",
 				"installation/online_install",
 				"installation/offline_install",
+				"installation/offline_install_runbook",
 				"installation/licensing",
 				"installation/two-node-deployment",
 				"installation/nvidia-secure-boot",
