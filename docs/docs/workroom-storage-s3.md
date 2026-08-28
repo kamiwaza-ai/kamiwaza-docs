@@ -19,9 +19,9 @@ Workroom storage is not configured for Skills Library.
 
 Use this guide when your deployment stores workroom content in **external AWS S3** instead of the default in-cluster object storage.
 
-:::warning Default RGW installs need no configuration — do not apply this page to them
+:::warning Default SeaweedFS installs need no configuration — do not apply this page to them
 
-Default self-managed installs (the `rook-rgw` storage lane, including the k0s dev paths) provision in-cluster Ceph RGW object storage and wire workroom storage automatically: core consumes the installer-managed `kamiwaza-rgw-credentials` Secret. On those installs workroom storage already works, and applying this page's overrides without a real external-S3 requirement — or leaving them behind after one — will break it.
+Default self-managed installs use namespace-local SeaweedFS and wire workroom storage automatically. On those installs workroom storage already works, and applying this page's overrides without a real external-S3 requirement — or leaving them behind after one — will break it.
 
 In particular, a `core.context.objectStorage` override pointing at a `core-s3` Secret — for example, left over in `deploy/cluster/values/overrides.yaml` from an earlier external-S3 setup — silently overrides the automatic wiring, and core then references a Secret the installer never creates. A fresh install never completes: the deploy blocks on the kamiwaza release's post-install hooks while core pods sit in `CreateContainerConfigError: secret "core-s3" not found`. See [Troubleshooting](#secret-core-s3-not-found) for diagnosis and cleanup.
 :::
@@ -34,7 +34,7 @@ Configure AWS S3 if your workroom content must live in an external AWS S3 bucket
 - Skills Library package import
 - Skills Library package download
 
-If you are on the default `rook-rgw` storage lane and have no requirement to move workroom content to AWS, you do not need this page.
+If the default SeaweedFS backend meets your requirements, you do not need this page.
 
 ## Prerequisites
 
@@ -61,9 +61,9 @@ There are two ways to configure external S3 workroom storage, depending on how y
 | `deploy` repo Helmfile install (v1.0 storage platform) | `storage.workrooms` in `deploy/cluster/values/storage-overrides.yaml` — **preferred** |
 | Direct `core` chart values (no umbrella chart / no Helmfile) | `context.objectStorage` in your core values file |
 
-On Helmfile installs, the storage platform materializes `storage.workrooms.*` into the core chart's `context.objectStorage` block for you and keeps the rest of the storage stack (Rook, registry) consistent with it. This applies to `install-prod.sh` installs too: they deploy through the same Helmfile environments, so a storage block in `cluster/values/storage-overrides.yaml` is honored there as well.
+On Helmfile installs, the external-storage adapter materializes `storage.workrooms.*` into the core chart's `context.objectStorage` block and keeps SeaweedFS and registry settings consistent with it. This applies to `install-prod.sh` installs too: they deploy through the same Helmfile environment, so a storage block in `cluster/values/storage-overrides.yaml` is honored there as well.
 
-Do not use `deploy/cluster/values/overrides.yaml` for storage configuration. It is a late umbrella-chart override that takes precedence over the storage platform's automatic wiring (see the warning above), it deep-merges per key — so a partial block silently mixes with the storage platform's rendered values — and it does not reconfigure Rook or the registry. Deployments configured on 0.13.x used `overrides.yaml` for this purpose; when upgrading to a storage-platform release, migrate the block to `storage-overrides.yaml` — or remove it entirely if you are returning to the default RGW lane. The only supported `overrides.yaml` use on this page is the minimal session-token fragment in Option 1, step 2a.
+Do not use `deploy/cluster/values/overrides.yaml` for storage configuration. It is a late umbrella-chart override that takes precedence over the storage adapter's wiring (see the warning above), it deep-merges per key — so a partial block silently mixes with the rendered storage values — and it does not reconfigure SeaweedFS or the registry. Deployments configured on 0.13.x used `overrides.yaml` for this purpose; migrate the block to `storage-overrides.yaml`, or remove it entirely when returning to the default SeaweedFS backend. The only supported `overrides.yaml` use on this page is the minimal session-token fragment in Option 1, step 2a.
 
 ## Configuration Model
 
@@ -292,7 +292,7 @@ Retry a workflow that depends on workroom storage:
 
 Core pods (`core-scheduler`, `core-raycluster-head`) are stuck in `CreateContainerConfigError` (shown as `0/1`, or `1/2` on Istio-injected installs), the pod events show `secret "core-s3" not found`, and a fresh install never completes — the deploy blocks on the kamiwaza release's post-install hooks while most other pods run normally.
 
-This means core was configured to read S3 credentials from a Secret that does not exist in the `kamiwaza` namespace. On `rook-rgw`-lane installs it almost always means a stale `core.context.objectStorage` override — for example in `deploy/cluster/values/overrides.yaml`, left over from a pre-storage-platform external-S3 setup — is redirecting core away from the installer-managed `kamiwaza-rgw-credentials` Secret.
+This means core was configured to read S3 credentials from a Secret that does not exist in the `kamiwaza` namespace. It usually means a stale `core.context.objectStorage` override — for example in `deploy/cluster/values/overrides.yaml`, left over from an earlier external-S3 setup — is overriding the default SeaweedFS wiring.
 
 Check which Secret and key names core actually references:
 
@@ -301,11 +301,11 @@ kubectl get deploy core-scheduler -n kamiwaza -o yaml | grep -A4 CONTEXT_SERVICE
 ```
 
 - `key: access_key_id` with `name: core-s3` — this page's external-S3 override is in effect
-- `key: AccessKey` with `name: kamiwaza-rgw-credentials` — the default RGW wiring is in effect
+- a SeaweedFS endpoint with `name: seaweedfs-s3-credentials` — the default wiring is in effect
 
 Fix:
 
-- If you intended the default RGW storage: remove the `core.context.objectStorage` block from your overrides and re-apply the release.
+- If you intended the default SeaweedFS storage: remove the `core.context.objectStorage` block from your overrides and re-apply the release.
 - If you intended external S3: create the Secret (Option 1, step 1). The kubelet retries automatically and the pods recover within a few minutes (container-creation backoff caps at 5 minutes). To force an immediate retry, delete the stuck pods:
 
 ```bash

@@ -19,8 +19,8 @@ developer installs remain available through the source-based Lima workflow.
 
 - A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
 - A host that meets the [System Requirements](system_requirements.md).
-- **Free disk space, on the right filesystem**. The installer provisions cluster storage under `/var/lib` as **preallocated** loopback images, so the space is consumed at install time rather than as you use it. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. At default settings a single-node host needs:
-  - **`/var/lib` ≥ 1.1 TB** — the install consumes roughly **890 GB** here: the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`. Size the volume so that 890 GB leaves you under the ~85% disk-pressure threshold described below: 890 GB on a 1 TB volume is 89% and still inside the eviction range, so **1.1 TB** (≈81%) is the practical floor.
+- **Free disk space, on the right filesystem**. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. A single-node host should have:
+  - **`/var/lib` ≥ 350 GB** for runtime images, caches, and operational headroom. The installer does not provision a CSI driver or StorageClass; application PVC capacity comes from the cluster's existing storage provider and must be sized separately.
   - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
 
   Confirm which filesystem actually backs the path before you begin:
@@ -30,35 +30,18 @@ developer installs remain available through the source-based Lima workflow.
   findmnt -T /var/lib
   ```
 
-  **On a smaller host, reduce the OSD image** rather than provisioning 1.1 TB. Passing `-e storage_host_prep_virtual_block_size=80G` — the same 80 GB OSD size the offline install guide recommends — brings the requirement down to **350 GB on `/var/lib`**:
-
-  ```bash
-  KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
-  ./kamiwaza-online-install.sh \
-    --domain <domain> \
-    --admin-password "<initial-admin-password>" \
-    -y \
-    -e storage_host_prep_virtual_block_size=80G
-  ```
-
-  Size the OSD image for the models you intend to store — it backs the in-cluster model registry. With the 80 GB override a single-node install consumes roughly 270 GB of `/var`; leave headroom above that, because Kubernetes starts evicting pods once the filesystem passes ~85% full.
-
   **Most cloud images need their volumes grown first** — they commonly ship `/` and `/var` small (often 2 GB / 10 GB) with the bulk of the disk unpartitioned. Check `lsblk` for your device, partition index, and volume-group names before running the commands below. The example uses the **RHEL-compatible** cloud-image layout (`rootvg`/`rootlv`/`varlv`):
 
   ```bash
   sudo growpart /dev/nvme0n1 4
   sudo pvresize /dev/nvme0n1p4
   sudo lvextend -r -L 100G /dev/rootvg/rootlv
-  sudo lvextend -r -L 400G /dev/rootvg/varlv   # 400 GB covers the 80G-OSD override; size to ≥ 1.1 TB for the default OSD
+  sudo lvextend -r -L 400G /dev/rootvg/varlv
   ```
 
   Ubuntu 22.04/24.04 cloud images use the `ubuntu-vg`/`ubuntu-lv` layout and typically ship a single root volume with **no separate `/var`**, so grow the root LV instead (and adjust the `growpart` partition index for your disk).
 
-  If `/var` is too small the install fails in one of three ways, none of which mentions disk space directly:
-
-  - early, at `storage_host_prep` with an `fs-virtual-block free space` error;
-  - during image import, with `no space left on device`;
-  - or roughly ten minutes in, with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods. That last one is the kubelet disk-pressure taint, not a cert-manager fault.
+  If `/var` is too small the install can fail during image import with `no space left on device`, or later with `FailedScheduling: 1 node(s) had untolerated taint(s)` after kubelet applies disk pressure.
 
   Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
 

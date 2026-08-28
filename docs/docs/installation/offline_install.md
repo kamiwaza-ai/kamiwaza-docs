@@ -14,12 +14,12 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
 
 - A **Kamiwaza Prod license key**, used to download the bundle artifacts from Keygen.
 - A RHEL-compatible 9.x host (x86_64) that meets the [System Requirements](system_requirements.md).
-- **Free disk space, on the right filesystems.** The offline flow stages large artifacts and provisions cluster storage under `/`, `/tmp`, and `/var/lib`. Confirm each path has room on the **volume that actually backs it** — on hosts with LVM or separate partitions (most cloud RHEL images ship this way), a large total disk does **not** help if `/var` is a small separate volume. Recommended free space:
-  - **`/var/lib` ≥ 350 GB**, assuming `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G` is set in [Step 5](#step-5-install-kamiwaza). Without that export the OSD image defaults to 700 GB and you need **1.1 TB** instead. The OSD image is preallocated at install time and also holds all stateful data, so size it for the data you expect to keep, not just to complete the install.
+- **Free disk space, on the right filesystems.** The offline flow stages large artifacts and stores runtime images under `/`, `/tmp`, and `/var/lib`. Confirm each path has room on the **volume that actually backs it** — on hosts with LVM or separate partitions (most cloud RHEL images ship this way), a large total disk does **not** help if `/var` is a small separate volume. Recommended free space:
+  - **`/var/lib` ≥ 350 GB** for runtime images, caches, and operational headroom. Application PVC capacity comes from the cluster's existing StorageClass and must be sized separately.
   - **`/tmp` ≥ 25 GB** — bundle extraction and install scratch space.
   - **`/` ≥ 50 GB** — the downloaded bundle and its recombined tarballs under `/opt/kamiwaza/prereqs` (~25 GB), plus installed tooling under `/opt` and `/usr/local`.
 
-  A small default `/tmp`, or a small filesystem backing `/var/lib`, is the most common cause of install failure. It surfaces in one of three ways, none of which mentions disk space directly: the preflight aborts at `storage_host_prep` with an `fs-virtual-block free space` error; an image import fails with `no space left on device`; or the helmfile sync fails roughly ten minutes in with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods — that last one is the kubelet disk-pressure taint, not a cert-manager fault. Grow the backing LV or partition (or mount adequate storage at `/var/lib`) **before** you begin.
+  A small default `/tmp`, or a small filesystem backing `/var/lib`, is a common cause of install failure. It surfaces as `no space left on device`, or as `FailedScheduling: 1 node(s) had untolerated taint(s)` when kubelet applies disk pressure. Grow the backing LV or partition (or mount adequate storage at `/var/lib`) **before** you begin.
 - A machine with internet access to download the bundle, and a way to transfer files to the target host.
 
 Confirm which filesystem actually backs each path before you transfer anything — a
@@ -295,8 +295,6 @@ Omitting the bulk tag, or any one of the three overrides, leaves a workload requ
 > `unreachable=0`), not from log activity — a quiet log is not a finished
 > install.
 
-> **Keep `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G`** in the block below unless you have sized `/var/lib` for the 700 GB default — it is what brings the requirement down to the 350 GB floor in [Prerequisites](#prerequisites). This env var and the online guide's `-e storage_host_prep_virtual_block_size` extra-var are the same setting expressed two ways; the offline path sets it via the environment, the online path via an installer argument.
-
 ```bash
 export DOMAIN="<domain>"
 
@@ -312,7 +310,6 @@ export EXTENSION_OPERATOR_TAG="release-1.2.0"
 
 export KAMIWAZA_VERSION="${APP_TAG}"
 export KAMIWAZA_IMAGE_TAG="${APP_TAG}"
-export KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G
 export KAMIWAZA_RESOURCE_PROFILE=small
 export HELMFILE_EXTRA_SET="--set global.security.allowInsecureImages=true"
 
