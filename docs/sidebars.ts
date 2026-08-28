@@ -37,6 +37,16 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: "category",
+			label: "Kamiwaza on Kubernetes (1.1.0)",
+			items: [
+				"installation/kubernetes/overview",
+				"installation/kubernetes/prepare-kubernetes",
+				"installation/kubernetes/helm-install",
+				"installation/kubernetes/lifecycle",
+			],
+		},
+		{
+			type: "category",
 			label: "Configuration",
 			items: [
 				"configuration",
