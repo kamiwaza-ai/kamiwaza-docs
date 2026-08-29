@@ -88,12 +88,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`d6c05db8`](https://github.com/kamiwaza-internal/deploy/commit/d6c05db8fd3f54953f862039e4fadf27751ea371):
+[`cca833f8`](https://github.com/kamiwaza-internal/deploy/commit/cca833f8c322fcb5882c17a5176230c4bf151b1b):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/d6c05db8fd3f54953f862039e4fadf27751ea371/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/d6c05db8fd3f54953f862039e4fadf27751ea371/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/d6c05db8fd3f54953f862039e4fadf27751ea371/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/d6c05db8fd3f54953f862039e4fadf27751ea371/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/cca833f8c322fcb5882c17a5176230c4bf151b1b/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/cca833f8c322fcb5882c17a5176230c4bf151b1b/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/cca833f8c322fcb5882c17a5176230c4bf151b1b/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/cca833f8c322fcb5882c17a5176230c4bf151b1b/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -424,8 +424,12 @@ deletion. It does not accept a configurable path and refuses missing,
 symlinked, malformed, foreign, or ambiguous ownership state. Every PVC backed
 by the managed class is permanently lost. Do not use this flag on a recoverable
 cluster or to bypass an ownership refusal you have not investigated. It is
-rejected for Lima and macOS. `make clean` uses the same marker-guarded host
-action before native-Linux k0s reset; a refusal aborts that reset.
+rejected for Lima and macOS. The one markerless exception is an exact empty,
+non-symlink BasePath: it contains no data and represents a safe interrupted
+create, so install may claim it and forced host cleanup may remove it only
+after stopping k0s. A nonempty unowned path always fails closed. `make clean`
+uses the same marker-guarded host action before native-Linux k0s reset; a
+refusal aborts that reset.
 
 Deleting the provisioner first is unsafe. PVC deletion would still remove API
 objects, but no controller/helper would remain to execute `Delete` against the
