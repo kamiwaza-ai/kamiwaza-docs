@@ -65,6 +65,7 @@ the pin automatically. See [Upgrade the pin](#upgrade-the-pin).
 | Ready workload | One Deployment: `kamiwaza-openebs-localpv-provisioner` |
 | Helper image | `docker.io/openebs/linux-utils:4.5.0` |
 | Controller pod security | Non-root UID/GID 1000; `RuntimeDefault` seccomp |
+| BasePath cleanup security | UID 0, non-privileged, escalation disabled; drop all capabilities, then add only `DAC_OVERRIDE` and `FOWNER` |
 
 Only dynamic LocalPV Hostpath is enabled. LocalPV LVM, ZFS, and rawfile,
 replicated Mayastor, Loki, Alloy, MinIO, analytics, quota management, snapshot
@@ -86,9 +87,9 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`e5d77795`](https://github.com/kamiwaza-internal/deploy/commit/e5d777951505f976b1334dd536edd4e0c74273ba):
+[`e262239d`](https://github.com/kamiwaza-internal/deploy/commit/e262239d9ca2e7072b71268b681d41f7392b7397):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/e5d777951505f976b1334dd536edd4e0c74273ba/scripts/k0s-openebs-localpv.sh)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/e262239d9ca2e7072b71268b681d41f7392b7397/scripts/k0s-openebs-localpv.sh)
 - [pinned narrow values](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/cluster/values/openebs-localpv-dev.yaml)
 - [storage configuration](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/docs/storage-configuration.md)
 - [contract tests](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/scripts/tests/test_k0s_default_storage_contracts.py)
@@ -304,7 +305,10 @@ implemented safe order is exact:
    matched by the pod name, container name, and image contract in pinned
    Dynamic LocalPV 4.2.0, not by an invented label.
 4. Run a root-uid, non-privileged cleanup helper on every node while the Helm
-   ownership evidence still exists. It removes only
+   ownership evidence still exists. It drops all Linux capabilities and adds
+   back only `DAC_OVERRIDE` and `FOWNER`, which are required to traverse and
+   remove arbitrary workload-owned modes such as `0700`; privilege escalation
+   remains disabled. It removes only
    `/var/local/kamiwaza/openebs/localpv-hostpath`, and only when
    `.kamiwaza-managed` matches the owner, current `kube-system` cluster UID,
    release name, and exact BasePath. A missing or mismatched marker stops
