@@ -66,6 +66,7 @@ the pin automatically. See [Upgrade the pin](#upgrade-the-pin).
 | Helper image | `docker.io/openebs/linux-utils:4.5.0` |
 | Controller pod security | Non-root UID/GID 1000; `RuntimeDefault` seccomp |
 | BasePath cleanup security | UID 0, non-privileged, escalation disabled; drop all capabilities, then add only `DAC_OVERRIDE` and `FOWNER` |
+| Helm failure policy | Helm 4 `--rollback-on-failure`, 10-minute default timeout |
 
 Only dynamic LocalPV Hostpath is enabled. LocalPV LVM, ZFS, and rawfile,
 replicated Mayastor, Loki, Alloy, MinIO, analytics, quota management, snapshot
@@ -87,12 +88,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`172a5272`](https://github.com/kamiwaza-internal/deploy/commit/172a527228ada862f3dc02ae17248f0ef4b38e58):
+[`1c301ac4`](https://github.com/kamiwaza-internal/deploy/commit/1c301ac47c03da39e36b88b0ec85d37945e52a5f):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/172a527228ada862f3dc02ae17248f0ef4b38e58/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/1c301ac47c03da39e36b88b0ec85d37945e52a5f/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/1c301ac47c03da39e36b88b0ec85d37945e52a5f/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/1c301ac47c03da39e36b88b0ec85d37945e52a5f/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/1c301ac47c03da39e36b88b0ec85d37945e52a5f/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -122,13 +123,21 @@ The decision order is:
 3. A managed and foreign class both marked default is ambiguous and stops the
    install. A static foreign default also stops rather than adding a second
    default.
-4. With no explicit or existing dynamic default, install or reconcile the exact
-   managed 4.5.1 release. A same-named namespace, StorageClass, or Helm release
-   with missing ownership or an unexpected chart is a hard stop.
-5. Mark the exact cluster-scoped resources as owned, record the runtime, create
-   a marker for the exact BasePath on every node, and verify the release,
-   Deployment, StorageClass fields, and sole default.
-6. Only after this succeeds may Helmfile install Kamiwaza PVC consumers. The
+4. With no explicit or existing dynamic default, an offline local install stops
+   before creating the managed namespace. Managed bootstrap needs access to
+   `openebs.github.io` and the pinned images; for an offline run, provide an
+   existing dynamic default or explicitly configure `storage.stateful.standard`.
+5. For an online managed bootstrap, reject unowned name collisions, ensure the
+   managed namespace, then create the exact BasePath marker on every node
+   **before** Helm exposes the default StorageClass. This closes Kubernetes'
+   retroactive default assignment race for pre-existing Pending PVCs.
+6. Install or reconcile the exact managed 4.5.1 release using Helm 4
+   rollback-on-failure semantics. Mark the cluster-scoped resources as owned,
+   record the runtime, and verify the release, Deployment, StorageClass fields,
+   and sole default. The timeout defaults to 10 minutes; set
+   `KAMIWAZA_OPENEBS_TIMEOUT` to a valid Helm duration only when a slower
+   connected environment requires it.
+7. Only after this succeeds may Helmfile install Kamiwaza PVC consumers. The
    normal preflight verifies that an explicit class exists or a default is now
    present; later platform readiness includes bound PVCs and ready workloads.
 
@@ -136,12 +145,20 @@ The helper's direct interface is useful for diagnosis and focused qualification:
 
 ```bash
 # Choose the runtime that actually owns this cluster.
-./scripts/k0s-openebs-localpv.sh install --runtime k0s-lima
+KUBECONFIG_PATH="${HOME}/.kube/config"
+CLUSTER_UID="$(kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  get namespace kube-system -o jsonpath='{.metadata.uid}')"
+./scripts/k0s-openebs-localpv.sh install \
+  --runtime k0s-lima \
+  --kubeconfig "${KUBECONFIG_PATH}" \
+  --expected-cluster-uid "${CLUSTER_UID}"
 ./scripts/k0s-openebs-localpv.sh verify
 
 # Example only when a site override explicitly selects an existing class.
 ./scripts/k0s-openebs-localpv.sh install \
   --runtime k0s-podman \
+  --kubeconfig "${KUBECONFIG_PATH}" \
+  --expected-cluster-uid "${CLUSTER_UID}" \
   --configured-storage-class operator-class
 ```
 
@@ -313,11 +330,13 @@ implemented safe order is exact:
    remove arbitrary workload-owned modes such as `0700`; privilege escalation
    remains disabled. It removes only
    `/var/local/kamiwaza/openebs/localpv-hostpath`, and only when
-   `.kamiwaza-managed` matches the owner, current `kube-system` cluster UID,
-   release name, and exact BasePath. A missing or mismatched marker stops
-   cleanup.
+   `.kamiwaza-managed` has exactly four ordered lines matching the owner,
+   nonempty cluster UID, release name, and exact BasePath. The UID may name the
+   immediately previous cluster after a reset because the explicit kubeconfig
+   and current target UID were already asserted before the DaemonSet ran. A
+   missing, malformed, or otherwise mismatched marker stops cleanup.
 5. Uninstall only Helm release `kamiwaza-openebs` from namespace
-   `kamiwaza-openebs`, waiting up to five minutes. Running marker cleanup first
+   `kamiwaza-openebs`, waiting up to 10 minutes by default. Running marker cleanup first
    prevents an interruption after Helm uninstall from discarding the evidence
    needed to clean node data; cleanup is idempotent if this step must be
    retried.
@@ -450,13 +469,16 @@ and ownership labels. Do not fabricate a marker or recursively delete the path.
 `kube-system` UID. During the next normal install, an otherwise exact four-line
 Kamiwaza marker with only an old cluster UID is reclaimable: the helper removes
 the now-unreachable old PV children and rewrites the marker for the new cluster.
-This recovery does not apply when any other marker field or shape differs.
+If a reinstall then rolls back before rewriting that UID, normal uninstall may
+also remove the same exact owned path after it proves the explicitly targeted
+replacement cluster. This recovery does not apply when the UID is empty or any
+other marker field or shape differs.
 
 ### Partial install or uninstall
 
 If the release is absent and only the empty owned namespace remains, uninstall
 runs the idempotent marker-guarded cleanup before deleting that namespace. This
-safely handles both an atomic install rollback and an older uninstall
+safely handles both a rollback-on-failure install and an older uninstall
 interrupted after Helm removal. If an owned StorageClass or other partial state
 also remains, uninstall stops and instructs you to rerun install before
 uninstalling so the provisioner/reclaim path is coherent. If the release
@@ -482,15 +504,19 @@ Treat the failing boundary separately:
 
 - Chart repository/index/TLS failure happens before Kubernetes resources are
   ready. Test access to `https://openebs.github.io/openebs` and rerun the normal
-  helper; do not remove the version pin.
+  helper; do not remove the version pin. Offline local k0s runs must use an
+  existing dynamic default or an explicit `storage.stateful.standard` instead
+  of attempting this online bootstrap.
 - Registry or image-pull failure appears in Pod events. Check access to the
   exact OpenEBS images in the 4.5.1 chart and the pinned `linux-utils:4.5.0`
   helper. Do not enable another engine to work around a pull.
 - macOS keychain/credential-helper failure belongs to host registry
   authentication, not the StorageClass contract. Fix the credential boundary
   and retry; never paste credentials into logs or Helm values.
-- An atomic Helm failure should roll back the attempted release. If owned
-  residue remains, follow the partial-state recovery above.
+- Helm 4 rollback-on-failure should remove the attempted release. The helper's
+  timeout defaults to 10 minutes; `KAMIWAZA_OPENEBS_TIMEOUT` may be set to a
+  longer valid Helm duration for an unusually slow connected environment. If
+  owned residue remains, follow the partial-state recovery above.
 
 Implementation tests live in
 `scripts/tests/test_k0s_default_storage_contracts.py`, with installer wiring
