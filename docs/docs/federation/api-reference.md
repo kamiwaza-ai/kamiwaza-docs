@@ -3,42 +3,62 @@ sidebar_position: 7
 title: API Reference
 ---
 
-# Federation API Reference
+# Federation API reference
 
-Complete reference for the mesh proxy and federation endpoints. All endpoints require authentication via Keycloak JWT or PAT.
+Reference for the federation-management and mesh-proxy endpoints. User-facing
+routes accept a Keycloak JWT or personal access token (PAT). Federation
+management writes require a native-realm administrator; a mesh-forwarded
+credential cannot manage a receiver's federation records.
 
-## Federation Management
+## Federation management
 
-Manage cluster federation pairing and cluster metadata.
+Manage cluster pairing, trust metadata, and brokered-user admission.
 
-### List Federations
+### List federations
 
-```
+```text
 GET /api/cluster/federations
 ```
 
-Returns all federations the current user has operator or viewer access to.
+Returns all federation records to an authenticated native-realm caller. This
+route does not apply a per-user federation ReBAC filter. The optional `status`
+query parameter accepts `PAIRING`, `PAIRED`, `DISCONNECTED`, or `DELETED`;
+`skip` and `limit` provide pagination.
 
 **Response:**
+
 ```json
 [
   {
     "id": "uuid",
     "remote_cluster_name": "string",
-    "remote_ips": [{"ip": "string", "primary": true}],
+    "remote_ips": [{"ip": "string", "hostname": "string", "primary": true}],
     "callback_hostname": "string",
     "local_cluster_id": "uuid",
     "remote_cluster_id": "uuid",
-    "status": "PAIRED | PAIRING | FAILED",
+    "status": "WAITING | PAIRING | PAIRED | DISCONNECTED | DELETED",
     "last_ping": "timestamp",
-    "created_at": "timestamp"
+    "created_at": "timestamp",
+    "identity_mode": "shared_idp | peer_kc",
+    "trust_posture": "receiver_controlled_shared | source_trusted",
+    "grandfathered": false,
+    "brokering_enabled": true
   }
 ]
 ```
 
-### Create and Pair a Federation
+### Get a federation
 
+```text
+GET /api/cluster/federations/{federation_id}
 ```
+
+Returns one federation record by UUID. This route requires a native-realm
+administrator and returns `404` when the record does not exist.
+
+### Create and pair a federation
+
+```text
 POST /api/cluster/federations
 POST /api/cluster/federations/{federation_id}/pair
 ```
@@ -48,6 +68,7 @@ Create the receiver's `WAITING` record first, then the initiator record. Call
 exchange. Both endpoints require a native-realm administrator.
 
 **Request:**
+
 ```json
 {
   "remote_cluster_name": "fed-b",
@@ -61,26 +82,99 @@ exchange. Both endpoints require a native-realm administrator.
 }
 ```
 
-### Unpair a Federation
+### Update a federation
 
+```text
+PUT /api/cluster/federations/{federation_id}
 ```
+
+Updates only the fields that are safe to change in place:
+
+- `brokering_enabled`
+- `shared_jwks_url`
+- `shared_ca_pem`
+- `require_peer_jwt`
+
+The endpoint rejects PSK, peer-binding, issuer-binding, identity-mode, remote
+address, lifecycle, and audit-field changes. Delete and re-pair the federation
+to change its PSK, peer binding, shared issuer, or identity mode.
+
+**Request:**
+
+```json
+{
+  "brokering_enabled": true,
+  "shared_jwks_url": "https://idp.example.internal/realms/federation/protocol/openid-connect/certs",
+  "require_peer_jwt": true
+}
+```
+
+### Disconnect a federation
+
+```text
+POST /api/cluster/federations/{federation_id}/disconnect
+POST /api/cluster/federations/{federation_id}/disconnect?force=true
+```
+
+The default form asks the peer to disconnect before the local record enters
+`DISCONNECTED`. The `force=true` form performs the local transition when the
+peer cannot acknowledge the request. Both forms require a native-realm
+administrator.
+
+### Delete a federation
+
+```text
 DELETE /api/cluster/federations/{federation_id}
 ```
 
-Tears down the federation. Removes ReBAC grants and cleans up the pre-shared key.
+Soft-deletes the local federation record and performs best-effort peer and
+identity-provider teardown. Use the pairing flow to create a new record after
+deletion.
 
-### Ping a Federation
+### Manage allowlisted users
 
+```text
+POST /api/cluster/federations/{federation_id}/users
+GET /api/cluster/federations/{federation_id}/users
+POST /api/cluster/federations/{federation_id}/users/{external_id}/revoke
+POST /api/cluster/federations/{federation_id}/users/{external_id}/restore
 ```
+
+These native-administrator routes manage the receiver's brokered-user
+allowlist. `external_id` identifies the source subject. Optional
+`initial_tuples` are rendered when the receiver provisions the local brokered
+user; `{{user_id}}` expands to that receiver-local UUID. Revoke disables new
+mesh admission. The optional `cancel_in_flight_jobs=true` query parameter also
+marks the user's active jobs stopped on a best-effort basis. Restore re-enables
+the allowlist entry and can replace its tuple recipe.
+
+**Add or update request:**
+
+```json
+{
+  "external_id": "<source-user-uuid>@<source-cluster-uuid>",
+  "initial_tuples": [
+    {
+      "subject": "user:{{user_id}}",
+      "relation": "viewer",
+      "object": "dataset:<dataset-urn>"
+    }
+  ]
+}
+```
+
+### Ping a federation
+
+```text
 POST /api/cluster/federations/{federation_id}/ping
 ```
 
 Tests authenticated end-to-end connectivity through the signed peer path and
 returns `{ "federation_id": "...", "reachable": true }` on success.
 
-### Preflight and Diagnose
+### Preflight and diagnose
 
-```
+```text
 POST /api/cluster/federations/preflight
 POST /api/cluster/federations/{federation_id}/diagnose
 POST /api/cluster/federations/resolve-address
@@ -88,7 +182,7 @@ POST /api/cluster/federations/resolve-address
 
 Preflight probes a proposed route before persistence. Diagnose probes the
 stored route. Resolve-address derives the IP/FQDN complement used by the
-console pairing wizard. These endpoints are admin-only.
+console pairing wizard. These endpoints require a native-realm administrator.
 
 ---
 
@@ -98,11 +192,22 @@ The mesh proxy forwards requests to remote federated clusters. Every request is 
 
 ### Proxy Path Pattern
 
-```
-{METHOD} /api/mesh/{federation_name}/{remote_path}
+```text
+{METHOD} /api/mesh/{federation_selector}/{remote_path}
 ```
 
-The `{federation_name}` is the `remote_cluster_name` from the federation record. The `{remote_path}` is the path on the remote cluster (without the `/api` prefix — it's re-added by the proxy).
+`{federation_selector}` accepts an exact federation UUID, an exact remote cluster
+UUID, or the federation record's `remote_cluster_name` as an exact or prefix
+match. Use the federation UUID for automation. A name or prefix that matches
+multiple paired rows returns `409 mesh_target_ambiguous` instead of choosing a
+peer.
+
+`remote_cluster_name` is the peer label stored when the federation is created
+or paired. Ping does not refresh it after a peer rename. The cached old name
+and federation UUID continue to work; re-pairing adopts the new display name.
+
+`{remote_path}` is the path on the remote cluster. The proxy adds `/api` when
+the path does not already begin with `/api` or `/runtime`.
 
 **Authorization:** Mesh egress is **authenticated-only** — any authenticated local
 user may call `/api/mesh/{fed}/*`. There is **no** `federation:operator` gate on the

@@ -1,9 +1,9 @@
 ---
 sidebar_position: 6
-title: Operations & Troubleshooting
+title: Operations and troubleshooting
 ---
 
-# Operations & Troubleshooting
+# Operations and troubleshooting
 
 Operational runbook for federated mesh operations. Covers setup verification, common failure modes, job monitoring, and diagnostic queries.
 
@@ -11,8 +11,8 @@ Operational runbook for federated mesh operations. Covers setup verification, co
 
 Use the receiver-controlled `shared_idp` workflow in the
 [Federation Setup](./setup.md) guide. Preflight both routes, create the
-receiver record first, create and pair the initiator, then onboard the shared
-subject on the receiver. The handshake exchanges platform CA trust; do not
+receiver record first, create and pair the initiator, then add the shared
+subject to the receiver's allowlist. The handshake exchanges platform CA trust; do not
 inject certificates or PSKs with SQL.
 
 After both cards reach `PAIRED`, verify the exact record and route:
@@ -40,6 +40,30 @@ curl --fail --silent --show-error \
 ---
 
 ## 2. Mesh Proxy Troubleshooting
+
+### Duplicate or stale cluster names
+
+**Symptoms:** Federation cards show the same peer label, a renamed peer still
+shows its old label, a new name returns `404 mesh_target_not_found`, or a shared
+name or prefix returns `409 mesh_target_ambiguous`.
+
+**Diagnosis:** Read the stored selector and UUID for every active federation:
+
+```bash
+curl --fail --silent --show-error \
+  --header "Authorization: Bearer $LOCAL_TOKEN" \
+  "$LOCAL_API/cluster/federations?status=PAIRED" | jq \
+  '.[] | {id, remote_cluster_id, remote_cluster_name, status}'
+```
+
+`remote_cluster_name` is stored when the federation is created or paired.
+Renaming the peer changes its local cluster row, but ping does not refresh the
+cached federation row.
+
+**Resolution:** Use the exact federation UUID for automation. Assign a distinct
+`core.initialClusterName` on every cluster, then re-pair existing federations to
+adopt renamed peer labels. Until re-pairing, the cached old name and federation
+UUID continue to select the existing pair.
 
 ### HMAC Signature Failures (403)
 
@@ -72,9 +96,10 @@ curl --fail --silent --show-error \
 
 **Resolution:**
 
-- If the diagnostic reports an HMAC or PSK failure: rotate the PSK through the
-  supported federation lifecycle, or disconnect and re-pair. Never compare or
-  copy stored secret references as if they were raw keys.
+- If the diagnostic reports an HMAC or PSK failure: disconnect and re-pair both
+  local federation records with a new out-of-band PSK. The current API does not
+  provide an in-place PSK rotation endpoint. Never compare or copy stored secret
+  references as if they were raw keys.
 - If clock skew exceeds 300 seconds: synchronize NTP on both clusters.
 - If headers are missing from ext-authz config: update the Istio mesh config and restart the ext-authz pod.
 
