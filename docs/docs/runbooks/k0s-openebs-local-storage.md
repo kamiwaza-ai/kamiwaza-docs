@@ -88,12 +88,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`cca833f8`](https://github.com/kamiwaza-internal/deploy/commit/cca833f8c322fcb5882c17a5176230c4bf151b1b):
+[`d4768d00`](https://github.com/kamiwaza-internal/deploy/commit/d4768d00e8b1a626487bdf2b1255e494b357cc34):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/cca833f8c322fcb5882c17a5176230c4bf151b1b/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/cca833f8c322fcb5882c17a5176230c4bf151b1b/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/cca833f8c322fcb5882c17a5176230c4bf151b1b/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/cca833f8c322fcb5882c17a5176230c4bf151b1b/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/d4768d00e8b1a626487bdf2b1255e494b357cc34/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/d4768d00e8b1a626487bdf2b1255e494b357cc34/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/d4768d00e8b1a626487bdf2b1255e494b357cc34/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/d4768d00e8b1a626487bdf2b1255e494b357cc34/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -395,6 +395,12 @@ old UID as permission to reclaim data that cleanup deliberately refused. Fix
 the reported sudo, API, ownership, namespace, PV, helper, or marker failure and
 rerun normal uninstall; do not reset k0s manually.
 
+Native Linux storage teardown requires current sudo authorization. Before a
+batch or non-interactive invocation, run `sudo -v` in an interactive shell.
+If authorization expires or is denied, both normal and forced cleanup stop
+before runtime reset; the force flag never bypasses sudo or ownership checks.
+Reauthorize and rerun the same uninstall command.
+
 If a consumer namespace is stuck `Terminating`, inspect its remaining objects,
 conditions, and finalizers while the owning cluster is still running:
 
@@ -430,6 +436,27 @@ create, so install may claim it and forced host cleanup may remove it only
 after stopping k0s. A nonempty unowned path always fails closed. `make clean`
 uses the same marker-guarded host action before native-Linux k0s reset; a
 refusal aborts that reset.
+
+`make clean` is not an ownership bypass. If it refuses a nonempty unowned or
+malformed BasePath, preserve the host and inspect the exact fixed path first:
+
+```bash
+sudo ls -la /var/local/kamiwaza/openebs/localpv-hostpath
+sudo find /var/local/kamiwaza/openebs/localpv-hostpath \
+  -mindepth 1 -maxdepth 2 -print
+```
+
+Determine which cluster or operator owns the contents. Do not fabricate a
+marker or reset k0s while the origin is unclear. Only after the operator proves
+that exact path is disposable may they run:
+
+```bash
+sudo rm -rf -- /var/local/kamiwaza/openebs/localpv-hostpath
+make clean
+```
+
+That manual data-loss decision is deliberately outside automated cleanup; the
+refusal preserves the runtime and evidence needed to make it.
 
 Deleting the provisioner first is unsafe. PVC deletion would still remove API
 objects, but no controller/helper would remain to execute `Delete` against the
