@@ -60,6 +60,7 @@ the pin automatically. See [Upgrade the pin](#upgrade-the-pin).
 | Node BasePath | `/var/local/kamiwaza/openebs/localpv-hostpath` |
 | Reclaim policy | `Delete` |
 | Volume binding | `WaitForFirstConsumer` |
+| Allowed topology | Controller node labeled `kamiwaza.ai/local-dev-storage=true` |
 | Volume expansion | Disabled |
 | Default annotation | Current annotation is `true`; beta annotation is not `true` |
 | Ready workload | One Deployment: `kamiwaza-openebs-localpv-provisioner` |
@@ -68,11 +69,14 @@ the pin automatically. See [Upgrade the pin](#upgrade-the-pin).
 | BasePath cleanup security | UID 0, non-privileged, escalation disabled; drop all capabilities, then add only `DAC_OVERRIDE` and `FOWNER` |
 | Helm failure policy | Helm 4.1+ `--rollback-on-failure`, 10-minute default timeout |
 
-Only dynamic LocalPV Hostpath is enabled. LocalPV LVM, ZFS, and rawfile,
+Only dynamic LocalPV Hostpath is enabled. The pinned chart renders the
+ServiceAccount, ClusterRole, ClusterRoleBinding, and provisioner Deployment;
+the lifecycle helper renders the fifth object, the constrained StorageClass,
+because the chart can express `NodeAffinityLabels` but not Kubernetes
+`allowedTopologies`. LocalPV LVM, ZFS, and rawfile,
 replicated Mayastor, Loki, Alloy, MinIO, analytics, quota management, snapshot
 CRDs, and the umbrella pre-upgrade hook are disabled. A render of the pinned
-profile contains only the provisioner ServiceAccount, StorageClass,
-ClusterRole, ClusterRoleBinding, and Deployment.
+profile plus the helper-owned class contains no other resources.
 
 Managed resources have all three ownership signals:
 
@@ -88,12 +92,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`d4768d00`](https://github.com/kamiwaza-internal/deploy/commit/d4768d00e8b1a626487bdf2b1255e494b357cc34):
+[`599cd11a`](https://github.com/kamiwaza-internal/deploy/commit/599cd11a4f18feec5f80bee6e9bd762b4e2fabd0):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/d4768d00e8b1a626487bdf2b1255e494b357cc34/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/d4768d00e8b1a626487bdf2b1255e494b357cc34/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/d4768d00e8b1a626487bdf2b1255e494b357cc34/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/d4768d00e8b1a626487bdf2b1255e494b357cc34/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/599cd11a4f18feec5f80bee6e9bd762b4e2fabd0/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/599cd11a4f18feec5f80bee6e9bd762b4e2fabd0/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/599cd11a4f18feec5f80bee6e9bd762b4e2fabd0/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/599cd11a4f18feec5f80bee6e9bd762b4e2fabd0/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -335,10 +339,19 @@ failure. On macOS `k0s-podman`, a host `k0s` binary is unrelated to the Podman
 machine and is deliberately ignored; the Linux persistent-BasePath path never
 runs there.
 
-For `k0s-lima`, the BasePath exists inside the explicitly selected VM. The
-wrapper skips the redundant in-cluster namespace/PV drain, then its existing
-target guards remove that VM. This avoids turning a namespace finalizer stall
-or teardown-time image pull into a failed uninstall without leaving host data.
+Every k0s installer labels its exact controller/runtime node
+`kamiwaza.ai/local-dev-storage=true`. The managed StorageClass uses that label
+as its only node-affinity identity, and the BasePath mark/clean helper uses the
+same nodeSelector. Joined compute workers cannot receive installer-owned
+LocalPV data or an empty managed BasePath. A workload that genuinely needs
+persistent storage on another node must use an operator-provided StorageClass;
+do not copy the installer label onto that worker.
+
+For `k0s-lima`, including opt-in `bridged-worker`, the managed BasePath therefore
+exists only inside the explicitly selected VM. The wrapper skips the redundant
+in-cluster namespace/PV drain, then its existing target guards remove that VM.
+This avoids turning a namespace finalizer stall or teardown-time image pull into
+a failed uninstall without leaving data on joined workers.
 
 For Linux `k0s-podman`, where `/var/local` persists across `k0s reset`, the
 implemented safe order is exact:
@@ -688,9 +701,12 @@ version.
 8. Run a fresh uninstall/install KZUAT cycle on each supported local runtime.
    On Linux, prove only managed-PVC consumer namespaces drain, orphaned PV
    deletion is retried, helper counts reach zero, and marker-guarded BasePath
-   cleanup succeeds before Helm uninstall. On Lima, prove the exact selected VM
-   disappears without waiting on namespace finalizers and backup VMs remain.
-   For both, prove reinstall is clean and target UID mismatch fails closed.
+   cleanup succeeds before Helm uninstall. On default Lima `vznat`, prove the
+   exact selected VM disappears without waiting on namespace finalizers and
+   backup VMs remain. With a joined worker in `bridged-worker` mode, prove the
+   managed class cannot provision there and the BasePath helper never creates
+   the fixed path on that worker. For both, prove reinstall is clean and target
+   UID mismatch fails closed.
 9. Land deploy code, values, tests, evidence, and this documentation update
    together through review. The next runbook must say which stable patch was
    selected and when; it must not claim an old pin is still "latest."
