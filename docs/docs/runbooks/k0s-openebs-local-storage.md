@@ -64,9 +64,9 @@ the pin automatically. See [Upgrade the pin](#upgrade-the-pin).
 | Default annotation | Current annotation is `true`; beta annotation is not `true` |
 | Ready workload | One Deployment: `kamiwaza-openebs-localpv-provisioner` |
 | Helper image | `docker.io/openebs/linux-utils:4.5.0` |
-| Controller pod security | Non-root UID/GID 1000; `RuntimeDefault` seccomp |
+| Controller security | Non-root UID/GID 1000; `RuntimeDefault` seccomp; escalation disabled; drop `ALL` capabilities; read-only root with an isolated writable `/tmp` `emptyDir` |
 | BasePath cleanup security | UID 0, non-privileged, escalation disabled; drop all capabilities, then add only `DAC_OVERRIDE` and `FOWNER` |
-| Helm failure policy | Helm 4 `--rollback-on-failure`, 10-minute default timeout |
+| Helm failure policy | Helm 4.1+ `--rollback-on-failure`, 10-minute default timeout |
 
 Only dynamic LocalPV Hostpath is enabled. LocalPV LVM, ZFS, and rawfile,
 replicated Mayastor, Loki, Alloy, MinIO, analytics, quota management, snapshot
@@ -88,12 +88,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`aa175e84`](https://github.com/kamiwaza-internal/deploy/commit/aa175e84fcdfbbaa1d48f645f4cde57a0d1ad055):
+[`1aedee72`](https://github.com/kamiwaza-internal/deploy/commit/1aedee724c4749b8c4d608af5ad1ed20d567973c):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/aa175e84fcdfbbaa1d48f645f4cde57a0d1ad055/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/aa175e84fcdfbbaa1d48f645f4cde57a0d1ad055/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/aa175e84fcdfbbaa1d48f645f4cde57a0d1ad055/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/aa175e84fcdfbbaa1d48f645f4cde57a0d1ad055/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/1aedee724c4749b8c4d608af5ad1ed20d567973c/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/1aedee724c4749b8c4d608af5ad1ed20d567973c/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/1aedee724c4749b8c4d608af5ad1ed20d567973c/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/1aedee724c4749b8c4d608af5ad1ed20d567973c/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -104,6 +104,17 @@ Use the ordinary dev entry point from the deploy repository:
 ```bash
 ./scripts/install-dev.sh
 ```
+
+For an explicitly offline developer run, select that mode at the entry point:
+
+```bash
+DEPLOYMENT_MODE=offline ./scripts/install-dev.sh
+```
+
+The wrapper accepts only `online` or `offline` and exports the selected value
+to the runtime storage helper. Do not describe a disconnected host as offline
+without setting the mode; online bootstrap is allowed to contact the pinned
+chart repository.
 
 Do not install the umbrella chart by hand during a normal dev install. Both k0s
 runtime installers wait for the cluster and `kube-system` workloads to become
@@ -134,15 +145,20 @@ The decision order is:
    managed namespace, then create the exact BasePath marker on every node
    **before** Helm exposes the default StorageClass. This closes Kubernetes'
    retroactive default assignment race for pre-existing Pending PVCs.
-6. Install or reconcile the exact managed 4.5.1 release using Helm 4
-   rollback-on-failure semantics. Mark the cluster-scoped resources as owned,
-   record the runtime, and verify the release, Deployment, StorageClass fields,
-   and sole default. The timeout defaults to 10 minutes; set
+6. Install or reconcile the exact managed 4.5.1 release using Helm 4.1+
+   rollback-on-failure semantics. Dynamic LocalPV 4.5.1 declares but does not
+   render its controller `securityContext`; the lifecycle helper therefore
+   patches and verifies the container controls in the table after every Helm
+   reconciliation. The controller keeps its ServiceAccount token to watch
+   PVC/PV objects and gets a writable `emptyDir` only at `/tmp` for process
+   logs. Mark the cluster-scoped resources as owned, record the runtime, and
+   verify the release, Deployment, StorageClass fields, and sole default. The timeout defaults to 10 minutes; set
    `KAMIWAZA_OPENEBS_TIMEOUT` to a valid Helm duration only when a slower
    connected environment requires it.
 7. Only after this succeeds may Helmfile install Kamiwaza PVC consumers. The
-   normal preflight verifies that an explicit class exists or a default is now
-   present; later platform readiness includes bound PVCs and ready workloads.
+   post-bootstrap preflight is strict: an unreachable Kubernetes API is a
+   failure rather than an indeterminate pass. Later platform readiness includes
+   bound PVCs and ready workloads.
 
 The helper's direct interface is useful for diagnosis and focused qualification:
 
@@ -187,12 +203,19 @@ kubectl -n kamiwaza-openebs get deployment,daemonset,statefulset
 kubectl -n kamiwaza-openebs rollout status \
   deployment/kamiwaza-openebs-localpv-provisioner \
   --timeout=180s
+
+kubectl -n kamiwaza-openebs get deployment \
+  kamiwaza-openebs-localpv-provisioner \
+  -o jsonpath='{.spec.template.spec.containers[0].securityContext}{"\n"}{.spec.template.spec.containers[0].volumeMounts}{"\n"}{.spec.template.spec.volumes}{"\n"}'
 ```
 
 The Helm row must report chart `openebs-4.5.1`. Exactly one persistent workload
 must be present and Ready: Deployment
 `kamiwaza-openebs-localpv-provisioner`. A BasePath `mark` or `clean` DaemonSet
 can exist briefly while the helper is running; it must disappear afterward.
+The controller container must run as non-root UID/GID 1000, disable privilege
+escalation, drop `ALL` capabilities, and use a read-only root filesystem. Its
+only writable mount is the `controller-tmp` `emptyDir` at `/tmp`.
 Mayastor, LVM, ZFS, rawfile, Loki, Alloy, NATS, MinIO, and snapshot-controller
 workloads are unintended in this namespace.
 
@@ -306,7 +329,9 @@ their credential plugins. Ambient `KUBECONFIG` or current-context state is not
 a target. Both the direct runtime UID lookup and the private-kubeconfig check
 retry five times by default, with a 10-second request timeout and two seconds
 between attempts. Sudo denial is reported separately from an API/identity
-failure.
+failure. On macOS `k0s-podman`, a host `k0s` binary is unrelated to the Podman
+machine and is deliberately ignored; the Linux persistent-BasePath path never
+runs there.
 
 For `k0s-lima`, the BasePath exists inside the explicitly selected VM. The
 wrapper skips the redundant in-cluster namespace/PV drain, then its existing
@@ -319,17 +344,22 @@ implemented safe order is exact:
 1. While the Kubernetes API and provisioner are still running, require the
    exact `openebs-4.5.1` release, owned namespace, owned StorageClass, and an
    exact match between requested runtime and the namespace's recorded runtime.
-2. Find namespaces that actually have PVCs using the managed StorageClass,
+2. Find namespaces that actually have PVCs using the managed StorageClass and
    require each one to carry the Kamiwaza application or sandbox ownership
-   label, request their deletion, then wait up to 180 seconds for each to
-   disappear.
+   label. Enumerate and cleanly uninstall every Helm release in those owned
+   consumer namespaces before requesting namespace deletion, then wait up to
+   180 seconds for each namespace to disappear. A routine finalizer stall
+   preserves the cluster and reports non-destructive recovery guidance; it is
+   not a reason to use forced data-loss recovery.
 3. Wait up to 180 seconds for PVs using
    `kamiwaza-openebs-hostpath` and OpenEBS helper Pods to reach zero. The
    provisioner and its reclaim helpers are still alive here, so
    `reclaimPolicy: Delete` can remove each backing directory. Released or
    Failed managed PVs are explicitly re-submitted for deletion. Helper Pods are
-   matched by the pod name, container name, and image contract in pinned
-   Dynamic LocalPV 4.5.1, not by an invented label.
+   matched by the pod name, container name, and the exact image read from the
+   owned controller Deployment. The helper accepts only the pinned
+   `openebs/linux-utils:4.5.0` repository/tag with any registry prefix; an
+   unexpected or missing value fails closed.
 4. Run a root-uid, non-privileged cleanup helper on every node while the Helm
    ownership evidence still exists. It drops all Linux capabilities and adds
    back only `DAC_OVERRIDE` and `FOWNER`, which are required to traverse and
@@ -357,6 +387,19 @@ the cluster that owns the path and prevents a later install from treating an
 old UID as permission to reclaim data that cleanup deliberately refused. Fix
 the reported sudo, API, ownership, namespace, PV, helper, or marker failure and
 rerun normal uninstall; do not reset k0s manually.
+
+If a consumer namespace is stuck `Terminating`, inspect its remaining objects,
+conditions, and finalizers while the owning cluster is still running:
+
+```bash
+kubectl get namespace <namespace> -o yaml
+kubectl get all,pvc -n <namespace>
+kubectl get events -n <namespace> --sort-by=.lastTimestamp
+```
+
+Resolve the responsible controller or finalizer through its normal teardown
+path, then rerun `uninstall-dev.sh`. Do not remove finalizers by hand and do not
+use the force flag for a routine finalizer stall.
 
 For an irrecoverably broken **native Linux `k0s-podman`** cluster, the only
 supported override is deliberately explicit and destructive:
