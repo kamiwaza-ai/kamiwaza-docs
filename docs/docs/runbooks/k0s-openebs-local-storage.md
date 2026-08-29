@@ -93,12 +93,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`cfc94d7c`](https://github.com/kamiwaza-internal/deploy/commit/cfc94d7c3f42e940c8f3c8e3054e60581f7641b2):
+[`8e953819`](https://github.com/kamiwaza-internal/deploy/commit/8e95381961a33af0a3cbf7f32f0a49db88b1aa77):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/cfc94d7c3f42e940c8f3c8e3054e60581f7641b2/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/cfc94d7c3f42e940c8f3c8e3054e60581f7641b2/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/cfc94d7c3f42e940c8f3c8e3054e60581f7641b2/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/cfc94d7c3f42e940c8f3c8e3054e60581f7641b2/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/8e95381961a33af0a3cbf7f32f0a49db88b1aa77/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/8e95381961a33af0a3cbf7f32f0a49db88b1aa77/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/8e95381961a33af0a3cbf7f32f0a49db88b1aa77/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/8e95381961a33af0a3cbf7f32f0a49db88b1aa77/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -360,7 +360,11 @@ used: the wrapper starts the selected Podman machine when necessary, reads its
 cluster UID and admin kubeconfig through `podman machine ssh`, normalizes only
 that exact VM-internal API endpoint to the installer's existing
 `localhost:6443` forward, and runs the same managed-resource drain against that
-VM-owned cluster. Any unexpected kubeconfig endpoint fails closed.
+VM-owned cluster. Every `inspect`, `start`, and `ssh` uses the same validated
+`podman_machine_name` that Ansible will remove. Bare, JSON/YAML, and readable
+`@file` extra-vars forms are resolved before mutation; an encrypted, missing,
+malformed, or non-inert target fails closed. Any unexpected kubeconfig endpoint
+also fails closed.
 
 Every k0s installer labels its exact controller/runtime node
 `kamiwaza.ai/local-dev-storage=true`. The managed StorageClass uses that label
@@ -407,7 +411,16 @@ implemented safe order is exact:
    owned controller Deployment. The helper accepts only the pinned
    `openebs/linux-utils:4.5.0` repository/tag with any registry prefix; an
    unexpected or missing value fails closed.
-4. Run a root-uid, non-privileged cleanup helper on every node while the Helm
+4. Scale the exactly owned Helm provisioner Deployment to zero and wait for the
+   zero-replica rollout, then recheck that managed PVCs, PVs, and pinned helper
+   Pods are still absent. This closes the provisioning window between the final
+   zero-PV observation and recursive BasePath deletion. A retry that finds zero
+   replicas never restarts the provisioner because BasePath cleanup may already
+   have succeeded; it proceeds only if the same PVC/PV/helper recheck is clean.
+   Any newly observed object refuses BasePath cleanup and requires an online
+   install reconciliation to restore the marker and one-replica contract before
+   normal uninstall is retried.
+5. Run a root-uid, non-privileged cleanup helper on every node while the Helm
    ownership evidence still exists. It drops all Linux capabilities and adds
    back only `DAC_OVERRIDE` and `FOWNER`, which are required to traverse and
    remove arbitrary workload-owned modes such as `0700`; privilege escalation
@@ -429,15 +442,16 @@ implemented safe order is exact:
    validates the surviving marker or receipt and resumes safely, including an
    in-path receipt left after a dedicated mount was later unmounted. A foreign,
    symlinked, malformed, or ambiguous tombstone still fails closed.
-5. Uninstall only Helm release `kamiwaza-openebs` from namespace
+6. Uninstall only Helm release `kamiwaza-openebs` from namespace
    `kamiwaza-openebs`, waiting up to 10 minutes by default. Running marker cleanup first
    prevents an interruption after Helm uninstall from discarding the evidence
    needed to clean node data; cleanup is idempotent if this step must be
    retried.
-6. Delete only the owned StorageClass, provisioner ClusterRole,
+7. Delete only the owned StorageClass, provisioner ClusterRole,
    ClusterRoleBinding, and namespace. Every deletion rechecks the three
-   ownership signals.
-7. Return to `uninstall-dev.sh`, which can now reset the selected runtime.
+   ownership signals and pins the Kubernetes DELETE to the verified object UID,
+   so a same-name replacement is never deleted.
+8. Return to `uninstall-dev.sh`, which can now reset the selected runtime.
 
 If target kubeconfig/UID binding or any managed-storage cleanup step fails,
 `uninstall-dev.sh` stops before Ansible resets the Linux runtime. This preserves
