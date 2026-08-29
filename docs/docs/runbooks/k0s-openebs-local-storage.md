@@ -64,6 +64,7 @@ the pin automatically. See [Upgrade the pin](#upgrade-the-pin).
 | Default annotation | Current annotation is `true`; beta annotation is not `true` |
 | Ready workload | One Deployment: `kamiwaza-openebs-localpv-provisioner` |
 | Helper image | `docker.io/openebs/linux-utils:4.5.0` |
+| Controller pod security | Non-root UID/GID 1000; `RuntimeDefault` seccomp |
 
 Only dynamic LocalPV Hostpath is enabled. LocalPV LVM, ZFS, and rawfile,
 replicated Mayastor, Loki, Alloy, MinIO, analytics, quota management, snapshot
@@ -85,9 +86,9 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`6b36d55f`](https://github.com/kamiwaza-ai/deploy/commit/6b36d55f861d5acd3eb3b3b558141ed4f35d5268):
+[`e5d77795`](https://github.com/kamiwaza-internal/deploy/commit/e5d777951505f976b1334dd536edd4e0c74273ba):
 
-- [lifecycle helper](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/scripts/k0s-openebs-localpv.sh)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/e5d777951505f976b1334dd536edd4e0c74273ba/scripts/k0s-openebs-localpv.sh)
 - [pinned narrow values](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/cluster/values/openebs-localpv-dev.yaml)
 - [storage configuration](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/docs/storage-configuration.md)
 - [contract tests](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/scripts/tests/test_k0s_default_storage_contracts.py)
@@ -258,11 +259,12 @@ changing the provisioner.
 ## Safe uninstall
 
 :::danger This deletes local application data
-The scoped dev uninstall deletes each Kamiwaza-owned application or sandbox
-namespace that currently has a PVC backed by `kamiwaza-openebs-hostpath`. Its
-PVCs and data are expected to be reclaimed. Product namespaces without a
-managed PVC are left alone. Export or back up anything you need before
-continuing. This runbook does not make LocalPV data durable.
+On Linux `k0s-podman`, scoped dev uninstall deletes each Kamiwaza-owned
+application or sandbox namespace that currently has a PVC backed by
+`kamiwaza-openebs-hostpath`; product namespaces without a managed PVC are left
+alone. On `k0s-lima`, deleting the selected VM destroys all data inside that VM
+without waiting on Kubernetes namespace finalizers. Export or back up anything
+you need before continuing. This runbook does not make LocalPV data durable.
 :::
 
 Use the normal wrapper, with the runtime marker and kube context pointing to the
@@ -275,7 +277,17 @@ cluster you intend to destroy:
 Do not use `--full-cleanup` as storage recovery. It broadens host cleanup and
 does not repair ownership or reclaim ordering.
 
-The implemented safe order is exact:
+Both install and persistent-Linux teardown use an explicit kubeconfig and
+assert the `kube-system` UID read directly from the selected runtime before any
+storage mutation. Ambient `KUBECONFIG` or current-context state is not a target.
+
+For `k0s-lima`, the BasePath exists inside the explicitly selected VM. The
+wrapper skips the redundant in-cluster namespace/PV drain, then its existing
+target guards remove that VM. This avoids turning a namespace finalizer stall
+or teardown-time image pull into a failed uninstall without leaving host data.
+
+For Linux `k0s-podman`, where `/var/local` persists across `k0s reset`, the
+implemented safe order is exact:
 
 1. While the Kubernetes API and provisioner are still running, require the
    exact `openebs-4.5.1` release, owned namespace, owned StorageClass, and an
@@ -287,7 +299,10 @@ The implemented safe order is exact:
 3. Wait up to 180 seconds for PVs using
    `kamiwaza-openebs-hostpath` and OpenEBS helper Pods to reach zero. The
    provisioner and its reclaim helpers are still alive here, so
-   `reclaimPolicy: Delete` can remove each backing directory.
+   `reclaimPolicy: Delete` can remove each backing directory. Released or
+   Failed managed PVs are explicitly re-submitted for deletion. Helper Pods are
+   matched by the pod name, container name, and image contract in pinned
+   Dynamic LocalPV 4.2.0, not by an invented label.
 4. Run a root-uid, non-privileged cleanup helper on every node while the Helm
    ownership evidence still exists. It removes only
    `/var/local/kamiwaza/openebs/localpv-hostpath`, and only when
@@ -302,8 +317,7 @@ The implemented safe order is exact:
 6. Delete only the owned StorageClass, provisioner ClusterRole,
    ClusterRoleBinding, and namespace. Every deletion rechecks the three
    ownership signals.
-7. Return to `uninstall-dev.sh`, which can now tear down the selected k0s
-   runtime. Node-local data disappears with runtime/VM teardown by design.
+7. Return to `uninstall-dev.sh`, which can now reset the selected Linux runtime.
 
 Deleting the provisioner first is unsafe. PVC deletion would still remove API
 objects, but no controller/helper would remain to execute `Delete` against the
@@ -315,14 +329,14 @@ StorageClasses, OpenEBS releases, namespaces, PVs, paths, and backups, are not
 adopted or deleted. A namespace with a managed PVC must also have the expected
 Kamiwaza application or sandbox label; otherwise uninstall fails closed before
 requesting any namespace deletion.
-A foreign OpenEBS helper Pod can delay the bounded helper wait, but the script
-does not delete it. The wrapper's separate model state export is best effort;
-it is not the same as a verified storage backup.
+An unrelated Pod is not counted as a managed reclaim helper merely because its
+name has a similar prefix. The wrapper's separate model state export is best
+effort; it is not the same as a verified storage backup.
 
 ### Zero-residue check
 
-When the helper has completed but before a runtime is manually removed, verify
-the Kubernetes objects are absent:
+On Linux, when the helper has completed but before a runtime is manually reset,
+verify the Kubernetes objects are absent:
 
 ```bash
 helm list -A --filter '^kamiwaza-openebs$'
@@ -333,18 +347,24 @@ kubectl get clusterrole,clusterrolebinding \
 kubectl get pv \
   -o custom-columns='NAME:.metadata.name,CLASS:.spec.storageClassName,STATUS:.status.phase' \
   | grep -F kamiwaza-openebs-hostpath
-kubectl get pods -A -l openebs.io/helper-pod
 ```
 
 Every lookup/listing must show no managed release or resource, and the
-PV/helper filters must return no rows. `kubectl get` for a named absent resource
+PV filter must return no rows. `kubectl get` for a named absent resource
 exits nonzero; that expected `NotFound` is the clean result.
+
+On Lima, verify the selected VM is absent after the wrapper completes rather
+than querying the Kubernetes API that VM owned:
+
+```bash
+limactl list -q | grep -Fx 'kamiwaza-k0s' && echo 'unexpected VM residue'
+```
 
 If you ran the storage helper directly and deliberately kept the node alive,
 check its exact path before proceeding:
 
 ```bash
-# Default Lima VM; substitute the explicitly selected VM name when applicable.
+# Default Lima VM only when invoking the helper directly and keeping the VM.
 limactl shell kamiwaza-k0s -- \
   sudo test ! -e /var/local/kamiwaza/openebs/localpv-hostpath
 
@@ -514,10 +534,11 @@ version.
    write, and reclaim probe above. Verify real Kamiwaza PVCs bind and platform
    workloads become Ready.
 8. Run a fresh uninstall/install KZUAT cycle on each supported local runtime.
-   Prove only managed-PVC consumer namespaces drain, PV/helper counts reach
-   zero, marker- and cluster-UID-guarded BasePath cleanup succeeds before Helm
-   uninstall, owned resources disappear, foreign resources remain, and
-   reinstall is clean after both normal teardown and `k0s reset` recovery.
+   On Linux, prove only managed-PVC consumer namespaces drain, orphaned PV
+   deletion is retried, helper counts reach zero, and marker-guarded BasePath
+   cleanup succeeds before Helm uninstall. On Lima, prove the exact selected VM
+   disappears without waiting on namespace finalizers and backup VMs remain.
+   For both, prove reinstall is clean and target UID mismatch fails closed.
 9. Land deploy code, values, tests, evidence, and this documentation update
    together through review. The next runbook must say which stable patch was
    selected and when; it must not claim an old pin is still "latest."
