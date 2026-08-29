@@ -93,12 +93,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`4de837cf`](https://github.com/kamiwaza-internal/deploy/commit/4de837cf3e94f183d5efd9991bfd40d58759c68c):
+[`1a878cc6`](https://github.com/kamiwaza-internal/deploy/commit/1a878cc66040a2fce9da1a43860936f39ad3c499):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/4de837cf3e94f183d5efd9991bfd40d58759c68c/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/4de837cf3e94f183d5efd9991bfd40d58759c68c/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/4de837cf3e94f183d5efd9991bfd40d58759c68c/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/4de837cf3e94f183d5efd9991bfd40d58759c68c/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/1a878cc66040a2fce9da1a43860936f39ad3c499/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/1a878cc66040a2fce9da1a43860936f39ad3c499/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/1a878cc66040a2fce9da1a43860936f39ad3c499/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/1a878cc66040a2fce9da1a43860936f39ad3c499/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -330,6 +330,14 @@ cluster you intend to destroy:
 ```bash
 ./scripts/uninstall-dev.sh
 ```
+
+Do not substitute a direct
+`ansible-playbook playbooks/uninstall/dev.yml` invocation, including
+`--tags cluster`, for the wrapper. On persistent `k0s-podman`, the Ansible role
+refuses before `k0s stop` or `k0s reset` whenever the exact OpenEBS namespace,
+StorageClass, BasePath marker, or crash-recovery receipt exists or cannot be
+proved absent. The wrapper must complete the target-UID-pinned storage drain
+first.
 
 Do not use `--full-cleanup` as storage recovery. It broadens host cleanup and
 does not repair ownership or reclaim ordering.
