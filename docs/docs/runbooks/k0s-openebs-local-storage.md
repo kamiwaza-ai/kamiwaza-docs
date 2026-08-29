@@ -93,12 +93,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`1a878cc6`](https://github.com/kamiwaza-internal/deploy/commit/1a878cc66040a2fce9da1a43860936f39ad3c499):
+[`cfc94d7c`](https://github.com/kamiwaza-internal/deploy/commit/cfc94d7c3f42e940c8f3c8e3054e60581f7641b2):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/1a878cc66040a2fce9da1a43860936f39ad3c499/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/1a878cc66040a2fce9da1a43860936f39ad3c499/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/1a878cc66040a2fce9da1a43860936f39ad3c499/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/1a878cc66040a2fce9da1a43860936f39ad3c499/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/cfc94d7c3f42e940c8f3c8e3054e60581f7641b2/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/cfc94d7c3f42e940c8f3c8e3054e60581f7641b2/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/cfc94d7c3f42e940c8f3c8e3054e60581f7641b2/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/cfc94d7c3f42e940c8f3c8e3054e60581f7641b2/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -337,7 +337,9 @@ Do not substitute a direct
 refuses before `k0s stop` or `k0s reset` whenever the exact OpenEBS namespace,
 StorageClass, BasePath marker, or crash-recovery receipt exists or cannot be
 proved absent. The wrapper must complete the target-UID-pinned storage drain
-first.
+first. On macOS, an unreadable Podman inventory also refuses; a successfully
+inventoried missing selected VM is positive proof that its VM-local BasePath is
+gone, so an idempotent uninstall rerun can continue.
 
 Do not use `--full-cleanup` as storage recovery. It broadens host cleanup and
 does not repair ownership or reclaim ordering.
@@ -450,7 +452,7 @@ If authorization expires or is denied, both normal and forced cleanup stop
 before runtime reset; the force flag never bypasses sudo or ownership checks.
 Reauthorize and rerun the same uninstall command.
 
-`KAMIWAZA_OPENEBS_CLEANUP_TIMEOUT_SECONDS` must be a positive integer and
+`KAMIWAZA_OPENEBS_CLEANUP_TIMEOUT_SECONDS` must be a positive 32-bit integer and
 controls consumer-namespace and PV/helper waits plus BasePath-helper rollout
 and readiness (default `600`). A marker or deletion guard failure emits a
 `REFUSING managed BasePath ...` diagnostic in the helper logs before the
