@@ -338,8 +338,10 @@ retry five times by default, with a 10-second request timeout and two seconds
 between attempts. Sudo denial is reported separately from an API/identity
 failure. On macOS `k0s-podman`, a host `k0s` binary is unrelated and is never
 used: the wrapper starts the selected Podman machine when necessary, reads its
-cluster UID and admin kubeconfig through `podman machine ssh`, and runs the
-same managed-resource drain against that VM-owned cluster.
+cluster UID and admin kubeconfig through `podman machine ssh`, normalizes only
+that exact VM-internal API endpoint to the installer's existing
+`localhost:6443` forward, and runs the same managed-resource drain against that
+VM-owned cluster. Any unexpected kubeconfig endpoint fails closed.
 
 Every k0s installer labels its exact controller/runtime node
 `kamiwaza.ai/local-dev-storage=true`. The managed StorageClass uses that label
