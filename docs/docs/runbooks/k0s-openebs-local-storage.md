@@ -88,12 +88,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`5adde4c3`](https://github.com/kamiwaza-internal/deploy/commit/5adde4c3e86c5b538f89a988c36a56f167e1322d):
+[`b1de664f`](https://github.com/kamiwaza-internal/deploy/commit/b1de664f7445cd12571867311ee5621efa494fe2):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/5adde4c3e86c5b538f89a988c36a56f167e1322d/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/5adde4c3e86c5b538f89a988c36a56f167e1322d/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/5adde4c3e86c5b538f89a988c36a56f167e1322d/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/5adde4c3e86c5b538f89a988c36a56f167e1322d/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/b1de664f7445cd12571867311ee5621efa494fe2/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/b1de664f7445cd12571867311ee5621efa494fe2/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/b1de664f7445cd12571867311ee5621efa494fe2/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/b1de664f7445cd12571867311ee5621efa494fe2/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -123,10 +123,13 @@ The decision order is:
 3. A managed and foreign class both marked default is ambiguous and stops the
    install. A static foreign default also stops rather than adding a second
    default.
-4. With no explicit or existing dynamic default, an offline local install stops
-   before creating the managed namespace. Managed bootstrap needs access to
-   `openebs.github.io` and the pinned images; for an offline run, provide an
-   existing dynamic default or explicitly configure `storage.stateful.standard`.
+4. With no explicit or existing dynamic default, an offline local install may
+   reuse an existing, healthy, exactly pinned managed release after verifying
+   its release identity and ownership metadata. This path does not access the
+   chart repository. If that release does not already exist, installation stops
+   before creating the managed namespace because a new managed bootstrap needs
+   `openebs.github.io` and the pinned images. In that case, provide an existing
+   dynamic default or explicitly configure `storage.stateful.standard`.
 5. For an online managed bootstrap, reject unowned name collisions, ensure the
    managed namespace, then create the exact BasePath marker on every node
    **before** Helm exposes the default StorageClass. This closes Kubernetes'
