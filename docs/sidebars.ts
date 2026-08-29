@@ -167,6 +167,7 @@ const sidebars: SidebarsConfig = {
 			type: "category",
 			label: "Runbooks",
 			items: [
+				"runbooks/k0s-openebs-local-storage",
 				"runbooks/core-database-upgrade-1.2",
 				"runbooks/ontology-graph-viewer",
 			],
