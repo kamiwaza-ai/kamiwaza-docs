@@ -87,9 +87,9 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`e262239d`](https://github.com/kamiwaza-internal/deploy/commit/e262239d9ca2e7072b71268b681d41f7392b7397):
+[`172a5272`](https://github.com/kamiwaza-internal/deploy/commit/172a527228ada862f3dc02ae17248f0ef4b38e58):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/e262239d9ca2e7072b71268b681d41f7392b7397/scripts/k0s-openebs-localpv.sh)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/172a527228ada862f3dc02ae17248f0ef4b38e58/scripts/k0s-openebs-localpv.sh)
 - [pinned narrow values](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/cluster/values/openebs-localpv-dev.yaml)
 - [storage configuration](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/docs/storage-configuration.md)
 - [contract tests](https://github.com/kamiwaza-ai/deploy/blob/6b36d55f861d5acd3eb3b3b558141ed4f35d5268/scripts/tests/test_k0s_default_storage_contracts.py)
@@ -280,7 +280,10 @@ does not repair ownership or reclaim ordering.
 
 Both install and persistent-Linux teardown use an explicit kubeconfig and
 assert the `kube-system` UID read directly from the selected runtime before any
-storage mutation. Ambient `KUBECONFIG` or current-context state is not a target.
+storage mutation. Linux teardown generates its private kubeconfig from the
+resolved absolute k0s binary; it never enumerates ambient contexts or invokes
+their credential plugins. Ambient `KUBECONFIG` or current-context state is not
+a target.
 
 For `k0s-lima`, the BasePath exists inside the explicitly selected VM. The
 wrapper skips the redundant in-cluster namespace/PV drain, then its existing
@@ -303,7 +306,7 @@ implemented safe order is exact:
    `reclaimPolicy: Delete` can remove each backing directory. Released or
    Failed managed PVs are explicitly re-submitted for deletion. Helper Pods are
    matched by the pod name, container name, and image contract in pinned
-   Dynamic LocalPV 4.2.0, not by an invented label.
+   Dynamic LocalPV 4.5.1, not by an invented label.
 4. Run a root-uid, non-privileged cleanup helper on every node while the Helm
    ownership evidence still exists. It drops all Linux capabilities and adds
    back only `DAC_OVERRIDE` and `FOWNER`, which are required to traverse and
