@@ -12,7 +12,7 @@ Submit and manage Ray jobs on local or remote clusters. Jobs run Python entrypoi
 - Admin authentication (JWT token with admin role)
 - Ray cluster running on the target cluster
 
-Federated delegated jobs additionally require receiver-side onboarding,
+Federated delegated jobs additionally require receiver-side allowlisting,
 `cluster_jobs:__all__#executor`, the delegated-job deployment profile, and
 exact receiver-local resource grants.
 

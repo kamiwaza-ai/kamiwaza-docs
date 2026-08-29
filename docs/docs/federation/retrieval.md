@@ -10,10 +10,9 @@ Federated retrieval lets you discover and query data on remote clusters without 
 ## Prerequisites
 
 - A [paired federation](./setup.md) between the clusters
-- Remote CA cert stored in the federation record
-- The mesh user must have the receiver-side per-dataset ReBAC grants and
-  attribute-gate clearance required by the target cluster. A source-cluster
-  administrator is not an exception on a mesh request.
+- An active receiver-side allowlist entry for the shared subject
+- Explicit per-dataset ReBAC grants on the target cluster. Mesh-originated
+  requests do not receive the native-cluster admin bypass.
 
 ## Discover Remote Datasets
 
@@ -89,24 +88,17 @@ The inference request routes through the mesh proxy to the remote cluster's Ray 
 
 ## Access Control
 
-### Receiver authorization
+### Receiver-owned grants
 
-Mesh origin is not a source-side admin bypass. The receiver validates the
-caller according to the federation's identity mode and then applies its own
-per-resource ReBAC and attribute gates to every mesh request, including calls
-made by a source-cluster administrator. A receiver-realm guest's attributes
-are assigned by the receiver; a shared-IdP caller's attributes come from its
-validated shared-realm token. The source's roles and forwarded attribute header
-are not authority in receiver-controlled modes.
-
-Callers therefore need explicit receiver-side dataset grants. The catalog list
-and retrieval endpoints filter or deny records that do not satisfy those
-grants and gates.
+All mesh users require explicit per-dataset ReBAC grants on the target cluster.
+The native-cluster admin bypass is suppressed for mesh-originated requests.
+The catalog listing endpoint filters results so federated users see only
+datasets they have receiver-local grants for.
 
 Grant access **at federation-pairing time** through the brokered-user allowlist's `initial_tuples` field — **not** through `/api/auth/tuples`.
 
 :::warning Why not `/api/auth/tuples`?
-A federated caller has no local user account on the target cluster until their *first* mesh request, when the brokering service auto-provisions a local Keycloak user with a freshly-minted UUID. The per-dataset check authorizes against **that local UUID**, which is not known ahead of time — so a tuple written against the source cluster's user UUID via `/api/auth/tuples` never matches, and the call returns `204` while access stays denied (`404 Dataset not found`). The allowlist's `initial_tuples` solves this with a `{{user_id}}` placeholder that renders to the local UUID at provision time.
+A federated caller has no local user account on the target cluster until their *first* mesh request, when the brokering service auto-provisions a local Keycloak user with a freshly-minted UUID. The per-dataset check authorizes against **that local UUID**, which isn't known ahead of time — so a tuple written against the source cluster's user UUID via `/api/auth/tuples` never matches, and the call returns `204` while access stays denied (`404 Dataset not found`). The allowlist's `initial_tuples` solves this with a `{{user_id}}` placeholder that renders to the local UUID at provision time.
 :::
 
 ```bash
@@ -137,7 +129,7 @@ All federated operations use the mesh proxy at `/api/mesh/{cluster_selector}/`:
 
 | Parameter | Description |
 |-----------|-------------|
-| `cluster_selector` | Remote cluster name, UUID, or federation ID. Prefix matching supported (e.g., `studio` matches `studio-1`). |
+| `cluster_selector` | Exact federation UUID is recommended. An exact remote-cluster name is accepted when unique; ambiguous prefixes are rejected rather than routed arbitrarily. |
 | `{path}` | The API path on the remote cluster. Paths starting with `runtime/` are routed as-is; all others get an `/api/` prefix. |
 
 ### Timeouts
@@ -159,17 +151,10 @@ The mesh proxy adds these headers to cross-cluster requests:
 | `X-KZ-Mesh-Signature` | HMAC-SHA256 signature |
 | `X-KZ-Mesh-Correlation-Id` | Request correlation ID for cross-cluster tracing |
 | `X-KZ-Mesh-Route` | Hop trace for loop detection |
-| `X-KZ-Mesh-Peer-Token` | Caller bearer or receiver-realm credential used for receiver-side identity validation |
-
-Terminal revocation refusals may also carry the four signed response-proof
-headers listed in the [API reference](./api-reference.md#terminal-response-proof-headers).
-The source proxy verifies that proof before purging only the affected user's
-credential.
 
 :::note Identity-mode-dependent trust
-`X-KZ-Mesh-User-Id`/`-Roles` are **source-asserted**. In `shared_idp` and
-`receiver_realm` (receiver-controlled) modes the receiver establishes identity
-from its own validated token/realm credential and strips source-asserted cluster
-roles; those headers are authoritative only in source-trusted `peer_kc` mode.
-See [Identity Trust Modes](./identity-trust-modes.md).
+`X-KZ-Mesh-User-Id`/`-Roles` are **source-asserted**. In `shared_idp` (receiver-controlled)
+mode the receiver establishes identity from the caller's own validated shared-realm
+token and strips source-asserted cluster roles; the forwarded values are the identity
+only in source-trusted `peer_kc` mode. See [Identity Trust Modes](./identity-trust-modes.md).
 :::

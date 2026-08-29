@@ -5,12 +5,10 @@ title: Federation 1.3.0 release notes
 
 # Federation 1.3.0 release notes
 
-This note records the consumer-facing authorization changes tracked by
-[ENG-9924](https://linear.app/kamiwaza/issue/ENG-9924) and implemented by
-[ENG-8859](https://linear.app/kamiwaza/issue/ENG-8859). The change is a
-privacy boundary: a denied caller must learn that its view was filtered, but
-must not learn the size of the withheld set or the policy that made the
-decision.
+Kamiwaza 1.3.0 changes the authorization metadata returned by execution and
+attribute gates. The change establishes a privacy boundary: a denied caller
+can learn that its view was filtered, but cannot learn the size of the
+withheld set or the policy that made the decision.
 
 ## `gate_audit` footer compatibility
 
@@ -85,10 +83,8 @@ replaced with a whole-batch fail-closed result and the audit reason is
 are released.
 
 Gate authors should test both the ordinary pass/filter path and malformed
-postconditions. The server contract tests live in
-[`tests/unit/services/authz/gates/test_runner.py`](https://github.com/kamiwaza-internal/kamiwaza/blob/develop/tests/unit/services/authz/gates/test_runner.py)
-and the job-result list-shape tests live in
-[`tests/unit/cluster/jobs/test_result_gate.py`](https://github.com/kamiwaza-internal/kamiwaza/blob/develop/tests/unit/cluster/jobs/test_result_gate.py).
+postconditions. The runner replaces a malformed result with a whole-batch
+fail-closed result before any records leave the cluster.
 
 ## SDK and application migration
 
