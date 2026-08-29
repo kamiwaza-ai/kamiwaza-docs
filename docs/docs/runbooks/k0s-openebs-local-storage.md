@@ -88,12 +88,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`b1de664f`](https://github.com/kamiwaza-internal/deploy/commit/b1de664f7445cd12571867311ee5621efa494fe2):
+[`aa175e84`](https://github.com/kamiwaza-internal/deploy/commit/aa175e84fcdfbbaa1d48f645f4cde57a0d1ad055):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/b1de664f7445cd12571867311ee5621efa494fe2/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/b1de664f7445cd12571867311ee5621efa494fe2/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/b1de664f7445cd12571867311ee5621efa494fe2/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/b1de664f7445cd12571867311ee5621efa494fe2/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/aa175e84fcdfbbaa1d48f645f4cde57a0d1ad055/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/aa175e84fcdfbbaa1d48f645f4cde57a0d1ad055/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/aa175e84fcdfbbaa1d48f645f4cde57a0d1ad055/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/aa175e84fcdfbbaa1d48f645f4cde57a0d1ad055/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -303,7 +303,10 @@ assert the `kube-system` UID read directly from the selected runtime before any
 storage mutation. Linux teardown generates its private kubeconfig from the
 resolved absolute k0s binary; it never enumerates ambient contexts or invokes
 their credential plugins. Ambient `KUBECONFIG` or current-context state is not
-a target.
+a target. Both the direct runtime UID lookup and the private-kubeconfig check
+retry five times by default, with a 10-second request timeout and two seconds
+between attempts. Sudo denial is reported separately from an API/identity
+failure.
 
 For `k0s-lima`, the BasePath exists inside the explicitly selected VM. The
 wrapper skips the redundant in-cluster namespace/PV drain, then its existing
@@ -355,6 +358,24 @@ old UID as permission to reclaim data that cleanup deliberately refused. Fix
 the reported sudo, API, ownership, namespace, PV, helper, or marker failure and
 rerun normal uninstall; do not reset k0s manually.
 
+For an irrecoverably broken **native Linux `k0s-podman`** cluster, the only
+supported override is deliberately explicit and destructive:
+
+```bash
+./scripts/uninstall-dev.sh \
+  --force-local-runtime-delete-with-storage-data-loss
+```
+
+The wrapper first attempts normal cleanup. Only after that fails does this flag
+stop k0s, revalidate the exact marker before and after the stop, remove the
+fixed `/var/local/kamiwaza/openebs/localpv-hostpath`, and continue runtime
+teardown. It does not accept a configurable path and refuses a missing,
+symlinked, malformed, or foreign marker. Every PVC backed by the managed class
+is permanently lost. Do not use this flag on a recoverable cluster or to bypass
+an ownership refusal you have not investigated. It is rejected for Lima and
+macOS. `make clean` uses the same marker-guarded host action before native-Linux
+k0s reset; a refusal aborts that reset.
+
 Deleting the provisioner first is unsafe. PVC deletion would still remove API
 objects, but no controller/helper would remain to execute `Delete` against the
 host directories. The PVs and BasePath children could leak until manual node
@@ -387,7 +408,9 @@ kubectl get pv \
 
 Every lookup/listing must show no managed release or resource, and the
 PV filter must return no rows. `kubectl get` for a named absent resource
-exits nonzero; that expected `NotFound` is the clean result.
+exits nonzero; that expected `NotFound` is the clean result. The normal Linux
+uninstall also runs the host-state validator, whose sixth assertion requires
+the exact managed BasePath to be absent.
 
 On Lima, verify the selected VM is absent after the wrapper completes rather
 than querying the Kubernetes API that VM owned:
@@ -403,6 +426,9 @@ check its exact path before proceeding:
 # Default Lima VM only when invoking the helper directly and keeping the VM.
 limactl shell kamiwaza-k0s -- \
   sudo test ! -e /var/local/kamiwaza/openebs/localpv-hostpath
+
+# Native Linux k0s-podman.
+sudo test ! -e /var/local/kamiwaza/openebs/localpv-hostpath
 
 # Podman-machine runtime.
 podman machine ssh -- \
