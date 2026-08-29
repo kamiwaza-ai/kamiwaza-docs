@@ -310,7 +310,7 @@ changing the provisioner.
 ## Safe uninstall
 
 :::danger This deletes local application data
-On Linux `k0s-podman`, scoped dev uninstall deletes each Kamiwaza-owned
+On Linux and legacy macOS `k0s-podman`, scoped dev uninstall deletes each Kamiwaza-owned
 application or sandbox namespace that currently has a PVC backed by
 `kamiwaza-openebs-hostpath`; product namespaces without a managed PVC are left
 alone. On `k0s-lima`, deleting the selected VM destroys all data inside that VM
@@ -328,7 +328,7 @@ cluster you intend to destroy:
 Do not use `--full-cleanup` as storage recovery. It broadens host cleanup and
 does not repair ownership or reclaim ordering.
 
-Both install and persistent-Linux teardown use an explicit kubeconfig and
+Both install and persistent-runtime teardown use an explicit kubeconfig and
 assert the `kube-system` UID read directly from the selected runtime before any
 storage mutation. Linux teardown generates its private kubeconfig from the
 resolved absolute k0s binary; it never enumerates ambient contexts or invokes
@@ -336,9 +336,10 @@ their credential plugins. Ambient `KUBECONFIG` or current-context state is not
 a target. Both the direct runtime UID lookup and the private-kubeconfig check
 retry five times by default, with a 10-second request timeout and two seconds
 between attempts. Sudo denial is reported separately from an API/identity
-failure. On macOS `k0s-podman`, a host `k0s` binary is unrelated to the Podman
-machine and is deliberately ignored; the Linux persistent-BasePath path never
-runs there.
+failure. On macOS `k0s-podman`, a host `k0s` binary is unrelated and is never
+used: the wrapper starts the selected Podman machine when necessary, reads its
+cluster UID and admin kubeconfig through `podman machine ssh`, and runs the
+same managed-resource drain against that VM-owned cluster.
 
 Every k0s installer labels its exact controller/runtime node
 `kamiwaza.ai/local-dev-storage=true`. The managed StorageClass uses that label
@@ -352,9 +353,12 @@ For `k0s-lima`, including opt-in `bridged-worker`, the managed BasePath therefor
 exists only inside the explicitly selected VM. The wrapper skips the redundant
 in-cluster namespace/PV drain, then its existing target guards remove that VM.
 This avoids turning a namespace finalizer stall or teardown-time image pull into
-a failed uninstall without leaving data on joined workers.
+a failed uninstall without leaving data on joined workers. The wrapper and the
+Ansible role both fail closed if `limactl delete` fails; an uninstall cannot
+report success while the VM-local release or BasePath may still exist.
 
-For Linux `k0s-podman`, where `/var/local` persists across `k0s reset`, the
+For `k0s-podman`, where `/var/local` persists across `k0s reset` on native
+Linux or inside the Podman VM, the
 implemented safe order is exact:
 
 1. While the Kubernetes API and provisioner are still running, require the
@@ -389,7 +393,12 @@ implemented safe order is exact:
    missing, malformed, or otherwise mismatched marker stops cleanup. After
    validation, it hard-links that marker to a fixed external ownership receipt,
    atomically renames the BasePath to `.deleting`, and recursively removes the
-   tombstone. If the helper is killed at any point, the next install or uninstall
+   tombstone. If the BasePath is a dedicated or bind-mounted filesystem, the
+   helper detects that topology, creates an exact same-filesystem
+   `.kamiwaza-delete-in-place` receipt, deletes children in place, removes the
+   ownership marker last, and leaves only the operator-owned empty mountpoint.
+   `HostToContainer` mount propagation makes nested host mounts visible to the
+   helper. If the helper is killed at any point, the next install or uninstall
    validates the surviving marker or receipt and resumes safely. A foreign,
    symlinked, malformed, or ambiguous tombstone still fails closed.
 5. Uninstall only Helm release `kamiwaza-openebs` from namespace
@@ -400,7 +409,7 @@ implemented safe order is exact:
 6. Delete only the owned StorageClass, provisioner ClusterRole,
    ClusterRoleBinding, and namespace. Every deletion rechecks the three
    ownership signals.
-7. Return to `uninstall-dev.sh`, which can now reset the selected Linux runtime.
+7. Return to `uninstall-dev.sh`, which can now reset the selected runtime.
 
 If target kubeconfig/UID binding or any managed-storage cleanup step fails,
 `uninstall-dev.sh` stops before Ansible resets the Linux runtime. This preserves
@@ -434,7 +443,7 @@ Resolve the responsible controller or finalizer through its normal teardown
 path, then rerun `uninstall-dev.sh`. Do not remove finalizers by hand and do not
 use the force flag for a routine finalizer stall.
 
-For an irrecoverably broken **native Linux `k0s-podman`** cluster, the only
+For an irrecoverably broken **Linux or macOS `k0s-podman`** cluster, the only
 supported override is deliberately explicit and destructive:
 
 ```bash
@@ -444,16 +453,19 @@ supported override is deliberately explicit and destructive:
 
 The wrapper first attempts normal cleanup. Only after that fails does this flag
 stop k0s, revalidate the exact marker or crash-recovery receipt before and after
-the stop, atomically tombstone the fixed
+the stop, and remove the fixed
 `/var/local/kamiwaza/openebs/localpv-hostpath`, and continue its crash-safe
-deletion. It does not accept a configurable path and refuses missing,
+deletion. On macOS the wrapper streams that same fixed-path helper into the
+selected Podman VM; it never targets the Darwin host filesystem. It does not accept a configurable path and refuses missing,
 symlinked, malformed, foreign, or ambiguous ownership state. Every PVC backed
 by the managed class is permanently lost. Do not use this flag on a recoverable
 cluster or to bypass an ownership refusal you have not investigated. It is
-rejected for Lima and macOS. The one markerless exception is an exact empty,
+rejected for Lima. The one markerless exception is an exact empty,
 non-symlink BasePath: it contains no data and represents a safe interrupted
 create, so install may claim it and forced host cleanup may remove it only
-after stopping k0s. A nonempty unowned path always fails closed. `make clean`
+after stopping k0s. A dedicated BasePath mount remains mounted but must be
+empty and contain neither ownership marker nor deletion receipt after cleanup.
+A nonempty unowned path always fails closed. `make clean`
 uses the same marker-guarded host action before native-Linux k0s reset; a
 refusal aborts that reset.
 
@@ -512,8 +524,9 @@ Every lookup/listing must show no managed release or resource, and the
 PV filter must return no rows. `kubectl get` for a named absent resource
 exits nonzero; that expected `NotFound` is the clean result. The normal Linux
 uninstall also runs the host-state validator, whose sixth assertion requires
-the exact managed BasePath, its `.deleting` tombstone, and the external deletion
-receipt to all be absent, including broken symlinks at those names.
+the `.deleting` tombstone and both deletion receipts to be absent, including
+broken symlinks. The BasePath itself must be absent unless it is a verified
+operator-owned mountpoint; that retained mountpoint must be empty and unmarked.
 
 On Lima, verify the selected VM is absent after the wrapper completes rather
 than querying the Kubernetes API that VM owned:
@@ -530,12 +543,20 @@ check its exact path before proceeding:
 limactl shell kamiwaza-k0s -- \
   sudo test ! -e /var/local/kamiwaza/openebs/localpv-hostpath
 
-# Native Linux k0s-podman.
-sudo test ! -e /var/local/kamiwaza/openebs/localpv-hostpath
+# Native Linux k0s-podman. Absence is normal; an intentionally mounted
+# BasePath may remain only when it is empty and unmarked.
+if sudo test -e /var/local/kamiwaza/openebs/localpv-hostpath; then
+  sudo find /var/local/kamiwaza/openebs/localpv-hostpath \
+    -mindepth 1 -maxdepth 1 -print -quit
+fi
 
 # Podman-machine runtime.
-podman machine ssh -- \
-  sudo test ! -e /var/local/kamiwaza/openebs/localpv-hostpath
+podman machine ssh -- "sudo sh -c '
+  if [ -e /var/local/kamiwaza/openebs/localpv-hostpath ]; then
+    find /var/local/kamiwaza/openebs/localpv-hostpath \
+      -mindepth 1 -maxdepth 1 -print -quit
+  fi
+'"
 ```
 
 Do not search for and remove other `openebs`, `/var/local`, or PV directories.
