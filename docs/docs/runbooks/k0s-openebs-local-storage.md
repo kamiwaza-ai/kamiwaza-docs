@@ -93,12 +93,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`a49b5b4c`](https://github.com/kamiwaza-internal/deploy/commit/a49b5b4c20de743ad6e23cc16c648aeeee367017):
+[`56c98d3a`](https://github.com/kamiwaza-internal/deploy/commit/56c98d3aa79e4e131728b194d0776f5e3be799c1):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/a49b5b4c20de743ad6e23cc16c648aeeee367017/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/a49b5b4c20de743ad6e23cc16c648aeeee367017/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/a49b5b4c20de743ad6e23cc16c648aeeee367017/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/a49b5b4c20de743ad6e23cc16c648aeeee367017/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/56c98d3aa79e4e131728b194d0776f5e3be799c1/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/56c98d3aa79e4e131728b194d0776f5e3be799c1/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/56c98d3aa79e4e131728b194d0776f5e3be799c1/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/56c98d3aa79e4e131728b194d0776f5e3be799c1/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -361,10 +361,13 @@ cluster UID and admin kubeconfig through `podman machine ssh`, normalizes only
 that exact VM-internal API endpoint to the installer's existing
 `localhost:6443` forward, and runs the same managed-resource drain against that
 VM-owned cluster. Every `inspect`, `start`, and `ssh` uses the same validated
-`podman_machine_name` that Ansible will remove. Bare, JSON/YAML, and readable
-`@file` extra-vars forms are resolved before mutation; an encrypted, missing,
-malformed, or non-inert target fails closed. Any unexpected kubeconfig endpoint
-also fails closed.
+top-level `podman_machine_name` that Ansible will remove. Before mutation, the
+wrapper copies every macOS Podman `@file` extra-vars input into a private
+mode-`0600` snapshot and rewrites Ansible's arguments to those same snapshots,
+so the drain and runtime delete cannot observe different file contents. Bare
+and provably top-level JSON/YAML forms are supported; nested, ambiguous,
+encrypted, missing, malformed, or non-inert targets fail closed. Any unexpected
+kubeconfig endpoint also fails closed.
 
 Every k0s installer labels its exact controller/runtime node
 `kamiwaza.ai/local-dev-storage=true`. The managed StorageClass uses that label
