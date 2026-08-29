@@ -93,12 +93,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`b1cd0778`](https://github.com/kamiwaza-internal/deploy/commit/b1cd0778527ec457375f9cba16546572a2b3e8da):
+[`4de837cf`](https://github.com/kamiwaza-internal/deploy/commit/4de837cf3e94f183d5efd9991bfd40d58759c68c):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/b1cd0778527ec457375f9cba16546572a2b3e8da/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/b1cd0778527ec457375f9cba16546572a2b3e8da/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/b1cd0778527ec457375f9cba16546572a2b3e8da/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/b1cd0778527ec457375f9cba16546572a2b3e8da/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/4de837cf3e94f183d5efd9991bfd40d58759c68c/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/4de837cf3e94f183d5efd9991bfd40d58759c68c/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/4de837cf3e94f183d5efd9991bfd40d58759c68c/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/4de837cf3e94f183d5efd9991bfd40d58759c68c/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -158,7 +158,10 @@ The decision order is:
    patches and verifies the container controls in the table after every Helm
    reconciliation. The controller keeps its ServiceAccount token to watch
    PVC/PV objects and gets a writable `emptyDir` only at `/tmp` for process
-   logs. Mark the cluster-scoped resources as owned, record the runtime, and
+   logs. Upstream 4.5.1 does not expose resource requests/limits for its
+   dynamically generated privileged init/cleanup/quota Pods, so those short-
+   lived helpers are a documented dev-only BestEffort exception; the
+   long-running controller remains resource-bounded. Mark the cluster-scoped resources as owned, record the runtime, and
    verify the release, Deployment, StorageClass fields, and sole default. The timeout defaults to 10 minutes; set
    `KAMIWAZA_OPENEBS_TIMEOUT` to a valid Helm duration only when a slower
    connected environment requires it.
@@ -178,7 +181,10 @@ CLUSTER_UID="$(kubectl --kubeconfig "${KUBECONFIG_PATH}" \
   --runtime k0s-lima \
   --kubeconfig "${KUBECONFIG_PATH}" \
   --expected-cluster-uid "${CLUSTER_UID}"
-./scripts/k0s-openebs-localpv.sh verify
+./scripts/k0s-openebs-localpv.sh verify \
+  --runtime k0s-lima \
+  --kubeconfig "${KUBECONFIG_PATH}" \
+  --expected-cluster-uid "${CLUSTER_UID}"
 
 # Example only when a site override explicitly selects an existing class.
 ./scripts/k0s-openebs-localpv.sh install \
@@ -328,9 +334,12 @@ cluster you intend to destroy:
 Do not use `--full-cleanup` as storage recovery. It broadens host cleanup and
 does not repair ownership or reclaim ordering.
 
-Both install and persistent-runtime teardown use an explicit kubeconfig and
+Install, verify, and persistent-runtime teardown flatten the explicitly
+supplied kubeconfig into a mode-`0600`, single-context private snapshot, then
 assert the `kube-system` UID read directly from the selected runtime before any
-storage mutation. Linux teardown generates its private kubeconfig from the
+storage mutation. Every subsequent kubectl and Helm call uses that immutable
+snapshot; external `exec` and `auth-provider` credential plugins are rejected.
+Linux teardown generates its private source kubeconfig from the
 resolved absolute k0s binary; it never enumerates ambient contexts or invokes
 their credential plugins. Ambient `KUBECONFIG` or current-context state is not
 a target. Both the direct runtime UID lookup and the private-kubeconfig check
@@ -356,7 +365,9 @@ exists only inside the explicitly selected VM. The wrapper skips the redundant
 in-cluster namespace/PV drain, then its existing target guards remove that VM.
 This avoids turning a namespace finalizer stall or teardown-time image pull into
 a failed uninstall without leaving data on joined workers. The wrapper and the
-Ansible role both fail closed if `limactl delete` fails; an uninstall cannot
+Ansible role both fail closed if Lima inventory cannot be read. A failed initial
+`limactl delete` reaps only helpers rooted in the exact selected instance
+directory and retries once; a remaining failure aborts. An uninstall cannot
 report success while the VM-local release or BasePath may still exist.
 
 For `k0s-podman`, where `/var/local` persists across `k0s reset` on native
@@ -367,10 +378,14 @@ implemented safe order is exact:
    exact `openebs-4.5.1` release, owned namespace, owned StorageClass, and an
    exact match between requested runtime and the namespace's recorded runtime.
 2. Find namespaces that actually have PVCs using the managed StorageClass and
-   require each one to carry the Kamiwaza application or sandbox ownership
-   label. Enumerate and cleanly uninstall every Helm release in those owned
-   consumer namespaces before requesting namespace deletion, then wait up to
-   600 seconds for each namespace to disappear. A routine finalizer stall
+   require more than the Kamiwaza application or sandbox label: each namespace
+   must carry matching Helm ownership for a live, deployed, allowlisted first-
+   party namespace chart and must not set `helm.sh/resource-policy: keep`.
+   Enumerate and cleanly uninstall every Helm release in those owned consumer
+   namespaces, recheck the exact owner metadata and Kubernetes UID, then issue
+   a UID-preconditioned namespace DELETE. Wait up to 600 seconds for each
+   namespace to disappear. A shared, foreign, relabeled, kept, or concurrently
+   replaced namespace fails closed. A routine finalizer stall
    preserves the cluster and reports non-destructive recovery guidance; it is
    not a reason to use forced data-loss recovery.
 3. Wait up to 600 seconds for PVs using
@@ -401,7 +416,8 @@ implemented safe order is exact:
    ownership marker last, and leaves only the operator-owned empty mountpoint.
    `HostToContainer` mount propagation makes nested host mounts visible to the
    helper. If the helper is killed at any point, the next install or uninstall
-   validates the surviving marker or receipt and resumes safely. A foreign,
+   validates the surviving marker or receipt and resumes safely, including an
+   in-path receipt left after a dedicated mount was later unmounted. A foreign,
    symlinked, malformed, or ambiguous tombstone still fails closed.
 5. Uninstall only Helm release `kamiwaza-openebs` from namespace
    `kamiwaza-openebs`, waiting up to 10 minutes by default. Running marker cleanup first
@@ -426,8 +442,11 @@ If authorization expires or is denied, both normal and forced cleanup stop
 before runtime reset; the force flag never bypasses sudo or ownership checks.
 Reauthorize and rerun the same uninstall command.
 
-`KAMIWAZA_OPENEBS_CLEANUP_TIMEOUT_SECONDS` controls both consumer-namespace
-and PV/helper cleanup waits (default `600`). Increase it only when a healthy
+`KAMIWAZA_OPENEBS_CLEANUP_TIMEOUT_SECONDS` must be a positive integer and
+controls consumer-namespace and PV/helper waits plus BasePath-helper rollout
+and readiness (default `600`). A marker or deletion guard failure emits a
+`REFUSING managed BasePath ...` diagnostic in the helper logs before the
+lifecycle stops. Increase the budget only when a healthy
 cluster is making slow, observable teardown progress. `KAMIWAZA_OPENEBS_TIMEOUT`
 separately controls Helm operations (default `10m`). A timeout is a reason to
 inspect and retry the preserved cluster, not to force data loss.
@@ -467,7 +486,9 @@ non-symlink BasePath: it contains no data and represents a safe interrupted
 create, so install may claim it and forced host cleanup may remove it only
 after stopping k0s. A dedicated BasePath mount remains mounted but must be
 empty and contain neither ownership marker nor deletion receipt after cleanup.
-A nonempty unowned path always fails closed. `make clean`
+A standard uninstall that first proves the selected runtime is already absent
+or reset invokes this same fixed-path, marker-guarded recovery automatically;
+that reset-state path does not relax ownership. A nonempty unowned path always fails closed. `make clean`
 uses the same marker-guarded host action before native-Linux k0s reset; a
 refusal aborts that reset.
 
@@ -500,8 +521,10 @@ cleanup, and VM teardown could hide the leak rather than prove reclamation.
 Namespaces without a PVC using `kamiwaza-openebs-hostpath`, plus foreign
 StorageClasses, OpenEBS releases, namespaces, PVs, paths, and backups, are not
 adopted or deleted. A namespace with a managed PVC must also have the expected
-Kamiwaza application or sandbox label; otherwise uninstall fails closed before
-requesting any namespace deletion.
+Kamiwaza application or sandbox label, matching Helm ownership for an
+allowlisted deployed first-party namespace chart, no keep policy, and stable
+UID/metadata; otherwise uninstall fails closed before requesting any namespace
+deletion. The managed OpenEBS namespace is never adopted from labels alone.
 An unrelated Pod is not counted as a managed reclaim helper merely because its
 name has a similar prefix. The wrapper's separate model state export is best
 effort; it is not the same as a verified storage backup.
@@ -645,7 +668,10 @@ interrupted after Helm removal. If an owned StorageClass or other partial state
 also remains, uninstall stops and instructs you to rerun install before
 uninstalling so the provisioner/reclaim path is coherent. If the release
 exists, the helper will only reconcile the expected 4.5.1 chart and owned
-resources. Capture state first:
+resources. If Helm 4.1+ is unavailable, an already-clean target with no managed
+Kubernetes evidence is a successful no-op. Any remaining managed namespace,
+class, RBAC, or Helm release evidence stops and requires supported Helm so
+release ownership can be verified before mutation. Capture state first:
 
 ```bash
 helm list -A --all
