@@ -88,12 +88,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`1c301ac4`](https://github.com/kamiwaza-internal/deploy/commit/1c301ac47c03da39e36b88b0ec85d37945e52a5f):
+[`5adde4c3`](https://github.com/kamiwaza-internal/deploy/commit/5adde4c3e86c5b538f89a988c36a56f167e1322d):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/1c301ac47c03da39e36b88b0ec85d37945e52a5f/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/1c301ac47c03da39e36b88b0ec85d37945e52a5f/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/1c301ac47c03da39e36b88b0ec85d37945e52a5f/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/1c301ac47c03da39e36b88b0ec85d37945e52a5f/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/5adde4c3e86c5b538f89a988c36a56f167e1322d/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/5adde4c3e86c5b538f89a988c36a56f167e1322d/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/5adde4c3e86c5b538f89a988c36a56f167e1322d/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/5adde4c3e86c5b538f89a988c36a56f167e1322d/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -344,6 +344,13 @@ implemented safe order is exact:
    ClusterRoleBinding, and namespace. Every deletion rechecks the three
    ownership signals.
 7. Return to `uninstall-dev.sh`, which can now reset the selected Linux runtime.
+
+If target kubeconfig/UID binding or any managed-storage cleanup step fails,
+`uninstall-dev.sh` stops before Ansible resets the Linux runtime. This preserves
+the cluster that owns the path and prevents a later install from treating an
+old UID as permission to reclaim data that cleanup deliberately refused. Fix
+the reported sudo, API, ownership, namespace, PV, helper, or marker failure and
+rerun normal uninstall; do not reset k0s manually.
 
 Deleting the provisioner first is unsafe. PVC deletion would still remove API
 objects, but no controller/helper would remain to execute `Delete` against the
