@@ -258,11 +258,11 @@ changing the provisioner.
 ## Safe uninstall
 
 :::danger This deletes local application data
-The scoped dev uninstall deletes the `kamiwaza`, `kamiwaza-extensions`,
-`kamiwaza-sandboxes`, `kamiwaza-observability`, and `registry` namespaces when
-present. Their PVCs and data are expected to be reclaimed. Export or back up
-anything you need before continuing. This runbook does not make LocalPV data
-durable.
+The scoped dev uninstall deletes each Kamiwaza-owned application or sandbox
+namespace that currently has a PVC backed by `kamiwaza-openebs-hostpath`. Its
+PVCs and data are expected to be reclaimed. Product namespaces without a
+managed PVC are left alone. Export or back up anything you need before
+continuing. This runbook does not make LocalPV data durable.
 :::
 
 Use the normal wrapper, with the runtime marker and kube context pointing to the
@@ -280,19 +280,25 @@ The implemented safe order is exact:
 1. While the Kubernetes API and provisioner are still running, require the
    exact `openebs-4.5.1` release, owned namespace, owned StorageClass, and an
    exact match between requested runtime and the namespace's recorded runtime.
-2. Request deletion of all five application namespaces, then wait up to 180
-   seconds for each remaining namespace to disappear.
+2. Find namespaces that actually have PVCs using the managed StorageClass,
+   require each one to carry the Kamiwaza application or sandbox ownership
+   label, request their deletion, then wait up to 180 seconds for each to
+   disappear.
 3. Wait up to 180 seconds for PVs using
    `kamiwaza-openebs-hostpath` and OpenEBS helper Pods to reach zero. The
    provisioner and its reclaim helpers are still alive here, so
    `reclaimPolicy: Delete` can remove each backing directory.
-4. Uninstall only Helm release `kamiwaza-openebs` from namespace
-   `kamiwaza-openebs`, waiting up to five minutes.
-5. Run a privileged cleanup helper on every node. It removes only
+4. Run a root-uid, non-privileged cleanup helper on every node while the Helm
+   ownership evidence still exists. It removes only
    `/var/local/kamiwaza/openebs/localpv-hostpath`, and only when
    `.kamiwaza-managed` matches the owner, current `kube-system` cluster UID,
    release name, and exact BasePath. A missing or mismatched marker stops
    cleanup.
+5. Uninstall only Helm release `kamiwaza-openebs` from namespace
+   `kamiwaza-openebs`, waiting up to five minutes. Running marker cleanup first
+   prevents an interruption after Helm uninstall from discarding the evidence
+   needed to clean node data; cleanup is idempotent if this step must be
+   retried.
 6. Delete only the owned StorageClass, provisioner ClusterRole,
    ClusterRoleBinding, and namespace. Every deletion rechecks the three
    ownership signals.
@@ -304,10 +310,11 @@ objects, but no controller/helper would remain to execute `Delete` against the
 host directories. The PVs and BasePath children could leak until manual node
 cleanup, and VM teardown could hide the leak rather than prove reclamation.
 
-Outside the five explicitly named application-consumer namespaces, foreign
-StorageClasses, OpenEBS releases, namespaces, PVs, paths, and backups are not
-adopted or deleted. The five names are deleted when present so their PVCs can
-reclaim; the helper does not perform an ownership check on those namespaces.
+Namespaces without a PVC using `kamiwaza-openebs-hostpath`, plus foreign
+StorageClasses, OpenEBS releases, namespaces, PVs, paths, and backups, are not
+adopted or deleted. A namespace with a managed PVC must also have the expected
+Kamiwaza application or sandbox label; otherwise uninstall fails closed before
+requesting any namespace deletion.
 A foreign OpenEBS helper Pod can delay the bounded helper wait, but the script
 does not delete it. The wrapper's separate model state export is best effort;
 it is not the same as a verified storage backup.
@@ -405,19 +412,27 @@ on the live class as a shortcut.
 
 ### Marker or cluster-UID mismatch
 
-The BasePath marker contains four exact lines: owner, cluster UID, release, and
-BasePath. A mismatch means the helper cannot prove the directory belongs to
-this cluster, so it must not delete it. Preserve the node and helper logs.
+The BasePath marker contains four exact, ordered lines: owner, cluster UID,
+release, and BasePath. A malformed marker or an owner, release, or BasePath
+mismatch means the helper cannot prove the directory belongs to this
+integration, so it must not delete it. Preserve the node and helper logs.
 Confirm the kube context, `kube-system` UID, recorded runtime, release identity,
-and ownership labels. Recover the exact managed release by rerunning the normal
-install against the same cluster; do not fabricate a marker or recursively
-delete the path.
+and ownership labels. Do not fabricate a marker or recursively delete the path.
+
+`k0s reset` can legitimately give the same preserved node disk a new
+`kube-system` UID. During the next normal install, an otherwise exact four-line
+Kamiwaza marker with only an old cluster UID is reclaimable: the helper removes
+the now-unreachable old PV children and rewrites the marker for the new cluster.
+This recovery does not apply when any other marker field or shape differs.
 
 ### Partial install or uninstall
 
-If the release is absent while an owned namespace or StorageClass remains, the
-uninstall intentionally stops and instructs you to rerun install before
-uninstalling. This restores a coherent provisioner/reclaim path. If the release
+If the release is absent and only the empty owned namespace remains, uninstall
+runs the idempotent marker-guarded cleanup before deleting that namespace. This
+safely handles both an atomic install rollback and an older uninstall
+interrupted after Helm removal. If an owned StorageClass or other partial state
+also remains, uninstall stops and instructs you to rerun install before
+uninstalling so the provisioner/reclaim path is coherent. If the release
 exists, the helper will only reconcile the expected 4.5.1 chart and owned
 resources. Capture state first:
 
@@ -499,9 +514,10 @@ version.
    write, and reclaim probe above. Verify real Kamiwaza PVCs bind and platform
    workloads become Ready.
 8. Run a fresh uninstall/install KZUAT cycle on each supported local runtime.
-   Prove application namespaces drain before Helm uninstall, PV/helper counts
-   reach zero, marker- and cluster-UID-guarded BasePath cleanup succeeds, owned
-   resources disappear, foreign resources remain, and reinstall is clean.
+   Prove only managed-PVC consumer namespaces drain, PV/helper counts reach
+   zero, marker- and cluster-UID-guarded BasePath cleanup succeeds before Helm
+   uninstall, owned resources disappear, foreign resources remain, and
+   reinstall is clean after both normal teardown and `k0s reset` recovery.
 9. Land deploy code, values, tests, evidence, and this documentation update
    together through review. The next runbook must say which stable patch was
    selected and when; it must not claim an old pin is still "latest."
