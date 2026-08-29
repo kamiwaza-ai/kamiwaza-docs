@@ -68,6 +68,7 @@ the pin automatically. See [Upgrade the pin](#upgrade-the-pin).
 | Controller security | Non-root UID/GID 1000; `RuntimeDefault` seccomp; escalation disabled; drop `ALL` capabilities; read-only root with an isolated writable `/tmp` `emptyDir` |
 | BasePath cleanup security | UID 0, non-privileged, escalation disabled; drop all capabilities, then add only `DAC_OVERRIDE` and `FOWNER` |
 | Helm failure policy | Helm 4.1+ `--rollback-on-failure`, 10-minute default timeout |
+| Consumer/reclaim cleanup budget | 600 seconds by default |
 
 Only dynamic LocalPV Hostpath is enabled. The pinned chart renders the
 ServiceAccount, ClusterRole, ClusterRoleBinding, and provisioner Deployment;
@@ -92,12 +93,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`599cd11a`](https://github.com/kamiwaza-internal/deploy/commit/599cd11a4f18feec5f80bee6e9bd762b4e2fabd0):
+[`b1cd0778`](https://github.com/kamiwaza-internal/deploy/commit/b1cd0778527ec457375f9cba16546572a2b3e8da):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/599cd11a4f18feec5f80bee6e9bd762b4e2fabd0/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/599cd11a4f18feec5f80bee6e9bd762b4e2fabd0/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/599cd11a4f18feec5f80bee6e9bd762b4e2fabd0/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/599cd11a4f18feec5f80bee6e9bd762b4e2fabd0/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/b1cd0778527ec457375f9cba16546572a2b3e8da/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/b1cd0778527ec457375f9cba16546572a2b3e8da/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/b1cd0778527ec457375f9cba16546572a2b3e8da/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/b1cd0778527ec457375f9cba16546572a2b3e8da/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -363,10 +364,10 @@ implemented safe order is exact:
    require each one to carry the Kamiwaza application or sandbox ownership
    label. Enumerate and cleanly uninstall every Helm release in those owned
    consumer namespaces before requesting namespace deletion, then wait up to
-   180 seconds for each namespace to disappear. A routine finalizer stall
+   600 seconds for each namespace to disappear. A routine finalizer stall
    preserves the cluster and reports non-destructive recovery guidance; it is
    not a reason to use forced data-loss recovery.
-3. Wait up to 180 seconds for PVs using
+3. Wait up to 600 seconds for PVs using
    `kamiwaza-openebs-hostpath` and OpenEBS helper Pods to reach zero. The
    provisioner and its reclaim helpers are still alive here, so
    `reclaimPolicy: Delete` can remove each backing directory. Released or
@@ -413,6 +414,12 @@ batch or non-interactive invocation, run `sudo -v` in an interactive shell.
 If authorization expires or is denied, both normal and forced cleanup stop
 before runtime reset; the force flag never bypasses sudo or ownership checks.
 Reauthorize and rerun the same uninstall command.
+
+`KAMIWAZA_OPENEBS_CLEANUP_TIMEOUT_SECONDS` controls both consumer-namespace
+and PV/helper cleanup waits (default `600`). Increase it only when a healthy
+cluster is making slow, observable teardown progress. `KAMIWAZA_OPENEBS_TIMEOUT`
+separately controls Helm operations (default `10m`). A timeout is a reason to
+inspect and retry the preserved cluster, not to force data loss.
 
 If a consumer namespace is stuck `Terminating`, inspect its remaining objects,
 conditions, and finalizers while the owning cluster is still running:
