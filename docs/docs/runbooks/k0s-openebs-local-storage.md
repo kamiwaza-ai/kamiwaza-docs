@@ -121,7 +121,10 @@ both Ansible and the runtime storage helper. This selects the complete developer
 installer's offline lane, not a storage-only mode. Prepare the normal offline
 bundle, charts, images, and other prerequisites for the whole install. Do not
 describe a disconnected host as offline without setting the mode; online
-bootstrap is allowed to contact the pinned chart repository.
+bootstrap is allowed to contact the pinned chart repository. The environment
+value is authoritative and is appended after Ansible pass-through arguments,
+so `-e deployment_mode=...` cannot put Ansible and the storage helper into
+different modes.
 
 Do not install the umbrella chart by hand during a normal dev install. Both k0s
 runtime installers wait for the cluster and `kube-system` workloads to become
@@ -395,9 +398,14 @@ implemented safe order is exact:
    exact `openebs-4.5.1` release, owned namespace, owned StorageClass, and an
    exact match between requested runtime and the namespace's recorded runtime.
 2. Find namespaces that actually have PVCs using the managed StorageClass and
-   require more than the Kamiwaza application or sandbox label: each namespace
-   must carry matching Helm ownership for a live, deployed, allowlisted first-
-   party namespace chart and must not set `helm.sh/resource-policy: keep`.
+   require more than the Kamiwaza application or sandbox label. Ordinary
+   application namespaces must carry matching Helm ownership for a live,
+   deployed, allowlisted first-party namespace chart. A purpose-labeled sandbox
+   namespace without Helm namespace ownership is accepted only when exactly one
+   live, deployed `extension-operator` release has the expected chart identity
+   and names that exact namespace in its `sandboxNamespace` values; any optional
+   Helm metadata already on the namespace must agree with that release. Neither
+   path may set `helm.sh/resource-policy: keep`.
    Enumerate and cleanly uninstall every Helm release in those owned consumer
    namespaces, recheck the exact owner metadata and Kubernetes UID, then issue
    a UID-preconditioned namespace DELETE. Wait up to 600 seconds for each
@@ -548,8 +556,11 @@ cleanup, and VM teardown could hide the leak rather than prove reclamation.
 Namespaces without a PVC using `kamiwaza-openebs-hostpath`, plus foreign
 StorageClasses, OpenEBS releases, namespaces, PVs, paths, and backups, are not
 adopted or deleted. A namespace with a managed PVC must also have the expected
-Kamiwaza application or sandbox label, matching Helm ownership for an
-allowlisted deployed first-party namespace chart, no keep policy, and stable
+Kamiwaza application or sandbox label. Application namespaces require matching
+Helm ownership for an allowlisted deployed first-party namespace chart;
+purpose-labeled sandboxes instead require the unique deployed
+`extension-operator` release to name that exact `sandboxNamespace`, with no
+conflicting optional Helm metadata. Both paths require no keep policy and stable
 UID/metadata; otherwise uninstall fails closed before requesting any namespace
 deletion. The managed OpenEBS namespace is never adopted from labels alone.
 An unrelated Pod is not counted as a managed reclaim helper merely because its
