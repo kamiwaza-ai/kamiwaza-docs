@@ -88,12 +88,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`1aedee72`](https://github.com/kamiwaza-internal/deploy/commit/1aedee724c4749b8c4d608af5ad1ed20d567973c):
+[`d6c05db8`](https://github.com/kamiwaza-internal/deploy/commit/d6c05db8fd3f54953f862039e4fadf27751ea371):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/1aedee724c4749b8c4d608af5ad1ed20d567973c/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/1aedee724c4749b8c4d608af5ad1ed20d567973c/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/1aedee724c4749b8c4d608af5ad1ed20d567973c/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/1aedee724c4749b8c4d608af5ad1ed20d567973c/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/d6c05db8fd3f54953f862039e4fadf27751ea371/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/d6c05db8fd3f54953f862039e4fadf27751ea371/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/d6c05db8fd3f54953f862039e4fadf27751ea371/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/d6c05db8fd3f54953f862039e4fadf27751ea371/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
@@ -111,10 +111,12 @@ For an explicitly offline developer run, select that mode at the entry point:
 DEPLOYMENT_MODE=offline ./scripts/install-dev.sh
 ```
 
-The wrapper accepts only `online` or `offline` and exports the selected value
-to the runtime storage helper. Do not describe a disconnected host as offline
-without setting the mode; online bootstrap is allowed to contact the pinned
-chart repository.
+The wrapper accepts only `online` or `offline` and passes the selected value to
+both Ansible and the runtime storage helper. This selects the complete developer
+installer's offline lane, not a storage-only mode. Prepare the normal offline
+bundle, charts, images, and other prerequisites for the whole install. Do not
+describe a disconnected host as offline without setting the mode; online
+bootstrap is allowed to contact the pinned chart repository.
 
 Do not install the umbrella chart by hand during a normal dev install. Both k0s
 runtime installers wait for the cluster and `kube-system` workloads to become
@@ -364,13 +366,18 @@ implemented safe order is exact:
    ownership evidence still exists. It drops all Linux capabilities and adds
    back only `DAC_OVERRIDE` and `FOWNER`, which are required to traverse and
    remove arbitrary workload-owned modes such as `0700`; privilege escalation
-   remains disabled. It removes only
+   remains disabled. It validates only
    `/var/local/kamiwaza/openebs/localpv-hostpath`, and only when
    `.kamiwaza-managed` has exactly four ordered lines matching the owner,
    nonempty cluster UID, release name, and exact BasePath. The UID may name the
    immediately previous cluster after a reset because the explicit kubeconfig
    and current target UID were already asserted before the DaemonSet ran. A
-   missing, malformed, or otherwise mismatched marker stops cleanup.
+   missing, malformed, or otherwise mismatched marker stops cleanup. After
+   validation, it hard-links that marker to a fixed external ownership receipt,
+   atomically renames the BasePath to `.deleting`, and recursively removes the
+   tombstone. If the helper is killed at any point, the next install or uninstall
+   validates the surviving marker or receipt and resumes safely. A foreign,
+   symlinked, malformed, or ambiguous tombstone still fails closed.
 5. Uninstall only Helm release `kamiwaza-openebs` from namespace
    `kamiwaza-openebs`, waiting up to 10 minutes by default. Running marker cleanup first
    prevents an interruption after Helm uninstall from discarding the evidence
@@ -410,14 +417,15 @@ supported override is deliberately explicit and destructive:
 ```
 
 The wrapper first attempts normal cleanup. Only after that fails does this flag
-stop k0s, revalidate the exact marker before and after the stop, remove the
-fixed `/var/local/kamiwaza/openebs/localpv-hostpath`, and continue runtime
-teardown. It does not accept a configurable path and refuses a missing,
-symlinked, malformed, or foreign marker. Every PVC backed by the managed class
-is permanently lost. Do not use this flag on a recoverable cluster or to bypass
-an ownership refusal you have not investigated. It is rejected for Lima and
-macOS. `make clean` uses the same marker-guarded host action before native-Linux
-k0s reset; a refusal aborts that reset.
+stop k0s, revalidate the exact marker or crash-recovery receipt before and after
+the stop, atomically tombstone the fixed
+`/var/local/kamiwaza/openebs/localpv-hostpath`, and continue its crash-safe
+deletion. It does not accept a configurable path and refuses missing,
+symlinked, malformed, foreign, or ambiguous ownership state. Every PVC backed
+by the managed class is permanently lost. Do not use this flag on a recoverable
+cluster or to bypass an ownership refusal you have not investigated. It is
+rejected for Lima and macOS. `make clean` uses the same marker-guarded host
+action before native-Linux k0s reset; a refusal aborts that reset.
 
 Deleting the provisioner first is unsafe. PVC deletion would still remove API
 objects, but no controller/helper would remain to execute `Delete` against the
@@ -453,7 +461,8 @@ Every lookup/listing must show no managed release or resource, and the
 PV filter must return no rows. `kubectl get` for a named absent resource
 exits nonzero; that expected `NotFound` is the clean result. The normal Linux
 uninstall also runs the host-state validator, whose sixth assertion requires
-the exact managed BasePath to be absent.
+the exact managed BasePath, its `.deleting` tombstone, and the external deletion
+receipt to all be absent, including broken symlinks at those names.
 
 On Lima, verify the selected VM is absent after the wrapper completes rather
 than querying the Kubernetes API that VM owned:
@@ -592,7 +601,7 @@ Treat the failing boundary separately:
 - macOS keychain/credential-helper failure belongs to host registry
   authentication, not the StorageClass contract. Fix the credential boundary
   and retry; never paste credentials into logs or Helm values.
-- Helm 4 rollback-on-failure should remove the attempted release. The helper's
+- Helm 4.1+ rollback-on-failure should remove the attempted release. The helper's
   timeout defaults to 10 minutes; `KAMIWAZA_OPENEBS_TIMEOUT` may be set to a
   longer valid Helm duration for an unusually slow connected environment. If
   owned residue remains, follow the partial-state recovery above.
