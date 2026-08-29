@@ -93,12 +93,12 @@ repository state for this operation; it does not add the OpenEBS repository to
 the engineer's normal Helm state.
 
 The source of truth is the deploy implementation at commit
-[`8e953819`](https://github.com/kamiwaza-internal/deploy/commit/8e95381961a33af0a3cbf7f32f0a49db88b1aa77):
+[`6986a779`](https://github.com/kamiwaza-internal/deploy/commit/6986a77941ac6f30c50f6840ee05047ef8269d48):
 
-- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/8e95381961a33af0a3cbf7f32f0a49db88b1aa77/scripts/k0s-openebs-localpv.sh)
-- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/8e95381961a33af0a3cbf7f32f0a49db88b1aa77/cluster/values/openebs-localpv-dev.yaml)
-- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/8e95381961a33af0a3cbf7f32f0a49db88b1aa77/docs/storage-configuration.md)
-- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/8e95381961a33af0a3cbf7f32f0a49db88b1aa77/scripts/tests/test_k0s_default_storage_contracts.py)
+- [lifecycle helper](https://github.com/kamiwaza-internal/deploy/blob/6986a77941ac6f30c50f6840ee05047ef8269d48/scripts/k0s-openebs-localpv.sh)
+- [pinned narrow values](https://github.com/kamiwaza-internal/deploy/blob/6986a77941ac6f30c50f6840ee05047ef8269d48/cluster/values/openebs-localpv-dev.yaml)
+- [storage configuration](https://github.com/kamiwaza-internal/deploy/blob/6986a77941ac6f30c50f6840ee05047ef8269d48/docs/storage-configuration.md)
+- [contract tests](https://github.com/kamiwaza-internal/deploy/blob/6986a77941ac6f30c50f6840ee05047ef8269d48/scripts/tests/test_k0s_default_storage_contracts.py)
 
 OpenEBS publishes the corresponding [v4.5.1 release](https://github.com/openebs/openebs/releases/tag/v4.5.1).
 
