@@ -10,7 +10,7 @@ presents to the remote cluster, and how the remote cluster verifies it.** This i
 the federation's **identity mode** — a per-federation setting chosen by the
 cluster that receives the calls (the *grantor*).
 
-Kamiwaza 1.2.0 ships two identity modes:
+The current release and development baselines support two identity modes:
 
 | Mode | Trust | Who validates the caller | Use when |
 |---|---|---|---|
@@ -75,7 +75,7 @@ realm — it trusts the source cluster to be the identity authority. This is the
   from the `ALLOW_UNTRUSTED_FEDERATION` refusal, and surfaced as the weaker
   posture so operators can see which pairings rest on trusting the source.
 
-`peer_kc` remains supported in 1.2.0. It is not the recommended mode for a new
+`peer_kc` remains supported. It is not the recommended mode for a new
 pair, but it is not scheduled for removal. Keep it disabled unless the operator
 explicitly accepts the source-trusted posture.
 
@@ -86,10 +86,12 @@ for every approved remote user. Pairing will use a receiver-owned
 request/approve flow, and each user will complete an onboarding request that
 the receiver approves before issuing guest credentials.
 
-This mode is **not available in Kamiwaza 1.2.0**. Core rejects it with
-`identity_mode_unsupported`; do not select it for a 1.2 deployment. It remains
-the intended future pattern when clusters cannot share an issuer and the
-receiver must disable, rotate, or audit guest identities independently.
+This mode is **not available in the current release or `develop` baseline**.
+Core does not expose receiver-realm creation, request/approve, guest, or
+onboarding routes, and mesh ingress rejects a stored `receiver_realm` value with
+`identity_mode_unsupported`. The mode remains planned for the Federation
+Keycloak Patterns work; constants, schema fields, SDK helpers, and gated tests
+do not make it a deployable capability.
 
 The `shared_idp` setup in this guide does not exercise `receiver_realm`. Do not
 infer receiver-realm behavior from a shared-IDP pairing.
@@ -105,8 +107,8 @@ The mode is selected implicitly by what you supply when you create the federatio
 - **Supply `shared_issuer_url`** → the federation is `shared_idp`.
 - **Omit it on the legacy create path** → the federation is `peer_kc` (subject
   to `ALLOW_UNTRUSTED_FEDERATION`).
-- **Do not select `receiver_realm` on 1.2.0** → the reserved value is rejected
-  until the receiver-owned guest-identity implementation is delivered.
+- **Do not select `receiver_realm`** → the reserved value is rejected until the
+  receiver-owned guest-identity implementation is delivered and qualified.
 
 :::warning
 **The identity mode cannot be changed in place.** Switching a federation between
