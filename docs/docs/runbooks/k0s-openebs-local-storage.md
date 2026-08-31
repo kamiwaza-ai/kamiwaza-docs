@@ -79,13 +79,18 @@ replicated Mayastor, Loki, Alloy, MinIO, analytics, quota management, snapshot
 CRDs, and the umbrella pre-upgrade hook are disabled. A render of the pinned
 profile plus the helper-owned class contains no other resources.
 
-Managed resources have all three ownership signals:
+The helper-owned Namespace, StorageClass, ClusterRole, and ClusterRoleBinding
+have all three ownership signals:
 
 ```text
 label      kamiwaza.ai/managed=true
 label      kamiwaza.ai/component=local-dev-storage
 annotation kamiwaza.ai/owner=k0s-openebs-localpv
 ```
+
+The chart-rendered ServiceAccount and Deployment carry both labels; Helm
+release metadata owns their lifecycle, so they do not carry the helper's owner
+annotation.
 
 The namespace additionally records the selected runtime in
 `kamiwaza.ai/runtime`. Helm uses a private temporary cache, config, data, and
@@ -152,7 +157,8 @@ The decision order is:
    `openebs.github.io` and the pinned images. In that case, provide an existing
    dynamic default or explicitly configure `storage.stateful.standard`.
 5. For an online managed bootstrap, reject unowned name collisions, ensure the
-   managed namespace, then create the exact BasePath marker on every node
+   managed namespace, then create the exact BasePath marker on the labeled
+   storage node
    **before** Helm exposes the default StorageClass. This closes Kubernetes'
    retroactive default assignment race for pre-existing Pending PVCs.
 6. Install or reconcile the exact managed 4.5.1 release using Helm 4.1+
@@ -263,7 +269,7 @@ kubectl get pvc -A \
   -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,STATUS:.status.phase,CLASS:.spec.storageClassName,VOLUME:.spec.volumeName'
 
 kubectl get pv \
-  -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,CLASS:.spec.storageClassName,CLAIM:.spec.claimRef.namespace/.spec.claimRef.name,NODE:.spec.nodeAffinity.required.nodeSelectorTerms[0].matchExpressions[0].values[0]'
+  -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,CLASS:.spec.storageClassName,CLAIM_NAMESPACE:.spec.claimRef.namespace,CLAIM_NAME:.spec.claimRef.name,NODE:.spec.nodeAffinity.required.nodeSelectorTerms[0].matchExpressions[0].values[0]'
 ```
 
 All intended platform claims must be `Bound`. A claim using the managed class
