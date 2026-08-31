@@ -209,7 +209,14 @@ values.
 ### Release, workload, and component profile
 
 ```bash
-./scripts/k0s-openebs-localpv.sh verify
+KUBECONFIG_PATH="${HOME}/.kube/config"
+RUNTIME="k0s-lima" # Use k0s-podman on the native-Linux or legacy Podman path.
+CLUSTER_UID="$(kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  get namespace kube-system -o jsonpath='{.metadata.uid}')"
+./scripts/k0s-openebs-localpv.sh verify \
+  --runtime "${RUNTIME}" \
+  --kubeconfig "${KUBECONFIG_PATH}" \
+  --expected-cluster-uid "${CLUSTER_UID}"
 
 helm list -n kamiwaza-openebs \
   --filter '^kamiwaza-openebs$' \
@@ -595,7 +602,8 @@ On Lima, verify the selected VM is absent after the wrapper completes rather
 than querying the Kubernetes API that VM owned:
 
 ```bash
-limactl list -q | grep -Fx 'kamiwaza-k0s' && echo 'unexpected VM residue'
+LIMA_VM_NAME="kamiwaza-k0s" # Set to the value passed with --lima-vm.
+limactl list -q | grep -Fx -- "${LIMA_VM_NAME}" && echo 'unexpected VM residue'
 ```
 
 If you ran the storage helper directly and deliberately kept the node alive,
@@ -614,7 +622,8 @@ if sudo test -e /var/local/kamiwaza/openebs/localpv-hostpath; then
 fi
 
 # Podman-machine runtime.
-podman machine ssh -- "sudo sh -c '
+PODMAN_MACHINE_NAME="podman-machine-default" # Match the top-level Ansible extra var.
+podman machine ssh "${PODMAN_MACHINE_NAME}" -- "sudo sh -c '
   if [ -e /var/local/kamiwaza/openebs/localpv-hostpath ]; then
     find /var/local/kamiwaza/openebs/localpv-hostpath \
       -mindepth 1 -maxdepth 1 -print -quit
