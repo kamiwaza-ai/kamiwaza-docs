@@ -210,7 +210,9 @@ capacity, and reclaim behavior.
 ## Verify an installed cluster
 
 Run these against the intended local kube context. They disclose no Secret
-values.
+values. Keep `KUBECONFIG_PATH` set for every verification, cleanup, and
+troubleshooting command below; the commands pass it explicitly and fail rather
+than falling back to an ambient context.
 
 ### Release, workload, and component profile
 
@@ -224,16 +226,19 @@ CLUSTER_UID="$(kubectl --kubeconfig "${KUBECONFIG_PATH}" \
   --kubeconfig "${KUBECONFIG_PATH}" \
   --expected-cluster-uid "${CLUSTER_UID}"
 
-helm list -n kamiwaza-openebs \
+helm --kubeconfig "${KUBECONFIG_PATH}" list -n kamiwaza-openebs \
   --filter '^kamiwaza-openebs$' \
   -o json
 
-kubectl -n kamiwaza-openebs get deployment,daemonset,statefulset
-kubectl -n kamiwaza-openebs rollout status \
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  -n kamiwaza-openebs get deployment,daemonset,statefulset
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  -n kamiwaza-openebs rollout status \
   deployment/kamiwaza-openebs-localpv-provisioner \
   --timeout=180s
 
-kubectl -n kamiwaza-openebs get deployment \
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  -n kamiwaza-openebs get deployment \
   kamiwaza-openebs-localpv-provisioner \
   -o jsonpath='{.spec.template.spec.containers[0].securityContext}{"\n"}{.spec.template.spec.containers[0].volumeMounts}{"\n"}{.spec.template.spec.volumes}{"\n"}'
 ```
@@ -251,10 +256,11 @@ workloads are unintended in this namespace.
 ### StorageClass contract
 
 ```bash
-kubectl get storageclass kamiwaza-openebs-hostpath \
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  get storageclass kamiwaza-openebs-hostpath \
   -o jsonpath='{.provisioner}{"\n"}{.reclaimPolicy}{"\n"}{.volumeBindingMode}{"\n"}{.allowVolumeExpansion}{"\n"}{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}{"\n"}{.metadata.annotations.storageclass\.beta\.kubernetes\.io/is-default-class}{"\n"}{.metadata.annotations.cas\.openebs\.io/config}{"\n"}'
 
-kubectl get storageclass \
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get storageclass \
   -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}{"\t"}{.metadata.annotations.storageclass\.beta\.kubernetes\.io/is-default-class}{"\n"}{end}'
 ```
 
@@ -265,10 +271,10 @@ the table above. The default listing must not contain a second default.
 ### Kamiwaza claims
 
 ```bash
-kubectl get pvc -A \
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get pvc -A \
   -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,STATUS:.status.phase,CLASS:.spec.storageClassName,VOLUME:.spec.volumeName'
 
-kubectl get pv \
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get pv \
   -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,CLASS:.spec.storageClassName,CLAIM_NAMESPACE:.spec.claimRef.namespace,CLAIM_NAME:.spec.claimRef.name,NODE:.spec.nodeAffinity.required.nodeSelectorTerms[0].matchExpressions[0].values[0]'
 ```
 
@@ -337,7 +343,7 @@ kubectl --kubeconfig "${KUBECONFIG_PATH}" \
   delete namespace "${PROBE_NS}" --wait=true --timeout=180s
 kubectl --kubeconfig "${KUBECONFIG_PATH}" \
   wait --for=delete "pv/${PROBE_PV}" --timeout=180s
-unset CLUSTER_UID KUBECONFIG_PATH PROBE_NS PROBE_PV RUNTIME
+unset PROBE_NS PROBE_PV
 ```
 
 If a command fails, stop and diagnose before deleting additional PVCs or
@@ -517,9 +523,11 @@ If a consumer namespace is stuck `Terminating`, inspect its remaining objects,
 conditions, and finalizers while the owning cluster is still running:
 
 ```bash
-kubectl get namespace <namespace> -o yaml
-kubectl get all,pvc -n <namespace>
-kubectl get events -n <namespace> --sort-by=.lastTimestamp
+: "${KUBECONFIG_PATH:?set KUBECONFIG_PATH to the identity-verified target}"
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get namespace <namespace> -o yaml
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get all,pvc -n <namespace>
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  get events -n <namespace> --sort-by=.lastTimestamp
 ```
 
 Resolve the responsible controller or finalizer through its normal teardown
@@ -600,12 +608,15 @@ On Linux, when the helper has completed but before a runtime is manually reset,
 verify the Kubernetes objects are absent:
 
 ```bash
-helm list -A --all --filter '^kamiwaza-openebs$'
-kubectl get namespace kamiwaza-openebs
-kubectl get storageclass kamiwaza-openebs-hostpath
-kubectl get clusterrole,clusterrolebinding \
+: "${KUBECONFIG_PATH:?set KUBECONFIG_PATH to the identity-verified target}"
+helm --kubeconfig "${KUBECONFIG_PATH}" list -A --all \
+  --filter '^kamiwaza-openebs$'
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get namespace kamiwaza-openebs
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  get storageclass kamiwaza-openebs-hostpath
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get clusterrole,clusterrolebinding \
   -l 'kamiwaza.ai/component=local-dev-storage'
-kubectl get pv \
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get pv \
   -o custom-columns='NAME:.metadata.name,CLASS:.spec.storageClassName,STATUS:.status.phase' \
   | grep -F kamiwaza-openebs-hostpath
 ```
@@ -656,6 +667,11 @@ If the exact path remains, preserve the cluster and inspect the helper failure.
 
 ## Troubleshooting and recovery boundaries
 
+Keep the `KUBECONFIG_PATH` selected and identity-checked in
+[Verify an installed cluster](#verify-an-installed-cluster). Each command in
+this section passes it explicitly; the guard in the first command block stops
+if a shell entered this section without the verified target.
+
 ### No default StorageClass
 
 This is the expected trigger on a fresh local k0s cluster. The helper should
@@ -663,10 +679,15 @@ install the managed class. If it does not, inspect its command output, the
 release, and namespace events rather than creating a StorageClass manually:
 
 ```bash
-helm status kamiwaza-openebs -n kamiwaza-openebs
-kubectl -n kamiwaza-openebs get events --sort-by=.lastTimestamp
-kubectl -n kamiwaza-openebs describe deployment kamiwaza-openebs-localpv-provisioner
-kubectl -n kamiwaza-openebs logs deployment/kamiwaza-openebs-localpv-provisioner
+: "${KUBECONFIG_PATH:?set KUBECONFIG_PATH to the identity-verified target}"
+helm --kubeconfig "${KUBECONFIG_PATH}" \
+  status kamiwaza-openebs -n kamiwaza-openebs
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  -n kamiwaza-openebs get events --sort-by=.lastTimestamp
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  -n kamiwaza-openebs describe deployment kamiwaza-openebs-localpv-provisioner
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  -n kamiwaza-openebs logs deployment/kamiwaza-openebs-localpv-provisioner
 ```
 
 ### Explicit or foreign StorageClass wins
@@ -696,12 +717,16 @@ First determine whether it has a consumer. `WaitForFirstConsumer` deliberately
 keeps an unused PVC Pending.
 
 ```bash
-kubectl get pvc -A -o wide
-kubectl describe pvc -n <namespace> <claim>
-kubectl get pods -n <namespace> -o wide
-kubectl describe pod -n <namespace> <consumer-pod>
-kubectl -n kamiwaza-openebs logs deployment/kamiwaza-openebs-localpv-provisioner
-kubectl get events -A --sort-by=.lastTimestamp
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get pvc -A -o wide
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  describe pvc -n <namespace> <claim>
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get pods -n <namespace> -o wide
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  describe pod -n <namespace> <consumer-pod>
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  -n kamiwaza-openebs logs deployment/kamiwaza-openebs-localpv-provisioner
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  get events -A --sort-by=.lastTimestamp
 ```
 
 Check scheduling/topology, requested class, node readiness, provisioner image
@@ -741,12 +766,15 @@ class, RBAC, or Helm release evidence stops and requires supported Helm so
 release ownership can be verified before mutation. Capture state first:
 
 ```bash
-helm list -A --all
-kubectl get namespace kamiwaza-openebs --show-labels
-kubectl get storageclass kamiwaza-openebs-hostpath -o yaml
-kubectl get pv,pvc -A
-kubectl -n kamiwaza-openebs get all
-kubectl -n kamiwaza-openebs get events --sort-by=.lastTimestamp
+helm --kubeconfig "${KUBECONFIG_PATH}" list -A --all
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  get namespace kamiwaza-openebs --show-labels
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  get storageclass kamiwaza-openebs-hostpath -o yaml
+kubectl --kubeconfig "${KUBECONFIG_PATH}" get pv,pvc -A
+kubectl --kubeconfig "${KUBECONFIG_PATH}" -n kamiwaza-openebs get all
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  -n kamiwaza-openebs get events --sort-by=.lastTimestamp
 ```
 
 The StorageClass output contains no Secret data, but review collected YAML
