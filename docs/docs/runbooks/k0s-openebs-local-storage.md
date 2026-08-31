@@ -282,10 +282,19 @@ Run this only on a disposable local cluster. It creates an isolated namespace,
 1Gi claim, and BusyBox Pod; then it removes them and proves the PV was reclaimed.
 
 ```bash
-export PROBE_NS="kamiwaza-storage-probe-$(date +%s)"
-kubectl create namespace "${PROBE_NS}"
+KUBECONFIG_PATH="${HOME}/.kube/config"
+RUNTIME="k0s-lima" # Use k0s-podman on the native-Linux or legacy Podman path.
+CLUSTER_UID="$(kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  get namespace kube-system -o jsonpath='{.metadata.uid}')"
+./scripts/k0s-openebs-localpv.sh verify \
+  --runtime "${RUNTIME}" \
+  --kubeconfig "${KUBECONFIG_PATH}" \
+  --expected-cluster-uid "${CLUSTER_UID}"
 
-kubectl -n "${PROBE_NS}" apply -f - <<'EOF'
+export PROBE_NS="kamiwaza-storage-probe-$(date +%s)"
+kubectl --kubeconfig "${KUBECONFIG_PATH}" create namespace "${PROBE_NS}"
+
+kubectl --kubeconfig "${KUBECONFIG_PATH}" -n "${PROBE_NS}" apply -f - <<'EOF'
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -316,14 +325,19 @@ spec:
         claimName: localpv-probe
 EOF
 
-kubectl -n "${PROBE_NS}" wait --for=condition=Ready pod/localpv-probe --timeout=180s
-kubectl -n "${PROBE_NS}" exec localpv-probe -- sh -c \
+kubectl --kubeconfig "${KUBECONFIG_PATH}" -n "${PROBE_NS}" \
+  wait --for=condition=Ready pod/localpv-probe --timeout=180s
+kubectl --kubeconfig "${KUBECONFIG_PATH}" -n "${PROBE_NS}" \
+  exec localpv-probe -- sh -c \
   'printf "openebs-localpv-ok\n" > /data/probe && grep -Fx openebs-localpv-ok /data/probe'
-export PROBE_PV="$(kubectl -n "${PROBE_NS}" get pvc localpv-probe -o jsonpath='{.spec.volumeName}')"
+export PROBE_PV="$(kubectl --kubeconfig "${KUBECONFIG_PATH}" -n "${PROBE_NS}" \
+  get pvc localpv-probe -o jsonpath='{.spec.volumeName}')"
 test -n "${PROBE_PV}"
-kubectl delete namespace "${PROBE_NS}" --wait=true --timeout=180s
-kubectl wait --for=delete "pv/${PROBE_PV}" --timeout=180s
-unset PROBE_NS PROBE_PV
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  delete namespace "${PROBE_NS}" --wait=true --timeout=180s
+kubectl --kubeconfig "${KUBECONFIG_PATH}" \
+  wait --for=delete "pv/${PROBE_PV}" --timeout=180s
+unset CLUSTER_UID KUBECONFIG_PATH PROBE_NS PROBE_PV RUNTIME
 ```
 
 If a command fails, stop and diagnose before deleting additional PVCs or
@@ -586,7 +600,7 @@ On Linux, when the helper has completed but before a runtime is manually reset,
 verify the Kubernetes objects are absent:
 
 ```bash
-helm list -A --filter '^kamiwaza-openebs$'
+helm list -A --all --filter '^kamiwaza-openebs$'
 kubectl get namespace kamiwaza-openebs
 kubectl get storageclass kamiwaza-openebs-hostpath
 kubectl get clusterrole,clusterrolebinding \
