@@ -202,5 +202,4 @@ By default the installer serves Kamiwaza over TLS with a self-signed certificate
 ## Next Steps
 
 - [Quickstart](../quickstart.md) — confirm the service is running and take your first steps.
-- [Two-Node Deployment](two-node-deployment.md) — run inference across a pair of nodes.
 - [Uninstalling Kamiwaza](uninstall.md).
