@@ -13,7 +13,7 @@ Kamiwaza cluster federation enables cross-cluster operations between paired Kami
 
 **Federation Trust** — Each federation pair shares a pre-shared key. All cross-cluster requests are HMAC-signed with this key, and the receiving cluster verifies the signature before processing the request. The PSK/HMAC secures the *transport*; the caller's *identity* is validated separately, according to the federation's [identity mode](./identity-trust-modes.md). Trust is per-federation, not per-cluster.
 
-**Identity Modes** — A federation's [identity mode](./identity-trust-modes.md) decides whose identity a cross-cluster caller presents and how the receiver validates it. Kamiwaza 1.2.0 supports **`shared_idp`** (receiver-controlled shared realm) and **`peer_kc`** (source-trusted compatibility mode, gated by cluster policy). **`receiver_realm`** is reserved for a future receiver-owned guest-identity workflow and is rejected in 1.2.0.
+**Identity Modes** — A federation's [identity mode](./identity-trust-modes.md) decides whose identity a cross-cluster caller presents and how the receiver validates it. Kamiwaza 1.3.0 supports **`shared_idp`** (receiver-controlled shared realm) and **`peer_kc`** (source-trusted compatibility mode, gated by cluster policy). **`receiver_realm`** is reserved for a future receiver-owned guest-identity workflow and is rejected in 1.3.0.
 
 **Receiver-controlled authorization** — Cross-cluster egress on the source is **authenticated-only**: any authenticated caller may reach the mesh proxy — there is no `operator`-relation gate. Authorization is decided by the **receiving** cluster, which validates the caller's identity per the identity mode and then evaluates the request against its **own** per-resource ReBAC guards (catalog, retrieval, jobs) and per-record gates. Roles do **not** cross clusters (see [shared identity ≠ shared authority](./identity-trust-modes.md#core-principle-shared-identity--shared-authority)).
 
@@ -54,7 +54,7 @@ Cluster A (source)                          Cluster B (target)
 
 ## Prerequisites
 
-- Two compatible Kamiwaza 1.2.0 clusters using the Istio deployment profile
+- Two compatible Kamiwaza 1.3.0 clusters using the Istio deployment profile
 - STRICT mTLS (`PeerAuthentication`) in both namespaces
 - Network connectivity between clusters on port 443
 - Distinct, mutually reachable peer hostnames covered by each gateway TLS

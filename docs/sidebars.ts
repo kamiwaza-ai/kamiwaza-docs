@@ -78,6 +78,7 @@ const sidebars: SidebarsConfig = {
 				"federation/execution-gates",
 				"federation/gate-packages",
 				"federation/api-reference",
+				"federation/release-notes-1-3",
 			],
 		},
 		{
@@ -167,6 +168,7 @@ const sidebars: SidebarsConfig = {
 			type: "category",
 			label: "Runbooks",
 			items: [
+				"runbooks/k0s-openebs-local-storage",
 				"runbooks/core-database-upgrade-1.2",
 				"runbooks/ontology-graph-viewer",
 			],

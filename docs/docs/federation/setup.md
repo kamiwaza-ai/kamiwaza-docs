@@ -1,22 +1,22 @@
 ---
 sidebar_position: 2
-title: Federation Setup
+title: Federation setup
 ---
 
-# Federation Setup
+# Federation setup
 
-This guide pairs two Kamiwaza 1.2.0 clusters using the receiver-controlled
+This guide pairs two Kamiwaza 1.3.0 clusters using the receiver-controlled
 `shared_idp` identity mode. The receiver validates the caller's shared-realm
-token, then applies its own onboarding, ReBAC, and policy gates.
+token, then applies its own brokered-user allowlist, ReBAC, and policy gates.
 
 `receiver_realm` is reserved for the future receiver-owned guest-identity
-workflow and is rejected by Kamiwaza 1.2.0. `peer_kc` remains available for
+workflow and is rejected by Kamiwaza 1.3.0. `peer_kc` remains available for
 compatibility, but new `peer_kc` pairs are refused unless the operator
 explicitly enables `ALLOW_UNTRUSTED_FEDERATION`.
 
 ## Prerequisites
 
-- Two Kamiwaza 1.2.0 clusters with mutually reachable HTTPS endpoints.
+- Two Kamiwaza 1.3.0 clusters with mutually reachable HTTPS endpoints.
 - Istio selected through the supported deployment values for both clusters.
 - Distinct cluster display names and distinct, mutually reachable hostnames.
 - Gateway certificates whose SANs cover the hostnames used for Host and TLS
@@ -25,6 +25,26 @@ explicitly enables `ALLOW_UNTRUSTED_FEDERATION`.
 - The shared issuer enrolled in `core.scheduler.trustedSharedIssuers` on both
   clusters.
 - A native-realm cluster administrator on each cluster.
+
+### Set distinct cluster display names
+
+Supported Helmfile installations derive the display name from the first label of
+a custom DNS domain. Default or non-DNS domains fall back to the short install
+hostname; raw Helm installations retain the chart's `Default Cluster` value.
+Set an explicit name in the persistent site overlay when the derived value is
+not suitable:
+
+```yaml
+# deploy/cluster/values/overrides.yaml
+core:
+  initialClusterName: "fed-a"
+```
+
+Use a different value on each cluster and apply the normal Helmfile sync before
+pairing. A later change takes effect after the scheduler restarts, but an
+already-paired peer retains its cached name until the federation is re-paired.
+The display name labels and selects a federation; the hostname in `remote_ips`
+controls the HTTP Host header and TLS SNI.
 
 For an IP-based connection, provide both the connect address and the hostname:
 
@@ -154,7 +174,7 @@ curl --fail --silent --show-error \
 
 Delete the private request files after pairing.
 
-## 4. Onboard receiver-local access
+## 4. Grant receiver-local access
 
 Pairing establishes trust; it does not grant access to datasets, models, or
 jobs. On the receiver, open the federation's **Access** panel and add each

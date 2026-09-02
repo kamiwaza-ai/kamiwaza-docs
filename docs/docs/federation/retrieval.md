@@ -10,7 +10,7 @@ Federated retrieval lets you discover and query data on remote clusters without 
 ## Prerequisites
 
 - A [paired federation](./setup.md) between the clusters
-- An active receiver-side onboarding entry for the shared subject
+- An active receiver-side allowlist entry for the shared subject
 - Explicit per-dataset ReBAC grants on the target cluster. Mesh-originated
   requests do not receive the native-cluster admin bypass.
 
