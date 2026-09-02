@@ -17,6 +17,18 @@ images are pulled from Keygen.
 
 - A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
 - A host that meets the [System Requirements](system_requirements.md).
+- **Free disk space on the volume backing `/var/lib`.** The installer preallocates
+  the cluster's storage image there, so this is the binding constraint and a large
+  total disk does not help if `/var` is a separate logical volume. The default
+  image is **700 GB**, which needs roughly **1.1 TB** free. To install on a smaller
+  host, pass `-e storage_host_prep_virtual_block_size=80G` in [Step 2](#step-2-run-the-installer),
+  which brings the requirement down to about **350 GB**. Check the backing
+  filesystem before you begin:
+
+  ```bash
+  df -hT /var/lib
+  findmnt -T /var/lib
+  ```
 - Outbound DNS and HTTPS access to:
   - your OS package repositories,
   - `raw.pkg.keygen.sh` (installer and fallback artifacts),
@@ -108,6 +120,14 @@ This release provides the following hardware-specific raw package basenames:
 
 For gfx1151, the generic RDNA package replaces the earlier hardware-specific bridge and is the Strix Halo path validated for this release.
 
+> **Match your NVIDIA driver to the image's CUDA level.** The `-cuda12` packages
+> require an NVIDIA driver of **550-server or later**; the `-cuda13` packages (and
+> DGX Spark) require **580.65.06 or later**. These are the levels documented in the
+> [GPU Drivers](system_requirements.md#gpu-drivers-required-for-gpu-inference) table —
+> verify `nvidia-smi` against it before deploying a model. For the vLLM packages,
+> install the driver that matches the CUDA level of the image you deploy; the DGX
+> Spark ARM64 vLLM package uses the CUDA 13 driver level above.
+
 For example, this Kind installation replaces the default amd64 vLLM archive with the ARM64 vLLM archive while retaining the other default packages:
 
 ```bash
@@ -134,6 +154,7 @@ Frequently used **install arguments**:
 - `--admin-password <value>`: Initial admin password.
 - `-y`, `--yes`: Non-interactive install.
 - `-e k8s_runtime=kind`: Select the legacy Kind runtime when using the optional raw-image preload.
+- `-e storage_host_prep_virtual_block_size=<size>`: Size of the preallocated cluster storage image on the volume backing `/var/lib`. Defaults to `700G`, which requires roughly 1.1 TB free; `80G` reduces the requirement to about 350 GB. Size this for the data you expect to keep, not just to complete the install.
 
 Frequently used **installer options**:
 
