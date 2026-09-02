@@ -66,14 +66,14 @@ You need:
 
 ### Check the actual filesystems
 
-The bundle, extracted extensions, container images, and the Rook/Ceph OSD can
+The bundle, extracted extensions, container images, and installer scratch can
 live on different filesystems. A large virtual disk is not proof that
 `/var/lib` or `/tmp` has room; cloud RHEL images commonly put `/var` on a small
 logical volume.
 
 Before transfer, calculate the compressed bundle total, the extracted
-extension size, installer scratch, image-store growth, the configured OSD image
-size, and operational headroom. Then check the backing filesystems:
+extension size, installer scratch, image-store growth, and operational
+headroom. Then check the backing filesystems:
 
 ```bash
 df -hT / /tmp /var/tmp /var/lib /opt
@@ -622,7 +622,6 @@ inference image map:
   "KAMIWAZA_VERSION": "<exact>",
   "KAMIWAZA_IMAGE_TAG": "<exact>",
   "KAMIWAZA_K8S_RUNTIME": "k0s-podman",
-  "KAMIWAZA_ROOK_OSD_IMAGE_SIZE": "<exact>",
   "KAMIWAZA_RESOURCE_PROFILE": "<exact>",
   "HELMFILE_EXTRA_SET": "<exact, including spaces>",
   "KAMIWAZA_OFFLINE_APP_IMAGE_TAG": "<exact>",
@@ -662,7 +661,6 @@ if ! jq -e '
     "KAMIWAZA_OFFLINE_FRONTEND_TAG",
     "KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG",
     "KAMIWAZA_RESOURCE_PROFILE",
-    "KAMIWAZA_ROOK_OSD_IMAGE_SIZE",
     "KAMIWAZA_VERSION"
   ] | sort) and
   all(.[]; type == "string") and
@@ -681,7 +679,6 @@ if ! jq -e '
     "KAMIWAZA_OFFLINE_FRONTEND_TAG",
     "KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG",
     "KAMIWAZA_RESOURCE_PROFILE",
-    "KAMIWAZA_ROOK_OSD_IMAGE_SIZE",
     "KAMIWAZA_VERSION"
   ][]; ($contract[.] | length > 0)))
 ' "${CONTRACT_SOURCE}" >/dev/null; then
@@ -790,7 +787,6 @@ CONTRACT_KEYS=(
   KAMIWAZA_VERSION
   KAMIWAZA_IMAGE_TAG
   KAMIWAZA_K8S_RUNTIME
-  KAMIWAZA_ROOK_OSD_IMAGE_SIZE
   KAMIWAZA_RESOURCE_PROFILE
   HELMFILE_EXTRA_SET
   KAMIWAZA_OFFLINE_APP_IMAGE_TAG
