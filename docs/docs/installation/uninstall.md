@@ -14,7 +14,7 @@ A Kamiwaza install consists of:
 - A single-host Kubernetes cluster and its container runtime, provisioned by the installer (`kind` for offline/dev installs; `k0s` for online installs).
 - The Kamiwaza platform and extensions running on that cluster.
 - On **offline/package installs**: install and data directories under `/opt/kamiwaza` (and `/etc/kamiwaza` for cluster certificates and config).
-- On **online installs**: the extracted installer payload (default `/var/lib/kamiwaza-online-install/`, or wherever you passed `--extract-dir`), plus `/var/lib/kamiwaza`, `/var/tmp/kamiwaza`, and k0s's own state under `/etc/k0s` and `/run/k0s`. Online installs do **not** use `/opt/kamiwaza` or `/etc/kamiwaza`.
+- On **online installs**: the extracted installer payload (default `/var/lib/kamiwaza-online-install/`, or wherever you passed `--extract-dir`), plus `/var/lib/kamiwaza`, `/var/tmp/kamiwaza`, `/var/lib/rook` (Rook-Ceph's mon/OSD host data — outside `/var/lib/kamiwaza`, easy to miss), and k0s's own state under `/etc/k0s` and `/run/k0s`. Online installs do **not** use `/opt/kamiwaza` or `/etc/kamiwaza`.
 - On offline RHEL installs, the `kamiwaza-prod` prerequisites RPM.
 
 ## Step 1: Back Up First
@@ -147,7 +147,20 @@ sudo rm -rf /var/lib/kamiwaza-online-install   # or your --extract-dir path
 sudo rm -rf /var/lib/kamiwaza
 sudo rm -rf /var/tmp/kamiwaza
 sudo rm -rf /etc/k0s
+sudo rm -rf /var/lib/rook
 ```
+
+> **`/var/lib/rook` is not optional if you are reinstalling on the same host.** This
+> is Rook-Ceph's mon/OSD data directory on the host filesystem (hostPath, outside
+> `/var/lib/kamiwaza`). It is never mentioned elsewhere in this guide and nothing
+> else removes it. A stale mon keyring left here after a `k0s reset` causes the
+> freshly bootstrapped mon to reject the operator's freshly-generated admin
+> credentials — the `CephCluster` hangs indefinitely in `Configuring Ceph Mons`
+> with the operator and mon logs repeating
+> `cephx server client.admin: unexpected key: ...`, and no OSD pod is ever created.
+> Verified live: removing `/var/lib/rook` before reinstalling is what let the
+> cluster bootstrap cleanly. If you hit this hang on an existing install, the fix
+> is the same — tear down and remove this directory too, not just the four above.
 
 > **Do not skip `/var/lib/kamiwaza` if you are reinstalling on the same host.**
 > `/var/lib/kamiwaza/storage/osd/` holds Rook-Ceph's OSD backing image (a loop-mounted
@@ -177,6 +190,7 @@ Online installs:
 sudo systemctl status k0scontroller 2>&1 | grep -q "could not be found" \
   && echo "OK: k0s removed" || echo "WARNING: k0s still present"
 [ -d /var/lib/kamiwaza-online-install ] && echo "WARNING: payload dir still exists" || echo "OK: payload dir removed"
+[ -d /var/lib/rook ] && echo "WARNING: /var/lib/rook still exists (will corrupt a reinstall)" || echo "OK: /var/lib/rook removed"
 ```
 
 Either install type:
