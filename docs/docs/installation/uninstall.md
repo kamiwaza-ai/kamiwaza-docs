@@ -85,10 +85,27 @@ Confirm again with the same two commands — `k0scontroller` should report
 
 > **If you plan to reinstall on this host, do not stop here.** A manual `k0s reset`
 > tears down the Kubernetes control plane but does **not** touch Rook-Ceph's on-disk
-> OSD data (see the [Step 4](#step-4-remove-install-directories) warning below) or
-> guarantee the CNI plugin re-initializes cleanly on the next install. Continue to
-> Step 4 and remove the online-install directories — including `/var/lib/kamiwaza` —
-> before reinstalling, even if you intend to "reuse" the host.
+> OSD data (see the [Step 4](#step-4-remove-install-directories) warning below), reset
+> the OSD loop-device service (see immediately below), or guarantee the CNI plugin
+> re-initializes cleanly on the next install. Continue to Step 4 and remove the
+> online-install directories — including `/var/lib/kamiwaza` — before reinstalling,
+> even if you intend to "reuse" the host.
+
+**Also reset the OSD loop-device service.** The single-host storage backend is
+managed by `kamiwaza-osd-loop.service`, a systemd oneshot unit. Once it has run
+successfully, systemd reports it `active (exited)` indefinitely — neither the
+uninstall wrapper nor a manual `k0s reset` stops it, and the installer's own
+"start" step is a no-op against an already-active oneshot. Left alone, this causes
+one of two failures on the next install: reusing a stale OSD image (if you kept
+`/var/lib/kamiwaza`) or a hard failure early in `storage_host_prep` with
+`file not found: /var/lib/kamiwaza/storage/osd/rook-devices.txt` (if you removed it).
+Reset it explicitly before reinstalling:
+
+```bash
+sudo systemctl stop kamiwaza-osd-loop
+```
+
+The installer will restart it (and regenerate its backing files) on the next run.
 
 After the wrapper (and, on online installs, the manual k0s teardown if
 needed) finishes, confirm that no Kamiwaza containers remain:
