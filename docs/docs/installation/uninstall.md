@@ -83,6 +83,13 @@ sudo k0s reset
 Confirm again with the same two commands — `k0scontroller` should report
 "could not be found" and `kubectl` should fail to connect.
 
+> **If you plan to reinstall on this host, do not stop here.** A manual `k0s reset`
+> tears down the Kubernetes control plane but does **not** touch Rook-Ceph's on-disk
+> OSD data (see the [Step 4](#step-4-remove-install-directories) warning below) or
+> guarantee the CNI plugin re-initializes cleanly on the next install. Continue to
+> Step 4 and remove the online-install directories — including `/var/lib/kamiwaza` —
+> before reinstalling, even if you intend to "reuse" the host.
+
 After the wrapper (and, on online installs, the manual k0s teardown if
 needed) finishes, confirm that no Kamiwaza containers remain:
 
@@ -125,7 +132,18 @@ sudo rm -rf /var/tmp/kamiwaza
 sudo rm -rf /etc/k0s
 ```
 
-> Keep these directories if you are reinstalling and want to preserve configuration.
+> **Do not skip `/var/lib/kamiwaza` if you are reinstalling on the same host.**
+> `/var/lib/kamiwaza/storage/osd/` holds Rook-Ceph's OSD backing image (a loop-mounted
+> sparse file). A `k0s reset` does not wipe it. Reinstalling with that directory kept
+> hands the fresh install a stale, orphaned Ceph OSD — the resulting cluster comes up
+> with RBD-backed volumes mounted **read-only**, which crash-loops every stateful
+> component that depends on one (`core-etcd-*`, `core-postgres-0`, `keycloak-postgres-0`,
+> `keycloak`, model-serving pods with PVCs, etc.) with errors like
+> `cannot access data directory: open /data/.touch: read-only file system`. If you
+> genuinely need to preserve state across reinstalls, back it up and restore it
+> explicitly — do not rely on leaving the directory in place. `/etc/k0s` and
+> `/var/lib/kamiwaza-online-install` are safer to leave if you want to reuse the
+> extracted payload, but when in doubt, remove all four and start clean.
 
 ## Step 5: Verify Removal
 
@@ -156,3 +174,27 @@ To find any other Kamiwaza-related files left on the host:
 ```bash
 sudo find / -maxdepth 6 -iname '*kamiwaza*' 2>/dev/null
 ```
+
+## Troubleshooting a Reinstall: Node Stuck `NotReady`
+
+If you reinstall on a host where k0s was previously stopped and reset (Step 2's manual
+teardown), the node can occasionally come up `NotReady` with kubelet reporting
+`container runtime network not ready: NetworkReady=false ... cni plugin not
+initialized`. This happens when kube-router's CNI config
+(`/etc/cni/net.d/10-kuberouter.conflist`) and the `kube-bridge` interface don't get
+re-created on the fresh k0s bootstrap. Confirm with:
+
+```bash
+kubectl get nodes
+ip addr show kube-bridge   # "Device does not exist" confirms the symptom
+```
+
+Force kube-router to re-run its init containers:
+
+```bash
+kubectl -n kube-system delete pod -l k8s-app=kube-router \
+  || kubectl -n kube-system get pods -o name | grep -i router | xargs -r kubectl -n kube-system delete
+```
+
+The node should report `Ready` within about a minute once the new pod's init
+containers rewrite the CNI config.
