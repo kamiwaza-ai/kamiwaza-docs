@@ -49,6 +49,15 @@ cd /var/lib/kamiwaza-online-install/kamiwaza-online-payload
 sudo ./scripts/uninstall-prod.sh
 ```
 
+> **This directory won't exist unless you installed with `--keep-extract`.**
+> The [Online Installation](./online_install.md) guide's default behavior removes
+> the extracted payload once the install finishes — `--keep-extract` is what
+> preserves it. If neither `/var/lib/kamiwaza-online-install/...` (or your
+> `--extract-dir` path) nor `/opt/kamiwaza/bin/uninstall-prod.sh` exists, there is
+> no wrapper to run: skip straight to the manual k0s teardown below (`sudo k0s stop
+> && sudo k0s reset`) and Step 4's directory removal — they don't depend on the
+> payload being present.
+
 For a source-based development install, run from the matching `deploy`
 checkout:
 
@@ -65,7 +74,16 @@ retained runtime/prerequisite state. Use `--help` to inspect the exact
 release's options before running it.
 
 **On an online (k0s) install, verify the cluster is actually gone before
-proceeding — do not rely on the wrapper's "Uninstallation Complete!" message:**
+proceeding — do not rely on the wrapper's "Uninstallation Complete!" message.**
+The commands below (and the manual k0s teardown, and the `kamiwaza-osd-loop`
+reset later in this step) are verified on **Linux** hosts, where online installs
+run k0s directly under systemd. [Online Installation](./online_install.md) also
+supports **macOS**, where the installer instead runs under Homebrew/Podman as
+the invoking admin user with no `k0scontroller` systemd unit — none of this
+step's `systemctl`/`k0s` commands apply there. The macOS teardown/verification
+path isn't documented yet; if you hit this on macOS, don't guess at
+systemd-equivalents — file a docs gap so this section can be verified and
+extended for that platform.
 
 ```bash
 sudo systemctl status k0scontroller
@@ -91,7 +109,8 @@ Confirm again with the same two commands — `k0scontroller` should report
 > online-install directories — including `/var/lib/kamiwaza` — before reinstalling,
 > even if you intend to "reuse" the host.
 
-**Also reset the OSD loop-device service.** The single-host storage backend is
+**Also reset the OSD loop-device service (Linux only — see the platform note
+above).** The single-host storage backend is
 managed by `kamiwaza-osd-loop.service`, a systemd oneshot unit. Once it has run
 successfully, systemd reports it `active (exited)` indefinitely — neither the
 uninstall wrapper nor a manual `k0s reset` stops it, and the installer's own
