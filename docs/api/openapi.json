@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Kamiwaza REST API",
-    "version": "1.0.2"
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -11049,6 +11049,93 @@
         }
       }
     },
+    "/catalog/containers/registered-sources": {
+      "get": {
+        "tags": [
+          "catalog",
+          "catalog",
+          "containers"
+        ],
+        "summary": "List Registered Source Containers",
+        "description": "List registered source summaries without enumerating child datasets.",
+        "operationId": "list_registered_source_containers_catalog_containers_registered_sources_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque source cursor",
+              "title": "Cursor"
+            },
+            "description": "Opaque source cursor"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredSourceContainerPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/catalog/containers/by-urn": {
       "get": {
         "tags": [
@@ -16559,6 +16646,69 @@
         }
       }
     },
+    "/cluster/remote/identity-status": {
+      "post": {
+        "tags": [
+          "cluster-remote"
+        ],
+        "summary": "Handle Remote Identity Status",
+        "description": "Return a bounded IdP-status lease to the exact PSK-authenticated peer.",
+        "operationId": "handle_remote_identity_status_cluster_remote_identity_status_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FederatedIdentityChallenge"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FederatedIdentityChallengeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2Login": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/cluster/remote/disconnect": {
       "post": {
         "tags": [
@@ -20776,6 +20926,69 @@
         }
       }
     },
+    "/ingestion/ingest/register": {
+      "post": {
+        "tags": [
+          "ingestion",
+          "ingestion"
+        ],
+        "summary": "Register Source",
+        "operationId": "register_source_ingestion_ingest_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/ingestion/ingest/emit": {
       "post": {
         "tags": [
@@ -21829,6 +22042,70 @@
         }
       }
     },
+    "/retrieval/query-jobs": {
+      "post": {
+        "tags": [
+          "retrieval",
+          "retrieval"
+        ],
+        "summary": "Create Structured Retrieval Job",
+        "description": "Create a versioned, fail-closed governed-record query job.",
+        "operationId": "create_structured_retrieval_job_retrieval_query_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordQueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/retrieval/jobs/{job_id}/cancel": {
       "post": {
         "tags": [
@@ -21969,6 +22246,70 @@
         "summary": "Stream Retrieval Job",
         "description": "Stream only legacy retrieval jobs.",
         "operationId": "stream_retrieval_job_retrieval_jobs__job_id__stream_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
+    "/retrieval/query-jobs/{job_id}/stream": {
+      "get": {
+        "tags": [
+          "retrieval",
+          "retrieval"
+        ],
+        "summary": "Stream Record Query Job",
+        "description": "Stream one versioned governed-record query job.",
+        "operationId": "stream_record_query_job_retrieval_query_jobs__job_id__stream_get",
         "security": [
           {
             "BearerAuth": []
@@ -32584,7 +32925,7 @@
           "extensions"
         ],
         "summary": "Upgrade All Extensions",
-        "description": "Re-render every template-driven deployed extension whose template digest\ndiffers from its running CR. Admin-only — enforced by ``AdminUser`` so\nFastAPI rejects non-admin callers before the route runs. Pod rolls are\nobserved via the operator + k8s rolling update; this endpoint returns once\neach CR has either been PATCHed, recognized as up-to-date, or recorded\nwith an error.",
+        "description": "Re-render every template-driven deployed extension whose template digest\ndiffers from its running CR. Admin-only — enforced by ``AdminUser`` so\nFastAPI rejects non-admin callers before the route runs. Pod rolls are\nobserved via the operator + k8s rolling update; this endpoint returns once\neach CR has either been PATCHed, recognized as up-to-date, skipped because\nit has no template-driven upgrade target (see ``reason``), or recorded\nwith an error.",
         "operationId": "upgrade_all_extensions_extensions_upgrade_all_post",
         "security": [
           {
@@ -33734,7 +34075,7 @@
           "connectors"
         ],
         "summary": "List Connector Catalog",
-        "description": "List connectors available to subscribe from the published catalog (admin).\n\nParity with the App Garden apps/tools catalog: connector manifests are\nfetched from the remote template catalog (or a file:// override) so an admin\ncan browse and subscribe a connector without hand-supplying its manifest.",
+        "description": "List connectors available to subscribe from the published catalog (admin).\n\nParity with the App Garden apps/tools catalog: connector manifests are\nfetched from the remote template catalog (or a file:// override) so an admin\ncan browse and subscribe a connector without hand-supplying its manifest.\n\n``source_status`` reports whether an empty list means \"no connectors\npublished\" (``empty``) or that the catalog source could not be read\n(``source_error``), so the admin UI can tell those apart instead of showing\nthe same \"none available\" state for both.",
         "operationId": "list_connector_catalog_connectors_catalog_get",
         "parameters": [
           {
@@ -45727,6 +46068,12 @@
             "type": "array",
             "title": "Services",
             "description": "Runtime per-service status snapshot for K8s-backed deployments"
+          },
+          "reconciliation_pending": {
+            "type": "boolean",
+            "title": "Reconciliation Pending",
+            "description": "Whether direct-runtime reconciliation is waiting for an explicit retry",
+            "default": false
           }
         },
         "type": "object",
@@ -46547,6 +46894,18 @@
             ],
             "title": "Updated At",
             "description": "Timestamp of the last update to the template"
+          },
+          "canonical_identity_trusted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Identity Trusted",
+            "description": "Whether this template is the genuine canonical product for a reserved identity. True when catalog-sourced and unshadowed, False for a claimant that is neither (an impostor, or a local dev build overlaying the identity). Null means the verdict does not apply or was not computed — the name reserves no canonical identity, the response came from a write path that does not resolve overlay state, or the server predates this field; treat null as \"no claim\", never as a negative verdict. Presentation only — a false verdict refuses nothing."
           }
         },
         "type": "object",
@@ -46565,6 +46924,36 @@
           "source_type": "kamiwaza",
           "template_type": "app"
         }
+      },
+      "ApprovedPythonPackage": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "sha256": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "sha256"
+        ],
+        "title": "ApprovedPythonPackage",
+        "description": "One immutable repository artifact approved for job installation."
       },
       "ArtifactCreate": {
         "properties": {
@@ -47346,6 +47735,16 @@
             },
             "type": "array",
             "title": "Items"
+          },
+          "source_status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "empty",
+              "source_error"
+            ],
+            "title": "Source Status",
+            "default": "ok"
           }
         },
         "type": "object",
@@ -47353,7 +47752,7 @@
           "items"
         ],
         "title": "CatalogConnectorListResponse",
-        "description": "Connectors available to subscribe from the catalog."
+        "description": "Connectors available to subscribe from the catalog.\n\n``source_status`` lets the admin UI distinguish an empty list that means\n\"no connectors published\" (``\"empty\"``) from one that means the catalog\nsource could not be read (``\"source_error\"``), instead of showing the same\n\"none available\" state for both. ``\"ok\"`` whenever ``items`` is non-empty."
       },
       "CatalogConnectorResponse": {
         "properties": {
@@ -54201,7 +54600,10 @@
           "approval_required",
           "credential_binding_unavailable",
           "provider_transient_failure",
-          "ambiguous_effect_outcome"
+          "ambiguous_effect_outcome",
+          "delegated_resource_unavailable",
+          "delegated_operation_unavailable",
+          "delegation_revoked"
         ],
         "title": "DelegatedErrorCode"
       },
@@ -55883,7 +56285,7 @@
               }
             ],
             "title": "Healthcheck",
-            "description": "Health check configuration for readiness/liveness/startup probes. When both are positive, startPeriod must be at least periodSeconds."
+            "description": "Health check configuration for readiness/liveness/startup probes"
           },
           "persistence": {
             "anyOf": [
@@ -55896,7 +56298,7 @@
               }
             ],
             "title": "Persistence",
-            "description": "Validated PVC request for this service (enabled/size/mountPath)"
+            "description": "Validated PVC request for this service (enabled/volumeName/size/mountPath)"
           },
           "volumes": {
             "anyOf": [
@@ -58684,6 +59086,16 @@
               }
             ],
             "description": "Exact receiver resources made available through the job agent."
+          },
+          "python_packages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Python Packages",
+            "description": "Exact name==version coordinates resolved through the operator-owned approved package catalog for an isolated delegated job.",
+            "default": []
           }
         },
         "type": "object",
@@ -58840,6 +59252,16 @@
               }
             ],
             "description": "Exact receiver resources made available through the job agent."
+          },
+          "python_packages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Python Packages",
+            "description": "Exact name==version coordinates resolved through the operator-owned approved package catalog for an isolated delegated job.",
+            "default": []
           }
         },
         "type": "object",
@@ -63166,6 +63588,15 @@
         ],
         "title": "OperationView"
       },
+      "OrderDirection": {
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "title": "OrderDirection",
+        "description": "Supported result ordering directions."
+      },
       "PAT": {
         "properties": {
           "id": {
@@ -63559,6 +63990,18 @@
             ],
             "description": "Optional image override for the service"
           },
+          "primary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary",
+            "description": "Primary ingress selection. Omit or send null to preserve the current selection; true promotes this service and demotes the incumbent; false demotes it. Zero or one primary service is valid."
+          },
           "env": {
             "anyOf": [
               {
@@ -63587,6 +64030,36 @@
             ],
             "title": "Replicas",
             "description": "Desired replica count override for the service"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command",
+            "description": "Literal list-form container entrypoint replacement. Omit to preserve; send null or [] to restore the image default. Values are not rewritten from Compose service names to in-cluster hostnames. Kubernetes expands $(VAR) references and reduces $$ to $ at container start."
+          },
+          "args": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Args",
+            "description": "Literal list-form container argument replacement. Omit to preserve; send null or [] to restore the image default. Values are not rewritten from Compose service names to in-cluster hostnames. Kubernetes expands $(VAR) references and reduces $$ to $ at container start."
           },
           "automountServiceAccountToken": {
             "anyOf": [
@@ -63672,7 +64145,6 @@
             "description": "Validated container mounts; an empty list clears existing mounts"
           }
         },
-        "additionalProperties": false,
         "type": "object",
         "required": [
           "name"
@@ -65815,6 +66287,212 @@
         "title": "ReadinessSection",
         "description": "One independently evaluated platform-readiness section."
       },
+      "RecordFilters": {
+        "properties": {
+          "terms": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Terms"
+          },
+          "ranges": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RecordRange"
+            },
+            "type": "object",
+            "title": "Ranges"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RecordFilters",
+        "description": "AND-composed equality/list and inclusive range predicates."
+      },
+      "RecordOrder": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/OrderDirection",
+            "default": "asc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "field"
+        ],
+        "title": "RecordOrder",
+        "description": "One allowlisted-by-shape ordering term."
+      },
+      "RecordQueryRequest": {
+        "properties": {
+          "dataset_urn": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Urn",
+            "description": "Receiver Catalog dataset identity"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordFilters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "order_by": {
+            "items": {
+              "$ref": "#/components/schemas/RecordOrder"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Order By"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Offset",
+            "default": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Limit"
+          },
+          "projection": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection"
+          },
+          "transport": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "inline",
+              "sse"
+            ],
+            "title": "Transport",
+            "default": "auto"
+          },
+          "batch_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Size"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dataset_urn",
+          "order_by",
+          "limit"
+        ],
+        "title": "RecordQueryRequest",
+        "description": "Closed source-neutral contract for ``POST /retrieval/query-jobs``."
+      },
+      "RecordRange": {
+        "properties": {
+          "gte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gte"
+          },
+          "lte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lte"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RecordRange",
+        "description": "Inclusive range bounds; at least one bound is required."
+      },
       "RegisterIdPRequest": {
         "properties": {
           "provider": {
@@ -65853,6 +66531,31 @@
           "provider"
         ],
         "title": "RegisterIdPRequest"
+      },
+      "RegisteredSourceContainerPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Container"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "title": "RegisteredSourceContainerPage",
+        "description": "One cursor page of registered sources without child enumeration."
       },
       "RegistrationReconcileRequest": {
         "properties": {
@@ -71886,7 +72589,19 @@
               }
             ],
             "title": "Context Window",
-            "description": "Configured model context limit in tokens. This is a sanitized capability value; the underlying model configuration is not exposed."
+            "description": "Configured model context limit in tokens. This is a sanitized capability value; the underlying model configuration is not exposed. An operator-stated limit wins; otherwise the provider's published limit for the model behind the deployment."
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Tokens",
+            "description": "Configured output ceiling in tokens, resolved with the same precedence as context_window. Advertised alongside it so a caller sizing a request does not have to guess how much of the window a reply may claim."
           },
           "capabilities": {
             "items": {
@@ -71894,7 +72609,7 @@
             },
             "type": "array",
             "title": "Capabilities",
-            "description": "Client-safe inference capabilities, including cache behavior such as 'prompt_cache_anthropic' when supported by the deployment."
+            "description": "Client-safe inference capabilities. Alongside the route capability ('chat.completions', 'embeddings', 'audio.transcriptions', 'images.generations'), this may carry 'prompt_cache_anthropic' when the deployment supports Anthropic prompt caching, and 'reasoning' when the platform applies extended thinking to requests by default — so a client can account for the latency and cost it adds without sending a request first."
           },
           "tool_calling": {
             "anyOf": [
@@ -72982,10 +73697,11 @@
             "enum": [
               "upgraded",
               "no-change",
+              "skipped",
               "error"
             ],
             "title": "Status",
-            "description": "upgraded = CR patched to a new digest; no-change = template digest matched the running CR; error = render or PATCH failed (see ``error``)"
+            "description": "upgraded = CR patched to a new digest; no-change = template digest matched the running CR; skipped = the extension has no template-driven upgrade target (see ``reason``); error = render or PATCH failed (see ``error``)"
           },
           "old_digests": {
             "additionalProperties": {
@@ -73030,6 +73746,18 @@
             ],
             "title": "Error",
             "description": "Error message when ``status == 'error'``"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Operator-facing explanation when ``status == 'skipped'``. Kept separate from ``error`` so a deliberate non-upgrade is not presented as a failure."
           }
         },
         "type": "object",
