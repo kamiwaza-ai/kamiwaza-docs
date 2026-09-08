@@ -51,10 +51,6 @@ Production installation uses native k0s on Linux, with Podman for supporting
 container workflows. Installation commands do not require a Kubernetes runtime
 argument.
 
-## Multi-Node Deployments
-
-To run inference across a pair of nodes (for example, two NVIDIA DGX Spark systems using tensor parallelism), install Kamiwaza on the head node and follow the [Two-Node Deployment Guide](two-node-deployment.md).
-
 ## After Installation
 
 Once the installer finishes, verify the platform is running and log in with the admin credentials you set. See the [Quickstart](../quickstart.md) to confirm the service is up and start using Kamiwaza.
