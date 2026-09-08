@@ -58,16 +58,16 @@ There are two ways to configure external S3 workroom storage, depending on how y
 
 | Deployment | Configure via |
 |---|---|
-| `deploy` repo Helmfile install (v1.0 storage platform) | `storage.workrooms` in `deploy/cluster/values/storage-overrides.yaml` — **preferred** |
+| `deploy` repo Helmfile install (v1.0 external-storage adapter) | `storage.workrooms` in `deploy/cluster/values/storage-overrides.yaml` — **preferred** |
 | Direct `core` chart values (no umbrella chart / no Helmfile) | `context.objectStorage` in your core values file |
 
 On Helmfile installs, the external-storage adapter materializes `storage.workrooms.*` into the core chart's `context.objectStorage` block and keeps SeaweedFS and registry settings consistent with it. This applies to `install-prod.sh` installs too: they deploy through the same Helmfile environment, so a storage block in `cluster/values/storage-overrides.yaml` is honored there as well.
 
-Do not use `deploy/cluster/values/overrides.yaml` for storage configuration. It is a late umbrella-chart override that takes precedence over the storage adapter's wiring (see the warning above), it deep-merges per key — so a partial block silently mixes with the rendered storage values — and it does not reconfigure SeaweedFS or the registry. Deployments configured on 0.13.x used `overrides.yaml` for this purpose; migrate the block to `storage-overrides.yaml`, or remove it entirely when returning to the default SeaweedFS backend. The only supported `overrides.yaml` use on this page is the minimal session-token fragment in Option 1, step 2a.
+Do not use `deploy/cluster/values/overrides.yaml` for storage configuration. It is a late umbrella-chart override that takes precedence over the storage adapter's wiring (see the warning above), it deep-merges per key — so a partial block silently mixes with the rendered storage values — and it does not reconfigure SeaweedFS or the registry. Use `storage-overrides.yaml` for external-S3 configuration on the current install path. Changing values does not migrate existing objects: returning to SeaweedFS requires a separately planned and verified data transfer. In-place upgrades from packaged Rook/Ceph are unsupported; see [storage prerequisites](installation/storage-prerequisites.md). The only supported `overrides.yaml` use on this page is the minimal session-token fragment in Option 1, step 2a.
 
 ## Configuration Model
 
-Under the hood, the `core` chart exposes a single object-storage configuration block. The storage platform fills it in from `storage.workrooms.*`; direct chart consumers set it themselves:
+Under the hood, the `core` chart exposes a single object-storage configuration block. The external-storage adapter fills it in from `storage.workrooms.*`; direct chart consumers set it themselves:
 
 ```yaml
 context:
@@ -149,7 +149,7 @@ Notes:
 - Leave `endpoint` empty for AWS S3. Set it only for S3-compatible endpoints.
 - This changes the **workroom** backend only; model/registry storage keeps its configured backend.
 
-**Session tokens.** `storage.workrooms` cannot express a session-token key. If you must use temporary session credentials, keep the block above and add only this minimal fragment to `deploy/cluster/values/overrides.yaml` — it merges onto the storage platform's rendered values and restores just the session-token key:
+**Session tokens.** `storage.workrooms` cannot express a session-token key. If you must use temporary session credentials, keep the block above and add only this minimal fragment to `deploy/cluster/values/overrides.yaml` — it merges onto the external-storage adapter's rendered values and restores just the session-token key:
 
 ```yaml
 core:
@@ -159,7 +159,7 @@ core:
         sessionTokenKey: "session_token"
 ```
 
-Do not put the full `objectStorage` block in `overrides.yaml`: values deep-merge per key, so a partial block mixes with the storage platform's rendered settings (for example, the in-cluster RGW `endpointUrl` would survive underneath your AWS bucket settings). Also note that session credentials expire and must be rotated, and remove the fragment when you no longer need it.
+Do not put the full `objectStorage` block in `overrides.yaml`: values deep-merge per key, so a partial block mixes with the external-storage adapter's rendered settings (for example, the in-cluster SeaweedFS `endpointUrl` would survive underneath your AWS bucket settings). Also note that session credentials expire and must be rotated, and remove the fragment when you no longer need it.
 
 ### 2b. Direct core chart values (no Helmfile)
 
@@ -301,7 +301,7 @@ kubectl get deploy core-scheduler -n kamiwaza -o yaml | grep -A4 CONTEXT_SERVICE
 ```
 
 - `key: access_key_id` with `name: core-s3` — this page's external-S3 override is in effect
-- a SeaweedFS endpoint with `name: seaweedfs-s3-credentials` — the default wiring is in effect
+- `key: access_key_id` with `name: seaweedfs-s3-credentials` — the default wiring is in effect
 
 Fix:
 

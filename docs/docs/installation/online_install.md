@@ -17,6 +17,11 @@ developer installs remain available through the source-based Lima workflow.
 
 ## Prerequisites
 
+This page describes the storage contract after bundled storage removal on
+`develop`. Use the versioned documentation for older published releases. The
+release owner must confirm that the selected artifact implements this contract;
+the documentation version alone does not establish that an artifact is available.
+
 - A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
 - A host that meets the [System Requirements](system_requirements.md).
 - **Free disk space, on the right filesystem**. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. A single-node host should have:
@@ -92,7 +97,13 @@ verify the selected installer.
 > evidence. Do not use the example download above for an upgrade unless it
 > matches the exact artifact specified by the runbook.
 
-Run the installer on the target host, supplying your license key, domain, and an initial admin password:
+On a fresh host, first run infrastructure bootstrap with the same installer and
+arguments shown below, adding `--phase1-only`. Then have the platform
+administrator complete [Storage prerequisites](storage-prerequisites.md), including
+the PVC write test. Run the command again without `--phase1-only` to reconcile
+bootstrap and install the product. A host with verified storage can run it directly.
+
+Supply your license key, domain, and an initial admin password:
 
 ```bash
 KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
@@ -101,8 +112,6 @@ KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
   --admin-password "<initial-admin-password>" \
   -y 2>&1 | tee kamiwaza-online-install.log
 ```
-
-> **If you sized the host to the 350 GB floor rather than 1.1 TB**, add `-e storage_host_prep_virtual_block_size=80G` to the command above. Without it the installer provisions the default 700 GB OSD image and fails at host prep. See [Prerequisites](#prerequisites).
 
 The installer runs k0s directly on the Linux host and uses Podman for supporting
 container workflows. It re-executes itself through `sudo -E` when it needs
@@ -127,7 +136,6 @@ Frequently used **install arguments**:
 - `--domain <value>`: Public base domain for Kamiwaza.
 - `--admin-password <value>`: Initial admin password.
 - `-y`, `--yes`: Non-interactive install.
-- `-e storage_host_prep_virtual_block_size=<size>`: Size of the preallocated OSD image on the volume backing `/var/lib`. Defaults to `700G`, which requires roughly 1.1 TB free; `80G` reduces the requirement to about 350 GB. See [Prerequisites](#prerequisites).
 
 Frequently used **installer options**:
 

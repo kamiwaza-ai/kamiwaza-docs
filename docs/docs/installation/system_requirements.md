@@ -42,8 +42,9 @@ See [Special Considerations](#special-considerations) for detailed unified memor
 
 ### Storage
 
-The production installer preallocates cluster storage on the Linux volume
-backing `/var/lib`. See [Online Installation](online_install.md).
+The platform administrator supplies persistent storage before product
+installation. Application PVCs consume that storage; the product does not
+allocate a host-backed storage image. See [Storage prerequisites](storage-prerequisites.md).
 
 #### Storage Performance
 
@@ -54,16 +55,18 @@ backing `/var/lib`. See [Online Installation](online_install.md).
 
 #### Storage Capacity
 
-> **The installer preallocates cluster storage** on the volume backing `/var/lib`, so that filesystem — not the total disk — is the binding constraint. How much you need depends on the storage image size, and the two install paths default differently:
+Size each backing filesystem for the peak simultaneous use: downloaded and
+extracted artifacts, runtime images, model caches and staging, logs, and application
+volumes located on that filesystem. Replicated storage also needs its configured
+replica capacity and the provider's reserved free-space margin.
 
-| Install path | Storage image | Free space needed on `/var/lib` |
-|---|---|---|
-| **Offline** | `80G` — [the guide sets this](offline_install.md#step-5-install-kamiwaza) | **≥ 350 GB** |
-| **Online**, default | `700G` | **≈ 1.1 TB** |
-| **Online**, reduced | pass [`-e storage_host_prep_virtual_block_size=80G`](online_install.md#common-options) | **≥ 350 GB** |
-
-The image is preallocated at install time and also holds all stateful data, so size it for the data you expect to keep, not merely to complete the install.
-- Additional space for `/opt/kamiwaza` persistence
+The installation guides use **350 GB free on `/var/lib` as a planning allowance
+for images, caches, and headroom**, not a measured universal minimum or a guarantee
+that application PVCs fit. Add the rendered PVC requests when the storage provider
+uses the same disk. For managed CSI on separate disks, size those disks separately.
+Use the exact release's artifact sizes and rendered PVC requests to establish the
+actual requirement. Check `/opt`, `/tmp`, and `/var/tmp` separately when they are
+different filesystems.
 
 #### Capacity Planning
 
@@ -76,9 +79,10 @@ The image is preallocated at install time and also holds all stateful data, so s
 | **Vector Database** | 10GB | 100GB+ | For embeddings (if enabled) |
 | **Logs & Metrics** | 10GB | 50GB | Rotated logs, Ray dashboard data |
 | **Scratch Space** | 20GB | 100GB | Temporary files, downloads, builds |
-| **Total** | **350GB** | **1.1TB+** | Governed by the `/var/lib` floor above, not the sum of the rows |
+| **Total** | Workload-dependent | Workload-dependent | Apply the peak-use calculation above; do not double-count shared caches |
 
-> The rows above describe how space is *used* once running. Sizing to their sum alone will fail at host prep: the binding constraint is the preallocated storage image, whose figure depends on your install path — see the table above.
+The rows describe running workloads. Also allow for simultaneous image import,
+model staging, and storage-provider replication and reservation overhead.
 
 #### Storage Performance Requirements
 
@@ -217,9 +221,8 @@ nproc
 
 # Check available disk space on the volume backing /var/lib (the binding constraint)
 df -h /var/lib
-# Expected: At least 350GB for an offline install, or an online install passing
-# -e storage_host_prep_virtual_block_size=80G; 1.1TB+ for an online install at
-# the default storage image size
+# Compare free bytes with artifact, cache, staging, and local PVC requirements.
+# The guides use 350GB as an initial planning allowance, not a capacity guarantee.
 
 # Check the root filesystem too
 df -h /
@@ -263,7 +266,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Hardware Specifications:**
 - **CPU:** 8-16 cores / 16-32 threads
 - **RAM:** 32GB (16GB minimum for development only)
-- **Storage:** 400GB NVMe SSD (350GB minimum, on the volume backing `/var/lib` — see [Storage Capacity](#storage-capacity)). This assumes the `80G` OSD override; at the default OSD size budget 1.1TB+.
+- **Storage:** 400GB NVMe SSD as an initial development allocation; add local PVC and model-library capacity using [Storage Capacity](#storage-capacity).
 - **GPU:** Optional - Single GPU with 16-24GB VRAM
   - NVIDIA RTX 4090 (24GB)
   - NVIDIA RTX 4080 (16GB)
@@ -282,7 +285,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Hardware Specifications:**
 - **CPU:** 32 cores / 64 threads
 - **RAM:** 128-256GB system RAM
-- **Storage:** 1.2-2TB NVMe SSD (the 1.1TB default-OSD floor applies). The `80G` override drops the *install* floor to 350GB (provision 400GB to clear it comfortably), but size well above that for a Tier 2 model library — see Model Storage in [Capacity Planning](#capacity-planning)
+- **Storage:** 1.2–2TB NVMe SSD as a planning range; size the model library, local PVCs, and replication reserves using [Capacity Planning](#capacity-planning).
 - **GPU:** 1-4 GPUs with 40GB+ VRAM each
   - 1-4x NVIDIA B200 (192GB HBM3e)
   - 1-4x NVIDIA H200 (141GB HBM3e)
@@ -309,7 +312,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Head Node (Control Plane):**
 - **CPU:** 16 cores / 32 threads
 - **RAM:** 64GB
-- **Storage:** 500GB NVMe SSD (assumes the `80G` OSD override; 1.1TB+ at the default OSD size)
+- **Storage:** 500GB NVMe SSD as an initial control-plane allocation; verify local PVC and staging requirements separately.
 - **GPU:** Same class as worker nodes (homogeneous cluster recommended)
 - **Role:** Ray head, API gateway, scheduling, monitoring (head performs minimal extra work; Ray backend load is distributed across nodes)
 
@@ -352,7 +355,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: All Nodes** | `p4d.24xlarge` | 96 | 1152GB | 8x A100 (320GB) | 2TB gp3 |
 
 **Notes:**
-- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
+- Tier 1 disk figures are planning allocations. Verify peak image, model, PVC, and replica capacity against [Storage Capacity](#storage-capacity).
 - Use `gp3` SSD volumes (not `gp2`) for better performance/cost
 - For Tier 3 shared storage: Amazon FSx for Lustre or EFS (with Provisioned Throughput)
 - Use Placement Groups for low-latency multi-node clusters (Tier 3)
@@ -371,7 +374,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: All Nodes** | `a2-highgpu-8g` | 96 | 680GB | 8x A100 (320GB) | 2TB SSD |
 
 **Notes:**
-- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
+- Tier 1 disk figures are planning allocations. Verify peak image, model, PVC, and replica capacity against [Storage Capacity](#storage-capacity).
 - Use `pd-ssd` or `pd-balanced` persistent disks (not `pd-standard`)
 - For Tier 3 shared storage: Filestore High Scale tier (up to 10 GB/s)
 - Use Compact Placement for low-latency multi-node clusters (Tier 3)
@@ -393,7 +396,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: A100 Alternative** | `Standard_ND96asr_v4` | 96 | 900GB | 8x A100 (320GB) | 2TB Premium SSD |
 
 **Notes:**
-- Tier 1 storage figures assume the `80G` OSD override; at the default OSD size the host needs **1.1TB+** on the volume backing `/var/lib` (see [Storage Capacity](#storage-capacity))
+- Tier 1 disk figures are planning allocations. Verify peak image, model, PVC, and replica capacity against [Storage Capacity](#storage-capacity).
 - Use Premium SSD (not Standard HDD or Standard SSD)
 - For Tier 3 shared storage: Azure NetApp Files Premium or Ultra tier
 - Use Proximity Placement Groups for low-latency multi-node clusters (Tier 3)
