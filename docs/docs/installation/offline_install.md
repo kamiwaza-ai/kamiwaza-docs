@@ -1,6 +1,6 @@
 # Offline Installation
 
-The offline installer is for **air-gapped or restricted RHEL 9 environments** with no outbound internet access on the target host. You download the Kamiwaza bundle on a connected machine, transfer it to the target host, and install without pulling anything from the internet during installation.
+This product-install procedure is for **air-gapped or restricted RHEL 9 environments** with a prepared Kubernetes substrate. Download the Kamiwaza bundle on a connected machine and transfer it to the target host. A blank host additionally needs the administrator-owned bootstrap below; the product bundle alone is not a complete disconnected-host bootstrap kit.
 
 **Supported host:** RHEL-compatible 9.x (x86_64).
 
@@ -52,6 +52,23 @@ Throughout this guide, replace the placeholders:
 - `<license-key>` — your Kamiwaza Prod license key.
 - `<domain>` — the base domain to serve Kamiwaza from (for example `kamiwaza.example.com`).
 - `<admin-password>` — the initial admin password.
+
+## Step 0: Prepare the disconnected Kubernetes substrate
+
+On a blank host, the platform administrator first installs the approved k0s
+version using its matching binary and airgap image bundle. Follow the
+[upstream airgapped installation procedure](https://docs.k0sproject.io/stable/airgap-install/)
+for that version: transfer the binary and image bundle, place the images under
+the worker's k0s data directory, and apply the site's approved cluster configuration.
+The release handoff must also supply the disconnected OS packages, runtime,
+network/mesh, and storage prerequisites required by that configuration.
+
+Complete [Storage prerequisites](storage-prerequisites.md), including the RWO
+write/read test, before Step 5. Retain administrator evidence that the node and
+system workloads are Ready without outbound access. If the handoff lacks a
+qualified bootstrap procedure or any required artifact, stop and obtain it
+from the release owner; do not run the product installer hoping it will supply
+the missing storage driver. This page does not qualify a new offline substrate.
 
 ## Step 1: Download the Bundle Artifacts
 
@@ -248,7 +265,7 @@ Stage the extension bundle before installing the platform:
 ```bash
 cd /opt/kamiwaza/prereqs
 
-EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
+: "${EXT_BUNDLE:?set the same extension bundle filename used in Step 1}"
 rm -rf /tmp/kamiwaza-ext-extract
 mkdir -p /tmp/kamiwaza-ext-extract
 tar -xzf "$EXT_BUNDLE" -C /tmp/kamiwaza-ext-extract
@@ -350,7 +367,8 @@ Make sure `${DOMAIN}` resolves from the install host, then install the extension
 ```bash
 export DOMAIN="<domain>"
 export ADMIN_PASSWORD="<admin-password>"
-export EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
+: "${EXT_BUNDLE:?set the same extension bundle filename used in Step 1}"
+export EXT_BUNDLE
 
 # Add a hosts-file entry if the domain does not already resolve locally
 if ! curl -ksS "https://${DOMAIN}/api/health" >/dev/null; then

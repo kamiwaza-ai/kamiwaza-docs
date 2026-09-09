@@ -22,6 +22,8 @@ then prepare storage before rerunning the installer without that flag. For an
 offline host, stage the storage driver's chart, images, and host packages with
 the platform administrator and verify it without outbound access before product
 installation. The product bundle does not supply those platform prerequisites.
+For a blank disconnected host, first follow the administrator-owned
+[offline Kubernetes bootstrap](offline_install.md#step-0-prepare-the-disconnected-kubernetes-substrate).
 
 Use the administrator kubeconfig to inspect the selected class:
 
