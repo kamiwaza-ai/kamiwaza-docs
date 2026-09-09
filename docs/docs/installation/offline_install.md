@@ -304,6 +304,15 @@ Set image tags and the complete image override map from the qualified bundle's
 release handoff. `release_origination.md` records the app, containers, and frontend
 tags only; obtain the remaining coordinates from the publisher.
 
+The override map uses comma-separated `component=tag` entries, without spaces.
+For example, the following shows the syntax only; replace every placeholder
+with the publisher's qualified tag and include any additional entries required
+by that bundle. Do not paste these placeholders as install values:
+
+```text
+KAMIWAZA_IMAGE_OVERRIDES="postgres=<postgres-tag>,keycloak=<keycloak-tag>,etcd=<etcd-tag>"
+```
+
 Both `KAMIWAZA_IMAGE_TAG` and `KAMIWAZA_IMAGE_OVERRIDES` are required, and they correct each other:
 
 - `KAMIWAZA_IMAGE_TAG` moves the platform images to the release tag. Without it, `extension-operator` and `placement-operator` request `develop` and stay in `ImagePullBackOff`.

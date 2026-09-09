@@ -14,6 +14,14 @@ const inputs = {
   KAMIWAZA_IMAGE_OVERRIDES: "postgres=validation,keycloak=validation,etcd=validation",
 };
 
+test("offline guide documents the required override map syntax without pinned release tags", () => {
+  const example = doc.match(/^KAMIWAZA_IMAGE_OVERRIDES="([^"]+)"$/m);
+  assert.ok(example);
+  const entries = example[1].split(",");
+  assert.deepEqual(entries.map((entry) => entry.split("=")[0]), ["postgres", "keycloak", "etcd"]);
+  for (const entry of entries) assert.match(entry, /^[a-z]+=<[a-z-]+>$/);
+});
+
 function blockFor(step: number): string {
   const section = doc.split(`## Step ${step}:`)[1].split("## Step ")[0];
   const blocks = [...section.matchAll(/^```bash\n([\s\S]*?)^```/gm)];
