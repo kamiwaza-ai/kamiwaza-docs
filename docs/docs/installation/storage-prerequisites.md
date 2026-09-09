@@ -14,8 +14,8 @@ CSI driver, create StorageClasses, or receive cluster-scoped permissions.
 On a managed cluster, use its administrator-provided RWO StorageClass, such as
 the platform's managed CSI class. On appliance or bare-metal hosts, prepare
 Longhorn and its host prerequisites as part of cluster setup. Local developer
-setup selects Longhorn by default; the explicitly selected local-path fallback
-is node-local storage and does not provide replicated durability.
+setup selects local-path by default, with Longhorn available as an explicit
+opt-in. Local-path is node-local storage and does not provide replicated durability.
 
 For a new host using the online installer, run `--phase1-only` to bootstrap k0s,
 then prepare storage before rerunning the installer without that flag. For an

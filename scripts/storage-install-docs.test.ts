@@ -4,6 +4,15 @@ import { resolve } from "node:path";
 import test from "node:test";
 import sidebars from "../docs/sidebars";
 
+test("local storage documentation follows the KKS local-path default", () => {
+  const docsRoot = resolve(__dirname, "../docs/docs");
+  const prerequisites = readFileSync(resolve(docsRoot, "installation/storage-prerequisites.md"), "utf8");
+  const historical = readFileSync(resolve(docsRoot, "runbooks/k0s-openebs-local-storage.md"), "utf8");
+  assert.match(prerequisites, /setup selects local-path by default, with Longhorn available as an explicit\s+opt-in/);
+  assert.match(historical, /local-path by default, or explicitly selected Longhorn/);
+  assert.doesNotMatch(prerequisites, /selects Longhorn by default/);
+});
+
 test("replacement storage prerequisites are discoverable in Installation", () => {
   const sidebar = sidebars.mainSidebar;
   assert.ok(Array.isArray(sidebar));

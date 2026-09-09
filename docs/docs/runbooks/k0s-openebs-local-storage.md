@@ -9,7 +9,7 @@ sidebar_label: Local k0s OpenEBS storage lifecycle
 :::warning Historical implementation — not the current develop install path
 This runbook records the OpenEBS implementation pinned below. Current `develop`
 has retired OpenEBS installation: administrator-owned Kubernetes setup prepares
-Longhorn or the explicitly selected local-path fallback before handing off the
+local-path by default, or explicitly selected Longhorn, before handing off the
 tenant namespace. Follow [Storage prerequisites](../installation/storage-prerequisites.md)
 for new installations. Do not run the bootstrap commands below against current
 `develop` or replace an existing provider without a separately qualified data
