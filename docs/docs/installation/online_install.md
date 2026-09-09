@@ -90,12 +90,12 @@ verify the selected installer.
 
 ## Step 2: Run the Installer
 
-> **Upgrading an existing production database?** Follow the
-> [Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
-> before invoking the installer. The runbook requires the exact release
-> candidate, a pre-mutation backup, schema gates, stop rules, and recovery
-> evidence. Do not use the example download above for an upgrade unless it
-> matches the exact artifact specified by the runbook.
+> **Upgrading an existing production database?** Stop and obtain a migration
+> plan qualified for your exact source and target builds, including backup and
+> recovery evidence. The [historical 1.0 → 1.2 database runbook](../runbooks/core-database-upgrade-1.2.md)
+> applies only to those older artifacts, not current `develop`. Packaged Ceph
+> cannot be migrated by rerunning this installer; see
+> [Storage prerequisites](storage-prerequisites.md#object-storage-and-previous-installations).
 
 On a fresh host, first run infrastructure bootstrap with the same installer and
 arguments shown below, adding `--phase1-only`. Then have the platform

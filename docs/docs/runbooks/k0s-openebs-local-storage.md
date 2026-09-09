@@ -6,6 +6,16 @@ sidebar_label: Local k0s OpenEBS storage lifecycle
 
 # Local k0s OpenEBS storage lifecycle
 
+:::warning Historical implementation — not the current develop install path
+This runbook records the OpenEBS implementation pinned below. Current `develop`
+has retired OpenEBS installation: administrator-owned Kubernetes setup prepares
+Longhorn or the explicitly selected local-path fallback before handing off the
+tenant namespace. Follow [Storage prerequisites](../installation/storage-prerequisites.md)
+for new installations. Do not run the bootstrap commands below against current
+`develop` or replace an existing provider without a separately qualified data
+migration plan. Retained lifecycle helpers are not authorization to reinstall it.
+:::
+
 This runbook is for Kamiwaza engineers developing or running UAT on the modern
 local `k0s-lima` and `k0s-podman` runtimes. It describes the dev installer's
 managed OpenEBS LocalPV Hostpath prerequisite: how it is selected, installed,

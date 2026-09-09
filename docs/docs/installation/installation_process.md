@@ -6,6 +6,11 @@ This guide covers how to install Kamiwaza on a supported host.
 
 **Review the [System Requirements](system_requirements.md) first.** They cover supported operating systems, hardware sizing (CPU, RAM, storage), GPU support, and the network access the installer needs.
 
+**Complete [Storage prerequisites](storage-prerequisites.md) before product
+installation.** The administrator must provide and verify an RWO StorageClass;
+the tenant installer does not install the storage driver. Stop if a disposable
+PVC cannot retain a marker across consumer replacement.
+
 You also need a **Kamiwaza license key**. Kamiwaza is distributed through [Keygen](https://keygen.sh/): the installer and platform images are pulled from Keygen using a Kamiwaza Prod license key. Contact your Kamiwaza representative if you do not have one.
 
 > Kamiwaza is licensed software. There is no free "Community Edition" build, and the previous `.deb` / `.rpm` packages from `packages.kamiwaza.ai` are no longer used. If you are looking for the older packages or the Windows installer, select an earlier version from the version dropdown at the top of this site.
@@ -19,7 +24,9 @@ Kamiwaza supports two installation paths. Pick the one that matches your environ
 | **Online** | The host has outbound internet access to Keygen and your OS package repositories. This is the recommended path for most installs. | Ubuntu 22.04 / 24.04, RHEL-compatible 9.x | [Online Installation](online_install.md) |
 | **Offline / air-gapped** | The host is in a restricted or air-gapped environment. You download the bundle on a connected machine, transfer it, and install without internet access on the target host. | RHEL-compatible 9.x | [Offline Installation](offline_install.md) |
 
-Both methods install the same platform. The difference is only how the installer and images reach the target host.
+Both methods install the same platform, but offline installation also requires
+administrator-owned [disconnected substrate preparation](offline_install.md#step-0-prepare-the-disconnected-kubernetes-substrate)
+before the product bundle can be used.
 
 ## Supported Platforms
 
@@ -37,13 +44,16 @@ Source-based developer installs on Apple Silicon continue to use managed Lima.
 
 ## What Happens During Installation
 
-The installer provisions a single-host Kubernetes cluster and deploys the Kamiwaza platform onto it:
+For an online fresh host, bootstrap and product installation are separate stages:
 
 1. Installs host prerequisites (container runtime, cluster tooling, Ansible).
 2. Bootstraps a local Kubernetes cluster.
-3. Pulls or imports the Kamiwaza platform images.
-4. Deploys the platform via Helm, including the Istio service mesh and ingress gateway.
+3. Pauses after `--phase1-only` so the administrator can prepare and verify storage.
+4. On rerun without that flag, pulls the Kamiwaza platform images and deploys the product via Helm onto the prepared substrate.
 5. Configures access at `https://<your-domain>/`.
+
+Offline installation starts from the verified substrate; its product bundle is
+not a blank-host bootstrap kit. See the chosen guide for the exact stage ordering.
 
 You provide a domain name (`--domain`) and an initial admin password (`--admin-password`) when you run the installer.
 

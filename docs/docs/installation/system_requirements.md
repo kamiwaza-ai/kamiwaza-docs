@@ -128,16 +128,21 @@ supported Linux hosts and require a Kamiwaza Prod license key. See
 
 ### What You Provide
 
-The Kamiwaza installer provisions the container runtime, local Kubernetes cluster, and platform dependencies for you. You only need:
+Provide the following inputs and administrator-owned prerequisites. Online host
+bootstrap can prepare the runtime and local cluster; offline installations need
+the prepared substrate described in the offline guide.
 
 | Component | Requirement | Notes |
 |-----------|-------------|-------|
 | **License key** | Kamiwaza Prod license key | Required to pull platform images from Keygen. Contact your Kamiwaza representative. |
 | **Supported OS** | Ubuntu 22.04/24.04 or RHEL 9 | See [Supported Operating Systems](#supported-operating-systems) |
+| **Persistent storage** | Administrator-provided, verified RWO StorageClass | Complete [Storage prerequisites](storage-prerequisites.md) before product installation. |
 | **Browser** | Chrome 141+ (tested and recommended) | [Download Chrome](https://www.google.com/chrome/) |
 | **GPU drivers** | For GPU inference only — see below | Install before running the installer |
 
-> The installer handles the container runtime and cluster tooling — you do not install Docker, Podman, or Kubernetes yourself. See [Installing Kamiwaza](installation_process.md) for the install paths.
+> Online bootstrap and offline substrate preparation have different responsibilities.
+> See [Installing Kamiwaza](installation_process.md); neither product installation
+> path supplies the storage driver or its host prerequisites.
 
 ### GPU Drivers (Required for GPU Inference)
 
@@ -163,17 +168,20 @@ AMD lists the Radeon 8060S in Ryzen AI Max+ 395 systems as production-supported 
 
 ### Auto-Installed by Kamiwaza
 
-The Kamiwaza installer automatically installs and configures the following — no manual installation required:
+After the administrator has prepared and verified the required substrate, product
+installation deploys the database and other backing services onto it. The tenant
+installer does not install a CSI driver or create StorageClasses.
 
-- The container runtime and local Kubernetes cluster
-- The platform database and other backing services
-- Python, Node.js, `uv`, and other platform-specific dependencies
+The online host bootstrap also prepares the runtime and local Kubernetes cluster.
+For offline installation these must already be prepared; follow the
+[offline substrate bootstrap](offline_install.md#step-0-prepare-the-disconnected-kubernetes-substrate).
 
 ---
 
 ## Verifying System Requirements
 
-Use these commands to verify your system meets the requirements before installation. The installer provisions the container runtime and cluster tooling, so you do not need to install or verify Docker beforehand — the checks below confirm GPU access and host resources.
+Use these commands to check GPU access and host resources before installation.
+They do not replace the required substrate and persistent-storage verification.
 
 ### NVIDIA GPU (if applicable)
 

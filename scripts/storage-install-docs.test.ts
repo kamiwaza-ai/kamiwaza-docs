@@ -25,3 +25,17 @@ test("offline steps preserve the handoff extension bundle selection", () => {
   assert.equal((doc.match(/same extension bundle filename used in Step 1/g) || []).length, 2);
   assert.match(doc, /Step 0: Prepare the disconnected Kubernetes substrate/);
 });
+
+test("installation entry points expose storage ownership and historical boundaries", () => {
+  const docsRoot = resolve(__dirname, "../docs/docs");
+  const processDoc = readFileSync(resolve(docsRoot, "installation/installation_process.md"), "utf8");
+  const requirements = readFileSync(resolve(docsRoot, "installation/system_requirements.md"), "utf8");
+  const online = readFileSync(resolve(docsRoot, "installation/online_install.md"), "utf8");
+  const openebs = readFileSync(resolve(docsRoot, "runbooks/k0s-openebs-local-storage.md"), "utf8");
+  assert.match(processDoc, /Complete \[Storage prerequisites\]/);
+  assert.match(requirements, /\*\*Persistent storage\*\*.*Administrator-provided/);
+  assert.doesNotMatch(requirements, /You only need:|no manual installation required/);
+  assert.match(online, /historical 1\.0 → 1\.2 database runbook/);
+  assert.match(openebs, /Historical implementation — not the current develop install path/);
+  assert.match(openebs, /has retired OpenEBS installation/);
+});
