@@ -24,7 +24,7 @@ using these steps; this page does not claim that such an artifact is published.
 - A **Kamiwaza Prod license key**, used to download the bundle artifacts from Keygen.
 - A RHEL-compatible 9.x host (x86_64) that meets the [System Requirements](system_requirements.md).
 - **Free disk space, on the right filesystems.** The offline flow stages large artifacts and stores runtime images under `/`, `/tmp`, and `/var/lib`. Confirm each path has room on the **volume that actually backs it** — on hosts with LVM or separate partitions (most cloud RHEL images ship this way), a large total disk does **not** help if `/var` is a small separate volume. Recommended free space:
-  - **`/var/lib` ≥ 350 GB** for runtime images, caches, and operational headroom. Application PVC capacity comes from the cluster's existing StorageClass and must be sized separately.
+  - **`/var/lib` ≥ 350 GB** for runtime images, caches, and operational headroom. Add the rendered PVC requests plus provider replication and free-space reserves when the storage provider uses the same disk (for example, local-path or Longhorn); size external storage separately.
   - **`/tmp` ≥ 25 GB** — bundle extraction and install scratch space.
   - **`/` ≥ 50 GB** — the downloaded bundle and its recombined tarballs under `/opt/kamiwaza/prereqs` (~25 GB), plus installed tooling under `/opt` and `/usr/local`.
 
@@ -260,9 +260,14 @@ EOF
 
 ## Step 4: Pre-Extract the Extension Bundle
 
-Stage the extension bundle before installing the platform:
+Stage the extension bundle before installing the platform. Run each complete block
+in Steps 4–6, including its parentheses: a failure stops that block without closing
+your interactive shell. Set the required handoff variables in that shell first;
+variables set on the connected download machine are not transferred to this host.
 
 ```bash
+(
+set -euo pipefail
 cd /opt/kamiwaza/prereqs
 
 : "${EXT_BUNDLE:?set the same extension bundle filename used in Step 1}"
@@ -280,6 +285,7 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
 # The /tmp copy only supplies the helper script. The install itself runs from
 # the --extract-dir copy, so reclaim the scratch space before installing.
 rm -rf /tmp/kamiwaza-ext-extract
+)
 ```
 
 This stages the bundle under `/var/lib/kajiya-reports/extensions-bundle-preinstall`
@@ -323,6 +329,8 @@ Omitting the bulk tag, or any one of the three overrides, leaves a workload requ
 > install.
 
 ```bash
+(
+set -euo pipefail
 export DOMAIN="<domain>"
 
 # install-prod.sh reads the admin password from this variable and unsets it
@@ -358,6 +366,7 @@ sudo -E /opt/kamiwaza/scripts/install-prod.sh \
   --wrap-pubkey /opt/kamiwaza/prereqs/kamiwaza-tools-rpm.pub.gpg \
   -e helm_timeout=12m \
   -y
+)
 ```
 
 ## Step 6: Finish Extension Installation
@@ -365,6 +374,8 @@ sudo -E /opt/kamiwaza/scripts/install-prod.sh \
 Make sure `${DOMAIN}` resolves from the install host, then install the extensions from the pre-staged bundle:
 
 ```bash
+(
+set -euo pipefail
 export DOMAIN="<domain>"
 export ADMIN_PASSWORD="<admin-password>"
 : "${EXT_BUNDLE:?set the same extension bundle filename used in Step 1}"
@@ -389,6 +400,7 @@ printf '%s\n' "${ADMIN_PASSWORD}" | sudo "${BUNDLE_ROOT}/scripts/install-extensi
   --api-url "https://${DOMAIN}/api" \
   --username admin \
   --password-stdin
+)
 ```
 
 ## Step 7: Verify the Installation

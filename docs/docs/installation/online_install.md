@@ -25,7 +25,7 @@ the documentation version alone does not establish that an artifact is available
 - A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
 - A host that meets the [System Requirements](system_requirements.md).
 - **Free disk space, on the right filesystem**. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. A single-node host should have:
-  - **`/var/lib` ≥ 350 GB** for runtime images, caches, and operational headroom. The installer does not provision a CSI driver or StorageClass; application PVC capacity comes from the cluster's existing storage provider and must be sized separately.
+  - **`/var/lib` ≥ 350 GB** for runtime images, caches, and operational headroom. The installer does not provision a CSI driver or StorageClass. Add the rendered PVC requests plus provider replication and free-space reserves when the storage provider uses the same disk (for example, local-path or Longhorn); size external storage separately.
   - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
 
   Confirm which filesystem actually backs the path before you begin:
