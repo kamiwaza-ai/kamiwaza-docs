@@ -1,6 +1,7 @@
 ---
 title: ReBAC Deployment Guide
 sidebar_label: ReBAC Deployment Guide
+drafted_by: ai
 ---
 
 # ReBAC Deployment Guide
@@ -8,6 +9,18 @@ sidebar_label: ReBAC Deployment Guide
 Use this guide to enable relationship-based access control (ReBAC) in a customer deployment of Kamiwaza. It is written for the current Kubernetes-based platform and assumes configuration is managed through your deployment values, Kubernetes Secrets, and cluster release workflow.
 
 This page intentionally does not cover internal helper scripts, source-repo bootstrap commands, or pod-local file edits.
+
+:::note Unreleased default change
+
+The first release that makes SpiceDB the default ReBAC backend requires a
+maintenance window with a service outage for installation, upgrade, and planned
+graph-authoritative API replica starts. Its version has not yet been assigned
+here. Follow the [SpiceDB maintenance upgrade procedure](../runbooks/spicedb-maintenance-upgrade.md)
+for preparation, timing, and validation. The PostgreSQL example and rollout
+sequence below describe the earlier configuration; they do not replace that
+release's maintenance procedure or imply a PostgreSQL fallback during an outage.
+
+:::
 
 ## Before You Start
 
