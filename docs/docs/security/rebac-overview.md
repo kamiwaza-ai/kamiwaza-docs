@@ -1,9 +1,21 @@
 ---
 title: Relationship-Based Access Control (ReBAC)
 sidebar_label: ReBAC Overview
+drafted_by: ai
 ---
 
 # Relationship-Based Access Control Overview
+
+:::note Unreleased default change
+
+The first release that makes SpiceDB the default ReBAC backend uses a
+maintenance window with a service outage for installation, upgrade, and planned
+graph-authoritative API replica starts. Its version has not yet been assigned
+here. The shadow cutover guidance below does not replace the
+[SpiceDB maintenance upgrade procedure](../runbooks/spicedb-maintenance-upgrade.md)
+for that release.
+
+:::
 
 Kamiwaza uses relationship-based access control (ReBAC) to enforce tenant-scoped and role-aware policies across the platform. This page summarizes the capabilities delivered with the current release, how to integrate an identity provider, and the operational practices required to keep the system healthy.
 
