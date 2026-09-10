@@ -76,7 +76,7 @@ If you are deploying a federal CAC-enabled environment, also use:
 
 If users will upload files, preserve workroom context, or use the Skills Library, object storage must be available before rollout.
 
-Default self-managed installs (the `rook-rgw` storage lane) provision in-cluster object storage automatically; no action is needed. When workroom content must live in external AWS S3, use:
+Default self-managed installs use namespace-local SeaweedFS for workroom object storage; no object-store configuration is needed. The cluster must still provide a default StorageClass before installation. When workroom content must live in external AWS S3, use:
 
 - [AWS S3 Workroom Storage](workroom-storage-s3)
 

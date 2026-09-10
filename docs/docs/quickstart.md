@@ -87,7 +87,7 @@ If you are validating a federal deployment that uses CAC, use the [CAC Overview]
 
 If users will upload files, preserve workroom context, or use the Skills Library, object storage must be available before release validation. Without it, common extension workflows fail or behave inconsistently.
 
-Default self-managed installs (the `rook-rgw` storage lane) provision in-cluster object storage automatically — no configuration is needed here. Follow [AWS S3 Workroom Storage](workroom-storage-s3) only when workroom content must live in external AWS S3.
+Default self-managed installs use namespace-local SeaweedFS for workroom object storage, so no object-store configuration is needed here. The cluster must still provide a default StorageClass before installation. Follow [AWS S3 Workroom Storage](workroom-storage-s3) only when workroom content must live in external AWS S3.
 
 When this step is complete, validate that:
 

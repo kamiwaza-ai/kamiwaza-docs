@@ -1,6 +1,6 @@
 # Offline Installation
 
-The offline installer is for **air-gapped or restricted RHEL 9 environments** with no outbound internet access on the target host. You download the Kamiwaza bundle on a connected machine, transfer it to the target host, and install without pulling anything from the internet during installation.
+This product-install procedure is for **air-gapped or restricted RHEL 9 environments** with a prepared Kubernetes substrate. Download the Kamiwaza bundle on a connected machine and transfer it to the target host. A blank host additionally needs the administrator-owned bootstrap below; the product bundle alone is not a complete disconnected-host bootstrap kit.
 
 **Supported host:** RHEL-compatible 9.x (x86_64).
 
@@ -12,14 +12,23 @@ The offline installer is for **air-gapped or restricted RHEL 9 environments** wi
 
 ## Prerequisites
 
+This page describes the storage contract after bundled storage removal on
+`develop`. For an older published release, use its versioned documentation. Obtain
+a release handoff that explicitly qualifies the replacement storage path before
+using these steps; this page does not claim that such an artifact is published.
+
+- The platform administrator must prepare k0s and an offline-capable RWO storage
+  provider before the product install. Stage that provider's chart, images, and
+  host packages separately and complete [Storage prerequisites](storage-prerequisites.md).
+
 - A **Kamiwaza Prod license key**, used to download the bundle artifacts from Keygen.
 - A RHEL-compatible 9.x host (x86_64) that meets the [System Requirements](system_requirements.md).
-- **Free disk space, on the right filesystems.** The offline flow stages large artifacts and provisions cluster storage under `/`, `/tmp`, and `/var/lib`. Confirm each path has room on the **volume that actually backs it** — on hosts with LVM or separate partitions (most cloud RHEL images ship this way), a large total disk does **not** help if `/var` is a small separate volume. Recommended free space:
-  - **`/var/lib` ≥ 350 GB**, assuming `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G` is set in [Step 5](#step-5-install-kamiwaza). Without that export the OSD image defaults to 700 GB and you need **1.1 TB** instead. The OSD image is preallocated at install time and also holds all stateful data, so size it for the data you expect to keep, not just to complete the install.
+- **Free disk space, on the right filesystems.** The offline flow stages large artifacts and stores runtime images under `/`, `/tmp`, and `/var/lib`. Confirm each path has room on the **volume that actually backs it** — on hosts with LVM or separate partitions (most cloud RHEL images ship this way), a large total disk does **not** help if `/var` is a small separate volume. Recommended free space:
+  - **`/var/lib` ≥ 350 GB** for runtime images, caches, and operational headroom. Add the rendered PVC requests plus provider replication and free-space reserves when the storage provider uses the same disk (for example, local-path or Longhorn); size external storage separately.
   - **`/tmp` ≥ 25 GB** — bundle extraction and install scratch space.
   - **`/` ≥ 50 GB** — the downloaded bundle and its recombined tarballs under `/opt/kamiwaza/prereqs` (~25 GB), plus installed tooling under `/opt` and `/usr/local`.
 
-  A small default `/tmp`, or a small filesystem backing `/var/lib`, is the most common cause of install failure. It surfaces in one of three ways, none of which mentions disk space directly: the preflight aborts at `storage_host_prep` with an `fs-virtual-block free space` error; an image import fails with `no space left on device`; or the helmfile sync fails roughly ten minutes in with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods — that last one is the kubelet disk-pressure taint, not a cert-manager fault. Grow the backing LV or partition (or mount adequate storage at `/var/lib`) **before** you begin.
+  A small default `/tmp`, or a small filesystem backing `/var/lib`, is a common cause of install failure. It surfaces as `no space left on device`, or as `FailedScheduling: 1 node(s) had untolerated taint(s)` when kubelet applies disk pressure. Grow the backing LV or partition (or mount adequate storage at `/var/lib`) **before** you begin.
 - A machine with internet access to download the bundle, and a way to transfer files to the target host.
 
 Confirm which filesystem actually backs each path before you transfer anything — a
@@ -44,21 +53,36 @@ Throughout this guide, replace the placeholders:
 - `<domain>` — the base domain to serve Kamiwaza from (for example `kamiwaza.example.com`).
 - `<admin-password>` — the initial admin password.
 
+## Step 0: Prepare the disconnected Kubernetes substrate
+
+On a blank host, the platform administrator first installs the approved k0s
+version using its matching binary and airgap image bundle. Follow the
+[upstream airgapped installation procedure](https://docs.k0sproject.io/stable/airgap-install/)
+for that version: transfer the binary and image bundle, place the images under
+the worker's k0s data directory, and apply the site's approved cluster configuration.
+The release handoff must also supply the disconnected OS packages, runtime,
+network/mesh, and storage prerequisites required by that configuration.
+
+Complete [Storage prerequisites](storage-prerequisites.md), including the RWO
+write/read test, before Step 5. Retain administrator evidence that the node and
+system workloads are Ready without outbound access. If the handoff lacks a
+qualified bootstrap procedure or any required artifact, stop and obtain it
+from the release owner; do not run the product installer hoping it will supply
+the missing storage driver. This page does not qualify a new offline substrate.
+
 ## Step 1: Download the Bundle Artifacts
 
-The 1.2.0 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
+Offline bundles use split, checksummed artifacts. Download the selected bundle
+on a connected machine, verify its checksums, and recombine the split parts.
 
 `RELEASE` names the bundle as it is published on Keygen and must match an entry in
 your release's artifact listing — a value that does not exist fails at the first
 download.
 
-> **Installing before 1.2.0 is generally available?** The pre-release bundle is
-> published as `1.2.0-rc.3`. Set `RELEASE="1.2.0-rc.3"` and take the `EXT_BUNDLE`
-> filename from that bundle's artifact listing. Everything else on this page,
-> including the image tags and the override map, is unchanged — the pre-release
-> bundle already carries `release-1.2.0` images.
-
-The extension-bundle filename is likewise release-specific. The value below matches the published 1.2.0 bundle. If you are installing a different build, take the filename from the artifact listing for that release.
+The extension bundle and product RPM filenames are release-specific. Set
+`RELEASE`, `EXT_BUNDLE`, and `PRODUCT_RPM` from the release handoff before running
+the commands. Check the split-part inventory too; if its filenames or counts
+differ, use the manifest-driven [runbook](offline_install_runbook.md).
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
@@ -70,8 +94,9 @@ export KEYGEN_TOKEN="<license-key>"
 (
 set -euo pipefail
 
-RELEASE="1.2.0"
-EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
+: "${RELEASE:?set the qualified bundle version from the release handoff}"
+: "${EXT_BUNDLE:?set the extension bundle filename from the release handoff}"
+: "${PRODUCT_RPM:?set the product RPM filename from the release handoff}"
 BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs
@@ -98,7 +123,7 @@ for file in \
   kamiwaza-helm.00.tar.part-002 \
   kamiwaza-helm.00.tar.part-002.sha256 \
   kamiwaza-helm.00.tar.parts.json \
-  kamiwaza-prod-1.2.0-1.el9.x86_64.rpm \
+  "${PRODUCT_RPM}" \
   "${EXT_BUNDLE}.sha256" \
   "${EXT_BUNDLE}.part-000" \
   "${EXT_BUNDLE}.part-000.sha256" \
@@ -235,12 +260,17 @@ EOF
 
 ## Step 4: Pre-Extract the Extension Bundle
 
-Stage the extension bundle before installing the platform:
+Stage the extension bundle before installing the platform. Run each complete block
+in Steps 4–6, including its parentheses: a failure stops that block without closing
+your interactive shell. Set the required handoff variables in that shell first;
+variables set on the connected download machine are not transferred to this host.
 
 ```bash
+(
+set -euo pipefail
 cd /opt/kamiwaza/prereqs
 
-EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
+: "${EXT_BUNDLE:?set the same extension bundle filename used in Step 1}"
 rm -rf /tmp/kamiwaza-ext-extract
 mkdir -p /tmp/kamiwaza-ext-extract
 tar -xzf "$EXT_BUNDLE" -C /tmp/kamiwaza-ext-extract
@@ -255,6 +285,7 @@ sudo /tmp/kamiwaza-ext-extract/kamiwaza-extensions-bundle-*/scripts/install-exte
 # The /tmp copy only supplies the helper script. The install itself runs from
 # the --extract-dir copy, so reclaim the scratch space before installing.
 rm -rf /tmp/kamiwaza-ext-extract
+)
 ```
 
 This stages the bundle under `/var/lib/kajiya-reports/extensions-bundle-preinstall`
@@ -269,7 +300,18 @@ there.
 > candidate and its `release_origination.md`; the fresh-install values below
 > are not upgrade inputs.
 
-Set the image tags for the bundle and run the offline installer. The values below match the published 1.2.0 build. If you are installing a different build, obtain its image override map from the publisher — `release_origination.md` records the app, containers, and frontend tags only.
+Set image tags and the complete image override map from the qualified bundle's
+release handoff. `release_origination.md` records the app, containers, and frontend
+tags only; obtain the remaining coordinates from the publisher.
+
+The override map uses comma-separated `component=tag` entries, without spaces.
+For example, the following shows the syntax only; replace every placeholder
+with the publisher's qualified tag and include any additional entries required
+by that bundle. Do not paste these placeholders as install values:
+
+```text
+KAMIWAZA_IMAGE_OVERRIDES="postgres=<postgres-tag>,keycloak=<keycloak-tag>,etcd=<etcd-tag>"
+```
 
 Both `KAMIWAZA_IMAGE_TAG` and `KAMIWAZA_IMAGE_OVERRIDES` are required, and they correct each other:
 
@@ -295,9 +337,9 @@ Omitting the bulk tag, or any one of the three overrides, leaves a workload requ
 > `unreachable=0`), not from log activity — a quiet log is not a finished
 > install.
 
-> **Keep `KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G`** in the block below unless you have sized `/var/lib` for the 700 GB default — it is what brings the requirement down to the 350 GB floor in [Prerequisites](#prerequisites). This env var and the online guide's `-e storage_host_prep_virtual_block_size` extra-var are the same setting expressed two ways; the offline path sets it via the environment, the online path via an installer argument.
-
 ```bash
+(
+set -euo pipefail
 export DOMAIN="<domain>"
 
 # install-prod.sh reads the admin password from this variable and unsets it
@@ -305,14 +347,15 @@ export DOMAIN="<domain>"
 # expose it for the whole run.
 export KAMIWAZA_ADMIN_PASSWORD="<admin-password>"
 
-export APP_TAG="release-1.2.0"
-export FRONTEND_TAG="${APP_TAG}"
-export CONTAINERS_TAG="release-1.2.0"
-export EXTENSION_OPERATOR_TAG="release-1.2.0"
+: "${APP_TAG:?set the app tag from the release handoff}"
+: "${FRONTEND_TAG:?set the frontend tag from the release handoff}"
+: "${CONTAINERS_TAG:?set the containers tag from the release handoff}"
+: "${EXTENSION_OPERATOR_TAG:?set the extension operator tag from the release handoff}"
+: "${KAMIWAZA_IMAGE_OVERRIDES:?set the complete image override map from the publisher}"
+export APP_TAG FRONTEND_TAG CONTAINERS_TAG EXTENSION_OPERATOR_TAG KAMIWAZA_IMAGE_OVERRIDES
 
 export KAMIWAZA_VERSION="${APP_TAG}"
 export KAMIWAZA_IMAGE_TAG="${APP_TAG}"
-export KAMIWAZA_ROOK_OSD_IMAGE_SIZE=80G
 export KAMIWAZA_RESOURCE_PROFILE=small
 export HELMFILE_EXTRA_SET="--set global.security.allowInsecureImages=true"
 
@@ -323,8 +366,6 @@ export KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG="${APP_TAG}"
 export KAMIWAZA_OFFLINE_CONTAINERS_IMAGE_TAG="${CONTAINERS_TAG}"
 export KAMIWAZA_OFFLINE_CHAINGUARD_BASE_TAG="${CONTAINERS_TAG}"
 
-export KAMIWAZA_IMAGE_OVERRIDES="postgres=v18.4,keycloak=${CONTAINERS_TAG},etcd=v3.6.10"
-
 sudo -E /opt/kamiwaza/scripts/install-prod.sh \
   --offline \
   --domain "${DOMAIN}" \
@@ -334,6 +375,7 @@ sudo -E /opt/kamiwaza/scripts/install-prod.sh \
   --wrap-pubkey /opt/kamiwaza/prereqs/kamiwaza-tools-rpm.pub.gpg \
   -e helm_timeout=12m \
   -y
+)
 ```
 
 ## Step 6: Finish Extension Installation
@@ -341,9 +383,12 @@ sudo -E /opt/kamiwaza/scripts/install-prod.sh \
 Make sure `${DOMAIN}` resolves from the install host, then install the extensions from the pre-staged bundle:
 
 ```bash
+(
+set -euo pipefail
 export DOMAIN="<domain>"
 export ADMIN_PASSWORD="<admin-password>"
-export EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
+: "${EXT_BUNDLE:?set the same extension bundle filename used in Step 1}"
+export EXT_BUNDLE
 
 # Add a hosts-file entry if the domain does not already resolve locally
 if ! curl -ksS "https://${DOMAIN}/api/health" >/dev/null; then
@@ -364,6 +409,7 @@ printf '%s\n' "${ADMIN_PASSWORD}" | sudo "${BUNDLE_ROOT}/scripts/install-extensi
   --api-url "https://${DOMAIN}/api" \
   --username admin \
   --password-stdin
+)
 ```
 
 ## Step 7: Verify the Installation

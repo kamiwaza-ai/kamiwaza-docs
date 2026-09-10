@@ -17,10 +17,15 @@ developer installs remain available through the source-based Lima workflow.
 
 ## Prerequisites
 
+This page describes the storage contract after bundled storage removal on
+`develop`. Use the versioned documentation for older published releases. The
+release owner must confirm that the selected artifact implements this contract;
+the documentation version alone does not establish that an artifact is available.
+
 - A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
 - A host that meets the [System Requirements](system_requirements.md).
-- **Free disk space, on the right filesystem**. The installer provisions cluster storage under `/var/lib` as **preallocated** loopback images, so the space is consumed at install time rather than as you use it. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. At default settings a single-node host needs:
-  - **`/var/lib` ≥ 1.1 TB** — the install consumes roughly **890 GB** here: the Rook/Ceph OSD image (**700 GB**, `storage_host_prep_virtual_block_size`), the TopoLVM volume group backing stateful PVCs (**150 GB**, `storage_host_prep_topolvm_vg_size`), and roughly 40 GB of container images under `/var/lib/k0s`. Size the volume so that 890 GB leaves you under the ~85% disk-pressure threshold described below: 890 GB on a 1 TB volume is 89% and still inside the eviction range, so **1.1 TB** (≈81%) is the practical floor.
+- **Free disk space, on the right filesystem**. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. A single-node host should have:
+  - **`/var/lib` ≥ 350 GB** for runtime images, caches, and operational headroom. The installer does not provision a CSI driver or StorageClass. Add the rendered PVC requests plus provider replication and free-space reserves when the storage provider uses the same disk (for example, local-path or Longhorn); size external storage separately.
   - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
 
   Confirm which filesystem actually backs the path before you begin:
@@ -30,35 +35,18 @@ developer installs remain available through the source-based Lima workflow.
   findmnt -T /var/lib
   ```
 
-  **On a smaller host, reduce the OSD image** rather than provisioning 1.1 TB. Passing `-e storage_host_prep_virtual_block_size=80G` — the same 80 GB OSD size the offline install guide recommends — brings the requirement down to **350 GB on `/var/lib`**:
-
-  ```bash
-  KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
-  ./kamiwaza-online-install.sh \
-    --domain <domain> \
-    --admin-password "<initial-admin-password>" \
-    -y \
-    -e storage_host_prep_virtual_block_size=80G
-  ```
-
-  Size the OSD image for the models you intend to store — it backs the in-cluster model registry. With the 80 GB override a single-node install consumes roughly 270 GB of `/var`; leave headroom above that, because Kubernetes starts evicting pods once the filesystem passes ~85% full.
-
   **Most cloud images need their volumes grown first** — they commonly ship `/` and `/var` small (often 2 GB / 10 GB) with the bulk of the disk unpartitioned. Check `lsblk` for your device, partition index, and volume-group names before running the commands below. The example uses the **RHEL-compatible** cloud-image layout (`rootvg`/`rootlv`/`varlv`):
 
   ```bash
   sudo growpart /dev/nvme0n1 4
   sudo pvresize /dev/nvme0n1p4
   sudo lvextend -r -L 100G /dev/rootvg/rootlv
-  sudo lvextend -r -L 400G /dev/rootvg/varlv   # 400 GB covers the 80G-OSD override; size to ≥ 1.1 TB for the default OSD
+  sudo lvextend -r -L 400G /dev/rootvg/varlv
   ```
 
   Ubuntu 22.04/24.04 cloud images use the `ubuntu-vg`/`ubuntu-lv` layout and typically ship a single root volume with **no separate `/var`**, so grow the root LV instead (and adjust the `growpart` partition index for your disk).
 
-  If `/var` is too small the install fails in one of three ways, none of which mentions disk space directly:
-
-  - early, at `storage_host_prep` with an `fs-virtual-block free space` error;
-  - during image import, with `no space left on device`;
-  - or roughly ten minutes in, with `Progress deadline exceeded` on the `cert-manager` deployments and `FailedScheduling: 1 node(s) had untolerated taint(s)` on their pods. That last one is the kubelet disk-pressure taint, not a cert-manager fault.
+  If `/var` is too small the install can fail during image import with `no space left on device`, or later with `FailedScheduling: 1 node(s) had untolerated taint(s)` after kubelet applies disk pressure.
 
   Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
 
@@ -102,14 +90,20 @@ verify the selected installer.
 
 ## Step 2: Run the Installer
 
-> **Upgrading an existing production database?** Follow the
-> [Core database upgrade runbook](../runbooks/core-database-upgrade-1.2.md)
-> before invoking the installer. The runbook requires the exact release
-> candidate, a pre-mutation backup, schema gates, stop rules, and recovery
-> evidence. Do not use the example download above for an upgrade unless it
-> matches the exact artifact specified by the runbook.
+> **Upgrading an existing production database?** Stop and obtain a migration
+> plan qualified for your exact source and target builds, including backup and
+> recovery evidence. The [historical 1.0 → 1.2 database runbook](../runbooks/core-database-upgrade-1.2.md)
+> applies only to those older artifacts, not current `develop`. Packaged Ceph
+> cannot be migrated by rerunning this installer; see
+> [Storage prerequisites](storage-prerequisites.md#object-storage-and-previous-installations).
 
-Run the installer on the target host, supplying your license key, domain, and an initial admin password:
+On a fresh host, first run infrastructure bootstrap with the same installer and
+arguments shown below, adding `--phase1-only`. Then have the platform
+administrator complete [Storage prerequisites](storage-prerequisites.md), including
+the PVC write test. Run the command again without `--phase1-only` to reconcile
+bootstrap and install the product. A host with verified storage can run it directly.
+
+Supply your license key, domain, and an initial admin password:
 
 ```bash
 KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
@@ -118,8 +112,6 @@ KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
   --admin-password "<initial-admin-password>" \
   -y 2>&1 | tee kamiwaza-online-install.log
 ```
-
-> **If you sized the host to the 350 GB floor rather than 1.1 TB**, add `-e storage_host_prep_virtual_block_size=80G` to the command above. Without it the installer provisions the default 700 GB OSD image and fails at host prep. See [Prerequisites](#prerequisites).
 
 The installer runs k0s directly on the Linux host and uses Podman for supporting
 container workflows. It re-executes itself through `sudo -E` when it needs
@@ -144,7 +136,6 @@ Frequently used **install arguments**:
 - `--domain <value>`: Public base domain for Kamiwaza.
 - `--admin-password <value>`: Initial admin password.
 - `-y`, `--yes`: Non-interactive install.
-- `-e storage_host_prep_virtual_block_size=<size>`: Size of the preallocated OSD image on the volume backing `/var/lib`. Defaults to `700G`, which requires roughly 1.1 TB free; `80G` reduces the requirement to about 350 GB. See [Prerequisites](#prerequisites).
 
 Frequently used **installer options**:
 

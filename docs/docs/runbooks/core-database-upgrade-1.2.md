@@ -6,6 +6,17 @@ sidebar_label: Core database upgrade from 1.0.0 to 1.2.0
 
 # Core database upgrade from 1.0.0 to 1.2.0
 
+:::warning Historical release procedure — not a develop upgrade path
+
+This runbook applies only to the named 1.0.0-to-1.2.0 artifacts and their
+matching release branches. Its legacy Ceph/OSD and KubeRay checks describe
+those releases, not current develop prerequisites. Do not restore those
+components on develop or use this procedure to migrate packaged Rook/Ceph
+to SeaweedFS. That transition requires a separately qualified migration
+and clean installation; see [Storage prerequisites](../installation/storage-prerequisites.md).
+
+:::
+
 This is the supported production procedure for upgrading an existing Kamiwaza
 1.0.0 PostgreSQL database to Kamiwaza 1.2.0. It applies to online and offline
 RHEL 9 installations. It is not a general-purpose PostgreSQL migration guide.

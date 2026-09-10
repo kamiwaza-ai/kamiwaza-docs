@@ -5,6 +5,11 @@ sidebar_label: Offline Installation Runbook
 
 # Offline Installation Runbook
 
+The storage contract on this page follows `develop` after bundled storage removal.
+Use versioned documentation for older bundles. A release handoff must explicitly
+qualify the replacement storage path, and the platform administrator must complete
+[Storage prerequisites](storage-prerequisites.md) before product installation.
+
 :::note Who this is for
 This is the provenance-driven runbook for a **specific, immutable** release or
 Kajiya run (ENG-10370). It records the exact bundle, verifies every artifact
@@ -66,14 +71,14 @@ You need:
 
 ### Check the actual filesystems
 
-The bundle, extracted extensions, container images, and the Rook/Ceph OSD can
+The bundle, extracted extensions, container images, and installer scratch can
 live on different filesystems. A large virtual disk is not proof that
 `/var/lib` or `/tmp` has room; cloud RHEL images commonly put `/var` on a small
 logical volume.
 
 Before transfer, calculate the compressed bundle total, the extracted
-extension size, installer scratch, image-store growth, the configured OSD image
-size, and operational headroom. Then check the backing filesystems:
+extension size, installer scratch, image-store growth, and operational
+headroom. Then check the backing filesystems:
 
 ```bash
 df -hT / /tmp /var/tmp /var/lib /opt
@@ -86,7 +91,7 @@ lsblk -f
 
 There is no release-independent free-space floor for this path. The verified
 staging copy, `/opt/kamiwaza/prereqs` copy, logical-wrap scratch space under
-`/var/tmp`, extracted extension tree, image store, and configured OSD can
+`/var/tmp`, extracted extension tree, image store, and local application volumes can
 coexist. Calculate their peak sizes from the selected handoff and budget each
 copy on its actual backing filesystem. Grow the correct PV/LV/filesystem before
 installation and run `df` again afterward.
@@ -158,7 +163,7 @@ and record:
 - release/run identifier, attempt, source prefix, and publication inventory;
 - immutable Kajiya, Deploy, Core, Containers, and extension source commits;
 - every object name and SHA-256, plus sizes where the publisher exposes them;
-- runtime, resource profile, OSD size, and compatibility flags;
+- runtime, resource profile, StorageClass, and compatibility flags;
 - every product tag and the complete `KAMIWAZA_IMAGE_OVERRIDES` map;
 - extension helper names and hashes; and
 - the release's required verification gates.
@@ -622,7 +627,6 @@ inference image map:
   "KAMIWAZA_VERSION": "<exact>",
   "KAMIWAZA_IMAGE_TAG": "<exact>",
   "KAMIWAZA_K8S_RUNTIME": "k0s-podman",
-  "KAMIWAZA_ROOK_OSD_IMAGE_SIZE": "<exact>",
   "KAMIWAZA_RESOURCE_PROFILE": "<exact>",
   "HELMFILE_EXTRA_SET": "<exact, including spaces>",
   "KAMIWAZA_OFFLINE_APP_IMAGE_TAG": "<exact>",
@@ -662,7 +666,6 @@ if ! jq -e '
     "KAMIWAZA_OFFLINE_FRONTEND_TAG",
     "KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG",
     "KAMIWAZA_RESOURCE_PROFILE",
-    "KAMIWAZA_ROOK_OSD_IMAGE_SIZE",
     "KAMIWAZA_VERSION"
   ] | sort) and
   all(.[]; type == "string") and
@@ -681,7 +684,6 @@ if ! jq -e '
     "KAMIWAZA_OFFLINE_FRONTEND_TAG",
     "KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG",
     "KAMIWAZA_RESOURCE_PROFILE",
-    "KAMIWAZA_ROOK_OSD_IMAGE_SIZE",
     "KAMIWAZA_VERSION"
   ][]; ($contract[.] | length > 0)))
 ' "${CONTRACT_SOURCE}" >/dev/null; then
@@ -790,7 +792,6 @@ CONTRACT_KEYS=(
   KAMIWAZA_VERSION
   KAMIWAZA_IMAGE_TAG
   KAMIWAZA_K8S_RUNTIME
-  KAMIWAZA_ROOK_OSD_IMAGE_SIZE
   KAMIWAZA_RESOURCE_PROFILE
   HELMFILE_EXTRA_SET
   KAMIWAZA_OFFLINE_APP_IMAGE_TAG
@@ -1449,10 +1450,10 @@ sudo podman ps -a
 df -hT / /tmp /var/tmp /var/lib /opt
 ```
 
-If a preflight aborts at `storage_host_prep`, `/var/lib` cannot fit the
-configured storage image on its actual backing filesystem. Grow or remount that
-filesystem before retrying; do not treat the abort as a prompt or bypass the
-preflight.
+If storage preflight fails, inspect the selected StorageClass, provisioner
+health, available capacity, and PVC events. Complete the
+[storage prerequisites](storage-prerequisites.md) before retrying. Do not
+bypass a capacity or legacy-storage refusal to force installation.
 
 Keep secrets and full process argument lists out of diagnostic captures. If a
 password appears in output, treat it as exposed and rotate it through a
