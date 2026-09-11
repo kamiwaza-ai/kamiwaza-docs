@@ -19,10 +19,7 @@ Kamiwaza supports two installation paths. Pick the one that matches your environ
 | **Online** | The host has outbound internet access to Keygen and your OS package repositories. This is the recommended path for most installs. | Ubuntu 22.04 / 24.04, RHEL-compatible 9.x, macOS | [Online Installation](online_install.md) |
 | **Offline / air-gapped** | The host is in a restricted or air-gapped environment. You download the bundle on a connected machine, transfer it, and install without internet access on the target host. | RHEL-compatible 9.x | [Offline Installation](offline_install.md) |
 
-Both methods install Kamiwaza, but their artifact formats and bootstrap steps can
-differ by release. Confirm that your chosen method has a published bundle and
-matching instructions for the version you intend to install. The documentation
-version alone does not establish artifact availability.
+Both methods install the same platform. The difference is only how the installer and images reach the target host.
 
 ## Supported Platforms
 
