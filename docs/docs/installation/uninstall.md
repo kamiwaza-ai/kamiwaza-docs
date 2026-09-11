@@ -11,7 +11,7 @@ uninstall wrappers shipped with the deployment payload.
 
 A Kamiwaza install consists of:
 
-- A single-host Kubernetes cluster and its container runtime, provisioned by the installer (the runtime depends on the installed release and configuration; do not infer it from online versus offline delivery).
+- A single-host Kubernetes cluster and its container runtime, provisioned by the installer (`kind` for offline/dev installs; `k0s` for online installs).
 - The Kamiwaza platform and extensions running on that cluster.
 - On **offline/package installs**: install and data directories under `/opt/kamiwaza` (and `/etc/kamiwaza` for cluster certificates and config).
 - On **online installs**: the extracted installer payload (default `/var/lib/kamiwaza-online-install/`, or wherever you passed `--extract-dir`), plus `/var/lib/kamiwaza`, `/var/tmp/kamiwaza`, `/var/lib/rook` (Rook-Ceph's mon/OSD host data — outside `/var/lib/kamiwaza`, easy to miss), and k0s's own state under `/etc/k0s` and `/run/k0s`. Online installs do **not** use `/opt/kamiwaza` or `/etc/kamiwaza`.

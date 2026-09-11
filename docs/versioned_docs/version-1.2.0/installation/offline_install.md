@@ -1,9 +1,5 @@
 # Offline Installation
 
-> **Release scope: 1.2.0 only.** The RPM, extension archive, and image overrides
-> below belong to the published 1.2.0 bundle. For another release, use its matching
-> bundle and instructions; do not substitute version strings in this recipe.
-
 The offline installer is for **air-gapped or restricted RHEL 9 environments** with no outbound internet access on the target host. You download the Kamiwaza bundle on a connected machine, transfer it to the target host, and install without pulling anything from the internet during installation.
 
 **Supported host:** RHEL-compatible 9.x (x86_64).
@@ -51,6 +47,12 @@ The 1.2.0 offline bundle is published to Keygen as a set of split, checksummed a
 `RELEASE` names the bundle as it is published on Keygen and must match an entry in
 your release's artifact listing — a value that does not exist fails at the first
 download.
+
+> **Installing before 1.2.0 is generally available?** The pre-release bundle is
+> published as `1.2.0-rc.3`. Set `RELEASE="1.2.0-rc.3"` and take the `EXT_BUNDLE`
+> filename from that bundle's artifact listing. Everything else on this page,
+> including the image tags and the override map, is unchanged — the pre-release
+> bundle already carries `release-1.2.0` images.
 
 The extension-bundle filename is likewise release-specific. The value below matches the published 1.2.0 bundle. If you are installing a different build, take the filename from the artifact listing for that release.
 

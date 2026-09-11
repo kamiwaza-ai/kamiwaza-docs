@@ -57,7 +57,7 @@ Storage *performance* requirements are the same across all platforms. Storage **
 
 | Install path | Storage image | Free space needed on `/var/lib` |
 |---|---|---|
-| **Offline** | Release-specific — use the [selected bundle instructions](offline_install.md#step-2-check-the-actual-filesystems) | Budget the selected bundle's peak space on each backing filesystem |
+| **Offline** | `80G` — [the guide sets this](offline_install.md#step-5-install-kamiwaza) | **≥ 350 GB** |
 | **Online**, default | `700G` | **≈ 1.1 TB** |
 | **Online**, reduced | pass [`-e storage_host_prep_virtual_block_size=80G`](online_install.md#common-options) | **≥ 350 GB** |
 
@@ -212,13 +212,13 @@ nproc
 
 # Check available disk space on the volume backing /var/lib (the binding constraint)
 df -h /var/lib
-# Online: At least 350GB with -e storage_host_prep_virtual_block_size=80G;
-# 1.1TB+ at the default storage image size.
-# Offline: use the selected bundle's storage settings and peak-space requirements.
+# Expected: At least 350GB for an offline install, or an online install passing
+# -e storage_host_prep_virtual_block_size=80G; 1.1TB+ for an online install at
+# the default storage image size
 
 # Check the root filesystem too
 df -h /
-# Online: At least 30GB free. For offline, use the selected bundle requirements.
+# Expected: At least 30GB free (50GB for the offline install path)
 # If /var is not a separate mount, both commands report the same filesystem —
 # size the root volume to the /var/lib figure, not the sum of the two.
 ```
