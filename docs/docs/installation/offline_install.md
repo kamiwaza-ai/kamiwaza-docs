@@ -42,19 +42,13 @@ Throughout this guide, replace the placeholders:
 
 ## Step 1: Download the Bundle Artifacts
 
-The 1.2.0 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
+The 1.2.1 offline bundle is published to Keygen as a set of split, checksummed artifacts. You download them (on a connected machine or on the host if it has temporary access), verify the checksums, and recombine the split parts.
 
 `RELEASE` names the bundle as it is published on Keygen and must match an entry in
 your release's artifact listing — a value that does not exist fails at the first
 download.
 
-> **Installing before 1.2.0 is generally available?** The pre-release bundle is
-> published as `1.2.0-rc.3`. Set `RELEASE="1.2.0-rc.3"` and take the `EXT_BUNDLE`
-> filename from that bundle's artifact listing. Everything else on this page,
-> including the image tags and the override map, is unchanged — the pre-release
-> bundle already carries `release-1.2.0` images.
-
-The extension-bundle filename is likewise release-specific. The value below matches the published 1.2.0 bundle. If you are installing a different build, take the filename from the artifact listing for that release.
+The extension-bundle filename is likewise release-specific. The value below matches the published 1.2.1 bundle. If you are installing a different build, take the filename from the artifact listing for that release.
 
 ```bash
 export KEYGEN_TOKEN="<license-key>"
@@ -66,7 +60,7 @@ export KEYGEN_TOKEN="<license-key>"
 (
 set -euo pipefail
 
-RELEASE="1.2.0"
+RELEASE="1.2.1"
 EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
 BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
@@ -94,7 +88,7 @@ for file in \
   kamiwaza-helm.00.tar.part-002 \
   kamiwaza-helm.00.tar.part-002.sha256 \
   kamiwaza-helm.00.tar.parts.json \
-  kamiwaza-prod-1.2.0-1.el9.x86_64.rpm \
+  kamiwaza-prod-1.2.1-1.el9.x86_64.rpm \
   "${EXT_BUNDLE}.sha256" \
   "${EXT_BUNDLE}.part-000" \
   "${EXT_BUNDLE}.part-000.sha256" \
@@ -265,7 +259,7 @@ there.
 > candidate and its `release_origination.md`; the fresh-install values below
 > are not upgrade inputs.
 
-Set the image tags for the bundle and run the offline installer. The values below match the published 1.2.0 build. If you are installing a different build, obtain its image override map from the publisher — `release_origination.md` records the app, containers, and frontend tags only.
+Set the image tags for the bundle and run the offline installer. The values below match the published 1.2.1 build. If you are installing a different build, obtain its image override map from the publisher — `release_origination.md` records the app, containers, and frontend tags only.
 
 Both `KAMIWAZA_IMAGE_TAG` and `KAMIWAZA_IMAGE_OVERRIDES` are required, and they correct each other:
 
@@ -301,10 +295,10 @@ export DOMAIN="<domain>"
 # expose it for the whole run.
 export KAMIWAZA_ADMIN_PASSWORD="<admin-password>"
 
-export APP_TAG="release-1.2.0"
+export APP_TAG="release-1.2.1"
 export FRONTEND_TAG="${APP_TAG}"
-export CONTAINERS_TAG="release-1.2.0"
-export EXTENSION_OPERATOR_TAG="release-1.2.0"
+export CONTAINERS_TAG="release-1.2.1"
+export EXTENSION_OPERATOR_TAG="release-1.2.1"
 
 export KAMIWAZA_VERSION="${APP_TAG}"
 export KAMIWAZA_IMAGE_TAG="${APP_TAG}"
