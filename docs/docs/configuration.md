@@ -28,7 +28,6 @@ Use these guides together:
 - [System Requirements](installation/system_requirements)
 - [Installing Kamiwaza](installation/installation_process)
 - [Database Schema Lifecycle](database-schema-lifecycle)
-- [Network Prerequisites](network_prerequisites)
 - [Quickstart](quickstart)
 - [Administrator Guide](security/admin-guide)
 - [AWS S3 Workroom Storage](workroom-storage-s3)
@@ -77,7 +76,7 @@ If you are deploying a federal CAC-enabled environment, also use:
 
 If users will upload files, preserve workroom context, or use the Skills Library, object storage must be available before rollout.
 
-Default self-managed installs (the `rook-rgw` storage lane) provision in-cluster object storage automatically; no action is needed. When workroom content must live in external AWS S3, use:
+Default self-managed installs use namespace-local SeaweedFS for workroom object storage; no object-store configuration is needed. The cluster must still provide a default StorageClass before installation. When workroom content must live in external AWS S3, use:
 
 - [AWS S3 Workroom Storage](workroom-storage-s3)
 

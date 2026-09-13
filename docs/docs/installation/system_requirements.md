@@ -8,17 +8,16 @@
 - **Recommended Cores**: 16+ cores for CPU-based inference workloads
 - **Architecture**:
   - Linux: x64/amd64 (64-bit)
-  - Windows: x64 (64-bit)
   - macOS: ARM64 (Apple Silicon) only
 
 ### Memory
 
 #### System RAM
 
-| Mode | Minimum | Recommended | Notes |
-|------|---------|-------------|-------|
-| **Lite Mode** | 16GB | 32GB | SQLite database; limited capacity for apps/tools |
-| **Full Mode** | 32GB | 64GB+ | CockroachDB + DataHub; production workloads |
+| Deployment | Minimum | Recommended | Notes |
+|------------|---------|-------------|-------|
+| **Standard** | 16GB | 32GB | Baseline install; limited capacity for apps and tools |
+| **Production** | 32GB | 64GB+ | Production workloads |
 | **GPU Workloads** | 32GB | 64GB+ | System RAM alongside GPU vRAM |
 
 #### GPU Memory (vRAM)
@@ -32,7 +31,7 @@ Kamiwaza supports multiple GPU and accelerator platforms:
 
 **Discrete GPUs:**
 - NVIDIA GPUs with compute capability 7.0+ (Linux)
-- NVIDIA RTX / Intel Arc (Windows via WSL)
+- AMD GPUs via ROCm (Linux) — see [Software Dependencies](#software-dependencies)
 
 **Unified Memory Systems:**
 - **NVIDIA DGX Spark** - GB10 Grace Blackwell, 128GB unified memory
@@ -43,7 +42,9 @@ See [Special Considerations](#special-considerations) for detailed unified memor
 
 ### Storage
 
-Storage requirements are the same across all platforms.
+The platform administrator supplies persistent storage before product
+installation. Application PVCs consume that storage; the product does not
+allocate a host-backed storage image. See [Storage prerequisites](storage-prerequisites.md).
 
 #### Storage Performance
 
@@ -54,22 +55,34 @@ Storage requirements are the same across all platforms.
 
 #### Storage Capacity
 
-- **Minimum**: 100GB free disk space
-- **Recommended**: 200GB+ free disk space
-- **Enterprise Edition**: Additional space for /opt/kamiwaza persistence
+Size each backing filesystem for the peak simultaneous use: downloaded and
+extracted artifacts, runtime images, model caches and staging, logs, and application
+volumes located on that filesystem. Replicated storage also needs its configured
+replica capacity and the provider's reserved free-space margin.
+
+The installation guides use **350 GB free on `/var/lib` as a planning allowance
+for images, caches, and headroom**, not a measured universal minimum or a guarantee
+that application PVCs fit. Add the rendered PVC requests when the storage provider
+uses the same disk. For managed CSI on separate disks, size those disks separately.
+Use the exact release's artifact sizes and rendered PVC requests to establish the
+actual requirement. Check `/opt`, `/tmp`, and `/var/tmp` separately when they are
+different filesystems.
 
 #### Capacity Planning
 
 | Component | Minimum | Recommended | Notes |
 |-----------|---------|-------------|-------|
 | **Operating System** | 20GB | 50GB | Ubuntu/RHEL base + dependencies |
-| **Kamiwaza Platform** | 50GB | 50GB | Python environment, Ray, services |
+| **Kamiwaza** | 50GB | 50GB | Python environment, Ray, services |
 | **Model Storage** | 50GB | 500GB+ | Depends on number and size of models |
-| **Database** | 10GB | 50GB | CockroachDB for metadata |
+| **Database** | 10GB | 50GB | PostgreSQL for metadata |
 | **Vector Database** | 10GB | 100GB+ | For embeddings (if enabled) |
 | **Logs & Metrics** | 10GB | 50GB | Rotated logs, Ray dashboard data |
 | **Scratch Space** | 20GB | 100GB | Temporary files, downloads, builds |
-| **Total** | **170GB** | **900GB+** | |
+| **Total** | Workload-dependent | Workload-dependent | Apply the peak-use calculation above; do not double-count shared caches |
+
+The rows describe running workloads. Also allow for simultaneous image import,
+model staging, and storage-provider replication and reservation overhead.
 
 #### Storage Performance Requirements
 
@@ -95,143 +108,94 @@ Storage requirements are the same across all platforms.
 
 ### Linux
 
-- **Ubuntu**: 24.04 and 22.04 LTS via .deb package installation (x64/amd64 architecture only)
-- **Red Hat Enterprise Linux (RHEL)**: 9
-
-### Windows
-
-- **Windows 11** (x64 architecture) via WSL with MSI installer
-- Requires Windows Subsystem for Linux (WSL) installed and enabled
-- Administrator access required for initial setup
-- Windows Terminal recommended for optimal WSL experience
+- **Ubuntu**: 24.04 and 22.04 LTS (x64/amd64 architecture only) — online install
+- **Red Hat Enterprise Linux (RHEL) 9** and compatibles — online or offline install
 
 ### macOS
 
-- **macOS 15.0 (Sequoia) or later**, Apple Silicon (ARM64) only
-- Community edition only
-- Single-node deployments only (Enterprise edition not available on macOS)
+- **macOS 15.0 (Sequoia) or later**, Apple Silicon (ARM64) only — source-based
+  developer installs with managed Lima
+- Production online installation is not currently supported (ENG-10839)
+- Single-node developer deployments only
+
+Published production releases install through the Keygen-based installer on
+supported Linux hosts and require a Kamiwaza Prod license key. See
+[Installing Kamiwaza](installation_process.md) for the online and offline paths.
 
 ---
 
 ## Software Dependencies
 
-### Pre-requisites (User Must Install)
+### What You Provide
 
-Before running the Kamiwaza installer, ensure the following are installed:
+Provide the following inputs and administrator-owned prerequisites. Online host
+bootstrap can prepare the runtime and local cluster; offline installations need
+the prepared substrate described in the offline guide.
 
-| Component | Requirement | Installation Guide |
-|-----------|-------------|-------------------|
-| **Docker** | Docker Engine 24.0+ with Compose 2.23+ | [Docker Install Guide](https://docs.docker.com/engine/install/) |
+| Component | Requirement | Notes |
+|-----------|-------------|-------|
+| **License key** | Kamiwaza Prod license key | Required to pull platform images from Keygen. Contact your Kamiwaza representative. |
+| **Supported OS** | Ubuntu 22.04/24.04 or RHEL 9 | See [Supported Operating Systems](#supported-operating-systems) |
+| **Persistent storage** | Administrator-provided, verified RWO StorageClass | Complete [Storage prerequisites](storage-prerequisites.md) before product installation. |
 | **Browser** | Chrome 141+ (tested and recommended) | [Download Chrome](https://www.google.com/chrome/) |
+| **GPU drivers** | For GPU inference only — see below | Install before running the installer |
 
-> **Note:** An experimental `k0s` runtime via Podman (`--k0s-podman`) or Lima VM (`--k0s-lima`) is available for local dev deployments as an alternative to Docker/Kind. See deploy scripts and [`k0s-lima-install.sh`](https://github.com/kamiwaza-ai/deploy/blob/develop/scripts/k0s-lima-install.sh) / [`k0s-dev-install.sh`](https://github.com/kamiwaza-ai/deploy/blob/develop/scripts/k0s-dev-install.sh) for details and benchmarks.
+> Online bootstrap and offline substrate preparation have different responsibilities.
+> See [Installing Kamiwaza](installation_process.md); neither product installation
+> path supplies the storage driver or its host prerequisites.
 
 ### GPU Drivers (Required for GPU Inference)
 
 Install the appropriate driver for your GPU hardware:
 
 **NVIDIA GPUs:**
-| Component | Requirement | Installation Guide |
+| Component | Requirement | Installation guide |
 |-----------|-------------|-------------------|
-| NVIDIA Driver | 550-server or later | [NVIDIA Driver Downloads](https://www.nvidia.com/download/index.aspx) |
-| NVIDIA Container Toolkit | Required for GPU containers | [Container Toolkit Install](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) |
+| NVIDIA driver for CUDA 12 images | 550-server or later | [NVIDIA driver downloads](https://www.nvidia.com/download/index.aspx) |
+| NVIDIA driver for CUDA 13 images and DGX Spark | 580.65.06 or later | [CUDA 13 release notes](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-toolkit-release-notes/index.html) |
+| NVIDIA Container Toolkit | Required for GPU containers | [Container Toolkit installation](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) |
+
+DGX Spark software releases include the matching R580 driver and CUDA 13 stack. See the [DGX Spark release notes](https://docs.nvidia.com/dgx/dgx-spark/release-notes.html) for the versions in each release.
 
 **AMD GPUs (ROCm):**
-| Component | Requirement | Installation Guide |
+| Component | Requirement | Installation guide |
 |-----------|-------------|-------------------|
-| ROCm | 7.1.1+ (see note for gfx1151) | [ROCm Installation](https://rocm.docs.amd.com/en/latest/deploy/linux/index.html) |
-| Docker ROCm support | `--device /dev/kfd --device /dev/dri` | [ROCm Docker Guide](https://rocm.docs.amd.com/en/latest/how-to/docker.html) |
+| ROCm for Ryzen AI Max+ 395 (gfx1151) | ROCm 7.2.1 or later on Ubuntu 24.04 | [Ryzen native Linux compatibility](https://rocm.docs.amd.com/projects/radeon-ryzen/en/docs-7.2.1/docs/compatibility/compatibilityryz/native_linux/native_linux_compatibility.html) |
+| Other AMD GPUs | A ROCm release that lists the GPU and operating system as supported | [ROCm compatibility matrix](https://rocm.docs.amd.com/en/latest/compatibility/compatibility-matrix.html) |
+| Container GPU access | `/dev/kfd` and `/dev/dri` exposed to the container runtime | [ROCm containers guide](https://rocm.docs.amd.com/en/latest/how-to/docker.html) |
 
-> **Note:** AMD Strix Halo (gfx1151) requires ROCm 7.10.0 preview or later. See [ROCm 7.10.0 Preview](https://rocm.docs.amd.com/en/7.10.0-preview/) - this is a preview release and not intended for production use.
-
-### Linux Full Mode Only
-
-These dependencies are only required for Linux installations using Full mode (`--full` flag). Lite mode uses SQLite and does not require CockroachDB.
-
-| Component | Requirement | Notes |
-|-----------|-------------|-------|
-| **CockroachDB** | v23.2.x | Database for Full mode |
-
-**Install CockroachDB on Ubuntu/Debian:**
-
-```bash
-wget -qO- https://binaries.cockroachdb.com/cockroach-v23.2.12.linux-amd64.tgz | tar xvz
-sudo cp cockroach-v23.2.12.linux-amd64/cockroach /usr/local/bin
-rm -rf cockroach-v23.2.12.linux-amd64
-
-# Verify installation
-cockroach version
-```
-
-> **Note:** macOS installations automatically install CockroachDB via Homebrew when needed.
+AMD lists the Radeon 8060S in Ryzen AI Max+ 395 systems as production-supported on the ROCm 7.2.x native Linux path. Follow the [Ryzen native Linux installation guide](https://rocm.docs.amd.com/projects/radeon-ryzen/en/docs-7.2/docs/install/installryz/native_linux/install-ryzen.html); the retired ROCm 7.10 preview path is not required.
 
 ### Auto-Installed by Kamiwaza
 
-The Kamiwaza installer automatically installs and configures the following - no manual installation required:
+After the administrator has prepared and verified the required substrate, product
+installation deploys the database and other backing services onto it. The tenant
+installer does not install a CSI driver or create StorageClasses.
 
-- Python 3.12 (or 3.10 for tarball installations)
-- Node.js 22.x and NVM
-- uv (Python package manager)
-- Platform-specific dependencies
+The online host bootstrap also prepares the runtime and local Kubernetes cluster.
+For offline installation these must already be prepared; follow the
+[offline substrate bootstrap](offline_install.md#step-0-prepare-the-disconnected-kubernetes-substrate).
 
 ---
 
 ## Verifying System Requirements
 
-Use these commands to verify your system meets the requirements before installation.
-
-### Docker
-
-```bash
-docker --version
-# Expected: Docker version 24.0.0 or later
-# Example output: Docker version 27.4.0, build bde2b89
-
-docker compose version
-# Expected: Docker Compose version v2.23.0 or later
-# Example output: Docker Compose version v2.31.0
-```
-
-**If you get "permission denied" errors**, add your user to the docker group:
-
-```bash
-# Add current user to docker group
-sudo usermod -aG docker $USER
-
-# Apply group membership (choose one):
-newgrp docker          # Apply in current terminal session
-# OR log out and back in
-# OR reboot
-
-# Verify group membership
-groups | grep docker
-# Expected: "docker" should appear in the list
-```
-
-### Python
-
-```bash
-python3 --version
-# Expected: Python 3.10.x, 3.11.x, or 3.12.x
-# Example output: Python 3.12.3
-```
+Use these commands to check GPU access and host resources before installation.
+They do not replace the required substrate and persistent-storage verification.
 
 ### NVIDIA GPU (if applicable)
 
 ```bash
 # Check NVIDIA driver
 nvidia-smi
-# Expected: Driver version 450.80.02 or later (550+ recommended)
+# Expected for CUDA 12 images: Driver version 550 or later
+# Expected for CUDA 13 images and DGX Spark: Driver version 580.65.06 or later
 # Should display GPU name, driver version, and CUDA version
 
 # Check NVIDIA Container Toolkit
 nvidia-ctk --version
 # Expected: Any version indicates toolkit is installed
 # Example output: NVIDIA Container Toolkit CLI version 1.17.3
-
-# Test GPU access from Docker
-docker run --rm --gpus all nvidia/cuda:12.4.1-runtime-ubuntu22.04 nvidia-smi
-# Expected: Same output as nvidia-smi, confirming Docker can access GPU
 ```
 
 ### AMD ROCm (if applicable)
@@ -244,15 +208,11 @@ rocm-smi
 
 # Check ROCm version
 cat /opt/rocm/.info/version
-# Expected: 7.1.1 or later (7.10.0+ for Strix Halo gfx1151)
+# Expected for Ryzen AI Max+ 395 (gfx1151): 7.2.1 or later
 
 # Verify GPU device access
 ls -la /dev/kfd /dev/dri
 # Expected: Both devices should exist and be accessible
-
-# Test ROCm from Docker
-docker run --rm --device /dev/kfd --device /dev/dri --group-add video rocm/pytorch:latest rocm-smi
-# Expected: Should display GPU information from within container
 ```
 
 ### System Resources
@@ -267,9 +227,16 @@ free -h
 nproc
 # Expected: 8 or more cores
 
-# Check available disk space
+# Check available disk space on the volume backing /var/lib (the binding constraint)
+df -h /var/lib
+# Compare free bytes with artifact, cache, staging, and local PVC requirements.
+# The guides use 350GB as an initial planning allowance, not a capacity guarantee.
+
+# Check the root filesystem too
 df -h /
-# Expected: At least 100GB free (200GB+ recommended)
+# Expected: At least 30GB free (50GB for the offline install path)
+# If /var is not a separate mount, both commands report the same filesystem —
+# size the root volume to the /var/lib figure, not the sum of the two.
 ```
 
 ---
@@ -306,8 +273,8 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 **Hardware Specifications:**
 - **CPU:** 8-16 cores / 16-32 threads
-- **RAM:** 32GB (16GB minimum for lite mode only)
-- **Storage:** 200GB NVMe SSD (100GB minimum)
+- **RAM:** 32GB (16GB minimum for development only)
+- **Storage:** 400GB NVMe SSD as an initial development allocation; add local PVC and model-library capacity using [Storage Capacity](#storage-capacity).
 - **GPU:** Optional - Single GPU with 16-24GB VRAM
   - NVIDIA RTX 4090 (24GB)
   - NVIDIA RTX 4080 (16GB)
@@ -326,7 +293,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Hardware Specifications:**
 - **CPU:** 32 cores / 64 threads
 - **RAM:** 128-256GB system RAM
-- **Storage:** 1-2TB NVMe SSD
+- **Storage:** 1.2–2TB NVMe SSD as a planning range; size the model library, local PVCs, and replication reserves using [Capacity Planning](#capacity-planning).
 - **GPU:** 1-4 GPUs with 40GB+ VRAM each
   - 1-4x NVIDIA B200 (192GB HBM3e)
   - 1-4x NVIDIA H200 (141GB HBM3e)
@@ -353,7 +320,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 **Head Node (Control Plane):**
 - **CPU:** 16 cores / 32 threads
 - **RAM:** 64GB
-- **Storage:** 500GB NVMe SSD
+- **Storage:** 500GB NVMe SSD as an initial control-plane allocation; verify local PVC and staging requirements separately.
 - **GPU:** Same class as worker nodes (homogeneous cluster recommended)
 - **Role:** Ray head, API gateway, scheduling, monitoring (head performs minimal extra work; Ray backend load is distributed across nodes)
 
@@ -364,7 +331,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 - **GPU:** 4-8 GPUs per node (same class as head node)
 - **Network:** 40-100 Gbps (InfiniBand for HPC workloads)
 
-> Note: For Enterprise Edition production clusters, avoid non-homogeneous hardware (e.g., GPU-less head nodes). Each node participates in data plane duties (Traefik gateway, HTTP proxying, etc.), so matching GPU capabilities simplifies scheduling and maximizes throughput.
+> Note: For production clusters, avoid non-homogeneous hardware (e.g., GPU-less head nodes). Each node participates in data plane duties (ingress gateway, HTTP proxying, etc.), so matching GPU capabilities simplifies scheduling and maximizes throughput.
 
 **Shared Storage:**
 - High-performance NAS or distributed filesystem (Lustre, CephFS)
@@ -388,14 +355,15 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 | Tier | Instance Type | vCPU | RAM | GPU | Storage |
 |------|--------------|------|-----|-----|---------|
-| **Tier 1: CPU-only** | `m6i.2xlarge` | 8 | 32GB | None | 200GB gp3 |
-| **Tier 1: With GPU** | `g5.xlarge` | 4 | 16GB | 1x A10G (24GB) | 200GB gp3 |
-| **Tier 1: Alternative** | `g5.2xlarge` | 8 | 32GB | 1x A10G (24GB) | 200GB gp3 |
+| **Tier 1: CPU-only** | `m6i.2xlarge` | 8 | 32GB | None | 400GB gp3 |
+| **Tier 1: With GPU** | `g5.xlarge` | 4 | 16GB | 1x A10G (24GB) | 400GB gp3 |
+| **Tier 1: Alternative** | `g5.2xlarge` | 8 | 32GB | 1x A10G (24GB) | 400GB gp3 |
 | **Tier 2: Multi-GPU** | `g5.12xlarge` | 48 | 192GB | 4x A10G (96GB) | 2TB gp3 |
 | **Tier 2: Alternative** | `p4d.24xlarge` | 96 | 1152GB | 8x A100 (320GB) | 2TB gp3 |
 | **Tier 3: All Nodes** | `p4d.24xlarge` | 96 | 1152GB | 8x A100 (320GB) | 2TB gp3 |
 
 **Notes:**
+- Tier 1 disk figures are planning allocations. Verify peak image, model, PVC, and replica capacity against [Storage Capacity](#storage-capacity).
 - Use `gp3` SSD volumes (not `gp2`) for better performance/cost
 - For Tier 3 shared storage: Amazon FSx for Lustre or EFS (with Provisioned Throughput)
 - Use Placement Groups for low-latency multi-node clusters (Tier 3)
@@ -406,14 +374,15 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 | Tier | Machine Type | vCPU | RAM | GPU | Storage |
 |------|-------------|------|-----|-----|---------|
-| **Tier 1: CPU-only** | `n2-standard-8` | 8 | 32GB | None | 200GB SSD |
-| **Tier 1: With GPU** | `n1-standard-8` + `1x T4` | 8 | 30GB | 1x T4 (16GB) | 200GB SSD |
-| **Tier 1: Alternative** | `g2-standard-8` + `1x L4` | 8 | 32GB | 1x L4 (24GB) | 200GB SSD |
+| **Tier 1: CPU-only** | `n2-standard-8` | 8 | 32GB | None | 400GB SSD |
+| **Tier 1: With GPU** | `n1-standard-8` + `1x T4` | 8 | 30GB | 1x T4 (16GB) | 400GB SSD |
+| **Tier 1: Alternative** | `g2-standard-8` + `1x L4` | 8 | 32GB | 1x L4 (24GB) | 400GB SSD |
 | **Tier 2: Multi-GPU** | `a2-highgpu-4g` | 48 | 340GB | 4x A100 (160GB) | 2TB SSD |
 | **Tier 2: Alternative** | `g2-standard-48` + `4x L4` | 48 | 192GB | 4x L4 (96GB) | 2TB SSD |
 | **Tier 3: All Nodes** | `a2-highgpu-8g` | 96 | 680GB | 8x A100 (320GB) | 2TB SSD |
 
 **Notes:**
+- Tier 1 disk figures are planning allocations. Verify peak image, model, PVC, and replica capacity against [Storage Capacity](#storage-capacity).
 - Use `pd-ssd` or `pd-balanced` persistent disks (not `pd-standard`)
 - For Tier 3 shared storage: Filestore High Scale tier (up to 10 GB/s)
 - Use Compact Placement for low-latency multi-node clusters (Tier 3)
@@ -424,9 +393,9 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 | Tier | VM Size | vCPU | RAM | GPU | Storage |
 |------|---------|------|-----|-----|---------|
-| **Tier 1: CPU-only** | `Standard_D8s_v5` | 8 | 32GB | None | 200GB Premium SSD |
-| **Tier 1: With GPU** | `Standard_NC4as_T4_v3` | 4 | 28GB | 1x T4 (16GB) | 200GB Premium SSD |
-| **Tier 1: Alternative** | `Standard_NC6s_v3` | 6 | 112GB | 1x V100 (16GB) | 200GB Premium SSD |
+| **Tier 1: CPU-only** | `Standard_D8s_v5` | 8 | 32GB | None | 400GB Premium SSD |
+| **Tier 1: With GPU** | `Standard_NC4as_T4_v3` | 4 | 28GB | 1x T4 (16GB) | 400GB Premium SSD |
+| **Tier 1: Alternative** | `Standard_NC6s_v3` | 6 | 112GB | 1x V100 (16GB) | 400GB Premium SSD |
 | **Tier 2: H100 (recommended)** | `Standard_NC40ads_H100_v5` | 40 | 320GB | 1x H100 (80GB) | 2TB Premium SSD |
 | **Tier 2: H100 Multi-GPU** | `Standard_NC80adis_H100_v5` | 80 | 640GB | 2x H100 (160GB) | 2TB Premium SSD |
 | **Tier 2: A100 Multi-GPU** | `Standard_NC96ads_A100_v4` | 96 | 880GB | 4x A100 (320GB) | 2TB Premium SSD |
@@ -435,6 +404,7 @@ The table below provides real-world GPU memory requirement estimates for represe
 | **Tier 3: A100 Alternative** | `Standard_ND96asr_v4` | 96 | 900GB | 8x A100 (320GB) | 2TB Premium SSD |
 
 **Notes:**
+- Tier 1 disk figures are planning allocations. Verify peak image, model, PVC, and replica capacity against [Storage Capacity](#storage-capacity).
 - Use Premium SSD (not Standard HDD or Standard SSD)
 - For Tier 3 shared storage: Azure NetApp Files Premium or Ultra tier
 - Use Proximity Placement Groups for low-latency multi-node clusters (Tier 3)
@@ -472,74 +442,52 @@ The table below provides real-world GPU memory requirement estimates for represe
 
 ### Network Ports
 
-#### Linux/macOS Enterprise Edition
+#### Linux/macOS
 - 443/tcp: HTTPS primary access
 - 51100-51199/tcp: Deployment ports for model instances (will also be used for 'App Garden' in the future)
 
-**Outbound (online installs):** during an online install, the install host pulls container images over HTTPS (port 443) from several registries and their backing content-delivery hosts. Allow-listing only the registry front-ends is not sufficient — image manifests, auth tokens, and layer blobs are served from separate hosts:
+**Outbound (online installs):** the online installer pulls all platform container images from Keygen over HTTPS (port 443). Allow outbound DNS and HTTPS access to:
 
-- **Docker Hub:** `registry-1.docker.io`, `auth.docker.io`, `production.cloudflare.docker.com`, and the layer CDN (`*.cloudfront.net`)
-- **Quay:** `quay.io` and `cdn.quay.io` (and `cdn0N.quay.io`)
-- **GHCR:** `ghcr.io` and `pkg-containers.githubusercontent.com`
+- your OS package repositories,
+- `raw.pkg.keygen.sh` (installer and fallback artifacts),
+- `oci.pkg.keygen.sh` (platform images).
 
-Enterprise firewall policies that block outbound HTTPS to any of these hosts will fail the install. Verify the exact set against your install's image list, as backing CDN hosts can change. Offline installs have no outbound requirement.
+The online install path does not pull from Docker Hub, Quay, or GHCR — the installer rewrites every image reference to Keygen and fails if any non-Keygen registry reference remains, so you do not need to allow-list those registries or provide credentials for them. Enterprise firewall policies that block outbound HTTPS to the Keygen hosts will fail the install. Offline installs have no outbound requirement. See [Online Installation](online_install.md) for details.
 
-#### Windows Edition
-- 443/tcp: HTTPS primary access (via WSL)
-- 61100-61299/tcp: Reserved ports for Windows installation
+### Required Kernel Modules (Linux)
 
-### Required Kernel Modules (Enterprise Edition Linux Only)
-
-Required modules for Swarm container networking:
+Required modules for container networking:
 - overlay
 - br_netfilter
 
-### System Network Parameters (Enterprise Edition Linux Only)
+### System Network Parameters (Linux)
 
 These will be set by the installer.
 
 ```bash
-# Required sysctl settings for Swarm networking
+# Required sysctl settings for container networking
 net.bridge.bridge-nf-call-iptables  = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward                 = 1
 ```
 
-### Community Edition Networking
-- Uses standard Docker bridge networks
-- No special kernel modules or sysctl settings required
-- Simplified single-node networking configuration
-
 ---
 
 ## Directory Structure
 
-### Enterprise Edition
-
-Note: This is created by the installer and present in cloud marketplace images.
+The installer creates the Kamiwaza directories on the host (and they are present in cloud marketplace images):
 
 ```
 /etc/kamiwaza/
 ├── config/
-├── ssl/      # Cluster certificates
-└── swarm/    # Swarm tokens
+└── ssl/      # Cluster certificates
 
 /opt/kamiwaza/
-├── containers/  # Docker root (configurable)
+├── cluster/    # Cluster values and overrides
 ├── logs/
-├── nvm/        # Node Version Manager
+├── prereqs/    # Installer prerequisites (offline installs)
+├── scripts/    # Installer and management scripts
 └── runtime/    # Runtime files
-```
-
-### Community Edition
-
-We recommend `${HOME}/kamiwaza` or something similar for `KAMIWAZA_ROOT`.
-
-```
-$KAMIWAZA_ROOT/
-├── env.sh
-├── runtime/
-└── logs/
 ```
 
 ---
@@ -558,7 +506,7 @@ $KAMIWAZA_ROOT/
 **Notes:**
 - No tensor parallelism support (single chip only)
 - Not for production use; like-for-like API, UI, capabilities.
-- Community edition only; single node only (Enterprise edition not available on macOS)
+- Single-node only on macOS
 
 ### NVIDIA DGX Spark
 
@@ -618,27 +566,18 @@ AMD's Strix Halo platform provides powerful AI inference in a compact form facto
 | **CephFS** | On-premises clusters | 5-20 GB/s | Medium (requires Ceph cluster) |
 | **Object Storage + Cache** | Cost-optimized | Varies | Low storage, high egress |
 
-### Storage Configuration by Edition
+### Storage Configuration
 
-#### Enterprise Edition Requirements
-
-- Primary mountpoint for persistent storage (/opt/kamiwaza)
+- Primary mountpoint for persistent storage (`/opt/kamiwaza`)
 - Scratch/temporary storage (auto-configured)
 - For Azure: Additional managed disk for persistence
 - Shared storage for multi-node clusters (see Shared Storage Options above)
-
-#### Community Edition
-
-- Local filesystem storage
-- Configurable paths via environment variables
-- Single-node storage only (no shared storage required)
 
 ---
 
 ## Version Compatibility
 
-- Docker Engine: 24.0 or later with Compose 2.23+
-- NVIDIA Driver: 450.80.02 or later
+- NVIDIA driver: 550-server or later for CUDA 12 images; 580.65.06 or later for CUDA 13 images and DGX Spark
 - ETCD: 3.5 or later
 
 ---
@@ -647,9 +586,7 @@ AMD's Strix Halo platform provides powerful AI inference in a compact form facto
 
 - **System Impact**: Network and kernel configurations can affect other services
 - **Security**: Certificate generation and management for cluster communications
-- **GPU Support**: Available on Linux (NVIDIA GPUs) and Windows (NVIDIA RTX, Intel Arc via WSL)
-- **Storage**: Enterprise Edition requires specific storage configuration
-- **Network**: Enterprise Edition requires specific network ports for cluster communication
-- **Docker**: Custom Docker root configuration may affect other containers
-- **Windows Edition**: Requires WSL 2 and will create a dedicated Ubuntu 24.04 instance
-- **Administrator Access**: Windows installation requires administrator privileges for initial setup
+- **GPU Support**: Available on Linux — NVIDIA GPUs (CUDA) and AMD GPUs (ROCm)
+- **Storage**: Persistent and scratch storage are configured on the install host (see Storage Configuration)
+- **Network**: Requires the network ports listed above for platform and model access
+- **License**: A Kamiwaza Prod license key is required for all installs

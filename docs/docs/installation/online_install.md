@@ -1,0 +1,196 @@
+# Online Installation
+
+The online installer is the recommended way to install a published Kamiwaza
+release on an internet-connected host. It is a single self-contained script
+that bundles the deploy payload, playbooks, and Helm chart dependencies. Host
+tools are installed from your OS package manager, and the Kamiwaza platform
+images are pulled from Keygen.
+
+**Supported hosts:**
+
+- Ubuntu 22.04
+- Ubuntu 24.04
+- RHEL-compatible 9.x
+
+macOS production installation is not currently supported (ENG-10839). macOS
+developer installs remain available through the source-based Lima workflow.
+
+## Prerequisites
+
+This page describes the storage contract after bundled storage removal on
+`develop`. Use the versioned documentation for older published releases. The
+release owner must confirm that the selected artifact implements this contract;
+the documentation version alone does not establish that an artifact is available.
+
+- A **Kamiwaza Prod license key**. The installer script is publicly downloadable, but a license key is required to pull the platform images. Contact your Kamiwaza representative if you do not have one.
+- A host that meets the [System Requirements](system_requirements.md).
+- **Free disk space, on the right filesystem**. Confirm the space is free on the **volume that actually backs `/var`** — on hosts with LVM or separate partitions (most cloud RHEL and Ubuntu images ship this way), a large total disk does **not** help if `/var` is a small separate volume. A single-node host should have:
+  - **`/var/lib` ≥ 350 GB** for runtime images, caches, and operational headroom. The installer does not provision a CSI driver or StorageClass. Add the rendered PVC requests plus provider replication and free-space reserves when the storage provider uses the same disk (for example, local-path or Longhorn); size external storage separately.
+  - **`/` ≥ 30 GB** — installed tooling under `/opt` and `/usr/local`, plus general headroom.
+
+  Confirm which filesystem actually backs the path before you begin:
+
+  ```bash
+  df -hT /var/lib
+  findmnt -T /var/lib
+  ```
+
+  **Most cloud images need their volumes grown first** — they commonly ship `/` and `/var` small (often 2 GB / 10 GB) with the bulk of the disk unpartitioned. Check `lsblk` for your device, partition index, and volume-group names before running the commands below. The example uses the **RHEL-compatible** cloud-image layout (`rootvg`/`rootlv`/`varlv`):
+
+  ```bash
+  sudo growpart /dev/nvme0n1 4
+  sudo pvresize /dev/nvme0n1p4
+  sudo lvextend -r -L 100G /dev/rootvg/rootlv
+  sudo lvextend -r -L 400G /dev/rootvg/varlv
+  ```
+
+  Ubuntu 22.04/24.04 cloud images use the `ubuntu-vg`/`ubuntu-lv` layout and typically ship a single root volume with **no separate `/var`**, so grow the root LV instead (and adjust the `growpart` partition index for your disk).
+
+  If `/var` is too small the install can fail during image import with `no space left on device`, or later with `FailedScheduling: 1 node(s) had untolerated taint(s)` after kubelet applies disk pressure.
+
+  Grow the backing logical volume or partition (or mount adequate storage at `/var`) **before** you begin.
+
+- Outbound DNS and HTTPS access to:
+  - your OS package repositories,
+  - `raw.pkg.keygen.sh` (installer and fallback artifacts),
+  - `oci.pkg.keygen.sh` (platform images).
+- Inbound TCP 443 on the host (or an SSH tunnel to host port 443 — see [Accessing the UI](#accessing-the-ui)).
+- A DNS name to serve Kamiwaza from, or a matching entry in the host's `/etc/hosts` file.
+
+> The customer install path requires **only** a Kamiwaza Prod license key. Do not provide GHCR, Quay, Docker Hub, or Chainguard credentials for an online install.
+
+## Step 1: Download and Verify the Installer
+
+Download the installer and its checksum, verify the checksum, then make the installer executable:
+
+Choose and record an explicit version that has been published to the online
+installer channel. Do not assume that the documentation version is already
+available as an installer artifact, and do not use an unrecorded `latest` alias
+for a production install. The release owner must supply the version explicitly:
+
+```bash
+: "${KAMIWAZA_VERSION:?set KAMIWAZA_VERSION to a published installer version}"
+case "$KAMIWAZA_VERSION" in
+  *[!0-9A-Za-z._-]*|'') echo "invalid version" >&2; exit 1 ;;
+esac
+base_url="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-online-installer/@kamiwaza-online-installer/${KAMIWAZA_VERSION}"
+
+for file in kamiwaza-online-install.sh kamiwaza-online-install.sh.sha256; do
+  curl -fsSLO "${base_url}/${file}"
+done
+
+sha256sum -c kamiwaza-online-install.sh.sha256
+
+chmod +x kamiwaza-online-install.sh
+```
+
+Keep the version, resolved download URL, checksum file, and verified SHA-256 in
+the installation record. A checksum fetched from a different version does not
+verify the selected installer.
+
+## Step 2: Run the Installer
+
+> **Upgrading an existing production database?** Stop and obtain a migration
+> plan qualified for your exact source and target builds, including backup and
+> recovery evidence. The [historical 1.0 → 1.2 database runbook](../runbooks/core-database-upgrade-1.2.md)
+> applies only to those older artifacts, not current `develop`. Packaged Ceph
+> cannot be migrated by rerunning this installer; see
+> [Storage prerequisites](storage-prerequisites.md#object-storage-and-previous-installations).
+
+On a fresh host, first run infrastructure bootstrap with the same installer and
+arguments shown below, adding `--phase1-only`. Then have the platform
+administrator complete [Storage prerequisites](storage-prerequisites.md), including
+the PVC write test. Run the command again without `--phase1-only` to reconcile
+bootstrap and install the product. A host with verified storage can run it directly.
+
+Supply your license key, domain, and an initial admin password:
+
+```bash
+KEYGEN_LICENSE_KEY="<kamiwaza-prod-license-key>" \
+./kamiwaza-online-install.sh \
+  --domain <domain> \
+  --admin-password "<initial-admin-password>" \
+  -y 2>&1 | tee kamiwaza-online-install.log
+```
+
+The installer runs k0s directly on the Linux host and uses Podman for supporting
+container workflows. It re-executes itself through `sudo -E` when it needs
+elevated privileges. Do not pass a Kubernetes runtime argument.
+
+Before extracting its payload or installing any prerequisites, the installer validates that your license can access the required Keygen images and exits immediately if it cannot. On a supported Linux host without `curl`, it first installs only `curl` and the CA certificate package needed for that check; the remaining prerequisites are not installed until the license check succeeds.
+
+> Passing the license key through the `KEYGEN_LICENSE_KEY` environment variable keeps it out of the installer's command-line arguments, where it could otherwise be visible in `ps` output or logs. You can also use `KAMIWAZA_KEYGEN_LICENSE_KEY` or the `--keygen-license-key` option. If you also want to keep the key out of your interactive shell history, set the variable from somewhere other than the command line — for example a `.env` file you source, or your shell profile — following your environment's own conventions for handling secrets.
+
+## Inference images
+
+Supported k0s installs pull inference images from the authenticated registry when a model is deployed; no raw-image preload or Kubernetes runtime argument is required. Select a model engine compatible with the host hardware. If an NVIDIA host uses Secure Boot, also see [NVIDIA Secure Boot](nvidia-secure-boot.md).
+
+## Common Options
+
+```bash
+./kamiwaza-online-install.sh [installer options] [install args]
+```
+
+Frequently used **install arguments**:
+
+- `--domain <value>`: Public base domain for Kamiwaza.
+- `--admin-password <value>`: Initial admin password.
+- `-y`, `--yes`: Non-interactive install.
+
+Frequently used **installer options**:
+
+- `--keygen-license-key <key>`: Keygen license key used for image pulls. Prefer the `KEYGEN_LICENSE_KEY` environment variable so the key does not appear in the installer's command-line arguments.
+- `--keep-extract`: Preserve the extracted payload after the install.
+- `--phase1-only`: Stop after host prerequisites and cluster bootstrap.
+
+## Logs
+
+By default the installer writes to `/var/log/kamiwaza_install_online.log`.
+
+Override the log path with `KAMIWAZA_ONLINE_INSTALL_LOG`:
+
+```bash
+KAMIWAZA_ONLINE_INSTALL_LOG=/tmp/kamiwaza-online.log \
+KEYGEN_LICENSE_KEY="<key>" \
+./kamiwaza-online-install.sh --domain <domain> --admin-password "<password>" -y
+```
+
+## Verifying the Installation
+
+The installer writes kubeconfig access for the invoking user. Confirm the cluster is up:
+
+```bash
+kubectl get pods -A
+```
+
+All pods should be `Running`, `Ready`, or `Completed`. To capture host and cluster state:
+
+```bash
+kubectl get nodes -o wide
+kubectl get pods -A
+```
+
+Then confirm the API responds:
+
+```bash
+curl -k "https://<domain>/api/security/public/config"
+```
+
+## Accessing the UI
+
+Open Kamiwaza in a browser at:
+
+```text
+https://<domain>/login
+```
+
+Log in with `admin` and the password you passed to `--admin-password`.
+
+### Certificates
+
+By default the installer serves Kamiwaza over TLS with a self-signed certificate, so your browser will show a security warning the first time you open the site. This is expected for a fresh install — continue past the warning to reach the login page. For production, configure a certificate that your clients already trust so the connection validates without a warning.
+
+## Next Steps
+
+- [Quickstart](../quickstart.md) — confirm the service is running and take your first steps.
+- [Uninstalling Kamiwaza](uninstall.md).

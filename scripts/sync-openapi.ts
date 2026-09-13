@@ -96,18 +96,32 @@ function getCurrentCommit(repoPath: string): string {
  * before persisting it to tracked metadata. Git lets users embed access
  * tokens directly in `remote.origin.url`, and a previous fix that swapped a
  * leaky absolute path for the remote URL would otherwise re-introduce a
- * different leak. SSH-style URLs (`git@github.com:org/repo.git`) don't
- * contain secrets and survive untouched.
+ * different leak. Normalize GitHub SSH remotes to portable HTTPS metadata so
+ * the generated artifact does not vary with the checkout transport.
  */
-function sanitizeRemoteUrl(raw: string): string {
+function canonicalGitHubRemote(repositoryPath: string): string {
+	const repository = repositoryPath
+		.replace(/^\/+|\/+$/g, "")
+		.replace(/\.git$/i, "");
+	return `https://github.com/${repository}`;
+}
+
+export function sanitizeRemoteUrl(raw: string): string {
 	if (!raw) {
 		return raw;
+	}
+	const githubSshRemote = raw.trim().match(/^git@github\.com:(.+)$/);
+	if (githubSshRemote) {
+		return canonicalGitHubRemote(githubSshRemote[1]);
 	}
 	if (/^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(raw)) {
 		try {
 			const parsed = new URL(raw);
 			parsed.username = "";
 			parsed.password = "";
+			if (parsed.hostname.toLowerCase() === "github.com") {
+				return canonicalGitHubRemote(parsed.pathname);
+			}
 			return parsed.toString();
 		} catch {
 			// Fall through and return the raw value if URL parsing failed —
@@ -202,36 +216,43 @@ print(json.dumps(app.openapi()))
 `.trim();
 
 	try {
-		return execFileSync("./scripts/kw_py", ["-c", pythonScript], {
-			cwd: repoPath,
-			encoding: "utf-8",
-			stdio: ["pipe", "pipe", "pipe"],
-			env: {
-				...process.env,
-				KAMIWAZA_ENV: process.env.KAMIWAZA_ENV || "dev",
-				KAMIWAZA_LITE: process.env.KAMIWAZA_LITE || "true",
-				KAMIWAZA_ROOT: process.env.KAMIWAZA_ROOT || tempRoot,
-				// create_app() -> init_auth() requires the RBAC policy file; its
-				// default derives from KAMIWAZA_ROOT (<root>/runtime/auth_gateway_policy.yaml),
-				// which the ephemeral tempRoot does not have. Point at the policy
-				// shipped in the kamiwaza repo so from-source generation is
-				// self-contained (no running platform, no manual staging).
-				AUTH_GATEWAY_POLICY_FILE:
-					process.env.AUTH_GATEWAY_POLICY_FILE ||
-					path.join(repoPath, "config", "auth_gateway_policy.yaml"),
-				DATABASE_URL:
-					process.env.DATABASE_URL || `sqlite:///${path.join(tempDir, "main.db")}`,
-				CLUSTER_DATABASE_URL:
-					process.env.CLUSTER_DATABASE_URL ||
-					`sqlite:///${path.join(tempDir, "cluster.db")}`,
-				AUTH_DATABASE_URL:
-					process.env.AUTH_DATABASE_URL || `sqlite:///${path.join(tempDir, "auth.db")}`,
-				// Ephemeral per-invocation secret so no literal is committed.
-				AUTH_FORWARD_HEADER_SECRET:
-					process.env.AUTH_FORWARD_HEADER_SECRET ||
-					crypto.randomBytes(32).toString("hex"),
+		return execFileSync(
+			"uv",
+			["--project", repoPath, "run", "python", "-c", pythonScript],
+			{
+				cwd: repoPath,
+				encoding: "utf-8",
+				stdio: ["pipe", "pipe", "pipe"],
+				maxBuffer: 16 * 1024 * 1024,
+				env: {
+					...process.env,
+					KAMIWAZA_ENV: process.env.KAMIWAZA_ENV || "dev",
+					KAMIWAZA_LITE: process.env.KAMIWAZA_LITE || "true",
+					KAMIWAZA_ROOT: process.env.KAMIWAZA_ROOT || tempRoot,
+					// create_app() -> init_auth() requires the RBAC policy file; its
+					// default derives from KAMIWAZA_ROOT (<root>/runtime/auth_gateway_policy.yaml),
+					// which the ephemeral tempRoot does not have. Point at the policy
+					// shipped in the kamiwaza repo so from-source generation is
+					// self-contained (no running platform, no manual staging).
+					AUTH_GATEWAY_POLICY_FILE:
+						process.env.AUTH_GATEWAY_POLICY_FILE ||
+						path.join(repoPath, "config", "auth_gateway_policy.yaml"),
+					DATABASE_URL:
+						process.env.DATABASE_URL ||
+						`sqlite:///${path.join(tempDir, "main.db")}`,
+					CLUSTER_DATABASE_URL:
+						process.env.CLUSTER_DATABASE_URL ||
+						`sqlite:///${path.join(tempDir, "cluster.db")}`,
+					AUTH_DATABASE_URL:
+						process.env.AUTH_DATABASE_URL ||
+						`sqlite:///${path.join(tempDir, "auth.db")}`,
+					// Ephemeral per-invocation secret so no literal is committed.
+					AUTH_FORWARD_HEADER_SECRET:
+						process.env.AUTH_FORWARD_HEADER_SECRET ||
+						crypto.randomBytes(32).toString("hex"),
+				},
 			},
-		});
+		);
 	} catch (error: any) {
 		const stderr =
 			typeof error?.stderr === "string" && error.stderr.trim()
@@ -414,7 +435,9 @@ async function main() {
 	console.log("  2. Review changes at /sdk/api-reference");
 }
 
-main().catch((err) => {
-	console.error("\nError:", err.message);
-	process.exit(1);
-});
+if (require.main === module) {
+	main().catch((err) => {
+		console.error("\nError:", err.message);
+		process.exit(1);
+	});
+}

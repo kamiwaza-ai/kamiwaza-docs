@@ -5,6 +5,8 @@ hide_table_of_contents: false
 image: /img/research/Kamiwaza_AIR.png
 ---
 
+import useBaseUrl from '@docusaurus/useBaseUrl';
+
 # Kamiwaza Agentic Intelligence Research (AIR)
 
 <div className="research-hero">
@@ -26,7 +28,7 @@ Our work is grounded in real-world applications and informed by our experience b
 
 <div className="research-pillars">
 
-<a href="/research/agentic-merit-index" className="resource-card-link">
+<a href={useBaseUrl('/research/agentic-merit-index')} className="resource-card-link">
 <div>
 
 ### 🏆 Agentic Merit Index
@@ -38,7 +40,7 @@ The definitive leaderboard for enterprise agentic AI performance. Live rankings 
 </div>
 </a>
 
-<a href="/research/executive-insights" className="resource-card-link">
+<a href={useBaseUrl('/research/executive-insights')} className="resource-card-link">
 <div>
 
 ### 💼 Executive Insights
@@ -50,7 +52,7 @@ Business-friendly whitepapers distilling our technical research into actionable 
 </div>
 </a>
 
-<a href="/research/papers" className="resource-card-link">
+<a href={useBaseUrl('/research/papers')} className="resource-card-link">
 <div>
 
 ### 📄 Papers
@@ -62,7 +64,7 @@ Scientific publications from Kamiwaza AIR team, covering topics in agentic AI, s
 </div>
 </a>
 
-<a href="/research/blogs" className="resource-card-link">
+<a href={useBaseUrl('/research/blogs')} className="resource-card-link">
 <div>
 
 ### 📝 Insights
@@ -73,7 +75,7 @@ Shorter, more frequent articles containing insights from our on-going research i
 </div>
 </a>
 
-<a href="/research/datasets" className="resource-card-link">
+<a href={useBaseUrl('/research/datasets')} className="resource-card-link">
 <div>
 
 ### 📊 Datasets

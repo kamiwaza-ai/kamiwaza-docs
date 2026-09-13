@@ -1,16 +1,25 @@
-name: Scripts Tests
+name: Docs Tests and Build
 
-# Runs the node:test suite under scripts/*.test.ts on every PR. The PDF
-# pipeline link-handling logic (pdf-link-utils.ts) is the riskiest part of
-# the docs tooling; without this workflow its 50+ unit tests would only run
-# when a contributor remembered to invoke `npm test` locally and regressions
-# would silently make it to develop.
+# Runs the node:test suite and production docs build on relevant PRs. The fast
+# tests cover docs tooling and sidebar structure; the build verifies that every
+# sidebar document id resolves to an actual document.
 
 on:
   pull_request:
     paths:
       - "scripts/**"
       - "docs/scripts/**"
+      - "docs/sidebars.ts"
+      - "docs/docs/**"
+      - "docs/extensions/**"
+      - "docs/sdk/**"
+      - "docs/api/**"
+      - "docs/research/**"
+      - "docs/versioned_docs/**"
+      - "docs/versioned_sidebars/**"
+      - "docs/docusaurus.config.ts"
+      - "docs/package.json"
+      - "docs/package-lock.json"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/scripts-test.yml"
@@ -25,13 +34,24 @@ concurrency:
 
 jobs:
   unit-tests:
-    name: scripts/*.test.ts (node --test)
+    name: Docs tests and production build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Checkout SDK documentation source
+        uses: actions/checkout@v4
+        with:
+          repository: kamiwaza-ai/kamiwaza-sdk
+          # Reviewed source for the generated SDK surface. Bump this SHA when
+          # synchronizing SDK documentation so CI remains reproducible.
+          ref: 06398a7905eee36861436ba8d3a6847f84de4eb1
+          path: kamiwaza-sdk
+          persist-credentials: false
+          fetch-depth: 1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -41,10 +61,36 @@ jobs:
           # before they hit downstream consumers still on Node 22.
           node-version: "22"
           cache: "npm"
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            docs/package-lock.json
 
       - name: Install root dependencies
         run: npm ci --ignore-scripts
 
+      - name: Install docs dependencies
+        run: npm ci --ignore-scripts --prefix docs
+
+      - name: Materialize generated SDK documentation
+        run: npm run sync-sdk
+        env:
+          KW_SDK_DOCS: ${{ github.workspace }}/kamiwaza-sdk
+
+      - name: Verify generated SDK documentation
+        run: |
+          generated_page=$(find docs/sdk/current/services -type f \
+            \( -name '*.md' -o -name '*.mdx' \) -print -quit)
+          test -n "${generated_page}"
+
+          empty_page=$(find docs/sdk/current/services -type f \
+            \( -name '*.md' -o -name '*.mdx' \) -size 0c -print -quit)
+          if [[ -n "${empty_page}" ]]; then
+            echo "Generated SDK page is empty: ${empty_page}" >&2
+            exit 1
+          fi
+
       - name: Run scripts unit tests
         run: npm test
+
+      - name: Build production documentation
+        run: npm run build:docs

@@ -40,7 +40,7 @@ Set the equivalent deployment values, ConfigMap entries, or environment variable
 
 ## Ingress/Header Expectations
 
-The ingress (e.g., Traefik) must:
+The configured ingress provider must:
 
 - Request/require client certificates on auth routes.
 - Forward the sanitized client cert PEM in X-Forwarded-Tls-Client-Cert (required).

@@ -12,7 +12,7 @@ graph TD
     Gardens[App Garden and Tool Shed]
     Workrooms[Workrooms]
     Logs[Logger and Audit Services]
-    Ingress[Traefik or Istio]
+    Ingress[Istio or Greymatter]
     IdP[Identity Provider]
     DataStores[Postgres, etcd, DataHub, Object Storage]
     Compute[Kubernetes and Ray]
@@ -34,4 +34,6 @@ graph TD
     Logs --> DataStores
 ```
 
-**Ingress Note:** The platform ingress uses Traefik for default `Kind` deployments and Istio (1.28+) for `k0s` runtime deployments (introduced via Kamiwaza Mesh M1).
+**Ingress note:** Istio is the default platform ingress. Greymatter is the
+supported alternative on EKS, AKS, and OpenShift/ROSA deployments that already
+run Greymatter Core outside the Kamiwaza chart.

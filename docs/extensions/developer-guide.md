@@ -345,10 +345,10 @@ What you do is wire up the provided libraries to read user identity from platfor
 The platform flow:
 
 ```
-Browser → Traefik → ForwardAuth (validates session) → Your Extension
-                                                       ↓
-                                         Request includes identity headers
-                                         set by the platform auth service
+Browser → supported ingress → platform authorization → Your Extension
+                                                          ↓
+                                            Request includes identity headers
+                                            set by the platform auth service
 ```
 
 Your extension receives identity headers on every authenticated request. The exact headers are part of the **platform runtime contract** (see below).

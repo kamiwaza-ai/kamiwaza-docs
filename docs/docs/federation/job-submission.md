@@ -12,6 +12,38 @@ Submit and manage Ray jobs on local or remote clusters. Jobs run Python entrypoi
 - Admin authentication (JWT token with admin role)
 - Ray cluster running on the target cluster
 
+Federated delegated jobs additionally require receiver-side allowlisting,
+`cluster_jobs:__all__#executor`, the delegated-job deployment profile, and
+exact receiver-local resource grants.
+
+## Tenant-mode ReBAC
+
+On an authenticated tenant-mode install, ordinary cluster jobs work with
+ReBAC enabled and the community fallback disabled. The request is authorized
+at the Kamiwaza API, then the Core API submits the job to the in-cluster Ray
+Dashboard Jobs API on port `8265`. The Core API is served by the Ray head
+workload, so the chart's Ray-head `AuthorizationPolicy` must allow the
+`core-ray` service account to use that port. The public ingress rule alone is
+not sufficient for this east-west request, and the Ray Dashboard should not
+be exposed as a public job-submission endpoint.
+
+For a fresh strict-ReBAC install, verify the complete lifecycle before making
+the environment available to users:
+
+```bash
+# Run from the stack root with the deploy checkout present.
+KAMIWAZA_HOST=<tenant-host> \
+KUBECONFIG=<tenant-kubeconfig> \
+python3 deploy/scripts/kamiwaza-smoke.py recoverable-job
+```
+
+The check submits a small recoverable job, observes its status transition, and
+retrieves the structured result. A
+`502` containing `Ray submit failed (403)` indicates a mesh authorization
+policy problem on the Ray Dashboard hop; inspect the rendered `ray-head`
+policy and confirm the `core-ray` principal and port `8265` rule before
+changing ReBAC fallback settings.
+
 ## Submit a Job (Async)
 
 ```bash
@@ -20,10 +52,75 @@ curl -sk -X POST "https://kamiwaza.test/api/cluster/jobs/submit" \
   -H "Content-Type: application/json" \
   -d '{
     "entrypoint": "python train.py --epochs 10",
-    "runtime_env": {"pip": ["numpy", "pandas"]},
+    "runtime_env": {"env_vars": {"REPORT_FORMAT": "json"}},
     "timeout_seconds": 300
   }'
 ```
+
+`runtime_env` accepts environment variables only. Kamiwaza strips Ray
+execution-environment keys such as `pip`, `working_dir`, `py_modules`, and
+`conda`. Use the approved dependency mechanism below for Python packages.
+
+## Governed delegated access and approved dependencies
+
+A receiver-executed job must name every dataset or model operation it needs.
+The receiver checks the submitting identity against those exact resources
+before dispatch and issues renewable, job-bound authority only for that set.
+
+Python dependencies use exact `name==version` coordinates from the
+receiver-owned package catalog:
+
+```json
+{
+  "entrypoint": "python analysis.py",
+  "timeout_seconds": 900,
+  "delegated_access": {
+    "datasets": [
+      {
+        "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,nps_verbatims,PROD)",
+        "operations": ["discover", "retrieve"]
+      }
+    ],
+    "models": []
+  },
+  "python_packages": ["humanize==4.13.0"]
+}
+```
+
+Packages are not resolved from public PyPI at request time. The operator must
+enable the package contract, approve each exact version and wheel SHA-256, and
+configure one PyPI-compatible repository. The request receives no repository
+URL or credential and cannot add an unapproved package.
+
+For an air-gapped or restricted receiver, point the package installer at an
+operator-owned mirror by mounting a Secret containing a mode-`0600`
+`pip.conf`. Keep the repository URL, CA configuration, and credential out of
+Helm values and job payloads. Restrict the delegated driver NetworkPolicy to
+the repository's exact CIDRs and ports:
+
+```yaml
+core:
+  delegatedJobs:
+    enabled: true
+    pythonPackages:
+      enabled: true
+      catalog:
+        - name: humanize
+          version: 4.13.0
+          sha256:
+            - <exact-64-character-wheel-sha256>
+      repository:
+        existingSecret: private-pypi
+      repositoryCIDRs:
+        - 10.42.0.8/32
+      repositoryPorts:
+        - 8443
+```
+
+Kubernetes NetworkPolicy works with CIDRs, not repository DNS names. Keep the
+address set exact and update it when the mirror moves. A package coordinate
+that is absent from the catalog, has the wrong digest, or cannot be fetched
+fails closed before the entrypoint starts.
 
 Response:
 ```json

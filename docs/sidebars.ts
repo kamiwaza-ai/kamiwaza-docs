@@ -29,13 +29,13 @@ const sidebars: SidebarsConfig = {
 				"installation/installation_process",
 				"installation/system_requirements",
 				"installation/kubernetes-tenant-inference",
-				"installation/macos_tarball",
-				"installation/windows_installation_guide",
-				"installation/redhat_online_install",
-				"installation/redhat_offline_install",
-				"installation/gpu_setup_guide",
+				"installation/storage-prerequisites",
+				"installation/online_install",
+				"installation/offline_install",
+				"installation/offline_install_runbook",
+				"installation/licensing",
 				"installation/nvidia-secure-boot",
-				"installation/two-node-deployment",
+				"installation/uninstall",
 			],
 		},
 		{
@@ -44,7 +44,6 @@ const sidebars: SidebarsConfig = {
 			items: [
 				"configuration",
 				"database-schema-lifecycle",
-				"network_prerequisites",
 				"routing-modes",
 				"workroom-storage-s3",
 			],
@@ -72,10 +71,15 @@ const sidebars: SidebarsConfig = {
 			label: "Federation",
 			items: [
 				"federation/overview",
+				"federation/identity-trust-modes",
 				"federation/setup",
 				"federation/retrieval",
 				"federation/job-submission",
 				"federation/operations",
+				"federation/execution-gates",
+				"federation/gate-packages",
+				"federation/api-reference",
+				"federation/release-notes-1-3",
 			],
 		},
 		{
@@ -164,7 +168,12 @@ const sidebars: SidebarsConfig = {
 		{
 			type: "category",
 			label: "Runbooks",
-			items: ["runbooks/ontology-graph-viewer"],
+			items: [
+				"runbooks/k0s-openebs-local-storage",
+				"runbooks/core-database-upgrade-1.2",
+				"runbooks/spicedb-maintenance-upgrade",
+				"runbooks/ontology-graph-viewer",
+			],
 		},
 		{
 			type: "category",

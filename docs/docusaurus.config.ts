@@ -29,7 +29,10 @@ const config: Config = {
 	favicon: "img/favicon.ico",
 
 	url: "https://docs.kamiwaza.ai",
-	baseUrl: "/",
+	// baseUrl is baked at build time. Default "/" matches the public deployment
+	// at docs.kamiwaza.ai. Set DOCS_BASE_URL (e.g. "/docs/") to build the site
+	// for serving under a path prefix instead.
+	baseUrl: process.env.DOCS_BASE_URL || "/",
 	trailingSlash: false,
 
 	markdown: {
