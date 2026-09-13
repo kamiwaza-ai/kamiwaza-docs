@@ -28,6 +28,7 @@ const sidebars: SidebarsConfig = {
 			items: [
 				"installation/installation_process",
 				"installation/system_requirements",
+				"installation/kubernetes-tenant-inference",
 				"installation/macos_tarball",
 				"installation/windows_installation_guide",
 				"installation/redhat_online_install",
