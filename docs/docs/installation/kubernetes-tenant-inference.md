@@ -53,7 +53,7 @@ Publish a new immutable catalog revision for every change. Never mutate an
 existing ConfigMap name in place:
 
 ```bash
-python3 render-inference-recipe-catalog.py \
+python3 scripts/render-inference-recipe-catalog.py \
   --catalog gpu-recipes.json \
   --namespace "$TENANT_NAMESPACE" \
   --capability gpu > gpu-catalog.yaml
