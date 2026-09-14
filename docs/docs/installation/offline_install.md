@@ -61,7 +61,7 @@ export KEYGEN_TOKEN="<license-key>"
 set -euo pipefail
 
 RELEASE="1.2.1"
-EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
+EXT_BUNDLE="kamiwaza-extensions-bundle-20260903-230705.tar.gz"
 BASE="https://raw.pkg.keygen.sh/kamiwaza/kamiwaza-prod/@bundles/${RELEASE}"
 
 sudo install -d -m 0755 -o "$USER" -g "$USER" /opt/kamiwaza/prereqs
@@ -98,8 +98,6 @@ for file in \
   "${EXT_BUNDLE}.part-002.sha256" \
   "${EXT_BUNDLE}.part-003" \
   "${EXT_BUNDLE}.part-003.sha256" \
-  "${EXT_BUNDLE}.part-004" \
-  "${EXT_BUNDLE}.part-004.sha256" \
   "${EXT_BUNDLE}.parts.json"
 do
   # Always attempt a resume: curl --continue-at - fetches a fresh file or
@@ -121,7 +119,7 @@ done
 
 # Recombine split parts and verify the full-artifact checksums
 cat kamiwaza-helm.00.tar.part-{000..002} > kamiwaza-helm.00.tar
-cat "${EXT_BUNDLE}".part-{000..004} > "${EXT_BUNDLE}"
+cat "${EXT_BUNDLE}".part-{000..003} > "${EXT_BUNDLE}"
 ln -sf kamiwaza-helm.00.tar kamiwaza-helm.tar
 sha256sum -c kamiwaza-helm.sha256
 sha256sum -c "${EXT_BUNDLE}.sha256"
@@ -230,7 +228,7 @@ Stage the extension bundle before installing the platform:
 ```bash
 cd /opt/kamiwaza/prereqs
 
-EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
+EXT_BUNDLE="kamiwaza-extensions-bundle-20260903-230705.tar.gz"
 rm -rf /tmp/kamiwaza-ext-extract
 mkdir -p /tmp/kamiwaza-ext-extract
 tar -xzf "$EXT_BUNDLE" -C /tmp/kamiwaza-ext-extract
@@ -314,7 +312,7 @@ export KAMIWAZA_OFFLINE_INIT_KEYCLOAK_USERS_TAG="${APP_TAG}"
 export KAMIWAZA_OFFLINE_CONTAINERS_IMAGE_TAG="${CONTAINERS_TAG}"
 export KAMIWAZA_OFFLINE_CHAINGUARD_BASE_TAG="${CONTAINERS_TAG}"
 
-export KAMIWAZA_IMAGE_OVERRIDES="postgres=v18.4,keycloak=${CONTAINERS_TAG},etcd=v3.6.10"
+export KAMIWAZA_IMAGE_OVERRIDES="postgres=v18.4-kz.2,keycloak=${CONTAINERS_TAG},etcd=v3.6.14"
 
 sudo -E /opt/kamiwaza/scripts/install-prod.sh \
   --offline \
@@ -334,7 +332,7 @@ Make sure `${DOMAIN}` resolves from the install host, then install the extension
 ```bash
 export DOMAIN="<domain>"
 export ADMIN_PASSWORD="<admin-password>"
-export EXT_BUNDLE="kamiwaza-extensions-bundle-20260821-023257.tar.gz"
+export EXT_BUNDLE="kamiwaza-extensions-bundle-20260903-230705.tar.gz"
 
 # Add a hosts-file entry if the domain does not already resolve locally
 if ! curl -ksS "https://${DOMAIN}/api/health" >/dev/null; then
