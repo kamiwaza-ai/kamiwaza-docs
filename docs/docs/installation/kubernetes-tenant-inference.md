@@ -170,6 +170,11 @@ core:
     bundleConfigMap: kamiwaza-inference-profiles-revision
     gpuRecipeCatalogConfigMap: kamiwaza-inference-gpu-revision
     cpuRecipeCatalogConfigMap: kamiwaza-inference-cpu-revision
+    # Owner-qualified staging inputs are immutable digests, not mutable tags.
+    gpuRegistry: registry.example/models
+    gpuStagingImage: registry.example/model-fetch@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    cpuRegistry: registry.example/models
+    cpuStagingImage: registry.example/model-fetch@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
     schedulingTimeoutSeconds: 300
 ```
 
