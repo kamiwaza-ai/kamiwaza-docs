@@ -2,26 +2,32 @@
 title: Kubernetes Tenant-Mode Inference
 sidebar_label: Kubernetes Tenant-Mode Inference
 description: Owner and tenant setup for classic Kubernetes resource allocation.
+diataxis: how-to
+audience: public
+drafted_by: ai
 ---
 
 # Kubernetes tenant-mode inference
 
 :::warning Preview support
-This page documents the classic Kubernetes tenant-mode inference contract. It
-is a preview until the exact Kubernetes version, driver, allocator, runtime
-image, and profile/catalog revisions have been qualified together. Do not turn
+This page documents the classic Kubernetes tenant-mode inference contract for
+the Kamiwaza 1.3.0 release target. It is a preview until the exact Kubernetes
+version, driver, allocator, runtime image, and profile/catalog revisions have
+been qualified together. Do not turn
 the examples below into a support claim without target-specific evidence.
 :::
 
-This deployment model lets a namespace-admin tenant serve models on a
-customer-owned Kubernetes cluster. The tenant release is namespaced and uses
+Use this guide when you administer a tenant namespace on a customer-owned
+Kubernetes cluster. The tenant release is namespaced and uses
 owner-published profiles and catalogs; it does not inspect Nodes or install
 cluster-scoped GPU infrastructure.
 
 ## Compatibility scope
 
-The MVP qualification matrix covers Kubernetes 1.28 through 1.36 and these
-classic allocation classes:
+The MVP qualification scope is Kubernetes 1.34 through 1.36. Qualification
+for Kubernetes 1.28 through 1.33 is deferred to post-MVP follow-up (M4); the
+original design range does not establish support. The classic allocation
+classes are:
 
 | Class | Kubernetes resource | Isolation statement |
 | --- | --- | --- |
@@ -42,6 +48,9 @@ The cluster owner supplies drivers, device plugins, optional VRAM sharing,
 RuntimeClasses, quotas/policy, signed Compute Profiles, and immutable recipe
 catalogs. The tenant supplies only namespaced Helm and serving inputs.
 
+Kubernetes namespace-admin permissions do not grant the Kamiwaza `admin` role.
+Model deployment through the API, SDK, or UI remains Kamiwaza-admin-only.
+
 The tenant chart creates no cluster-scoped GPU resource and must not require
 `nodes/get`, `nodes/list`, or `nodes/watch`. A profile or allocator failure is
 reported as a failure; the platform does not silently fall back to CPU or a
@@ -50,18 +59,23 @@ weaker isolation class.
 ## Owner publication
 
 Publish a new immutable catalog revision for every change. Never mutate an
-existing ConfigMap name in place:
+existing ConfigMap name in place. Run the following commands from the
+owner-provided Kubernetes setup checkout containing
+`scripts/render-inference-recipe-catalog.py`. Prepare the owner-reviewed
+`gpu-recipes.json`, set `TENANT_NAMESPACE` to the existing tenant namespace,
+and install Python 3, `jq`, and `kubectl`. The renderer emits a JSON ConfigMap
+manifest; it does not contact the cluster or sign a Compute Profile:
 
 ```bash
 python3 scripts/render-inference-recipe-catalog.py \
   --catalog gpu-recipes.json \
   --namespace "$TENANT_NAMESPACE" \
-  --capability gpu > gpu-catalog.yaml
+  --capability gpu > gpu-catalog.json
 
-kubectl apply --dry-run=server -f gpu-catalog.yaml
-kubectl apply -f gpu-catalog.yaml
-export GPU_CATALOG_CONFIGMAP="$(jq -r '.metadata.name' gpu-catalog.yaml)"
-export GPU_CATALOG_SHA256="$(jq -r '.metadata.annotations[\"kamiwaza.ai/catalog-sha256\"]' gpu-catalog.yaml)"
+kubectl apply --dry-run=server -f gpu-catalog.json
+kubectl apply -f gpu-catalog.json
+export GPU_CATALOG_CONFIGMAP="$(jq -r '.metadata.name' gpu-catalog.json)"
+export GPU_CATALOG_SHA256="$(jq -r '.metadata.annotations["kamiwaza.ai/catalog-sha256"]' gpu-catalog.json)"
 ```
 
 Use `--capability cpu` for a CPU catalog. Record the full catalog digest and
@@ -202,8 +216,9 @@ Before invoking the endpoint, verify all of the following:
 
 1. The ConfigMap annotation `kamiwaza.ai/catalog-sha256` equals the recorded
    catalog digest.
-2. Scheduler, Ray, and serving Pods mount the selected immutable catalog name
-   and run the exact image digest from the owner profile.
+2. Scheduler and Ray components mount the selected immutable catalog revision.
+   Serving Pods run the runtime image digest selected from the owner-qualified
+   profile/catalog, with the qualified model-staging image where required.
 3. Pod resource requests contain the expected `cpu`, `nvidia.com/gpu`,
    `amd.com/gpu`, qualified MIG, or VRAM-plugin resource.
 4. The allocation verification condition is present and the serving endpoint
