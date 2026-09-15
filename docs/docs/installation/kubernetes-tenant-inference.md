@@ -244,3 +244,12 @@ This page is a public owner reference, not evidence of qualification. A support
 claim requires exact-head implementation checks and live evidence for the
 declared Kubernetes/version, driver, allocator, runtime, profile, and catalog
 combination. Unsupported combinations must remain explicitly unsupported.
+
+The current evidence boundary includes a spark-3 NVIDIA VRAM-plugin slice with
+an owner-signed profile, an exact accounted resource request, successful
+inference lifecycle, and capacity return after release. This demonstrates
+accounted scheduling only; it is not hard VRAM or compute isolation, and it
+does not qualify other plugin versions, resource shapes, or Kubernetes targets.
+Whole-device NVIDIA and qualified MIG evidence is likewise target-specific.
+ROCm/AMD remains unqualified for release support until owner publication and
+the complete profile-driven lifecycle are reproducible.
