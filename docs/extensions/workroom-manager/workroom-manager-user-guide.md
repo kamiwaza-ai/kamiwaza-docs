@@ -1,6 +1,6 @@
 ---
 title: Workroom Manager User Guide (Deprecated)
-description: Deprecated. The standalone Workroom Manager extension is retired; use the built-in Workrooms page instead.
+description: Deprecated. The standalone Workroom Manager extension will be removed; use the built-in Workrooms page instead.
 unlisted: true
 ---
 
@@ -8,11 +8,11 @@ unlisted: true
 
 :::warning[Deprecated]
 
-The standalone **Workroom Manager extension** that this guide describes is deprecated and no longer supported. Do not deploy it from App Garden.
+The standalone **Workroom Manager extension** that this guide describes is deprecated and will be removed in a future release. Do not deploy it on new installations.
 
-Workrooms are built into Kamiwaza. Open **Workrooms** from the navigation sidebar to create, share, and manage workrooms and to launch apps inside a workroom. No extension is required. If **Workrooms** is not in the sidebar, your administrator has turned the workrooms page off for this installation. For the behavior runtimes rely on, see the [Workroom Runtime Contract](/workrooms/runtime-contract).
+Workrooms are built into Kamiwaza. Open **Workrooms** from the navigation sidebar to create, share, and manage workrooms and to launch apps inside a workroom. No extension is required. For the behavior runtimes rely on, see the [Workroom Runtime Contract](/workrooms/runtime-contract).
 
-Everything below this notice is **historical**: it describes the retired extension, including steps to open it from App Garden and to check its deployment. Do not follow those steps. This page is kept for existing links only and is hidden from navigation and search.
+The rest of this page is kept for installations that still run the extension, including earlier releases whose quickstart links here. It describes the extension as it shipped. If you run it, plan to move to the built-in Workrooms page. This page is hidden from navigation and search.
 
 :::
 
