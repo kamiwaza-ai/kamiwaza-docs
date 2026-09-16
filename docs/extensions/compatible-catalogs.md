@@ -6,153 +6,199 @@ sidebar_label: Version Compatibility
 # Compatible Extension Catalogs
 
 :::caution Unreleased, coordinated rollout required
-This describes the `compat-v1` implementation across Core, the SDK publisher,
-shared publishing workflow, deploy tooling, and Kajiya. Install the companion
-changes before enabling it. Existing catalog defaults remain unchanged; this
-page does not announce availability in a released Core version.
+This page describes the coordinated extension-selection changes to Core, the SDK
+publisher, shared publishing workflow, and Helm catalog packaging. It does not
+announce availability in an existing released Core build. Install the companion
+changes before enabling the new catalog generation.
 :::
+
+## Availability and selection
+
+An installation keeps three distinct records:
+
+| Record | Meaning | What changes it |
+| --- | --- | --- |
+| Shipped baseline | Exact extension releases packaged with this Core release | A separately identified Core release baseline |
+| Available releases | Retained published releases and their compatibility/status | Catalog refresh or explicit offline import |
+| Local selection | Release used for subsequent deployments | Explicit administrator action |
+
+A connected installation can discover compatible extension releases published
+after its Core release, including entirely new extensions. It does not need a
+new Core release for each discovery. **Check for updates** refreshes availability;
+it does not change selections or deployments. An unavailable online source does
+not erase locally retained records or replace a selected release.
+
+The shipped baseline remains an immutable reference. Baseline membership and
+release provenance must be distinguished from a publisher's declaration of
+compatibility. Declaring a version range does not certify every combination in
+that range.
+
+## Administrator selection controls
+
+The catalog shows the selected release and latest compatible release separately,
+for example: `DDE Tool | Selected: 1.1.0 | Available: 1.1.2`.
+
+- **Update** selects the displayed compatible target for new deployments.
+- **Choose version** selects a retained compatible release, including the shipped
+  baseline or a later compatible release.
+- **Update all** previews the exact changes to existing selections and requires
+  confirmation. It does not add newly discovered extensions. A stale or invalid
+  proposal must be reviewed again; confirmation cannot silently choose a different
+  release.
+- Newly discovered extensions appear separately with **Add**.
+- Extensions outside the shipped baseline support **Remove selection**. This
+  removes their selection for new deployments and preserves existing deployments.
+
+Selection changes require administrator privileges, enforced by both the API and
+UI. Other authorized users can inspect availability. Release notes are omitted
+until the catalog provides a supported target.
+
+**Applies to new deployments.** Existing deployments retain their effective
+artifacts and settings, including when they restart. Selection rollback does not
+roll back running services, their databases, or their data. It does not require
+deleting templates or retiring existing workloads.
+
+The legacy image-only **Upgrade running deployments** operation does not support
+catalog-managed deployment snapshots. It rejects those deployments instead of
+creating a mismatch between the running workload and its restart configuration.
+Use a separately planned deployment replacement when changing running services.
+
+A missing, withdrawn, or incompatible selected release remains visible with its
+status. A release omitted from an online listing can still be explicitly chosen
+from retained immutable bytes; it is labeled unlisted and is not proposed by
+Update all. Explicit withdrawal is a separate blocked state. Core must not
+substitute a different release. Resolve the condition or
+explicitly choose a permitted release before creating a new deployment.
+Withdrawal remains blocked even if a later listing omits or relists the release;
+there is no automatic reinstatement. Changing the online source retires the old
+source's update candidates while retaining their bytes for explicit selection.
+Invalid or conflicting online rows are quarantined with a visible warning so they
+do not prevent discovery of valid new releases. Explicit imports remain atomic.
+
+Selection changes preserve the installation's risk floor and resource sizing,
+but invalidate approval of the previous artifact. An administrator must review
+the newly selected artifact where local governance requires approval. Managed
+catalog releases cannot be replaced through developer overlays; use a separate
+custom template name for local builds.
 
 ## Declare a Core requirement
 
-Use the existing `kamiwaza_version` field in `kamiwaza.json`, independently of
-an extension's own `version`. For example, these metadata fields describe
-extension 0.4.0 requiring Core 1.3.1 or newer:
+Use `kamiwaza_version` in `kamiwaza.json`, independently of the extension's own
+`version`. These fields describe extension 1.1.2 requiring Core 1.3.1 or newer:
 
 ```json
 {
   "name": "example-extension",
-  "version": "0.4.0",
+  "version": "1.1.2",
   "kamiwaza_version": ">=1.3.1"
 }
 ```
 
-This is a metadata excerpt, not a complete extension manifest. `kz_ext_version`
-separately constrains the SDK CLI and does not declare Core compatibility.
+This is a metadata excerpt, not a complete manifest. `kz_ext_version` separately
+constrains the SDK CLI.
 
-Core requirements accept numeric `major.minor[.patch]` versions with `>=`, `>`,
-`<=`, `<`, `==`, `!=`, bare equality, and comma-separated AND clauses, such as
-`>=1.3.0,<1.4.0`. Missing, null, empty, and whole `*` requirements preserve
-unrestricted legacy compatibility. Invalid syntax, nonstring values, empty comma
-clauses, `~=`, and partial wildcards such as `==1.*` are rejected. Core
-prerelease/build text is outside this numeric requirement grammar.
+Requirements accept numeric `major.minor[.patch]` versions with `>=`, `>`, `<=`,
+`<`, `==`, `!=`, bare equality, and comma-separated AND clauses, such as
+`>=1.3.0,<1.4.0`. Missing, null, empty, and whole `*` requirements preserve legacy
+unrestricted semantics; they are not certification evidence. Malformed clauses,
+nonstring values, `~=`, and partial wildcards such as `==1.*` are rejected.
 
-## Select the highest compatible release
+Extension releases use semantic version precedence. New publication uses complete
+`major.minor.patch` versions; prerelease identifiers order according to SemVer,
+and build metadata does not increase precedence. Legacy imported choices retain
+their original content and provenance rather than being silently rewritten.
+Automatic update proposals and development baseline projection exclude prereleases.
+Administrators can explicitly choose compatible retained prereleases. If distinct
+build identities tie for latest precedence, choose an exact release explicitly.
 
-For each exact extension name, Core filters by its running numeric version and
-selects the highest compatible extension release. Apps and services share the
-apps catalog; tools use the tools catalog. Selection uses Python
-`packaging.version.Version`, including development, prerelease, and post-release
-ordering; `1.0` and `1.0.0` identify the same release. Keep preview releases in the
-intended stage catalog: a later prerelease can rank above an older final release.
+For example:
 
-For example, suppose a catalog contains these extension releases:
+| Extension release | Core requirement | Discoverable on |
+| --- | --- | --- |
+| 1.1.0 | `>=1.3.0` | 1.3.0, 1.3.1, 1.4.0 |
+| 1.1.2 | `>=1.3.1` | 1.3.1, 1.4.0 |
+| 1.2.0 | `>=1.4.0` | 1.4.0 |
 
-| Extension release | Core requirement |
-| --- | --- |
-| 0.3.0 | `>=1.3.0` |
-| 0.4.0 | `>=1.3.1` |
-| 0.5.0 | `>=1.4.0` |
+An installation selecting 1.1.0 keeps that selection when 1.1.2 or 1.2.0 becomes
+available. Its administrator decides whether to update. These are compatibility
+examples, not results from qualification of released builds.
 
-Core 1.3.0 selects 0.3.0, Core 1.3.1 selects 0.4.0, and Core 1.4.0 selects 0.5.0.
-If extension 0.6.0 is subsequently published with `>=1.3.1`, Core 1.3.0 keeps
-0.3.0 while both newer Core versions select 0.6.0. A name with no compatible
-release is ignored. These are selection examples, not release certifications.
+## Immutable publication
 
-Identical duplicate declarations collapse. Different payloads for the same
-normalized extension version reject the entire name, even if one declaration
-is incompatible. Online sync quarantines malformed records and reports filtered
-entries, including superseded releases, incompatibilities, and conflicts.
-Missing extension versions retain the legacy 1.0.0 default; explicitly invalid
-versions do not.
+Configure a scoped publish profile for an isolated registry and catalog, then
+publish with `kz-ext publish --stage isolated --catalog-schema compat-v1`.
+The SDK profile stage is separate from Core's reader-stage setting.
 
-Selection applies to cached listings and fresh sync. Existing template identity,
-local-overlay, active-deployment, and no-downgrade policies still govern updates;
-a selected catalog row is not an unconditional replacement of local state.
-A sync can advance the persisted template to a newly selected release while an
-already running workload continues using its deployed release. A new deployment
-of a stored template with an explicit incompatible or malformed requirement is
-blocked, including after a Core rollback. Unconstrained legacy templates remain deployable.
+The history-preserving generation uses `garden/compat-v1/apps.json` for apps and
+services, and `garden/compat-v1/tools.json` for tools. Publication retains earlier
+versions, including maintenance releases, and preserves compatibility metadata.
+Conditional object writes protect concurrent publishers.
 
-Setting `enable_template_version_filtering=false` skips the Core-requirement
-eligibility check during catalog selection. It still selects the highest valid
-extension release deterministically, and does not disable the independent
-compatibility guard for new deployments.
+A published release identity and its payload are immutable. Republishing identical
+content is idempotent. Changing artifacts, compatibility requirements, or other
+release metadata requires a new version; `--force` cannot overwrite an existing
+`compat-v1` release. Runtime image references must be digest-pinned, including
+external/prebuilt services and declared supporting images. A pinned catalog entry
+with a mutable image tag does not satisfy artifact immutability. Registry retention
+must keep referenced artifacts available; Core never substitutes a newer image
+when an exact artifact is missing.
 
-## Publish and enable the separate generation
+The shared extension workflow requires the SDK's conditional-write and immutable
+publication capabilities for `compat-v1`. Legacy v2/v3 publication remains a
+separate contract. Do not point older writers at the immutable generation or assume
+that existing Core releases gain these capabilities without the coordinated update.
 
-Configure a named publish profile called `isolated` with your test registry,
-catalog endpoint, bucket, and scoped credentials, then opt in with
-`kz-ext publish --stage isolated --catalog-schema compat-v1`. The required
-`--stage` selects that SDK publish profile; it is separate from Core's reader-stage
-setting below. The shared `.github/workflows/extension-build.yml` workflow accepts
-`catalog-schema: compat-v1` and checks the SDK's `catalog-capabilities` output for
-generation support and `compat-v1-cas` before both image builds and publication.
-Defaults remain legacy v3; v2 publishing remains available. CI's latest-run policy
-can skip unpublished commits; history retention applies to releases that reached
-the catalog, not every commit submitted to CI.
+## Shipped catalog and offline use
 
-The new generation stores apps/services and tools under
-`garden/compat-v1/apps.json` and `garden/compat-v1/tools.json`. Each distinct
-name/version is retained, including older maintenance releases and unconstrained
-fallbacks. `--force` replaces only the matching release. The publisher preserves
-compatibility metadata and uses conditional object writes to avoid overwriting
-concurrent changes; unsupported conditional operations fail closed.
+Helm supplies the packaged baseline independently of the connected availability
+source. Online catalogs and operator-imported catalogs do not redefine which
+releases shipped with Core. Snapshot generation preserves multiversion availability
+separately from the exact baseline projection.
 
-Configure upgraded Core readers with
-`KAMIWAZA_EXTENSION_CATALOG_VERSION=compat-v1`. Connector definitions retain their
-separate legacy contract and are still read from `garden/v3/connectors.json`.
-Do not point old readers or legacy writers at the new generation. Scope publishing
-credentials to the intended prefix and qualify against an isolated catalog before
-production rollout; no production migration is automatic. For an isolated source,
-set `KAMIWAZA_EXTENSION_STAGE=LOCAL` (uppercase; lowercase `local` falls back to
-PROD) and `KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` to a trusted HTTPS catalog root or a
-`file:///absolute/catalog/root` accessible to Core workers. Core intentionally
-rejects plain HTTP catalog origins; install the test CA trust when using private
-HTTPS.
+Offline installations use their shipped baseline and explicitly imported available
+releases. Importing availability does not silently select releases. Administrators
+use the same explicit selection controls afterward. Restart and repeated Helm
+initialization preserve selections, including removed selections.
+Combined offline imports must preserve both the `releases` array and the
+`template_types` mapping from `available-releases.json`; the mapping identifies
+apps, services, and tools without rewriting immutable release payloads.
 
-## Offline bundles and verification
+An absent, invalid, or mismatched shipped baseline produces a visible initialization
+error. Core preserves existing selections and deployments, and refuses selection
+changes until the matching immutable baseline is repaired. A fresh installation
+waiting for its baseline initializes once after repair; later repairs cannot
+resurrect an explicitly removed selection.
 
-Deploy's `scripts/update-offline-extension-catalog.py` selects a compact catalog
-for `--target-core-version` before embedding it in the offline chart. With
-`--source-catalog-version compat-v1`, it reads full release history but still
-writes compact `garden/v3` output. Configure readers for the generation actually
-served: `compat-v1` for full history, `v3` for this selected offline snapshot.
+Chart publication requires `--expected-core-version` independently of the chart
+candidate version and verifies the frozen baseline before running Helm. Active
+Kajiya chart preparation obtains that expected version from the locked Core Git
+blob and records its hash. Qualification must still check the exact installed
+image's runtime version, particularly when a nightly image producer predates the
+locked source. Packaging never relabels or regenerates the shipped set silently.
 
-Kajiya's `scripts/import-extension-catalog.sh` selects only from releases supplied
-to the bundle; it does not expand a pinned set from an online catalog. It resolves
-the complete supplied catalog before writes and aborts on malformed releases or
-conflicting declarations.
+Migration captures existing imported choices before any availability refresh can
+change them. It preserves local/developer templates separately. Legacy mutable
+artifacts retain legacy provenance; migration does not retrospectively prove their
+immutability or reconstruct lost historical deployment content.
 
-The modern Kajiya importer requires Core's authenticated
-`GET /api/apps/remote/compatibility` endpoint, which returns the running
-`kamiwaza_version`. Upgrade Core first, **even for modern bundles using
-`garden/v3`**. An absent endpoint or unusable version aborts before template
-mutations; there is no guessed version or live override. The combination
-`--dry-run --no-auth --target-kamiwaza-version 1.3.1` is for offline inspection
-only and does not bypass authentication for live imports.
+For a private test source, Core's LOCAL catalog mode accepts a trusted HTTPS root
+or a `file:///absolute/catalog/root` accessible to Core workers. Plain HTTP catalog
+origins are rejected. Keep production catalogs untouched when qualifying a new
+publisher or reader.
 
-The explicit frozen 0.13.5/v3 bundle lane preserves its legacy importer without
-runtime discovery. Its trusted `bundle-manifest.json` must contain the exact
-`import_policy` object
-`{"lane":"frozen-0.13.x","kamiwaza_version":"0.13.5","catalog_version":"v3"}`.
-The entrypoint validates this marker before dispatching to the frozen importer;
-it is not an operator version override or an HTTP-error fallback. Unmarked
-bundles still require discovery, and malformed policies abort before contacting
-Core.
+The active installation path is Helm/KKS. These selection controls do not require
+modifying legacy Kajiya bundle-import behavior or replacing canonical owner
+manifests with another writable inventory.
 
-Verify the reported runtime version, selected remote rows, persisted template
-identity after repeat sync, ignored future-only releases, and the identity of an
-actually deployed artifact. A synthetic Core version qualifies the selection
-algorithm; compatibility metadata alone does not certify an extension/Core pair
-or replace a certified extension set.
+## Verify behavior
 
-## Recover after a Core rollback
+Qualification should demonstrate discovery without selection changes, explicit
+administrator updates, an exact update-all preview, selection rollback, persistence
+across restart, offline import, and preserved migrated choices. Inspect actual
+artifact digests of both new and existing deployments, including existing
+workloads after restart/reconciliation. Include nonadministrator denial and
+conflicting release-publication tests.
 
-Catalog sync does not downgrade a persisted template. If its requirement now
-blocks a new deployment, preferably restore a compatible Core version. For an
-explicit replacement, plan an interruption, preserve needed workload and data
-configuration, retire dependent deployments, then delete the template through
-the admin API and sync or import a compatible release. Active dependencies block
-deletion; deleting the template can also remove stopped deployment records. The
-replacement can receive a new template ID. This procedure does not automatically
-migrate workloads or data, and sync alone is insufficient.
+When testing with straw Core identities such as 1.3.0, 1.3.1, and 1.4.0, report
+those as simulated compatibility-version tests on the actual installed build.
+They are not proof that those released Core builds were installed or certified.
