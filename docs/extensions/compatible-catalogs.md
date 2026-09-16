@@ -58,7 +58,7 @@ artifacts and settings, including when they restart. Selection rollback does not
 roll back running services, their databases, or their data. It does not require
 deleting templates or retiring existing workloads.
 
-The legacy image-only **Upgrade running deployments** operation does not support
+The legacy image-only **Upgrade All** operation does not support
 catalog-managed deployment snapshots. It rejects those deployments instead of
 creating a mismatch between the running workload and its restart configuration.
 Use a separately planned deployment replacement when changing running services.
@@ -80,6 +80,19 @@ but invalidate approval of the previous artifact. An administrator must review
 the newly selected artifact where local governance requires approval. Managed
 catalog releases cannot be replaced through developer overlays; use a separate
 custom template name for local builds.
+
+## Offline availability imports
+
+For disconnected Helm installations set `core.templates.availability.enabled=false`.
+The shipped baseline and retained selections remain available. An administrator
+can import an exported catalog with `POST /api/apps/catalog/import`: supply
+`releases` as the array of full immutable release objects, `template_types` as an
+optional map from extension names to `app`, `service`, or `tool`, and `source` as
+a provenance label such as `offline-import`. Supply the type map for unprefixed
+legacy tool names. The import is atomic and refreshes availability only; use
+**Add** or **Choose version** explicitly afterward. A catalog import does not
+transfer container images: those exact artifacts must also be reachable through
+the installation's offline registry arrangement.
 
 ## Declare a Core requirement
 
@@ -181,10 +194,15 @@ change them. It preserves local/developer templates separately. Legacy mutable
 artifacts retain legacy provenance; migration does not retrospectively prove their
 immutability or reconstruct lost historical deployment content.
 
-For a private test source, Core's LOCAL catalog mode accepts a trusted HTTPS root
-or a `file:///absolute/catalog/root` accessible to Core workers. Plain HTTP catalog
-origins are rejected. Keep production catalogs untouched when qualifying a new
-publisher or reader.
+For a private test source, configure the availability endpoint explicitly:
+`core.templates.availability.url` in Helm sets
+`KAMIWAZA_EXTENSION_AVAILABILITY_URL`, which **Check for updates** uses independently
+of legacy LOCAL catalog settings. The chart requires a trusted HTTPS catalog root.
+Setting only the legacy LOCAL URL does not redirect connected availability refresh.
+For offline qualification, disable `core.templates.availability.enabled` and
+explicitly import local releases. Core workers can read a trusted
+`file:///absolute/catalog/root` through the legacy LOCAL path. Keep production
+catalogs untouched when qualifying a new publisher or reader.
 
 The active installation path is Helm/KKS. These selection controls do not require
 modifying legacy Kajiya bundle-import behavior or replacing canonical owner

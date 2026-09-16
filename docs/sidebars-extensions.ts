@@ -5,6 +5,7 @@ const sidebars: SidebarsConfig = {
 		"intro",
 		"developer-guide",
 		"compatible-catalogs",
+		"selection-qualification",
 		{
 			type: "category",
 			label: "OmniParse",

@@ -862,7 +862,7 @@ This checks:
 * Resource limits defined
 * Health endpoint exists (apps)
 * Preview image path is valid (if specified)
-* `kamiwaza_version` uses the supported [numeric Core requirement grammar](./compatible-catalogs.md#declare-a-core-requirement) (if specified)
+* With the unreleased compatibility-aware SDK changes, `kamiwaza_version` uses the supported [numeric Core requirement grammar](./compatible-catalogs.md#declare-a-core-requirement) (if specified)
 
 Testing beyond structural validation is the developer's responsibility. Use whatever test framework fits your stack.
 
