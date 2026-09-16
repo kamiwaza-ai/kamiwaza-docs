@@ -19,8 +19,8 @@ rotating it, and what the startup messages mean. It applies to every install pat
 Do not edit the file. Any change to its contents, including a stray newline added
 during copy-paste, invalidates the signature.
 
-If you do not have a license file, contact your Kamiwaza representative or request
-one at https://www.kamiwaza.ai/license.
+If you do not have a license file, contact your Kamiwaza representative or get in
+touch at https://www.kamiwaza.ai/contact.
 
 ## Install the license file
 
@@ -52,20 +52,31 @@ message, this value is what it is asking for).
 
 ### Enforcement
 
-Supplying a license file does **not** by itself make a missing or invalid license
-fatal. The check always runs at startup, but by default the platform runs in
-**report-only** mode: it logs the result and continues, so an existing installation
-can be upgraded before a license file is in place. To make the check fatal:
+**A license is required.** Kamiwaza core runs the check at startup and refuses to
+start on any license problem listed under [Troubleshooting](#troubleshooting). A
+passed commercial term is not one of them — see
+[Verify the license is active](#verify-the-license-is-active).
+
+This is the chart default (`license.enforce: true`, which sets the environment
+variable `KAMIWAZA_LICENSE_ENFORCE=1`); you do not need to set it.
+
+There is one exception, and it exists only to make upgrades possible. An
+installation that predates licensing has no Secret to read, so it would stop on
+its next restart. To upgrade such an install onto a licensed image before its
+license file is in place:
 
 ```yaml
 license:
-  existingSecret: kamiwaza-license
-  enforce: true
+  enforce: false
 ```
 
-With `enforce: true` (environment variable `KAMIWAZA_LICENSE_ENFORCE=1`), Kamiwaza
-core refuses to start on any license problem listed under
-[Troubleshooting](#troubleshooting). A passed commercial term is not one of them.
+Core then runs the same check, logs the condition, and continues. **This is an
+upgrade affordance, not a supported way to run Kamiwaza.** Set
+`license.existingSecret` and remove `enforce: false` as soon as you have the file.
+
+`enforce` is deliberately independent of `existingSecret` in both directions:
+supplying a license does not switch enforcement on, and removing one does not
+switch it off.
 
 ## Verify the license is active
 
@@ -123,8 +134,9 @@ does not go through the Kamiwaza API.
 
 When the license check fails, the `core-scheduler` pod log contains one block that
 starts with `License check failed (<condition>)`, names the file path it looked in,
-and ends with a `Condition:` line you can search for. In report-only mode the block
-is a warning and the platform continues; with enforcement on, core exits.
+and ends with a `Condition:` line you can search for. Core then exits. If the
+install is using the `enforce: false` upgrade affordance described above, the same
+block is logged as a warning and the platform continues.
 
 | Condition | Meaning | What to do |
 |---|---|---|
@@ -143,6 +155,6 @@ reported through the headers and banner above, never through the startup check.
 
 ## Getting a license
 
-Contact your Kamiwaza representative, or request a license at
-https://www.kamiwaza.ai/license. Deliver the returned `license.lic` to the cluster
+Contact your Kamiwaza representative, or get in touch at
+https://www.kamiwaza.ai/contact. Deliver the returned `license.lic` to the cluster
 as described above; it does not need to be placed anywhere else.
