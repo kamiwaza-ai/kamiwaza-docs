@@ -24,18 +24,21 @@ cluster-scoped GPU infrastructure.
 
 ## Compatibility scope
 
-The MVP qualification scope is Kubernetes 1.34 through 1.36. Qualification
-for Kubernetes 1.28 through 1.33 is deferred to post-MVP follow-up (M4); the
+Live qualification for this release targets **k0s Kubernetes 1.36 only**.
+Chart, API, and client contract checks cover Kubernetes 1.28 through 1.36, but
+passing a contract check is not a live support claim for that minor version:
+only 1.36 has been exercised end to end. Live qualification for every other
+minor in the range, 1.34 and 1.35 included, is post-MVP follow-up (M4). The
 original design range does not establish support. The classic allocation
 classes are:
 
-| Class | Kubernetes resource | Isolation statement |
-| --- | --- | --- |
-| CPU | `cpu` and memory requests | Kubernetes scheduler allocation |
-| Whole NVIDIA GPU | `nvidia.com/gpu` | Whole-device allocation |
-| Whole AMD GPU | `amd.com/gpu` | Whole-device allocation |
-| NVIDIA MIG | Qualified `nvidia.com/mig-*` | Hardware partition, exact shape only |
-| VRAM-plugin sharing | Owner-advertised `kamiwaza.ai/vram-gb-*` | Accounted sharing, not hard isolation |
+| Class | Kubernetes resource | Isolation statement | Release status |
+| --- | --- | --- | --- |
+| CPU | `cpu` and memory requests | Kubernetes scheduler allocation | Preview on k0s 1.36; see Support status |
+| Whole NVIDIA GPU | `nvidia.com/gpu` | Whole-device allocation | Preview on k0s 1.36; see Support status |
+| Whole AMD GPU | `amd.com/gpu` | Whole-device allocation | **Not qualified.** Post-MVP follow-up (M4); do not deploy against a support claim |
+| NVIDIA MIG | Qualified `nvidia.com/mig-*` | Hardware partition, exact shape only | Preview on k0s 1.36, recorded slice shape only |
+| VRAM-plugin sharing | Owner-advertised `kamiwaza.ai/vram-gb-*` | Accounted sharing, not hard isolation | Preview on k0s 1.36, recorded plugin and profile only |
 
 An entry is qualified only when its owner profile, catalog, driver/device
 plugin, runtime image digest, and Kubernetes version are recorded in live
@@ -155,7 +158,10 @@ variant IDs, and digest-pinned runtime image before publication:
 
 The NVIDIA, AMD, MIG, and VRAM-plugin excerpts require the same omitted signed
 profile fields as the CPU example. `accounted-share` reserves a bookkeeping
-bucket; it does not provide hard VRAM or compute isolation.
+bucket; it does not provide hard VRAM or compute isolation. The `amd-whole`
+excerpt shows the profile shape only: ROCm/AMD is not qualified for release
+support, so treat it as a forward-looking reference rather than a supported
+configuration.
 
 ## Tenant Helm configuration
 
