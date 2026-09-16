@@ -52,20 +52,12 @@ message, this value is what it is asking for).
 
 ### Enforcement
 
-Supplying a license file does **not** by itself make a missing or invalid license
-fatal. The check always runs at startup, but by default the platform runs in
-**report-only** mode: it logs the result and continues, so an existing installation
-can be upgraded before a license file is in place. To make the check fatal:
-
-```yaml
-license:
-  existingSecret: kamiwaza-license
-  enforce: true
-```
-
-With `enforce: true` (environment variable `KAMIWAZA_LICENSE_ENFORCE=1`), Kamiwaza
-core refuses to start on any license problem listed under
-[Troubleshooting](#troubleshooting). A passed commercial term is not one of them.
+Every published Kamiwaza core image is a release build and always requires a
+valid license. Enforcement is compiled into the release artifact rather than
+configured by the chart, so there is no chart setting that weakens this policy.
+Kamiwaza core refuses to start on any license problem listed under
+[Troubleshooting](#troubleshooting). A passed commercial term is not one of those
+startup failures.
 
 ## Verify the license is active
 
@@ -85,9 +77,8 @@ The web UI shows the same information: an amber banner when the term ends within
 term never stops the platform.** The banner is the only effect; contact your
 Kamiwaza representative to renew.
 
-If no license headers are present, the platform started without a license (see the
-startup message in the `core-scheduler` pod logs) or you are querying a path that
-does not go through the Kamiwaza API.
+If no license headers are present, verify that you are querying a path that goes
+through the Kamiwaza API. A release build cannot start without a valid license.
 
 ## Rotate or renew a license
 
@@ -123,8 +114,8 @@ does not go through the Kamiwaza API.
 
 When the license check fails, the `core-scheduler` pod log contains one block that
 starts with `License check failed (<condition>)`, names the file path it looked in,
-and ends with a `Condition:` line you can search for. In report-only mode the block
-is a warning and the platform continues; with enforcement on, core exits.
+and ends with a `Condition:` line you can search for. On release builds, core exits
+after logging this block.
 
 | Condition | Meaning | What to do |
 |---|---|---|
