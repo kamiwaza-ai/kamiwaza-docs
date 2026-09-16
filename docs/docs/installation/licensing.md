@@ -38,6 +38,7 @@ install. The platform installers and Helmfile deploy the `kamiwaza` umbrella cha
 where core's values are nested under `core:`:
 
 ```yaml
+# deploy/cluster/values/overrides.yaml
 core:
   license:
     existingSecret: kamiwaza-license
@@ -110,9 +111,10 @@ term never stops the platform.** The banner is the only effect; contact your
 Kamiwaza representative to renew.
 
 If no license headers are present, you are most likely querying a path that does not
-go through the Kamiwaza API. The other possibility is an install running with
-`enforce: false` that started without a license — check the startup message in the
-`core-scheduler` pod logs.
+go through the Kamiwaza API. The other possibility is an install that is not
+enforcing — either because `enforce: false` is set, or because it is a release that
+has not yet been upgraded past the default flip — and started without a license.
+Check the startup message in the `core-scheduler` pod logs.
 
 ## Rotate or renew a license
 
@@ -125,8 +127,8 @@ go through the Kamiwaza API. The other possibility is an install running with
      --dry-run=client -o yaml | kubectl apply -f -
    ```
 
-2. Change `rolloutKey` to any new value (a date works) so the scheduler pod
-   restarts and re-reads the file:
+2. Change `core.license.rolloutKey` to any new value (a date works) so the scheduler
+   pod restarts and re-reads the file:
 
    ```yaml
    core:
