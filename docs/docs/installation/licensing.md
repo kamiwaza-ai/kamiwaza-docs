@@ -19,8 +19,8 @@ rotating it, and what the startup messages mean. It applies to every install pat
 Do not edit the file. Any change to its contents, including a stray newline added
 during copy-paste, invalidates the signature.
 
-If you do not have a license file, contact your Kamiwaza representative or request
-one at https://www.kamiwaza.ai/license.
+If you do not have a license file, contact your Kamiwaza representative or get in
+touch at https://www.kamiwaza.ai/contact.
 
 ## Install the license file
 
@@ -33,15 +33,22 @@ kubectl create secret generic kamiwaza-license \
   --from-file=license.lic=./license.lic
 ```
 
-**2. Point the chart at the Secret.** In your values file:
+**2. Point the chart at the Secret.** Which key you use depends on which chart you
+install. The platform installers and Helmfile deploy the `kamiwaza` umbrella chart,
+where core's values are nested under `core:`:
 
 ```yaml
-license:
-  existingSecret: kamiwaza-license
+# deploy/cluster/values/overrides.yaml
+core:
+  license:
+    existingSecret: kamiwaza-license
 ```
 
+Installing `charts/core` on its own instead? Use the same block without the `core:`
+nesting. Everywhere below that shows a `core:` key, the same rule applies.
+
 Then install or upgrade as usual. Kamiwaza mounts the Secret as a whole directory at
-`/app/licenses` (the `license.mountPath` default) and reads
+`/app/licenses` (the `core.license.mountPath` default) and reads
 `/app/licenses/license.lic`. Keep the directory mount: a `subPath` mount would never
 receive a rotated license.
 
@@ -91,17 +98,18 @@ through the Kamiwaza API. A release build cannot start without a valid license.
      --dry-run=client -o yaml | kubectl apply -f -
    ```
 
-2. Change `license.rolloutKey` to any new value (a date works) so the scheduler pod
-   restarts and re-reads the file:
+2. Change `core.license.rolloutKey` to any new value (a date works) so the scheduler
+   pod restarts and re-reads the file:
 
    ```yaml
-   license:
-     existingSecret: kamiwaza-license
-     rolloutKey: "2026-09-01"
+   core:
+     license:
+       existingSecret: kamiwaza-license
+       rolloutKey: "2026-09-01"
    ```
 
 3. Make sure the model-serving layer is redeployed on that restart. The chart does
-   this by default (`rayServe.forceRedeployOnStartup: true`, which sets
+   this by default (`core.rayServe.forceRedeployOnStartup: true`, which sets
    `KAMIWAZA_FORCE_SERVE_REDEPLOY=1` for core). If you have set it to `false`, turn it
    back on for this upgrade: the scheduler otherwise leaves a healthy serving
    deployment alone, and the serving layer keeps reporting the **old** license state
@@ -115,11 +123,13 @@ through the Kamiwaza API. A release build cannot start without a valid license.
 When the license check fails, the `core-scheduler` pod log contains one block that
 starts with `License check failed (<condition>)`, names the file path it looked in,
 and ends with a `Condition:` line you can search for. On release builds, core exits
-after logging this block.
+after logging this block, and the API stops serving with it: on refusal the platform
+also retires the Ray Serve application, so you lose the API as well as the
+scheduler.
 
 | Condition | Meaning | What to do |
 |---|---|---|
-| `license_file_missing` | No file at `/app/licenses/license.lic` | Create the Secret with key `license.lic` and set `license.existingSecret`, or request a license |
+| `license_file_missing` | No file at `/app/licenses/license.lic` | Create the Secret with key `license.lic` and set `core.license.existingSecret`, or request a license |
 | `license_file_unreadable` | The file exists but could not be read | Check the Secret holds the complete file and is mounted as a directory, not a `subPath` |
 | `license_tampered` | The signature does not verify | The file was modified or truncated in transit. Request a fresh copy; do not edit license files |
 | `license_wrong_account` | Issued by a different vendor account | This file is not a Kamiwaza-issued license |
@@ -134,6 +144,6 @@ reported through the headers and banner above, never through the startup check.
 
 ## Getting a license
 
-Contact your Kamiwaza representative, or request a license at
-https://www.kamiwaza.ai/license. Deliver the returned `license.lic` to the cluster
+Contact your Kamiwaza representative, or get in touch at
+https://www.kamiwaza.ai/contact. Deliver the returned `license.lic` to the cluster
 as described above; it does not need to be placed anywhere else.
