@@ -10,9 +10,9 @@ unlisted: true
 
 The standalone **Workroom Manager extension** that this guide describes is deprecated and no longer supported. Do not deploy it from App Garden.
 
-Workrooms are built into Kamiwaza. Open **Workrooms** from the navigation sidebar to create, share, and manage workrooms and to launch apps inside a workroom. No extension is required. For the behavior runtimes rely on, see the [Workroom Runtime Contract](/workrooms/runtime-contract).
+Workrooms are built into Kamiwaza. Open **Workrooms** from the navigation sidebar to create, share, and manage workrooms and to launch apps inside a workroom. No extension is required. If **Workrooms** is not in the sidebar, your administrator has turned the workrooms page off for this installation. For the behavior runtimes rely on, see the [Workroom Runtime Contract](/workrooms/runtime-contract).
 
-This page is kept for existing links only and is hidden from navigation and search.
+Everything below this notice is **historical**: it describes the retired extension, including steps to open it from App Garden and to check its deployment. Do not follow those steps. This page is kept for existing links only and is hidden from navigation and search.
 
 :::
 
