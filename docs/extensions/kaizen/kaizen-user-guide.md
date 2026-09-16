@@ -310,7 +310,7 @@ Kaizen attributes each human or agent-triggering turn to the acting user who ini
 
 ### Member Roster
 
-Lists all workroom members with their roles and online status. Owners can click **Manage members** to open the membership management panel from within Kaizen. The **Workrooms** page remains the standard place for workroom administration, including sharing, role changes, member removal, and ownership transfer.
+Lists all workroom members with their roles and online status. Owners can click **Manage members** to open the membership management panel from within Kaizen. The **Workrooms** page (or the deprecated Workroom Manager extension, on installations that still use it) is the standard place for workroom administration, including sharing, role changes, member removal, and ownership transfer.
 
 ![Workroom Members management panel](/img/extensions/kaizen/kaizen-workroom-members.png)
 

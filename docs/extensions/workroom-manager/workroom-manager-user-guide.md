@@ -1,6 +1,6 @@
 ---
 title: Workroom Manager User Guide (Deprecated)
-description: Deprecated. The standalone Workroom Manager extension will be removed; use the built-in Workrooms page instead.
+description: Deprecated. The standalone Workroom Manager extension will be removed; installations with the built-in Workrooms page should use it instead.
 unlisted: true
 ---
 

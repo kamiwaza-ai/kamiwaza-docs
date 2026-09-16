@@ -143,7 +143,7 @@ Reference: [Kaizen User Guide](/extensions/kaizen/kaizen-user-guide)
 
 > **Version note:** This version supports launching Kaizen inside a workroom context and enforcing basic role-aware writes, but the full non-global shared-workroom Kaizen contract described elsewhere in the docs may depend on a later patch or feature build. Validate the exact behavior present in your deployed Kaizen build before treating the checks below as release gates.
 
-1. Open **Workrooms** from the navigation sidebar. Workrooms are built into Kamiwaza; do not deploy the deprecated Workroom Manager extension from App Garden on a new installation. If **Workrooms** is not in the sidebar, the workrooms page is turned off for this installation; ask your administrator how workrooms are provided before running this check.
+1. Open **Workrooms** from the navigation sidebar. Workrooms are built into Kamiwaza; on an installation that shows **Workrooms** in the sidebar, do not deploy the deprecated Workroom Manager extension from App Garden. If **Workrooms** is not in the sidebar, workrooms are either turned off or provided through the extension; ask your administrator, and for extension installations see the [Workroom Manager User Guide (Deprecated)](/extensions/workroom-manager/workroom-manager-user-guide).
 2. Create a workroom with a title, classification banner, and optional labels.
 3. Decide whether the workroom should be persistent or temporary.
 4. Launch Kaizen from inside the workroom and confirm the app opens successfully.
