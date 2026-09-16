@@ -68,14 +68,24 @@ versions do not.
 Selection applies to cached listings and fresh sync. Existing template identity,
 local-overlay, active-deployment, and no-downgrade policies still govern updates;
 a selected catalog row is not an unconditional replacement of local state.
-Running deployments are not changed. A new deployment of a stored template with
-an explicit incompatible or malformed requirement is blocked, including after a
+A sync can advance the persisted template to a newly selected release while an
+already running workload continues using its deployed release. A new deployment
+of a stored template with an explicit incompatible or malformed requirement is
+blocked, including after a
 Core rollback. Unconstrained legacy templates remain deployable.
+
+Setting `enable_template_version_filtering=false` skips the Core-requirement
+eligibility check during catalog selection. It still selects the highest valid
+extension release deterministically, and does not disable the independent
+compatibility guard for new deployments.
 
 ## Publish and enable the separate generation
 
-Opt in with `kz-ext publish --catalog-schema compat-v1`. The shared publishing
-workflow accepts `catalog-schema: compat-v1` and checks the SDK's
+Configure a named publish profile called `isolated` with your test registry,
+catalog endpoint, bucket, and scoped credentials, then opt in with
+`kz-ext publish --stage isolated --catalog-schema compat-v1`. The required
+`--stage` selects that SDK publish profile; it is separate from Core's reader-stage
+setting below. The shared publishing workflow accepts `catalog-schema: compat-v1` and checks the SDK's
 `catalog-capabilities` output for generation support and `compat-v1-cas` before
 publishing. Defaults remain legacy v3; v2 publishing remains available.
 
@@ -92,8 +102,8 @@ separate legacy contract and are still read from `garden/v3/connectors.json`.
 Do not point old readers or legacy writers at the new generation. Scope publishing
 credentials to the intended prefix and qualify against an isolated catalog before
 production rollout; no production migration is automatic. For an isolated source,
-set `KAMIWAZA_EXTENSION_STAGE=local` and
-`KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` to a trusted HTTPS catalog root or a
+set `KAMIWAZA_EXTENSION_STAGE=LOCAL` (uppercase; lowercase `local` falls back to
+PROD) and `KAMIWAZA_EXTENSION_LOCAL_STAGE_URL` to a trusted HTTPS catalog root or a
 `file:///absolute/catalog/root` accessible to Core workers. Core intentionally
 rejects plain HTTP catalog origins; install the test CA trust when using private
 HTTPS.
