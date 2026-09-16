@@ -32,13 +32,20 @@ minor in the range, 1.34 and 1.35 included, is post-MVP follow-up (M4). The
 original design range does not establish support. The classic allocation
 classes are:
 
-| Class | Kubernetes resource | Isolation statement | Release status |
-| --- | --- | --- | --- |
-| CPU | `cpu` and memory requests | Kubernetes scheduler allocation | Preview on k0s 1.36; see Support status |
-| Whole NVIDIA GPU | `nvidia.com/gpu` | Whole-device allocation | Preview on k0s 1.36; see Support status |
-| Whole AMD GPU | `amd.com/gpu` | Whole-device allocation | **Not qualified.** Post-MVP follow-up (M4); do not deploy against a support claim |
-| NVIDIA MIG | Qualified `nvidia.com/mig-*` | Hardware partition, exact shape only | Preview on k0s 1.36, recorded slice shape only |
-| VRAM-plugin sharing | Owner-advertised `kamiwaza.ai/vram-gb-*` | Accounted sharing, not hard isolation | Preview on k0s 1.36, recorded plugin and profile only |
+All classes below serve through **llama.cpp** only. Tenant-mode profiles
+select a llama.cpp runtime variant, so engines available on the standard
+deployment path — vLLM, Whisper, diffusion, MLX — are not reachable through a
+tenant-mode request. Those deployments are unaffected and continue to use the
+standard path; only a request carrying `inferenceResources` is served by the
+classic tenant allocator.
+
+| Class | Engine | Kubernetes resource | Isolation statement | Release status |
+| --- | --- | --- | --- | --- |
+| CPU | llama.cpp | `cpu` and memory requests | Kubernetes scheduler allocation | Preview on k0s 1.36; see Support status |
+| Whole NVIDIA GPU | llama.cpp (CUDA) | `nvidia.com/gpu` | Whole-device allocation | Preview on k0s 1.36; see Support status |
+| Whole AMD GPU | llama.cpp (ROCm) | `amd.com/gpu` | Whole-device allocation | **Not qualified.** Post-MVP follow-up (M4); do not deploy against a support claim |
+| NVIDIA MIG | llama.cpp (CUDA) | Qualified `nvidia.com/mig-*` | Hardware partition, exact shape only | Preview on k0s 1.36, recorded slice shape only |
+| VRAM-plugin sharing | llama.cpp (CUDA) | Owner-advertised `kamiwaza.ai/vram-gb-*` | Accounted sharing, not hard isolation | Preview on k0s 1.36, recorded plugin and profile only |
 
 An entry is qualified only when its owner profile, catalog, driver/device
 plugin, runtime image digest, and Kubernetes version are recorded in live
