@@ -19,6 +19,9 @@ A Kamiwaza extension is a containerized application, service, or tool that runs 
 
 Extensions are packaged as Docker images, described by metadata (`kamiwaza.json`), and deployed to Kubernetes via the Kamiwaza platform. Each extension lives in its own repository.
 
+For Core version requirements and selecting compatible releases, see
+[Version Compatibility](./compatible-catalogs.md).
+
 ## Extension Requirements
 
 **Required artifacts:**
