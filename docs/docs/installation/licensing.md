@@ -52,10 +52,10 @@ message, this value is what it is asking for).
 
 ### Enforcement
 
-Every published Kamiwaza image is a release build and always requires a valid
-license. Enforcement is compiled into the release artifact rather than configured
-by the chart, so there is no chart setting that weakens this policy. Kamiwaza core
-refuses to start on any license problem listed under
+Every published Kamiwaza core image is a release build and always requires a
+valid license. Enforcement is compiled into the release artifact rather than
+configured by the chart, so there is no chart setting that weakens this policy.
+Kamiwaza core refuses to start on any license problem listed under
 [Troubleshooting](#troubleshooting). A passed commercial term is not one of those
 startup failures.
 
