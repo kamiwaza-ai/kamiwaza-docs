@@ -143,7 +143,7 @@ App and tool deployments use the same runtime path model:
 - apps open under `/runtime/apps/<deployment-id>`
 - tools open under `/runtime/tools/<deployment-id>`
 
-Workroom Manager and other App Garden experiences rely on these path-based URLs when launching runtime apps.
+The built-in Workrooms page and App Garden experiences rely on these path-based URLs when launching runtime apps.
 
 ## Administrative and Platform Paths
 

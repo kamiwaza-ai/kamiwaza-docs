@@ -139,11 +139,11 @@ Once the platform is up, validate at least one end-to-end end-user path instead 
 
 Reference: [Kaizen User Guide](/extensions/kaizen/kaizen-user-guide)
 
-### Validate Workroom Manager
+### Validate Workrooms
 
 > **Version note:** This version supports launching Kaizen inside a workroom context and enforcing basic role-aware writes, but the full non-global shared-workroom Kaizen contract described elsewhere in the docs may depend on a later patch or feature build. Validate the exact behavior present in your deployed Kaizen build before treating the checks below as release gates.
 
-1. Deploy **Workroom Manager** from **App Garden**.
+1. Open **Workrooms** from the navigation sidebar. Workrooms are built into Kamiwaza; do not deploy the deprecated Workroom Manager extension from App Garden.
 2. Create a workroom with a title, classification banner, and optional labels.
 3. Decide whether the workroom should be persistent or temporary.
 4. Launch Kaizen from inside the workroom and confirm the app opens successfully.
@@ -152,7 +152,7 @@ Reference: [Kaizen User Guide](/extensions/kaizen/kaizen-user-guide)
 7. If your deployed Kaizen build includes shared non-global workroom conversations, verify the Viewer can see the same shared history but cannot create, send, upload, or edit.
 8. Verify the Global Workroom still preserves personal Kaizen visibility instead of cross-user sharing.
 
-Reference: [Workroom Manager User Guide](/extensions/workroom-manager/workroom-manager-user-guide)
+Reference: [Workroom Runtime Contract](workrooms/runtime-contract)
 
 ## 8. Capture Readiness Evidence
 
@@ -165,7 +165,7 @@ Suggested checklist:
 - object storage verified for workroom and Skills Library workflows
 - at least one model deployed successfully
 - Kaizen deployed and exercised successfully
-- Workroom Manager deployed and exercised successfully
+- Workrooms exercised successfully
 - deployment logs and cluster health reviewed for unexpected errors
 
 ## Next Steps

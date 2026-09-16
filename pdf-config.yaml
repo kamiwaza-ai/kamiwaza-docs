@@ -14,7 +14,7 @@ profiles:
       includeVersion: true
       includeLogo: true
     # Same discovery as full-docs plus Extensions plugin docs (sidebars-extensions.ts), so links
-    # to Kaizen, Workroom Manager, models, observability, etc. navigate within the merged PDF.
+    # to Kaizen, models, observability, etc. navigate within the merged PDF.
     includeAll: true
     excludeDocs:
       - team/kamiwaza

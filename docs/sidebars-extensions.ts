@@ -62,18 +62,6 @@ const sidebars: SidebarsConfig = {
 				},
 			],
 		},
-		{
-			type: "category",
-			label: "Workroom Manager",
-			collapsed: true,
-			items: [
-				{
-					type: "doc",
-					id: "workroom-manager/workroom-manager-user-guide",
-					label: "User Guide",
-				},
-			],
-		},
 	],
 };
 
