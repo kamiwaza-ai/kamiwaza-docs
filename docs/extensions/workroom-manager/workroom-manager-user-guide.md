@@ -8,11 +8,11 @@ unlisted: true
 
 :::warning[Deprecated]
 
-The standalone **Workroom Manager extension** that this guide describes is deprecated and will be removed in a future release. Do not deploy it on new installations.
+The standalone **Workroom Manager extension** that this guide describes is deprecated and will be removed in a future release. Do not deploy it on new installations that provide the built-in Workrooms page.
 
-Workrooms are built into Kamiwaza. Open **Workrooms** from the navigation sidebar to create, share, and manage workrooms and to launch apps inside a workroom. No extension is required. For the behavior runtimes rely on, see the [Workroom Runtime Contract](/workrooms/runtime-contract).
+Workrooms are built into Kamiwaza. Where your installation provides the built-in page, open **Workrooms** from the navigation sidebar to create, share, and manage workrooms and to launch apps inside a workroom; no extension is required. For the behavior runtimes rely on, see the [Workroom Runtime Contract](/workrooms/runtime-contract).
 
-The rest of this page is kept for installations that still run the extension, including earlier releases whose quickstart links here. It describes the extension as it shipped. If you run it, plan to move to the built-in Workrooms page. This page is hidden from navigation and search.
+The rest of this page is kept for installations that still provide workrooms through the extension, including earlier releases whose quickstart links here and installations configured to use the extension instead of the built-in page. It describes the extension as it shipped; follow it on those installations, and plan to move to the built-in Workrooms page when your release and configuration support it.
 
 :::
 
