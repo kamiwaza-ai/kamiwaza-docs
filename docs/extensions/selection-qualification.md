@@ -64,7 +64,7 @@ matrix ran on Core source commit `f19983b8a778015b9547f76820b75c4e3a15b2a7`.
 Subsequent review fixes received targeted live checks and source-hash verification;
 the [Core implementation PR](https://github.com/kamiwaza-internal/kamiwaza/pull/2842)
 records each checkpoint separately and links the retained machine-readable
-receipt. The full matrix is not relabeled as a later-commit run.
+[receipt](https://github.com/kamiwaza-internal/kamiwaza/blob/3604f3616c/tests/qualification/extension_selection/receipt.json). Final runtime checkpoint `82a81921f8` verifies 44 runtime/schema files and 20 frontend files, with targeted routing, failure rollback, authorization, migration and legacy-refresh checks. All 15 proof workloads remained unchanged; all 24 deployments were ready. The full matrix is not relabeled as a later-commit run.
 Credentials, tokens and private database backups are excluded from those artifacts.
 
 ## Known validation limits
