@@ -27,7 +27,7 @@ in-flight call survives at most until the current token expires.
 
 ## Membership and roles
 
-The workrooms API exposes roster operations that runtimes and the built-in Workrooms page share:
+The workrooms API exposes roster operations that runtimes and the built-in Workrooms page share (as does the deprecated Workroom Manager extension, on installations that still use it):
 
 | Endpoint | Purpose |
 | --- | --- |
