@@ -19,6 +19,9 @@ A Kamiwaza extension is a containerized application, service, or tool that runs 
 
 Extensions are packaged as Docker images, described by metadata (`kamiwaza.json`), and deployed to Kubernetes via the Kamiwaza platform. Each extension lives in its own repository.
 
+For Core version requirements and selecting compatible releases, see
+[Version Compatibility](./compatible-catalogs.md).
+
 ## Extension Requirements
 
 **Required artifacts:**
@@ -859,7 +862,7 @@ This checks:
 * Resource limits defined
 * Health endpoint exists (apps)
 * Preview image path is valid (if specified)
-* `kamiwaza_version` constraint is valid semver (if specified)
+* With the unreleased compatibility-aware SDK changes, `kamiwaza_version` uses the supported [numeric Core requirement grammar](./compatible-catalogs.md#declare-a-core-requirement) (if specified)
 
 Testing beyond structural validation is the developer's responsibility. Use whatever test framework fits your stack.
 

@@ -4,6 +4,8 @@ const sidebars: SidebarsConfig = {
 	extensions: [
 		"intro",
 		"developer-guide",
+		"compatible-catalogs",
+		"selection-qualification",
 		{
 			type: "category",
 			label: "OmniParse",
