@@ -26,13 +26,16 @@ const sidebars: SidebarsConfig = {
 			type: "category",
 			label: "Installation",
 			items: [
-				"installation/installation_process",
 				"installation/system_requirements",
 				"installation/storage-prerequisites",
+				// A licence is a prerequisite, not a follow-up. The installer
+				// refuses at step one without a key and core will not start
+				// without the file, so this reads before anything that installs.
+				"installation/licensing",
+				"installation/installation_process",
 				"installation/online_install",
 				"installation/offline_install",
 				"installation/offline_install_runbook",
-				"installation/licensing",
 				"installation/nvidia-secure-boot",
 				"installation/uninstall",
 			],
