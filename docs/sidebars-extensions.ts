@@ -64,13 +64,13 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: "category",
-			label: "Workroom Manager",
+			label: "Workroom Manager (Deprecated)",
 			collapsed: true,
 			items: [
 				{
 					type: "doc",
 					id: "workroom-manager/workroom-manager-user-guide",
-					label: "User Guide",
+					label: "User Guide (Deprecated)",
 				},
 			],
 		},

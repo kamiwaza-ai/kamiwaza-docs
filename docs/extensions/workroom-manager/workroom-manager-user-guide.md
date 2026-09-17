@@ -1,9 +1,20 @@
 ---
-title: Workroom Manager User Guide
-description: Create, share, and manage analyst workrooms in the Kamiwaza platform.
+title: Workroom Manager User Guide (Deprecated)
+description: Deprecated. The standalone Workroom Manager extension will be removed; installations with the built-in Workrooms page should use it instead.
+unlisted: true
 ---
 
-# Workroom Manager User Guide
+# Workroom Manager User Guide (Deprecated)
+
+:::warning[Deprecated]
+
+The standalone **Workroom Manager extension** that this guide describes is deprecated and will be removed in a future release. Do not deploy it on new installations that provide the built-in Workrooms page.
+
+Workrooms are built into Kamiwaza. Where your installation provides the built-in page, open **Workrooms** from the navigation sidebar to create, share, and manage workrooms and to launch apps inside a workroom; no extension is required. For the behavior runtimes rely on, see the [Workroom Runtime Contract](/workrooms/runtime-contract).
+
+The rest of this page is kept for installations that still provide workrooms through the extension, including earlier releases whose quickstart links here and installations configured to use the extension instead of the built-in page. It describes the extension as it shipped; follow it on those installations, and plan to move to the built-in Workrooms page when your release and configuration support it.
+
+:::
 
 Workroom Manager lets you create focused collaboration spaces inside Kamiwaza. Each **workroom** is an isolated environment with its own classification banner, membership, data, and deployed applications. Use workrooms to organize work by mission, project, or analysis effort, and share them with teammates who need access.
 

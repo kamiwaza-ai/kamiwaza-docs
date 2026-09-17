@@ -27,7 +27,7 @@ in-flight call survives at most until the current token expires.
 
 ## Membership and roles
 
-The workrooms API exposes roster operations that runtimes and the Workroom Manager UI share:
+The workrooms API exposes roster operations that runtimes and the built-in Workrooms page share (as does the deprecated Workroom Manager extension, on installations that still use it):
 
 | Endpoint | Purpose |
 | --- | --- |
@@ -105,5 +105,4 @@ honor the `retry` hint and reconnect with the last event id for resumable delive
 
 ## See Also
 
-- [Workroom Manager User Guide](/extensions/workroom-manager/workroom-manager-user-guide)
 - [Developer Guide - Workroom-scoped runtime sessions](/extensions/developer-guide#runtime-launch-tokens)
