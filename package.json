@@ -80,6 +80,7 @@
     "yaml@<2": "1.10.3"
   },
   "resolutions": {
-    "sitemap": "9.0.0"
+    "sitemap": "9.0.0",
+    "openapi-to-postmanv2/yaml": "1.10.3"
   }
 }
