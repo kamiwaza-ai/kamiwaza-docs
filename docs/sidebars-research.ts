@@ -5,7 +5,7 @@ const sidebars: SidebarsConfig = {
     'index',
     {
       type: 'category',
-      label: 'Agentic Merit Index',
+      label: 'Agentic Performance Index',
       collapsed: false,
       items: [
         'agentic-merit-index/index',

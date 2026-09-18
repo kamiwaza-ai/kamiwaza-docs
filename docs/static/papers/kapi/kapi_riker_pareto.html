@@ -1,0 +1,162 @@
+<!doctype html><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Retrieval frontier · KAPI</title>
+<style>
+/* Kamiwaza brand palette — matches docs.kamiwaza.ai (--kamiwaza-* tokens). */
+:root{--bg:#0f172a;--card:#1e293b;--ink:#f8fafc;--ink2:#cbd5e1;--ink3:#94a3b8;
+      --rule:#334155;--accent:#10b981;--good:#06d6a0;--bad:#f87171;--warn:#fbbf24;
+      --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+      --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px 90px;}
+/* A board whose table is wider than the text column breaks out of it, centred, rather
+   than scrolling inside a 1180px box with empty gutters on both sides. */
+body:has(.tw){display:flex;justify-content:center;}
+.wrap:has(.tw){max-width:none;width:fit-content;min-width:min(1180px,100%);}
+/* Data boards are wide by nature. Let the table claim the viewport rather than sit
+   cropped inside a scroller with empty gutters either side. */
+.wide{max-width:none;width:max-content;min-width:100%;margin-inline:auto;}
+header.top{border-bottom:1px solid var(--rule);padding:30px 0 20px;margin-bottom:30px;}
+.brand{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+       text-transform:uppercase;color:var(--ink3);margin:0 0 12px;text-decoration:none;}
+a.brand:hover{color:var(--accent);text-decoration:none;}
+h1{font-size:2rem;font-weight:700;margin:0 0 10px;letter-spacing:-.015em;}
+.sub{color:var(--ink2);max-width:74ch;margin:0;}
+div.sub p{margin:0}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+h2{font-size:1.15rem;margin:38px 0 4px;}
+.note{color:var(--ink3);font-size:13px;max-width:78ch;}
+ul.papers{margin:6px 0 0;padding-left:1.15rem;}
+ul.papers li{margin:2px 0;}
+.tw{border:1px solid var(--rule);border-radius:4px;background:var(--card);margin:18px 0;
+    width:max-content;min-width:100%;max-width:100%;}
+@media(max-width:900px){.tw{overflow-x:auto;width:auto;}}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums;}
+th,td{padding:8px 13px;text-align:left;border-bottom:1px solid var(--rule);white-space:nowrap;}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+         color:var(--ink3);font-weight:400;position:sticky;top:0;background:var(--card);}
+td.n,th.n{text-align:right;font-family:var(--mono);}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#243449}
+td.name{font-weight:600}
+.hi{color:var(--good)}.lo{color:var(--bad)}.mid{color:var(--warn)}
+.bar{display:inline-block;height:6px;border-radius:1px;background:var(--accent);opacity:.5;
+     vertical-align:middle;margin-left:7px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:22px 0;}
+.card{display:block;background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:16px 18px;}
+.card:hover{border-color:var(--accent);text-decoration:none}
+.ct{font-weight:700;color:var(--ink);margin-bottom:5px}
+.cd{color:var(--ink2);font-size:13px}
+.grp{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+     color:var(--ink3);margin:34px 0 -6px;}
+footer{border-top:1px solid var(--rule);margin-top:60px;padding-top:18px;color:var(--ink3);font-size:12px;}
+@media(max-width:640px){th,td{padding:7px 10px}}
+
+th.srt{cursor:pointer;user-select:none}
+th.srt:hover{color:var(--ink)}
+th.srt.on{color:var(--accent)}
+tr.gh th{border-bottom:none;padding-bottom:0}
+th.gl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+      color:var(--ink3);text-align:center;border-bottom:1px solid var(--rule)}
+td.rank{color:var(--ink3);width:2.6em}
+.est{font-family:var(--mono);font-size:.62em;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--warn);border:1px solid var(--warn);border-radius:3px;padding:0 3px;
+     vertical-align:middle;margin-left:5px}
+td.mode{color:var(--ink3);font-size:.86em}
+.gap{color:var(--warn);font-size:.8em}
+</style>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="https://docs.kamiwaza.ai/research/agentic-merit-index">&larr; Kamiwaza Agentic Performance Index</a>
+  <h1>Retrieval Pareto frontier</h1>
+  
+</header>
+<p class="note">A = raw aggregate TPS. B = <code>3600&middot;Rₘ / RIKER tokens</code>. C = fabrication resistance (100 &minus; rate) vs throughput on the unanswerable L11/L12 questions &mdash; a model should refuse briefly. Amber = thinking, blue = instruct.</p>
+  <div class="tabs">
+    <button class="tab on" data-v="xa">A · overall × agg TPS</button>
+    <button class="tab" data-v="xb">B · overall × RIKER token-eff</button>
+    <button class="tab" data-v="xc">C · fabrication resistance</button>
+  </div>
+  <p class="note" id="n"></p>
+  <div class="chart" id="cv"></div>
+  <div class="tw" id="t"></div>
+<script>
+const P=[{"model": "Qwen3.8-Flash-Next", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 96.1, "tok": 751, "xa": 2660, "xb": 12751, "yfab": 96.2, "xc": 17009, "fabtok": 563}, {"model": "Qwen3.8-27B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 96.8, "tok": 883, "xa": 5539, "xb": 22583, "yfab": 98.1, "xc": 28324, "fabtok": 704}, {"model": "DeepSeek-V4-Flash-0731", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 94.2, "tok": 428, "xa": 2765, "xb": 23257, "yfab": 93.0, "xc": 40300, "fabtok": 247}, {"model": "GLM-5.2", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 96.7, "tok": 514, "xa": 739, "xb": 5176, "yfab": 98.5, "xc": 5783, "fabtok": 460}, {"model": "Qwen3.6-27B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 91.9, "tok": 296, "xa": 5573, "xb": 67780, "yfab": 87.8, "xc": 110844, "fabtok": 181}, {"model": "GLM-5.2", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 94.1, "tok": 139, "xa": 739, "xb": 19140, "yfab": 97.0, "xc": 33676, "fabtok": 79}, {"model": "Kimi-K3", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 94.5, "tok": 600, "xa": 253, "xb": 1518, "yfab": 89.3, "xc": 1412, "fabtok": 645}, {"model": "GLM-5.3", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking:max", "yov": 95.5, "tok": 754, "xa": 1091, "xb": 5209, "yfab": 93.5, "xc": 4374, "fabtok": 898}, {"model": "Qwen3.6-27B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 88.5, "tok": 1337, "xa": 5573, "xb": 15006, "yfab": 72.6, "xc": 17177, "fabtok": 1168}, {"model": "DeepSeek-V4-Flash-0731", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 85.0, "tok": 109, "xa": 2765, "xb": 91321, "yfab": 90.6, "xc": 150818, "fabtok": 66}, {"model": "MiniMax-M3-MXFP8", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 96.6, "tok": 592, "xa": 1177, "xb": 7157, "yfab": 97.9, "xc": 9252, "fabtok": 458}, {"model": "Qwen3.8-27B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 93.6, "tok": 513, "xa": 5539, "xb": 38870, "yfab": 91.2, "xc": 40041, "fabtok": 498}, {"model": "MiniMax-M3", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 96.6, "tok": 590, "xa": 1078, "xb": 6578, "yfab": 97.9, "xc": 8586, "fabtok": 452}, {"model": "Qwen3.6-35B-A3B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 91.7, "tok": 388, "xa": 12538, "xb": 116332, "yfab": 89.5, "xc": 169052, "fabtok": 267}, {"model": "GLM-5.3", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking:low", "yov": 91.0, "tok": 72, "xa": 1091, "xb": 54550, "yfab": 88.0, "xc": 70136, "fabtok": 56}, {"model": "MiniMax-M3", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 94.0, "tok": 199, "xa": 1078, "xb": 19502, "yfab": 92.4, "xc": 29852, "fabtok": 130}, {"model": "MiniMax-M3-MXFP8", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 93.7, "tok": 199, "xa": 1177, "xb": 21292, "yfab": 91.5, "xc": 32594, "fabtok": 130}, {"model": "Qwen3.8-Flash-Next", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 91.7, "tok": 524, "xa": 2660, "xb": 18275, "yfab": 84.4, "xc": 18667, "fabtok": 513}, {"model": "Qwen3.6-35B-A3B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 87.6, "tok": 1428, "xa": 12538, "xb": 31608, "yfab": 74.0, "xc": 35208, "fabtok": 1282}, {"model": "Qwen3.5-122B-A10B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 95.4, "tok": 1760, "xa": 4938, "xb": 10100, "yfab": 98.5, "xc": 10317, "fabtok": 1723}, {"model": "Qwen3.5-122B-A10B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 94.0, "tok": 488, "xa": 4938, "xb": 36428, "yfab": 96.6, "xc": 58864, "fabtok": 302}, {"model": "Gemma-4-31B-it", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "yov": 95.2, "tok": 1006, "xa": 1391, "xb": 4978, "yfab": 97.7, "xc": 5396, "fabtok": 928}, {"model": "Qwen3.5-397B-A17B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 96.3, "tok": 1096, "xa": 1677, "xb": 5508, "yfab": 99.6, "xc": 6627, "fabtok": 911}, {"model": "Qwen3.5-35B-A3B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 95.1, "tok": 3935, "xa": 12074, "xb": 11046, "yfab": 95.6, "xc": 9074, "fabtok": 4790}, {"model": "Qwen3.5-397B-A17B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 94.0, "tok": 365, "xa": 1677, "xb": 16540, "yfab": 95.6, "xc": 19288, "fabtok": 313}, {"model": "Qwen3.5-35B-A3B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 92.1, "tok": 455, "xa": 12074, "xb": 95531, "yfab": 91.9, "xc": 119413, "fabtok": 364}, {"model": "Mistral-Medium-3.5-128B", "flag": "\ud83c\uddeb\ud83c\uddf7", "mode": "thinking", "yov": 89.6, "tok": 1428, "xa": 3114, "xb": 7850, "yfab": 98.1, "xc": 8997, "fabtok": 1246}, {"model": "Mistral-Medium-3.5-128B", "flag": "\ud83c\uddeb\ud83c\uddf7", "mode": "instruct", "yov": 80.4, "tok": 131, "xa": 3114, "xb": 85576, "yfab": 89.1, "xc": 249120, "fabtok": 45}, {"model": "Laguna-S-2.1", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "yov": 65.4, "tok": 249, "xa": 10323, "xb": 149248, "yfab": 71.0, "xc": 246111, "fabtok": 151}, {"model": "Gemma-4-31B-it", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "instruct", "yov": 92.5, "tok": 428, "xa": 1391, "xb": 11700, "yfab": 96.3, "xc": 26356, "fabtok": 190}, {"model": "Gemma-4-26B-A4B-it", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "yov": 86.8, "tok": 3898, "xa": 2661, "xb": 2458, "yfab": 88.8, "xc": 1782, "fabtok": 5377}, {"model": "Laguna-M.1", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "yov": 75.7, "tok": 900, "xa": 850, "xb": 3400, "yfab": 88.4, "xc": 3849, "fabtok": 795}, {"model": "Qwen3.5-9B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 88.4, "tok": 481, "xa": 44970, "xb": 336574, "yfab": 91.8, "xc": 439924, "fabtok": 368}, {"model": "Qwen3.5-9B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "yov": 90.8, "tok": 2625, "xa": 44970, "xb": 61673, "yfab": 96.3, "xc": 64294, "fabtok": 2518}, {"model": "Laguna-XS-2.1", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "yov": 61.1, "tok": 407, "xa": 57583, "xb": 509334, "yfab": 67.6, "xc": 649839, "fabtok": 319}, {"model": "Gemma-4-26B-A4B-it", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "instruct", "yov": 82.8, "tok": 551, "xa": 2661, "xb": 17386, "yfab": 93.8, "xc": 29567, "fabtok": 324}, {"model": "Qwen3-235B-A22B-Instruct-2507", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "yov": 79.8, "tok": 553, "xa": 1000, "xb": 6510, "yfab": 76.6, "xc": 11356, "fabtok": 317}]; let view="xa";
+const YK={xa:"yov",xb:"yov",xc:"yfab"}, TK={xa:"tok",xb:"tok",xc:"fabtok"};
+const XL={xa:"aggregate TPS (log) \u2192",xb:"RIKER throughput \u2192",xc:"throughput on unanswerable questions \u2192"};
+const YL={xa:"RIKER overall \u2192",xb:"RIKER overall \u2192",xc:"fabrication resistance \u2192"};
+function draw(){
+  const yk=YK[view], tk=TK[view];
+  const V=P.filter(p=>p[view]!=null&&p[yk]!=null).map(p=>({...p,_x:p[view],_y:p[yk],_t:p[tk]}));
+  const W=1040,H=560,M={t:20,r:26,b:52,l:66};
+  const xs=V.map(p=>p._x), ys=V.map(p=>p._y), ts=V.map(p=>p._t);
+  const lx0=Math.log(Math.min(...xs)*0.85), lx1=Math.log(Math.max(...xs)*1.18);
+  const y0=Math.min(...ys)-2, y1=Math.min(100,Math.max(...ys)+1.5), tmax=Math.max(...ts);
+  const X=v=>M.l+(W-M.l-M.r)*(Math.log(v)-lx0)/(lx1-lx0);
+  const Y=v=>H-M.b-(H-M.t-M.b)*(v-y0)/(y1-y0);
+  const R=t=>5+18*Math.sqrt((t||0)/tmax);
+  // frontier: sort by x desc, keep each new maximum y
+  const front=new Set(); let my=-1;
+  V.slice().sort((a,b)=>b._x-a._x).forEach(p=>{if(p._y>my){front.add(p);my=p._y;}});
+  let g="";
+  [300,1000,3000,6000,12000,30000,80000,200000].forEach(t=>{
+    if(t<Math.exp(lx0)||t>Math.exp(lx1))return; const x=X(t);
+    g+=`<line x1="${x}" y1="${M.t}" x2="${x}" y2="${H-M.b}" class="grid"/>`+
+       `<text x="${x}" y="${H-M.b+17}" class="xlab">${t.toLocaleString()}</text>`;});
+  for(let v=Math.ceil(y0/2)*2; v<=y1; v+=2){const y=Y(v);
+    g+=`<line x1="${M.l}" y1="${y}" x2="${W-M.r}" y2="${y}" class="grid"/>`+
+       `<text x="${M.l-8}" y="${y+4}" class="ylab">${v}%</text>`;}
+  const fs=[...front].sort((a,b)=>a._x-b._x);
+  g+=`<polyline class="frontline" points="${fs.map(p=>X(p._x)+","+Y(p._y)).join(" ")}"/>`;
+  V.forEach(p=>{
+    const on=front.has(p), cls=(p.mode.indexOf("think")===0?"think":"instruct")+(on?" onf":"");
+    g+=`<circle cx="${X(p._x)}" cy="${Y(p._y)}" r="${R(p._t).toFixed(1)}" class="bub ${cls}">`+
+       `<title>${p.flag?p.flag+" ":""}${p.model} (${p.mode})\n${YL[view].replace(" \u2192","")} `+
+       `${p._y}\n${XL[view].replace(" (log)","").replace(" \u2192","")} ${p._x.toLocaleString()}`+
+       `\n${p._t.toLocaleString()} tokens</title></circle>`;});
+  fs.forEach(p=>{g+=`<text x="${X(p._x)+9}" y="${Y(p._y)-10}" class="flab">`+
+    `${p.model.slice(0,18)}</text>`;});
+  g+=`<line x1="${M.l}" y1="${H-M.b}" x2="${W-M.r}" y2="${H-M.b}" class="axis"/>`;
+  g+=`<text x="${W/2}" y="${H-6}" class="atitle" text-anchor="middle">${XL[view]}</text>`;
+  g+=`<text x="16" y="${H/2}" class="atitle" text-anchor="middle" transform="rotate(-90 16 ${H/2})">${YL[view]}</text>`;
+  document.getElementById("n").textContent=
+    `${V.length} entities · ${front.size} on the frontier.`;
+  document.getElementById("cv").innerHTML=
+    `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
+  const rows=V.slice().sort((a,b)=>b._y-a._y);
+  document.getElementById("t").innerHTML="<table><thead><tr><th class='n'>#</th><th>model</th>"+
+    "<th>mode</th><th class='n'>"+YL[view].replace(" \u2192","")+"</th><th class='n'>"+
+    XL[view].replace(" (log)","").replace(" \u2192","")+"</th><th class='n'>tokens</th><th>frontier</th>"+
+    "</tr></thead><tbody>"+rows.map((p,i)=>
+    `<tr><td class="n rank">${i+1}</td><td class="name">${p.flag?p.flag+" ":""}${p.model}</td>`+
+    `<td class="mode">${p.mode}</td><td class="n">${p._y}</td>`+
+    `<td class="n">${p._x.toLocaleString()}</td><td class="n">${p._t.toLocaleString()}</td>`+
+    `<td>${front.has(p)?'<span class="hi">on frontier</span>':''}</td></tr>`).join("")+"</tbody></table>";}
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); view=b.dataset.v; draw();});
+draw();
+</script>
+<style>
+.tabs{display:flex;gap:0;margin:16px 0 6px;flex-wrap:wrap}
+.tab{background:var(--bg);color:var(--ink3);border:1px solid var(--rule);border-left:0;
+     padding:7px 14px;cursor:pointer;font:inherit;font-size:.84rem}
+.tab:first-child{border-left:1px solid var(--rule);border-radius:4px 0 0 4px}
+.tab:last-child{border-radius:0 4px 4px 0}
+.tab.on{background:#0d2b21;color:var(--accent);border-color:var(--accent)}
+.chart{background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:10px;margin:8px 0 16px}
+.chart svg{width:100%;height:auto;display:block}
+.grid{stroke:var(--rule)} .axis{stroke:var(--ink3)}
+.ylab{fill:var(--ink3);font-size:11px;font-family:var(--mono);text-anchor:end}
+.xlab{fill:var(--ink3);font-size:11px;font-family:var(--mono);text-anchor:middle}
+.atitle{fill:var(--ink3);font-size:11px}
+.frontline{fill:none;stroke:var(--good);stroke-width:2;stroke-dasharray:6 4;opacity:.9}
+.bub{stroke-width:1.3;opacity:.35}
+.bub.think{fill:var(--warn)} .bub.instruct{fill:#5aa9e6}
+.bub.onf{opacity:.85;stroke:var(--good);stroke-width:2.4}
+.flab{fill:var(--ink);font-size:11px;paint-order:stroke;stroke:var(--card);stroke-width:3px}
+</style>
+<footer>Kamiwaza Agentic Performance Index · generated from banked benchmark runs · <a href="https://docs.kamiwaza.ai/research/agentic-merit-index">docs.kamiwaza.ai/research</a></footer>
+</div>

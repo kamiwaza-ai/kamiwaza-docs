@@ -1,0 +1,163 @@
+<!doctype html><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VRAM planner · KAPI</title>
+<style>
+/* Kamiwaza brand palette — matches docs.kamiwaza.ai (--kamiwaza-* tokens). */
+:root{--bg:#0f172a;--card:#1e293b;--ink:#f8fafc;--ink2:#cbd5e1;--ink3:#94a3b8;
+      --rule:#334155;--accent:#10b981;--good:#06d6a0;--bad:#f87171;--warn:#fbbf24;
+      --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+      --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px 90px;}
+/* A board whose table is wider than the text column breaks out of it, centred, rather
+   than scrolling inside a 1180px box with empty gutters on both sides. */
+body:has(.tw){display:flex;justify-content:center;}
+.wrap:has(.tw){max-width:none;width:fit-content;min-width:min(1180px,100%);}
+/* Data boards are wide by nature. Let the table claim the viewport rather than sit
+   cropped inside a scroller with empty gutters either side. */
+.wide{max-width:none;width:max-content;min-width:100%;margin-inline:auto;}
+header.top{border-bottom:1px solid var(--rule);padding:30px 0 20px;margin-bottom:30px;}
+.brand{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+       text-transform:uppercase;color:var(--ink3);margin:0 0 12px;text-decoration:none;}
+a.brand:hover{color:var(--accent);text-decoration:none;}
+h1{font-size:2rem;font-weight:700;margin:0 0 10px;letter-spacing:-.015em;}
+.sub{color:var(--ink2);max-width:74ch;margin:0;}
+div.sub p{margin:0}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+h2{font-size:1.15rem;margin:38px 0 4px;}
+.note{color:var(--ink3);font-size:13px;max-width:78ch;}
+ul.papers{margin:6px 0 0;padding-left:1.15rem;}
+ul.papers li{margin:2px 0;}
+.tw{border:1px solid var(--rule);border-radius:4px;background:var(--card);margin:18px 0;
+    width:max-content;min-width:100%;max-width:100%;}
+@media(max-width:900px){.tw{overflow-x:auto;width:auto;}}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums;}
+th,td{padding:8px 13px;text-align:left;border-bottom:1px solid var(--rule);white-space:nowrap;}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+         color:var(--ink3);font-weight:400;position:sticky;top:0;background:var(--card);}
+td.n,th.n{text-align:right;font-family:var(--mono);}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#243449}
+td.name{font-weight:600}
+.hi{color:var(--good)}.lo{color:var(--bad)}.mid{color:var(--warn)}
+.bar{display:inline-block;height:6px;border-radius:1px;background:var(--accent);opacity:.5;
+     vertical-align:middle;margin-left:7px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:22px 0;}
+.card{display:block;background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:16px 18px;}
+.card:hover{border-color:var(--accent);text-decoration:none}
+.ct{font-weight:700;color:var(--ink);margin-bottom:5px}
+.cd{color:var(--ink2);font-size:13px}
+.grp{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+     color:var(--ink3);margin:34px 0 -6px;}
+footer{border-top:1px solid var(--rule);margin-top:60px;padding-top:18px;color:var(--ink3);font-size:12px;}
+@media(max-width:640px){th,td{padding:7px 10px}}
+
+th.srt{cursor:pointer;user-select:none}
+th.srt:hover{color:var(--ink)}
+th.srt.on{color:var(--accent)}
+tr.gh th{border-bottom:none;padding-bottom:0}
+th.gl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+      color:var(--ink3);text-align:center;border-bottom:1px solid var(--rule)}
+td.rank{color:var(--ink3);width:2.6em}
+.est{font-family:var(--mono);font-size:.62em;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--warn);border:1px solid var(--warn);border-radius:3px;padding:0 3px;
+     vertical-align:middle;margin-left:5px}
+td.mode{color:var(--ink3);font-size:.86em}
+.gap{color:var(--warn);font-size:.8em}
+</style>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="https://docs.kamiwaza.ai/research/agentic-merit-index">&larr; Kamiwaza Agentic Performance Index</a>
+  <h1>How much capability fits my box?</h1>
+  
+</header>
+
+  <div class="ctrls">
+    <div class="cg"><label>Card</label><select id="card"></select></div>
+    <div class="cg dim" id="cwrap"><label>GB each</label><input type="range" id="cgb" min="8" max="1024" step="8" value="288"><input type="number" id="cnum" min="8" max="4096" step="8" value="288" class="gbnum"></div>
+    <div class="cg"><label>GPUs</label><select id="gpus"></select></div>
+    <div class="cg"><label>Context</label><input type="range" id="ctx" min="4096" max="1048576" step="4096" value="131072">
+      <span id="ctxv" class="v"></span></div>
+    <div class="cg"><label>KV cache</label>
+      <span class="seg"><button data-kv="fp16" class="on">fp16</button><button data-kv="fp8">fp8</button></span></div>
+    <div class="cg"><label>Concurrency</label><input type="range" id="conc" min="1" max="64" step="1" value="8">
+      <span id="concv" class="v"></span></div>
+    <div class="budget" id="budget"></div>
+  </div>
+  <div class="tw"><table><thead><tr><th class="n">#</th><th>model</th><th class="n">KAI</th>
+    <th>arm</th><th class="n">total/active B</th><th>precision</th><th class="n">weights GB</th>
+    <th class="n">KV GB</th><th class="n">+overhead</th><th class="n">VRAM GB</th>
+    <th class="n">headroom</th></tr></thead><tbody id="body"></tbody></table></div>
+  <p class="note">VRAM = weights + KV + 2.5 GB overhead. Weights measured, KV estimated. MoE loads every expert (total), runs like its active size. <span class="cx">ctx!</span> = beyond the model’s own maximum context.</p>
+<script>
+const M=[{"slug": "deepseek_v4_flash_0731", "name": "DeepSeek-V4-Flash-0731", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 305.8, "precision": "fp8", "total_b": 304, "active_b": 15, "moe": true, "max_ctx": 1048576, "b_layer": 2048.0, "full": 0, "swa": 43, "win": 128, "kai": 92.7, "mode": "thinking"}, {"slug": "gemma_4_26b_a4b_it", "name": "Gemma-4-26B-A4B-it", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 51.6, "precision": "bf16", "total_b": 26, "active_b": 4, "moe": true, "max_ctx": 262144, "b_layer": 8192.0, "full": 5, "swa": 25, "win": 1024, "kai": 50.8, "mode": "thinking"}, {"slug": "gemma_4_31b_it", "name": "Gemma-4-31B-it", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 62.5, "precision": "bf16", "total_b": 31, "active_b": 31, "moe": false, "max_ctx": 262144, "b_layer": 16384.0, "full": 10, "swa": 50, "win": 1024, "kai": 69.8, "mode": "thinking"}, {"slug": "glm_5_2", "name": "GLM-5.2", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 1506.7, "precision": "bf16", "total_b": 753, "active_b": 40, "moe": true, "max_ctx": 1048576, "b_layer": 1152.0, "full": 78, "swa": 0, "win": 0, "kai": 92.4, "mode": "thinking"}, {"slug": "glm_5_3", "name": "GLM-5.3", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 755.4, "precision": "fp8", "total_b": 753, "active_b": 753, "moe": false, "max_ctx": 1048576, "b_layer": 1152.0, "full": 78, "swa": 0, "win": 0, "kai": 84.3, "mode": "thinking:max"}, {"slug": "inkling", "name": "Inkling", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 1904.8, "precision": "bf16", "total_b": 952, "active_b": 952, "moe": false, "max_ctx": null, "b_layer": 4096.0, "full": 66, "swa": 0, "win": 0, "kai": 68.8, "mode": "thinking"}, {"slug": "inkling_nvfp4", "name": "Inkling-NVFP4", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 592.0, "precision": "fp8", "total_b": 553, "active_b": 553, "moe": false, "max_ctx": 1048576, "b_layer": 4096.0, "full": 66, "swa": 0, "win": 0, "kai": 70.2, "mode": "thinking"}, {"slug": "inkling_small", "name": "Inkling-Small", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 531.9, "precision": "bf16", "total_b": 266, "active_b": 266, "moe": false, "max_ctx": 1048576, "b_layer": 4096.0, "full": 42, "swa": 0, "win": 0, "kai": 63.6, "mode": "thinking"}, {"slug": "kimi_k3", "name": "Kimi-K3", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 2837.2, "precision": "fp8", "total_b": 2780, "active_b": 32, "moe": true, "max_ctx": 1048576, "b_layer": 1152.0, "full": 93, "swa": 0, "win": 0, "kai": 91.1, "mode": "thinking"}, {"slug": "laguna_m_1", "name": "Laguna-M.1", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 451.6, "precision": "bf16", "total_b": 226, "active_b": 226, "moe": false, "max_ctx": 262144, "b_layer": 4096.0, "full": 70, "swa": 0, "win": 0, "kai": 60.6, "mode": "thinking"}, {"slug": "laguna_s_2_1", "name": "Laguna-S-2.1", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 235.1, "precision": "bf16", "total_b": 118, "active_b": 118, "moe": false, "max_ctx": 1048576, "b_layer": 4096.0, "full": 12, "swa": 36, "win": 512, "kai": 68.1, "mode": "thinking"}, {"slug": "laguna_xs_2_1", "name": "Laguna-XS-2.1", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 66.9, "precision": "bf16", "total_b": 33, "active_b": 33, "moe": false, "max_ctx": 262144, "b_layer": 4096.0, "full": 10, "swa": 30, "win": 512, "kai": 36.8, "mode": "thinking"}, {"slug": "llama_3_3_70b_instruct", "name": "Llama-3.3-70B-Instruct", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 141.1, "precision": "bf16", "total_b": 70, "active_b": 70, "moe": false, "max_ctx": 131072, "b_layer": 4096.0, "full": 80, "swa": 0, "win": 0, "kai": 17.5, "mode": "instruct"}, {"slug": "llama_4_maverick_17b_128e_instruct", "name": "Llama-4-Maverick-17B-128E-Instruct", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 34.0, "precision": "bf16", "total_b": 17, "active_b": 17, "moe": false, "max_ctx": null, "b_layer": 0.0, "full": 0, "swa": 0, "win": 0, "kai": 28.7, "mode": "instruct"}, {"slug": "minimax_m3", "name": "MiniMax-M3", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 854.2, "precision": "bf16", "total_b": 428, "active_b": 23, "moe": true, "max_ctx": 1048576, "b_layer": 2048.0, "full": 60, "swa": 0, "win": 0, "kai": 80.8, "mode": "thinking"}, {"slug": "minimax_m3_mxfp8", "name": "MiniMax-M3-MXFP8", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 443.7, "precision": "fp8", "total_b": 428, "active_b": 23, "moe": true, "max_ctx": 1048576, "b_layer": 2048.0, "full": 60, "swa": 0, "win": 0, "kai": 83.5, "mode": "thinking"}, {"slug": "mistral_medium_3_5_128b", "name": "Mistral-Medium-3.5-128B", "flag": "\ud83c\uddeb\ud83c\uddf7", "weights": 256.0, "precision": "bf16", "total_b": 128, "active_b": 128, "moe": false, "max_ctx": null, "b_layer": 0.0, "full": 0, "swa": 0, "win": 0, "kai": 69.1, "mode": "thinking"}, {"slug": "muse_glimmer_30b", "name": "Muse-Glimmer-30B", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 59.5, "precision": "bf16", "total_b": 30, "active_b": 30, "moe": false, "max_ctx": 131072, "b_layer": 1024.0, "full": 13, "swa": 39, "win": 2048, "kai": 82.3, "mode": "thinking"}, {"slug": "nvidia_nemotron_3_super_120b_a12b_bf16", "name": "Nemotron-3-Super-120B-A12B-BF16", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 247.2, "precision": "bf16", "total_b": 120, "active_b": 12, "moe": true, "max_ctx": 262144, "b_layer": 1024.0, "full": 8, "swa": 0, "win": 0, "kai": 45.3, "mode": "thinking"}, {"slug": "nvidia_nemotron_3_ultra_550b_a55b_bf16", "name": "Nemotron-3-Ultra-550B-A55B-BF16", "flag": "\ud83c\uddfa\ud83c\uddf8", "weights": 1100.0, "precision": "bf16", "total_b": 550, "active_b": 55, "moe": true, "max_ctx": null, "b_layer": 0.0, "full": 0, "swa": 0, "win": 0, "kai": 72.4, "mode": "thinking"}, {"slug": "qwen3_235b_a22b_instruct_2507", "name": "Qwen3-235B-A22B-Instruct-2507", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 470.2, "precision": "bf16", "total_b": 235, "active_b": 22, "moe": true, "max_ctx": 262144, "b_layer": 2048.0, "full": 94, "swa": 0, "win": 0, "kai": 38.4, "mode": "instruct"}, {"slug": "qwen3_5_122b_a10b", "name": "Qwen3.5-122B-A10B", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 250.2, "precision": "bf16", "total_b": 122, "active_b": 10, "moe": true, "max_ctx": 262144, "b_layer": 2048.0, "full": 12, "swa": 0, "win": 0, "kai": 66.0, "mode": "instruct"}, {"slug": "qwen3_5_35b_a3b", "name": "Qwen3.5-35B-A3B", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 71.9, "precision": "bf16", "total_b": 35, "active_b": 3, "moe": true, "max_ctx": 262144, "b_layer": 2048.0, "full": 10, "swa": 0, "win": 0, "kai": 58.7, "mode": "thinking"}, {"slug": "qwen3_5_397b_a17b", "name": "Qwen3.5-397B-A17B", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 806.8, "precision": "bf16", "total_b": 397, "active_b": 17, "moe": true, "max_ctx": 262144, "b_layer": 2048.0, "full": 15, "swa": 0, "win": 0, "kai": 67.4, "mode": "instruct"}, {"slug": "qwen3_5_9b", "name": "Qwen3.5-9B", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 19.3, "precision": "bf16", "total_b": 9, "active_b": 9, "moe": false, "max_ctx": 262144, "b_layer": 4096.0, "full": 8, "swa": 0, "win": 0, "kai": 43.9, "mode": "thinking"}, {"slug": "qwen3_6_27b", "name": "Qwen3.6-27B", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 55.6, "precision": "bf16", "total_b": 27, "active_b": 27, "moe": false, "max_ctx": 262144, "b_layer": 4096.0, "full": 16, "swa": 0, "win": 0, "kai": 86.6, "mode": "instruct"}, {"slug": "qwen3_6_35b_a3b", "name": "Qwen3.6-35B-A3B", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 71.9, "precision": "bf16", "total_b": 35, "active_b": 3, "moe": true, "max_ctx": 262144, "b_layer": 2048.0, "full": 10, "swa": 0, "win": 0, "kai": 68.8, "mode": "instruct"}, {"slug": "qwen3_8_27b", "name": "Qwen3.8-27B", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 55.6, "precision": "bf16", "total_b": 27, "active_b": 27, "moe": false, "max_ctx": 262144, "b_layer": 4096.0, "full": 16, "swa": 0, "win": 0, "kai": 88.9, "mode": "thinking"}, {"slug": "qwen3_8_2_4t_a95b", "name": "Qwen3.8-2.4T-A95B", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 190.0, "precision": "bf16", "total_b": 95, "active_b": 95, "moe": false, "max_ctx": null, "b_layer": 0.0, "full": 0, "swa": 0, "win": 0, "kai": 96.2, "mode": "thinking:medium"}, {"slug": "qwen3_8_flash_next", "name": "Qwen3.8-Flash-Next", "flag": "\ud83c\udde8\ud83c\uddf3", "weights": 360.0, "precision": "bf16", "total_b": 180, "active_b": 180, "moe": false, "max_ctx": 262144, "b_layer": 2048.0, "full": 12, "swa": 0, "win": 0, "kai": 96.3, "mode": "thinking"}], CARDS={"RTX 4090": 24, "RTX 5090": 32, "Radeon PRO W7900": 48, "L40S": 48, "A100 80GB": 80, "RTX PRO 6000 (Blackwell)": 96, "H100 80GB": 80, "H200": 141, "MI300X": 192, "MI325X": 256, "MI355X": 288, "B200": 192, "B300": 288}, OH=2.5;
+let kv="fp16";
+const card=document.getElementById("card"), gpus=document.getElementById("gpus");
+Object.entries(CARDS).forEach(([n,g])=>card.add(new Option(`${n} — ${g} GB`,g)));
+card.add(new Option("Custom…","custom")); card.value=141;
+[1,2,4,8].forEach(n=>gpus.add(new Option(n+(n>1?" GPUs":" GPU"),n)));
+function cardGB(){return card.value==="custom" ? (+document.getElementById("cgb").value) : (+card.value);}
+function syncCustom(){
+  const on=card.value==="custom", w=document.getElementById("cwrap");
+  w.classList.toggle("dim",!on);
+  document.getElementById("cgb").disabled=!on;
+  document.getElementById("cnum").disabled=!on;}
+function fmtctx(v){return v>=1048576?(v/1048576)+"M":(v/1024)+"K";}
+function kvGB(m,ctx,conc){
+  const win=m.win||ctx, toks=m.full*ctx + m.swa*Math.min(ctx,win);
+  return m.b_layer*toks*conc*(kv==="fp8"?0.5:1)/1e9;}
+function render(){
+  const ctx=+document.getElementById("ctx").value, conc=+document.getElementById("conc").value;
+  const budget=cardGB()*(+gpus.value);
+  document.getElementById("ctxv").textContent=fmtctx(ctx);
+  document.getElementById("concv").textContent=conc;
+  const rows=M.map(m=>{const k=kvGB(m,ctx,conc), tot=m.weights+k+OH;
+    return {m,k,tot,fit:tot<=budget,over:m.max_ctx&&ctx>m.max_ctx};})
+    .sort((a,b)=>(b.fit-a.fit)||(b.m.kai-a.m.kai));
+  const nfit=rows.filter(r=>r.fit).length, best=rows.find(r=>r.fit);
+  document.getElementById("budget").innerHTML=`Budget <b>${budget} GB</b> &nbsp;·&nbsp; `+
+    `<b class="hi">${nfit}</b> / ${rows.length} models fit &nbsp;·&nbsp; highest KAI that fits: `+
+    (best?`<b>${best.m.name}</b> (KAI ${best.m.kai})`:"&mdash;");
+  document.getElementById("body").innerHTML=rows.map((r,i)=>{
+    const m=r.m, ta=m.moe?`${m.total_b.toFixed(0)}/${m.active_b.toFixed(0)}`:`${m.total_b.toFixed(0)}`;
+    const head=r.fit?`<span class="hi">+${(budget-r.tot).toFixed(0)}</span>`
+                    :`<span class="lo">${(budget-r.tot).toFixed(0)}</span>`;
+    return `<tr class="${r.fit?'':'nofit'}"><td class="n">${i+1}</td>`+
+      `<td class="name">${m.flag?m.flag+" ":""}${m.name}${r.over?' <span class="cx">ctx!</span>':''}</td>`+
+      `<td class="n"><b>${m.kai}</b></td><td>${m.mode}</td><td class="n">${ta}</td>`+
+      `<td>${m.precision}</td><td class="n">${m.weights.toFixed(0)}</td>`+
+      `<td class="n">${r.k.toFixed(1)}</td><td class="n">${OH}</td>`+
+      `<td class="n"><b>${r.tot.toFixed(0)}</b></td><td class="n">${head}</td></tr>`;}).join("");}
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
+  kv=b.dataset.kv; document.querySelectorAll(".seg button").forEach(x=>x.classList.toggle("on",x===b)); render();});
+["card","gpus","ctx","conc"].forEach(id=>document.getElementById(id).oninput=()=>{syncCustom();render();});
+const cgb=document.getElementById("cgb"), cnum=document.getElementById("cnum");
+cgb.oninput=()=>{cnum.value=cgb.value;render();};
+cnum.oninput=()=>{const v=Math.max(8,+cnum.value||8); if(v<=+cgb.max)cgb.value=v; render();};
+syncCustom();
+render();
+</script>
+<style>
+.ctrls{background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:14px 16px;
+  margin:18px 0;display:flex;flex-wrap:wrap;gap:16px 26px;align-items:center}
+.cg{display:flex;align-items:center;gap:8px;font-size:.9rem}
+.cg label{color:var(--ink3)}
+.cg select,.cg input[type=range]{accent-color:var(--accent)}
+.cg .v{color:var(--accent);font-weight:700;min-width:38px}
+.gbnum{width:80px;background:var(--bg);color:var(--accent);border:1px solid var(--rule);
+  border-radius:4px;padding:4px 6px;font:inherit;font-weight:700}
+.cg.dim{opacity:.38}
+.cg.dim label,.cg.dim input{cursor:not-allowed}
+select{background:var(--bg);color:var(--ink);border:1px solid var(--rule);border-radius:4px;padding:5px 8px}
+.seg button{background:var(--bg);color:var(--ink3);border:1px solid var(--rule);padding:5px 12px;cursor:pointer}
+.seg button:first-child{border-radius:4px 0 0 4px}
+.seg button:last-child{border-radius:0 4px 4px 0;border-left:0}
+.seg button.on{background:#0d2b21;color:var(--accent);border-color:var(--accent)}
+.budget{flex-basis:100%;color:var(--ink2);border-top:1px solid var(--rule);padding-top:12px}
+tr.nofit{opacity:.38}
+.cx{color:var(--warn);font-size:.72rem;border:1px solid var(--warn);border-radius:3px;padding:0 4px}
+</style>
+<footer>Kamiwaza Agentic Performance Index · generated from banked benchmark runs · <a href="https://docs.kamiwaza.ai/research/agentic-merit-index">docs.kamiwaza.ai/research</a></footer>
+</div>
