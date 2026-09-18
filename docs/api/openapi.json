@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Kamiwaza REST API",
-    "version": "1.0.2"
+    "version": "1.2.1"
   },
   "servers": [
     {
@@ -11049,6 +11049,93 @@
         }
       }
     },
+    "/catalog/containers/registered-sources": {
+      "get": {
+        "tags": [
+          "catalog",
+          "catalog",
+          "containers"
+        ],
+        "summary": "List Registered Source Containers",
+        "description": "List registered source summaries without enumerating child datasets.",
+        "operationId": "list_registered_source_containers_catalog_containers_registered_sources_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque source cursor",
+              "title": "Cursor"
+            },
+            "description": "Opaque source cursor"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredSourceContainerPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/catalog/containers/by-urn": {
       "get": {
         "tags": [
@@ -16559,6 +16646,69 @@
         }
       }
     },
+    "/cluster/remote/identity-status": {
+      "post": {
+        "tags": [
+          "cluster-remote"
+        ],
+        "summary": "Handle Remote Identity Status",
+        "description": "Return a bounded IdP-status lease to the exact PSK-authenticated peer.",
+        "operationId": "handle_remote_identity_status_cluster_remote_identity_status_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FederatedIdentityChallenge"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FederatedIdentityChallengeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2Login": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/cluster/remote/disconnect": {
       "post": {
         "tags": [
@@ -20776,6 +20926,69 @@
         }
       }
     },
+    "/ingestion/ingest/register": {
+      "post": {
+        "tags": [
+          "ingestion",
+          "ingestion"
+        ],
+        "summary": "Register Source",
+        "operationId": "register_source_ingestion_ingest_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/ingestion/ingest/emit": {
       "post": {
         "tags": [
@@ -21829,6 +22042,70 @@
         }
       }
     },
+    "/retrieval/query-jobs": {
+      "post": {
+        "tags": [
+          "retrieval",
+          "retrieval"
+        ],
+        "summary": "Create Structured Retrieval Job",
+        "description": "Create a versioned, fail-closed governed-record query job.",
+        "operationId": "create_structured_retrieval_job_retrieval_query_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordQueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/retrieval/jobs/{job_id}/cancel": {
       "post": {
         "tags": [
@@ -21969,6 +22246,70 @@
         "summary": "Stream Retrieval Job",
         "description": "Stream only legacy retrieval jobs.",
         "operationId": "stream_retrieval_job_retrieval_jobs__job_id__stream_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
+    "/retrieval/query-jobs/{job_id}/stream": {
+      "get": {
+        "tags": [
+          "retrieval",
+          "retrieval"
+        ],
+        "summary": "Stream Record Query Job",
+        "description": "Stream one versioned governed-record query job.",
+        "operationId": "stream_record_query_job_retrieval_query_jobs__job_id__stream_get",
         "security": [
           {
             "BearerAuth": []
@@ -29436,6 +29777,378 @@
         }
       }
     },
+    "/apps/catalog": {
+      "get": {
+        "tags": [
+          "apps",
+          "Extension catalog"
+        ],
+        "summary": "Read",
+        "operationId": "read_apps_catalog_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Template Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
+    "/apps/catalog/refresh": {
+      "post": {
+        "tags": [
+          "apps",
+          "Extension catalog"
+        ],
+        "summary": "Refresh",
+        "operationId": "refresh_apps_catalog_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "admin",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
+    "/apps/catalog/selection": {
+      "post": {
+        "tags": [
+          "apps",
+          "Extension catalog"
+        ],
+        "summary": "Select",
+        "operationId": "select_apps_catalog_selection_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectionChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "admin",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
+    "/apps/catalog/update-all/preview": {
+      "get": {
+        "tags": [
+          "apps",
+          "Extension catalog"
+        ],
+        "summary": "Preview",
+        "operationId": "preview_apps_catalog_update_all_preview_get",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Template Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-auth-role": "admin",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
+    "/apps/catalog/update-all": {
+      "post": {
+        "tags": [
+          "apps",
+          "Extension catalog"
+        ],
+        "summary": "Update All",
+        "operationId": "update_all_apps_catalog_update_all_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProposal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "admin",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
+    "/apps/catalog/import": {
+      "post": {
+        "tags": [
+          "apps",
+          "Extension catalog"
+        ],
+        "summary": "Import Catalog",
+        "operationId": "import_catalog_apps_catalog_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogImport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "admin",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/apps/config/ephemeral_forced": {
       "get": {
         "tags": [
@@ -30800,6 +31513,63 @@
         }
       }
     },
+    "/apps/remote/compatibility": {
+      "get": {
+        "tags": [
+          "app_templates"
+        ],
+        "summary": "Get Extension Compatibility",
+        "description": "Report the running Core version used to select extension releases.",
+        "operationId": "get_extension_compatibility_apps_remote_compatibility_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Get Extension Compatibility Apps Remote Compatibility Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "OAuth2Login": []
+          }
+        ],
+        "x-auth-role": "authenticated",
+        "x-auth-rejected-token-indicators": {
+          "issuerPrefixes": [
+            "urn:kamiwaza:delegated-workloads:v1"
+          ],
+          "joseTypes": [
+            "kz-run-cap+jwt",
+            "kz-effect-cap+jwt"
+          ],
+          "kidPrefixes": [
+            "kz-delegated-"
+          ]
+        }
+      }
+    },
     "/apps/remote/status": {
       "get": {
         "tags": [
@@ -30931,7 +31701,7 @@
           "app_templates"
         ],
         "summary": "Import Garden Apps",
-        "description": "Import missing garden apps as templates.",
+        "description": "Refresh retained availability without changing administrator selections.",
         "operationId": "import_garden_apps_apps_garden_import_post",
         "responses": {
           "200": {
@@ -32069,7 +32839,7 @@
           "Tool Shed"
         ],
         "summary": "Import Tool Garden Servers",
-        "description": "Import tool templates from remote catalog (not from local file).",
+        "description": "Refresh retained tool availability without changing selections.",
         "operationId": "import_tool_garden_servers_tool_garden_import_post",
         "responses": {
           "200": {
@@ -32584,7 +33354,7 @@
           "extensions"
         ],
         "summary": "Upgrade All Extensions",
-        "description": "Re-render every template-driven deployed extension whose template digest\ndiffers from its running CR. Admin-only — enforced by ``AdminUser`` so\nFastAPI rejects non-admin callers before the route runs. Pod rolls are\nobserved via the operator + k8s rolling update; this endpoint returns once\neach CR has either been PATCHed, recognized as up-to-date, or recorded\nwith an error.",
+        "description": "Re-render every template-driven deployed extension whose template digest\ndiffers from its running CR. Admin-only — enforced by ``AdminUser`` so\nFastAPI rejects non-admin callers before the route runs. Pod rolls are\nobserved via the operator + k8s rolling update; this endpoint returns once\neach CR has either been PATCHed, recognized as up-to-date, skipped because\nit has no template-driven upgrade target (see ``reason``), or recorded\nwith an error.",
         "operationId": "upgrade_all_extensions_extensions_upgrade_all_post",
         "security": [
           {
@@ -33734,7 +34504,7 @@
           "connectors"
         ],
         "summary": "List Connector Catalog",
-        "description": "List connectors available to subscribe from the published catalog (admin).\n\nParity with the App Garden apps/tools catalog: connector manifests are\nfetched from the remote template catalog (or a file:// override) so an admin\ncan browse and subscribe a connector without hand-supplying its manifest.",
+        "description": "List connectors available to subscribe from the published catalog (admin).\n\nParity with the App Garden apps/tools catalog: connector manifests are\nfetched from the remote template catalog (or a file:// override) so an admin\ncan browse and subscribe a connector without hand-supplying its manifest.\n\n``source_status`` reports whether an empty list means \"no connectors\npublished\" (``empty``) or that the catalog source could not be read\n(``source_error``), so the admin UI can tell those apart instead of showing\nthe same \"none available\" state for both.",
         "operationId": "list_connector_catalog_connectors_catalog_get",
         "parameters": [
           {
@@ -45399,6 +46169,31 @@
             "title": "Template Id",
             "description": "The UUID of the app template to use"
           },
+          "expected_release_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Release Id",
+            "description": "Exact selected catalog release expected at admission"
+          },
+          "expected_selection_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Selection Revision",
+            "description": "Selection revision expected at admission"
+          },
           "min_copies": {
             "type": "integer",
             "title": "Min Copies",
@@ -45706,6 +46501,30 @@
             "title": "Purge Requested At",
             "description": "Time at which a purge was requested for this deployment"
           },
+          "last_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Code",
+            "description": "Stable classification of the most recent launch failure, retained after the failed attempt's runtime resources are cleaned up"
+          },
+          "last_error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Message",
+            "description": "Redacted, length-bounded reason for the most recent launch failure. Cleared when a later attempt supersedes it."
+          },
           "image_status": {
             "anyOf": [
               {
@@ -45727,6 +46546,12 @@
             "type": "array",
             "title": "Services",
             "description": "Runtime per-service status snapshot for K8s-backed deployments"
+          },
+          "reconciliation_pending": {
+            "type": "boolean",
+            "title": "Reconciliation Pending",
+            "description": "Whether direct-runtime reconciliation is waiting for an explicit retry",
+            "default": false
           }
         },
         "type": "object",
@@ -46517,6 +47342,36 @@
             "title": "Strip Path Prefix",
             "description": "Whether the routing provider should strip the path prefix before forwarding. Defaults to True for tools, False for apps and services."
           },
+          "catalog_managed": {
+            "type": "boolean",
+            "title": "Catalog Managed",
+            "description": "Whether this template is projected from an explicit catalog selection",
+            "default": false
+          },
+          "selected_release_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Release Id",
+            "description": "Immutable release identity selected for new deployments of this template"
+          },
+          "selection_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection Revision",
+            "description": "Current local selection revision used to detect concurrent changes"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -46547,6 +47402,18 @@
             ],
             "title": "Updated At",
             "description": "Timestamp of the last update to the template"
+          },
+          "canonical_identity_trusted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Identity Trusted",
+            "description": "Whether this template is the genuine canonical product for a reserved identity. True when catalog-sourced and unshadowed, False for a claimant that is neither (an impostor, or a local dev build overlaying the identity). Null means the verdict does not apply or was not computed — the name reserves no canonical identity, the response came from a write path that does not resolve overlay state, or the server predates this field; treat null as \"no claim\", never as a negative verdict. Presentation only — a false verdict refuses nothing."
           }
         },
         "type": "object",
@@ -46565,6 +47432,36 @@
           "source_type": "kamiwaza",
           "template_type": "app"
         }
+      },
+      "ApprovedPythonPackage": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "sha256": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "sha256"
+        ],
+        "title": "ApprovedPythonPackage",
+        "description": "One immutable repository artifact approved for job installation."
       },
       "ArtifactCreate": {
         "properties": {
@@ -47346,6 +48243,16 @@
             },
             "type": "array",
             "title": "Items"
+          },
+          "source_status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "empty",
+              "source_error"
+            ],
+            "title": "Source Status",
+            "default": "ok"
           }
         },
         "type": "object",
@@ -47353,7 +48260,7 @@
           "items"
         ],
         "title": "CatalogConnectorListResponse",
-        "description": "Connectors available to subscribe from the catalog."
+        "description": "Connectors available to subscribe from the catalog.\n\n``source_status`` lets the admin UI distinguish an empty list that means\n\"no connectors published\" (``\"empty\"``) from one that means the catalog\nsource could not be read (``\"source_error\"``), instead of showing the same\n\"none available\" state for both. ``\"ok\"`` whenever ``items`` is non-empty."
       },
       "CatalogConnectorResponse": {
         "properties": {
@@ -47395,6 +48302,46 @@
         ],
         "title": "CatalogConnectorResponse",
         "description": "A connector available to subscribe, sourced from the remote/file catalog.\n\n``manifest`` is the connector's self-describing ``ConnectorSpec.to_manifest()``;\nan admin subscribes it (adding the provider config) to install the connector.\n``already_subscribed`` flags types this deployment already has."
+      },
+      "CatalogImport": {
+        "properties": {
+          "releases": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Releases",
+            "description": "Immutable extension release payloads to validate and retain"
+          },
+          "template_types": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "app",
+                "service",
+                "tool"
+              ]
+            },
+            "type": "object",
+            "title": "Template Types",
+            "description": "Optional extension-name to template-kind mapping for imported releases"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Source",
+            "description": "Provenance label for this explicit catalog import",
+            "default": "manual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "releases"
+        ],
+        "title": "CatalogImport",
+        "description": "Retain explicitly imported releases without changing local selections."
       },
       "CatalogOverlayApplyResponse": {
         "properties": {
@@ -48085,16 +49032,14 @@
             "maximum": 4096,
             "minimum": 100,
             "title": "Chunk Size",
-            "description": "Target chunk size in characters",
-            "default": 512
+            "description": "Target chunk size in characters. Defaults to the configured chunk geometry (CONTEXT_SERVICE_DEFAULT_CHUNK_SIZE, else the platform default)."
           },
           "chunk_overlap": {
             "type": "integer",
             "maximum": 500,
             "minimum": 0,
             "title": "Chunk Overlap",
-            "description": "Overlap between chunks in characters",
-            "default": 50
+            "description": "Overlap between chunks in characters. Defaults to the configured chunk geometry (CONTEXT_SERVICE_DEFAULT_CHUNK_OVERLAP, else the platform default)."
           }
         },
         "type": "object",
@@ -50592,6 +51537,31 @@
             "title": "Template Id",
             "description": "The UUID of the app template to use"
           },
+          "expected_release_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Release Id",
+            "description": "Exact selected catalog release expected at admission"
+          },
+          "expected_selection_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Selection Revision",
+            "description": "Selection revision expected at admission"
+          },
           "min_copies": {
             "type": "integer",
             "title": "Min Copies",
@@ -51419,6 +52389,7 @@
                 "type": "null"
               }
             ],
+            "title": "Kamiwaza",
             "description": "Kamiwaza platform integration settings"
           },
           "networking": {
@@ -51430,6 +52401,7 @@
                 "type": "null"
               }
             ],
+            "title": "Networking",
             "description": "Networking and ingress configuration"
           },
           "sandbox": {
@@ -51441,6 +52413,7 @@
                 "type": "null"
               }
             ],
+            "title": "Sandbox",
             "description": "Sandbox runtime configuration"
           },
           "security": {
@@ -51452,9 +52425,10 @@
                 "type": "null"
               }
             ],
+            "title": "Security",
             "description": "Security classification and pod security"
           },
-          "workroom_id": {
+          "workroomId": {
             "anyOf": [
               {
                 "type": "string"
@@ -51481,7 +52455,7 @@
             "title": "Annotations",
             "description": "Optional client-supplied CR annotations. Only keys in the kamiwaza.ai/* namespace are accepted; the kamiwaza.io/* namespace is reserved for server-trusted annotations such as owner-user-id and workroom-id."
           },
-          "workload_identity": {
+          "workloadIdentity": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -51495,6 +52469,7 @@
             "description": "Validated delegated-workload declaration projected to spec.workloadIdentity for operator reconciliation."
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "name",
@@ -51512,7 +52487,7 @@
               "name": "server",
               "ports": [
                 {
-                  "container_port": 3000,
+                  "containerPort": 3000,
                   "protocol": "TCP"
                 }
               ],
@@ -52259,6 +53234,19 @@
       },
       "CreateModelFile": {
         "properties": {
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id",
+            "description": "The id of the model (model is a reserved word)"
+          },
           "name": {
             "type": "string",
             "title": "Name",
@@ -52516,6 +53504,31 @@
       },
       "CreateToolDeployment": {
         "properties": {
+          "expected_release_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Release Id",
+            "description": "Expected selected release identity; reject a changed selection before deployment"
+          },
+          "expected_selection_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Selection Revision",
+            "description": "Expected local selection revision for deployment concurrency validation"
+          },
           "name": {
             "type": "string",
             "title": "Name",
@@ -54180,6 +55193,7 @@
         "type": "string",
         "enum": [
           "invalid_request",
+          "internal_error",
           "readiness_unavailable",
           "incompatible_contract",
           "registration_rejected",
@@ -54201,7 +55215,10 @@
           "approval_required",
           "credential_binding_unavailable",
           "provider_transient_failure",
-          "ambiguous_effect_outcome"
+          "ambiguous_effect_outcome",
+          "delegated_resource_unavailable",
+          "delegated_operation_unavailable",
+          "delegation_revoked"
         ],
         "title": "DelegatedErrorCode"
       },
@@ -54299,6 +55316,31 @@
       },
       "DeployFromTemplateRequest": {
         "properties": {
+          "expected_release_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Release Id",
+            "description": "Expected selected release identity; reject a changed selection before deployment"
+          },
+          "expected_selection_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Selection Revision",
+            "description": "Expected local selection revision for deployment concurrency validation"
+          },
           "name": {
             "type": "string",
             "title": "Name",
@@ -55732,7 +56774,7 @@
             "title": "Name",
             "description": "Optional port name"
           },
-          "container_port": {
+          "containerPort": {
             "type": "integer",
             "maximum": 65535,
             "minimum": 1,
@@ -55748,11 +56790,27 @@
             "title": "Protocol",
             "description": "Port protocol (TCP or UDP)",
             "default": "TCP"
+          },
+          "appProtocol": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 317,
+                "minLength": 1,
+                "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Protocol",
+            "description": "L7 application protocol hint mirrored onto the generated Service port (e.g. 'http', 'http2', 'grpc', 'kubernetes.io/h2c'), so mesh sidecars route by declaration instead of port-name convention. Omit to leave the hint unset."
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "container_port"
+          "containerPort"
         ],
         "title": "ExtensionPort",
         "description": "Port exposed by an extension service container."
@@ -55815,6 +56873,7 @@
                 "type": "null"
               }
             ],
+            "title": "Resources",
             "description": "CPU and memory resource requests and limits"
           },
           "command": {
@@ -55856,7 +56915,7 @@
                 "type": "null"
               }
             ],
-            "title": "Automountserviceaccounttoken",
+            "title": "Automount Service Account Token",
             "description": "Mount the service account token for workloads that need K8s API access"
           },
           "containerSecurityContext": {
@@ -55869,7 +56928,7 @@
                 "type": "null"
               }
             ],
-            "title": "Containersecuritycontext",
+            "title": "Container Security Context",
             "description": "Validated per-service container security context overrides"
           },
           "healthCheck": {
@@ -55882,8 +56941,8 @@
                 "type": "null"
               }
             ],
-            "title": "Healthcheck",
-            "description": "Health check configuration for readiness/liveness/startup probes. When both are positive, startPeriod must be at least periodSeconds."
+            "title": "Health Check",
+            "description": "Health check configuration for readiness/liveness/startup probes"
           },
           "persistence": {
             "anyOf": [
@@ -55896,7 +56955,7 @@
               }
             ],
             "title": "Persistence",
-            "description": "Validated PVC request for this service (enabled/size/mountPath)"
+            "description": "Validated PVC request for this service (enabled/volumeName/size/mountPath)"
           },
           "volumes": {
             "anyOf": [
@@ -55927,10 +56986,11 @@
                 "type": "null"
               }
             ],
-            "title": "Volumemounts",
+            "title": "Volume Mounts",
             "description": "Validated container volume mounts for this service"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "name",
@@ -56250,16 +57310,14 @@
             "maximum": 4096,
             "minimum": 100,
             "title": "Omniparse Max Tokens",
-            "description": "OmniParse max tokens per chunk (if omniparse_chunking=True)",
-            "default": 500
+            "description": "OmniParse max tokens per chunk (if omniparse_chunking=True). Defaults to the configured geometry (CONTEXT_SERVICE_OMNIPARSE_DEFAULT_MAX_TOKENS)."
           },
           "omniparse_overlap": {
             "type": "integer",
             "maximum": 500,
             "minimum": 0,
             "title": "Omniparse Overlap",
-            "description": "OmniParse token overlap (if omniparse_chunking=True)",
-            "default": 80
+            "description": "OmniParse token overlap (if omniparse_chunking=True). Defaults to the configured geometry (CONTEXT_SERVICE_OMNIPARSE_DEFAULT_OVERLAP)."
           }
         },
         "type": "object",
@@ -57959,6 +59017,7 @@
             "description": "Digest pin update. Omit (or send null) to leave the existing pin untouched -- the handler rejects this with 400 when the CR is digest-pinned, forcing the caller to be explicit. Send '' (empty string) to clear the pin so the tag governs at pull time. Send 'sha256:<64-hex>' to set or replace the pin. Non-empty values that don't match the digest shape are rejected at the schema layer so a typo can't reach the CR and surface as an unpullable image at deploy time."
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "tag"
@@ -58373,6 +59432,12 @@
             ],
             "title": "Row Count"
           },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "description": "True when the service knows that records the request would have matched are absent from this payload: a plain limit_rows read found more rows than it served, the bounded-query candidate scan hit its scan limit before the dataset was exhausted, or matches remained beyond the requested page. False means no such omission was detected -- non-tabular inline payloads (a joined text blob or a base64 stream) have no row boundary to detect one on and always report False, so False is not a positive guarantee of completeness for them.",
+            "default": false
+          },
           "metadata": {
             "additionalProperties": true,
             "type": "object",
@@ -58684,6 +59749,16 @@
               }
             ],
             "description": "Exact receiver resources made available through the job agent."
+          },
+          "python_packages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Python Packages",
+            "description": "Exact name==version coordinates resolved through the operator-owned approved package catalog for an isolated delegated job.",
+            "default": []
           }
         },
         "type": "object",
@@ -58840,6 +59915,16 @@
               }
             ],
             "description": "Exact receiver resources made available through the job agent."
+          },
+          "python_packages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Python Packages",
+            "description": "Exact name==version coordinates resolved through the operator-owned approved package catalog for an isolated delegated job.",
+            "default": []
           }
         },
         "type": "object",
@@ -58887,7 +59972,7 @@
             "description": "Core Kamiwaza namespace",
             "default": "kamiwaza"
           },
-          "api_url": {
+          "apiUrl": {
             "anyOf": [
               {
                 "type": "string"
@@ -58899,7 +59984,7 @@
             "title": "Api Url",
             "description": "Internal Kamiwaza API URL"
           },
-          "public_api_url": {
+          "publicApiUrl": {
             "anyOf": [
               {
                 "type": "string"
@@ -58923,13 +60008,14 @@
             "title": "Origin",
             "description": "CORS origin for the extension"
           },
-          "use_auth": {
+          "useAuth": {
             "type": "string",
             "title": "Use Auth",
             "description": "Whether the extension uses Kamiwaza auth",
             "default": "true"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "KamiwazaIntegrationSpec",
         "description": "Kamiwaza platform integration settings."
@@ -60807,6 +61893,19 @@
       },
       "ModelFile": {
         "properties": {
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id",
+            "description": "The id of the model (model is a reserved word)"
+          },
           "name": {
             "type": "string",
             "title": "Name",
@@ -60883,19 +61982,6 @@
             ],
             "title": "Hub",
             "description": "The hub where the model file is located. eg, 'HubsHf'; not in create because we expect this to not be done via api typically."
-          },
-          "model_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model Id",
-            "description": "The id of the model (model is a reserved word)"
           },
           "checksum": {
             "anyOf": [
@@ -61790,7 +62876,7 @@
             "description": "Create a NetworkPolicy for this extension (default true)",
             "default": true
           },
-          "allow_namespaces": {
+          "allowNamespaces": {
             "anyOf": [
               {
                 "items": {
@@ -61805,7 +62891,7 @@
             "title": "Allow Namespaces",
             "description": "Namespaces allowed to reach this extension"
           },
-          "allow_external_access": {
+          "allowExternalAccess": {
             "anyOf": [
               {
                 "type": "boolean"
@@ -61818,19 +62904,20 @@
             "description": "Permit egress to the internet (for tools calling external APIs)"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "NetworkPolicySpec",
         "description": "Per-extension NetworkPolicy configuration."
       },
       "NetworkingSpec": {
         "properties": {
-          "ingress_enabled": {
+          "ingressEnabled": {
             "type": "boolean",
             "title": "Ingress Enabled",
             "description": "Enable platform ingress",
             "default": true
           },
-          "path_prefix": {
+          "pathPrefix": {
             "anyOf": [
               {
                 "type": "string"
@@ -61842,7 +62929,19 @@
             "title": "Path Prefix",
             "description": "Custom ingress path prefix"
           },
-          "network_policy": {
+          "stripPrefix": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strip Prefix",
+            "description": "Strip the public path prefix before proxying to the service. Unset resolves the same way App Garden resolves it: tools route at the root (stripped), everything else keeps the prefix for frameworks that configure their own base path."
+          },
+          "networkPolicy": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/NetworkPolicySpec"
@@ -61851,9 +62950,11 @@
                 "type": "null"
               }
             ],
+            "title": "Network Policy",
             "description": "Per-extension NetworkPolicy settings"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "NetworkingSpec",
         "description": "Networking and ingress configuration."
@@ -63166,6 +64267,15 @@
         ],
         "title": "OperationView"
       },
+      "OrderDirection": {
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "title": "OrderDirection",
+        "description": "Supported result ordering directions."
+      },
       "PAT": {
         "properties": {
           "id": {
@@ -63505,6 +64615,30 @@
             "title": "Services",
             "description": "One or more service patches to apply"
           },
+          "kamiwaza": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KamiwazaIntegrationSpec"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kamiwaza",
+            "description": "Replace client-configurable integration settings. Omit to preserve them; send null to clear them. Platform-managed settings, including model routing and TLS configuration, are retained."
+          },
+          "sandbox": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SandboxSpec"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sandbox",
+            "description": "Replace sandbox settings exposed by this API. Omit to preserve them; null clears them while retaining operator-managed provider configuration. Clearing or disabling an active sandbox, or changing its effective namespace, requires runtime recreation with a data-preservation plan; PATCH rejects these transitions. Direct runtimes additionally reject activating an inactive sandbox. On operator runtimes, an omitted namespace resolves to the configured sandbox namespace and must match the active sandbox's namespace."
+          },
           "annotations": {
             "anyOf": [
               {
@@ -63520,7 +64654,7 @@
             "title": "Annotations",
             "description": "Optional client-supplied CR annotations to merge into existing metadata. Only keys in the kamiwaza.ai/* namespace are accepted."
           },
-          "workload_identity": {
+          "workloadIdentity": {
             "anyOf": [
               {
                 "additionalProperties": true,
@@ -63534,6 +64668,7 @@
             "description": "Delegated-workload declaration replacement. Omit to preserve the current declaration; send null to clear it."
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "services"
@@ -63557,7 +64692,20 @@
                 "type": "null"
               }
             ],
+            "title": "Image",
             "description": "Optional image override for the service"
+          },
+          "primary": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary",
+            "description": "Primary ingress selection. Omit or send null to preserve the current selection; true promotes this service and demotes the incumbent; false demotes it. Zero or one primary service is valid."
           },
           "env": {
             "anyOf": [
@@ -63588,6 +64736,36 @@
             "title": "Replicas",
             "description": "Desired replica count override for the service"
           },
+          "command": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command",
+            "description": "Literal list-form container entrypoint replacement. Omit to preserve; send null or [] to restore the image default. Values are not rewritten from Compose service names to in-cluster hostnames. Kubernetes expands $(VAR) references and reduces $$ to $ at container start."
+          },
+          "args": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Args",
+            "description": "Literal list-form container argument replacement. Omit to preserve; send null or [] to restore the image default. Values are not rewritten from Compose service names to in-cluster hostnames. Kubernetes expands $(VAR) references and reduces $$ to $ at container start."
+          },
           "automountServiceAccountToken": {
             "anyOf": [
               {
@@ -63597,7 +64775,7 @@
                 "type": "null"
               }
             ],
-            "title": "Automountserviceaccounttoken",
+            "title": "Automount Service Account Token",
             "description": "Service account token automount override for this service"
           },
           "containerSecurityContext": {
@@ -63610,7 +64788,7 @@
                 "type": "null"
               }
             ],
-            "title": "Containersecuritycontext",
+            "title": "Container Security Context",
             "description": "Validated container security context replacement for this service"
           },
           "healthCheck": {
@@ -63623,7 +64801,7 @@
                 "type": "null"
               }
             ],
-            "title": "Healthcheck",
+            "title": "Health Check",
             "description": "Validated health check replacement for this service. Omit to preserve the current probe; send null to clear it. When both are positive, startPeriod must be at least periodSeconds."
           },
           "persistence": {
@@ -63668,7 +64846,7 @@
                 "type": "null"
               }
             ],
-            "title": "Volumemounts",
+            "title": "Volume Mounts",
             "description": "Validated container mounts; an empty list clears existing mounts"
           }
         },
@@ -65815,6 +66993,212 @@
         "title": "ReadinessSection",
         "description": "One independently evaluated platform-readiness section."
       },
+      "RecordFilters": {
+        "properties": {
+          "terms": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Terms"
+          },
+          "ranges": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RecordRange"
+            },
+            "type": "object",
+            "title": "Ranges"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RecordFilters",
+        "description": "AND-composed equality/list and inclusive range predicates."
+      },
+      "RecordOrder": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/OrderDirection",
+            "default": "asc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "field"
+        ],
+        "title": "RecordOrder",
+        "description": "One allowlisted-by-shape ordering term."
+      },
+      "RecordQueryRequest": {
+        "properties": {
+          "dataset_urn": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Urn",
+            "description": "Receiver Catalog dataset identity"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordFilters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "order_by": {
+            "items": {
+              "$ref": "#/components/schemas/RecordOrder"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Order By"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Offset",
+            "default": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Limit"
+          },
+          "projection": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection"
+          },
+          "transport": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "inline",
+              "sse"
+            ],
+            "title": "Transport",
+            "default": "auto"
+          },
+          "batch_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Size"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dataset_urn",
+          "order_by",
+          "limit"
+        ],
+        "title": "RecordQueryRequest",
+        "description": "Closed source-neutral contract for ``POST /retrieval/query-jobs``."
+      },
+      "RecordRange": {
+        "properties": {
+          "gte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gte"
+          },
+          "lte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lte"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RecordRange",
+        "description": "Inclusive range bounds; at least one bound is required."
+      },
       "RegisterIdPRequest": {
         "properties": {
           "provider": {
@@ -65853,6 +67237,31 @@
           "provider"
         ],
         "title": "RegisterIdPRequest"
+      },
+      "RegisteredSourceContainerPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Container"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "title": "RegisteredSourceContainerPage",
+        "description": "One cursor page of registered sources without child enumeration."
       },
       "RegistrationReconcileRequest": {
         "properties": {
@@ -66660,6 +68069,7 @@
             "description": "Resource limits (e.g. cpu, memory)"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "ResourceSpec",
         "description": "K8s resource requests and limits."
@@ -67966,7 +69376,7 @@
             "title": "Namespace",
             "description": "Namespace where sandbox pods should run"
           },
-          "service_name": {
+          "serviceName": {
             "anyOf": [
               {
                 "type": "string"
@@ -67993,9 +69403,10 @@
                 "type": "null"
               }
             ],
+            "title": "Resources",
             "description": "Default sandbox pod resource requests and limits"
           },
-          "image_whitelist": {
+          "imageWhitelist": {
             "items": {
               "type": "string"
             },
@@ -68003,7 +69414,7 @@
             "title": "Image Whitelist",
             "description": "Allowed image prefixes for sandbox pods"
           },
-          "max_lifetime_seconds": {
+          "maxLifetimeSeconds": {
             "anyOf": [
               {
                 "type": "integer",
@@ -68017,6 +69428,7 @@
             "description": "Optional TTL for sandbox pods"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "SandboxSpec",
         "description": "Sandbox runtime configuration for extensions that launch agent pods."
@@ -68785,7 +70197,7 @@
       },
       "SecuritySpec": {
         "properties": {
-          "risk_tier": {
+          "riskTier": {
             "type": "integer",
             "maximum": 2,
             "minimum": 0,
@@ -68793,7 +70205,7 @@
             "description": "Risk tier (0=guided, 1=scanned, 2=break_glass)",
             "default": 1
           },
-          "source_type": {
+          "sourceType": {
             "type": "string",
             "title": "Source Type",
             "description": "Extension origin",
@@ -68806,6 +70218,7 @@
             "default": false
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "SecuritySpec",
         "description": "Security classification and pod security settings."
@@ -68868,6 +70281,41 @@
         ],
         "title": "SelectedGranularityMode",
         "description": "Selection modes supported by provider-neutral source staging."
+      },
+      "SelectionChange": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Stable extension identity whose local selection changes"
+          },
+          "release_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Id",
+            "description": "Exact retained release identity to select, or null to remove the selection"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Expected Revision",
+            "description": "Current local selection revision required for optimistic concurrency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "release_id",
+          "expected_revision"
+        ],
+        "title": "SelectionChange",
+        "description": "Explicit administrator selection for future extension deployments."
       },
       "ServiceStatusDetail": {
         "properties": {
@@ -71886,7 +73334,19 @@
               }
             ],
             "title": "Context Window",
-            "description": "Configured model context limit in tokens. This is a sanitized capability value; the underlying model configuration is not exposed."
+            "description": "Context limit in tokens that ONE request can use. This is a sanitized capability value; the underlying model configuration is not exposed. An operator-stated limit wins; otherwise the window the deployment's launch recorded; otherwise the provider's published limit for the model behind the deployment. For a multi-slot llama.cpp deployment the recorded window is reported per slot, because llama-server divides its total context across concurrent slots -- so this is the number to budget a request against, not the server's total. Null means no limit could be established; it is never a guess."
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Tokens",
+            "description": "Configured output ceiling in tokens, resolved with the same precedence as context_window. Advertised alongside it so a caller sizing a request does not have to guess how much of the window a reply may claim."
           },
           "capabilities": {
             "items": {
@@ -71894,7 +73354,7 @@
             },
             "type": "array",
             "title": "Capabilities",
-            "description": "Client-safe inference capabilities, including cache behavior such as 'prompt_cache_anthropic' when supported by the deployment."
+            "description": "Client-safe inference capabilities. Alongside the route capability ('chat.completions', 'embeddings', 'audio.transcriptions', 'images.generations'), this may carry 'prompt_cache_anthropic' when the deployment supports Anthropic prompt caching, and 'reasoning' when the platform applies extended thinking to requests by default — so a client can account for the latency and cost it adds without sending a request first."
           },
           "tool_calling": {
             "anyOf": [
@@ -72486,6 +73946,68 @@
             ],
             "description": "Extension type: app, tool, or service"
           },
+          "expected_release_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Release Id",
+            "description": "Exact selected release being reviewed"
+          },
+          "expected_selection_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Selection Revision",
+            "description": "Selection revision being reviewed"
+          },
+          "justification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Justification",
+            "description": "Administrator justification for this selected release"
+          },
+          "approve": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approve",
+            "description": "Record or revoke administrator approval for the exact selected release"
+          },
+          "default_resources_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Resources Id",
+            "description": "Installation resource sizing for new deployments"
+          },
           "display_name": {
             "anyOf": [
               {
@@ -72722,6 +74244,53 @@
           "version": "2.0.0"
         }
       },
+      "UpdateChange": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Stable extension identity included in the preview"
+          },
+          "from_release_id": {
+            "type": "string",
+            "title": "From Release Id",
+            "description": "Currently selected immutable release identity"
+          },
+          "to_release_id": {
+            "type": "string",
+            "title": "To Release Id",
+            "description": "Compatible immutable release identity proposed for selection"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Expected Revision",
+            "description": "Selection revision captured when the update preview was generated"
+          },
+          "payload_hash": {
+            "type": "string",
+            "title": "Payload Hash",
+            "description": "Immutable target release payload hash captured by the preview"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "from_release_id",
+          "to_release_id",
+          "expected_revision",
+          "payload_hash"
+        ],
+        "title": "UpdateChange",
+        "description": "One exact selection transition returned by an update-all preview.",
+        "example": {
+          "expected_revision": 3,
+          "from_release_id": "11111111-1111-4111-8111-111111111111",
+          "name": "tool-example",
+          "payload_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "to_release_id": "22222222-2222-4222-8222-222222222222"
+        }
+      },
       "UpdateContextGlobalSettings": {
         "properties": {
           "omniparse": {
@@ -72826,6 +74395,42 @@
         "type": "object",
         "title": "UpdateOntologyModelBindings",
         "description": "Request body for ``PUT /ontologies/{id}/model-bindings``.\n\nOperators set or clear a pin per capability. Omitting a capability\nmeans \"no change\" — the reconciler retains whatever is currently\npersisted (operator pin, auto-bound, or default)."
+      },
+      "UpdateProposal": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/UpdateChange"
+            },
+            "type": "array",
+            "title": "Changes",
+            "description": "Exact previewed transitions for existing local selections only"
+          },
+          "preview_hash": {
+            "type": "string",
+            "title": "Preview Hash",
+            "description": "Server-generated hash binding the complete update preview"
+          }
+        },
+        "type": "object",
+        "required": [
+          "changes",
+          "preview_hash"
+        ],
+        "title": "UpdateProposal",
+        "description": "Administrator confirmation of an unchanged update-all preview.",
+        "example": {
+          "changes": [
+            {
+              "expected_revision": 3,
+              "from_release_id": "11111111-1111-4111-8111-111111111111",
+              "name": "tool-example",
+              "payload_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "to_release_id": "22222222-2222-4222-8222-222222222222"
+            }
+          ],
+          "preview_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
       },
       "UpdateVectorDBInstance": {
         "properties": {
@@ -72982,10 +74587,11 @@
             "enum": [
               "upgraded",
               "no-change",
+              "skipped",
               "error"
             ],
             "title": "Status",
-            "description": "upgraded = CR patched to a new digest; no-change = template digest matched the running CR; error = render or PATCH failed (see ``error``)"
+            "description": "upgraded = CR patched to a new digest; no-change = template digest matched the running CR; skipped = the extension has no template-driven upgrade target (see ``reason``); error = render or PATCH failed (see ``error``)"
           },
           "old_digests": {
             "additionalProperties": {
@@ -73030,6 +74636,18 @@
             ],
             "title": "Error",
             "description": "Error message when ``status == 'error'``"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Operator-facing explanation when ``status == 'skipped'``. Kept separate from ``error`` so a deliberate non-upgrade is not presented as a failure."
           }
         },
         "type": "object",
