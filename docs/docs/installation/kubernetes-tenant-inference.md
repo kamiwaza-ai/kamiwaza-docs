@@ -32,16 +32,15 @@ minor in the range, 1.34 and 1.35 included, is post-MVP follow-up (M4). The
 original design range does not establish support. The classic allocation
 classes are:
 
-All classes below serve through **llama.cpp** only. Tenant-mode profiles
-select a llama.cpp runtime variant, so engines available on the standard
-deployment path — vLLM, Whisper, diffusion, MLX — are not reachable through a
-tenant-mode request. Those deployments are unaffected and continue to use the
+All classes below serve through **llama.cpp**; the CPU class also serves
+**whisper.cpp**. Other engines available on the standard deployment path —
+vLLM, diffusion, MLX — are not reachable through a tenant-mode request. Those deployments are unaffected and continue to use the
 standard path; only a request carrying `inferenceResources` is served by the
 classic tenant allocator.
 
 | Class | Engine | Kubernetes resource | Isolation statement | Release status |
 | --- | --- | --- | --- | --- |
-| CPU | llama.cpp | `cpu` and memory requests | Kubernetes scheduler allocation | Preview on k0s 1.36; see Support status |
+| CPU | llama.cpp, whisper.cpp | `cpu` and memory requests | Kubernetes scheduler allocation | Preview on k0s 1.36; see Support status |
 | Whole NVIDIA GPU | llama.cpp (CUDA) | `nvidia.com/gpu` | Whole-device allocation | Preview on k0s 1.36; see Support status |
 | Whole AMD GPU | llama.cpp (ROCm) | `amd.com/gpu` | Whole-device allocation | **Not qualified.** Post-MVP follow-up (M4); do not deploy against a support claim |
 | NVIDIA MIG | llama.cpp (CUDA) | Qualified `nvidia.com/mig-*` | Hardware partition, exact shape only | Preview on k0s 1.36, recorded slice shape only |
@@ -55,24 +54,28 @@ classic path.
 ## Ownership boundary
 
 The cluster owner supplies drivers, device plugins, optional VRAM sharing,
-RuntimeClasses, quotas/policy, signed Compute Profiles, and an immutable CPU
-recipe catalog. Every GPU binding in a Compute Profile attests its hardware in
-an `accelerator` block, generated on the host with
-`scripts/detect-accelerator-facts.py`. A GPU recipe catalog is optional:
-without one, the platform derives each GPU deployment, and a published GPU
-recipe pins a specific model and configuration. The tenant supplies only
+RuntimeClasses, quotas/policy, and signed Compute Profiles. Every GPU binding
+in a Compute Profile attests its hardware in an `accelerator` block, generated
+on the host with `scripts/detect-accelerator-facts.py`; a CPU binding needs
+only its architecture. Recipe catalogs are optional, GPU and CPU alike:
+without one, the platform derives each deployment, and a published recipe pins
+a specific model and configuration. The tenant supplies only
 namespaced Helm and serving inputs.
 
 Kubernetes namespace-admin permissions do not grant the Kamiwaza `admin` role.
 Model deployment through the API, SDK, or UI remains Kamiwaza-admin-only.
 
-A deployment request needs no `inferenceResources` block: for a GPU engine the
-platform derives one, sizing memory from the model's own metadata and the
+A deployment request needs no `inferenceResources` block: the platform derives
+one. For a GPU deployment it sizes memory from the model's own metadata and the
 context the model configuration sets (`max_model_len`), or else the context the
-model declares. It then places the request on the smallest binding that holds
-it. A request that cannot be served as asked -- a CPU-only engine such as
-whisper.cpp without a CPU block, or no context declared anywhere -- is refused
-with HTTP 422 and the reason; one the platform cannot evaluate, such as an
+model declares, and places the request on the smallest binding that holds it.
+A deployment goes to CPU instead when it sets `force_cpu`, when its engine
+ships only a CPU build (whisper.cpp), or when the owner declared no GPU
+hardware; it is sized from the platform's CPU floor and the model's weights,
+and runs the platform's CPU build for the binding's architecture. A request
+that cannot be served as asked -- no context declared anywhere, or an
+embedding configuration that does not state its `pooling` -- is refused with
+HTTP 422 and the reason; one the platform cannot evaluate, such as an
 unreadable profile bundle, with HTTP 503. The request examples below are for
 callers that write the block themselves.
 
@@ -84,7 +87,7 @@ weaker isolation class.
 ## Owner publication
 
 Publish a new immutable catalog revision for every change. Never mutate an
-existing ConfigMap name in place. Publish a GPU catalog only when pinning. Run the following commands from the
+existing ConfigMap name in place. Publish a catalog only when pinning. Run the following commands from the
 owner-provided Kubernetes setup checkout containing
 `scripts/render-inference-recipe-catalog.py`. Prepare the owner-reviewed
 `gpu-recipes.json`, set `TENANT_NAMESPACE` to the existing tenant namespace,
@@ -196,6 +199,7 @@ core:
   inferenceResources:
     enabled: true
     bundleConfigMap: kamiwaza-inference-profiles-revision
+    # Optional: set only to pin specific models.
     gpuRecipeCatalogConfigMap: kamiwaza-inference-gpu-revision
     cpuRecipeCatalogConfigMap: kamiwaza-inference-cpu-revision
     # Owner-qualified staging inputs are immutable digests, not mutable tags.
