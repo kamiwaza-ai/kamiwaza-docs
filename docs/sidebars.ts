@@ -28,6 +28,7 @@ const sidebars: SidebarsConfig = {
 			items: [
 				"installation/installation_process",
 				"installation/system_requirements",
+				"installation/kubernetes-tenant-inference",
 				"installation/storage-prerequisites",
 				"installation/online_install",
 				"installation/offline_install",
