@@ -55,11 +55,26 @@ classic path.
 ## Ownership boundary
 
 The cluster owner supplies drivers, device plugins, optional VRAM sharing,
-RuntimeClasses, quotas/policy, signed Compute Profiles, and immutable recipe
-catalogs. The tenant supplies only namespaced Helm and serving inputs.
+RuntimeClasses, quotas/policy, signed Compute Profiles, and an immutable CPU
+recipe catalog. Every GPU binding in a Compute Profile attests its hardware in
+an `accelerator` block, generated on the host with
+`scripts/detect-accelerator-facts.py`. A GPU recipe catalog is optional:
+without one, the platform derives each GPU deployment, and a published GPU
+recipe pins a specific model and configuration. The tenant supplies only
+namespaced Helm and serving inputs.
 
 Kubernetes namespace-admin permissions do not grant the Kamiwaza `admin` role.
 Model deployment through the API, SDK, or UI remains Kamiwaza-admin-only.
+
+A deployment request needs no `inferenceResources` block: for a GPU engine the
+platform derives one, sizing memory from the model's own metadata and the
+context the model configuration sets (`max_model_len`), or else the context the
+model declares. It then places the request on the smallest binding that holds
+it. A request that cannot be served as asked -- a CPU-only engine such as
+whisper.cpp without a CPU block, or no context declared anywhere -- is refused
+with HTTP 422 and the reason; one the platform cannot evaluate, such as an
+unreadable profile bundle, with HTTP 503. The request examples below are for
+callers that write the block themselves.
 
 The tenant chart creates no cluster-scoped GPU resource and must not require
 `nodes/get`, `nodes/list`, or `nodes/watch`. A profile or allocator failure is
@@ -69,7 +84,7 @@ weaker isolation class.
 ## Owner publication
 
 Publish a new immutable catalog revision for every change. Never mutate an
-existing ConfigMap name in place. Run the following commands from the
+existing ConfigMap name in place. Publish a GPU catalog only when pinning. Run the following commands from the
 owner-provided Kubernetes setup checkout containing
 `scripts/render-inference-recipe-catalog.py`. Prepare the owner-reviewed
 `gpu-recipes.json`, set `TENANT_NAMESPACE` to the existing tenant namespace,
