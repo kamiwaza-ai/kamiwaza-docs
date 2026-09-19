@@ -7,7 +7,7 @@ import useBaseUrl from '@docusaurus/useBaseUrl';
 
 # Kamiwaza Agentic Performance Index
 
-Benchmarks based on our PICARD agentic simulator framework. See how models perform in realistic enterprise-relevant tasks, no benchmaxxxing thanks to PICARD's contamination-resistant design.
+Benchmarks based on our PICARD agentic simulator framework. See how models perform in realistic enterprise-relevant tasks, no benchmaxxing thanks to PICARD's contamination-resistant design.
 
 <div className="research-pillars" style={{gridTemplateColumns: '1fr'}}>
 
