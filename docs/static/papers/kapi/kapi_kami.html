@@ -1,0 +1,127 @@
+<!doctype html><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>KAMI · KAPI</title>
+<style>
+/* Kamiwaza brand palette — matches docs.kamiwaza.ai (--kamiwaza-* tokens). */
+:root{--bg:#0f172a;--card:#1e293b;--ink:#f8fafc;--ink2:#cbd5e1;--ink3:#94a3b8;
+      --rule:#334155;--accent:#10b981;--good:#06d6a0;--bad:#f87171;--warn:#fbbf24;
+      --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+      --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px 90px;}
+/* A board whose table is wider than the text column breaks out of it, centred, rather
+   than scrolling inside a 1180px box with empty gutters on both sides. */
+body:has(.tw){display:flex;justify-content:center;}
+.wrap:has(.tw){max-width:none;width:fit-content;min-width:min(1180px,100%);}
+/* Data boards are wide by nature. Let the table claim the viewport rather than sit
+   cropped inside a scroller with empty gutters either side. */
+.wide{max-width:none;width:max-content;min-width:100%;margin-inline:auto;}
+header.top{border-bottom:1px solid var(--rule);padding:30px 0 20px;margin-bottom:30px;}
+.brand{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+       text-transform:uppercase;color:var(--ink3);margin:0 0 12px;text-decoration:none;}
+a.brand:hover{color:var(--accent);text-decoration:none;}
+h1{font-size:2rem;font-weight:700;margin:0 0 10px;letter-spacing:-.015em;}
+.sub{color:var(--ink2);max-width:74ch;margin:0;}
+div.sub p{margin:0}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+h2{font-size:1.15rem;margin:38px 0 4px;}
+.note{color:var(--ink3);font-size:13px;max-width:78ch;}
+ul.papers{margin:6px 0 0;padding-left:1.15rem;}
+ul.papers li{margin:2px 0;}
+.tw{border:1px solid var(--rule);border-radius:4px;background:var(--card);margin:18px 0;
+    width:max-content;min-width:100%;max-width:100%;}
+@media(max-width:900px){.tw{overflow-x:auto;width:auto;}}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums;}
+th,td{padding:8px 13px;text-align:left;border-bottom:1px solid var(--rule);white-space:nowrap;}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+         color:var(--ink3);font-weight:400;position:sticky;top:0;background:var(--card);}
+td.n,th.n{text-align:right;font-family:var(--mono);}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#243449}
+td.name{font-weight:600}
+.hi{color:var(--good)}.lo{color:var(--bad)}.mid{color:var(--warn)}
+.bar{display:inline-block;height:6px;border-radius:1px;background:var(--accent);opacity:.5;
+     vertical-align:middle;margin-left:7px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:22px 0;}
+.card{display:block;background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:16px 18px;}
+.card:hover{border-color:var(--accent);text-decoration:none}
+.ct{font-weight:700;color:var(--ink);margin-bottom:5px}
+.cd{color:var(--ink2);font-size:13px}
+.grp{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+     color:var(--ink3);margin:34px 0 -6px;}
+footer{border-top:1px solid var(--rule);margin-top:60px;padding-top:18px;color:var(--ink3);font-size:12px;}
+@media(max-width:640px){th,td{padding:7px 10px}}
+
+th.srt{cursor:pointer;user-select:none}
+th.srt:hover{color:var(--ink)}
+th.srt.on{color:var(--accent)}
+tr.gh th{border-bottom:none;padding-bottom:0}
+th.gl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+      color:var(--ink3);text-align:center;border-bottom:1px solid var(--rule)}
+td.rank{color:var(--ink3);width:2.6em}
+.est{font-family:var(--mono);font-size:.62em;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--warn);border:1px solid var(--warn);border-radius:3px;padding:0 3px;
+     vertical-align:middle;margin-left:5px}
+td.mode{color:var(--ink3);font-size:.86em}
+.gap{color:var(--warn);font-size:.8em}
+</style>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="https://docs.kamiwaza.ai/research/agentic-merit-index">&larr; Kamiwaza Agentic Performance Index</a>
+  <h1>Kamiwaza Agentic Merit Index (KAMI) v1 Leaderboard</h1>
+  
+</header>
+<p class="note">Strict = every check passes. Per-output = share of checks passed; <span class="gap">+n</span> is the difference.</p><div class="tw" id="t"></div><script>
+// 100.0 must mean 100. Rounding 99.95 up would assert a flawless run that did not happen, so
+// anything short of perfect floors to 1dp instead (99.95 -> 99.9); an exact 100 still prints 100.0.
+function pct(v,d){if(v===null||v===undefined||v==="")return "—";
+  const n=+v; if(Number.isNaN(n))return v;
+  if(n<100 && Math.round(n*Math.pow(10,d))/Math.pow(10,d)>=100)
+    return (Math.floor(n*Math.pow(10,d))/Math.pow(10,d)).toFixed(d);
+  return n.toFixed(d);}
+function num(v,d){if(v===null||v===undefined||v==="")return "—";
+  const n=+v; return Number.isNaN(n)?v:n.toLocaleString(undefined,
+    {minimumFractionDigits:d,maximumFractionDigits:d});}
+function mount(id,COLS,DATA,opt){
+  opt=opt||{}; let sk=opt.sort||COLS[0].key;
+  const ASC={}; COLS.forEach(c=>{if(c.asc)ASC[c.key]=1;});
+  let sd=ASC[sk]?1:-1;
+  const root=document.getElementById(id);
+  const grouped=COLS.some(c=>c.group);
+  function head(){
+    let h="";
+    if(grouped){
+      h+='<tr class="gh"><th></th><th></th><th></th>';
+      let i=0; while(i<COLS.length){let j=i; while(j<COLS.length&&COLS[j].group===COLS[i].group)j++;
+        h+=`<th colspan="${j-i}" class="gl">${COLS[i].group||""}</th>`; i=j;}
+      h+="</tr>";}
+    h+='<tr><th class="n">#</th><th>model</th><th>mode</th>'+
+       COLS.map(c=>`<th class="n srt${sk===c.key?' on':''}" data-k="${c.key}" title="${c.note||''}">`+
+                   `${c.label}${sk===c.key?(sd<0?' ▾':' ▴'):''}</th>`).join("")+"</tr>";
+    return h;}
+  function body(){
+    const rs=DATA.slice().sort((a,b)=>{
+      const x=a[sk],y=b[sk];
+      const xn=(x===null||x===undefined||x==="")?-Infinity:+x,
+            yn=(y===null||y===undefined||y==="")?-Infinity:+y;
+      if(Number.isNaN(xn)||Number.isNaN(yn))return String(x||"").localeCompare(String(y||""))*sd*-1;
+      return (xn-yn)*sd;});
+    return rs.map((x,i)=>`<tr><td class="n rank">${i+1}</td>`+
+      `<td class="name">${x.flag?x.flag+" ":""}${x.model}</td><td class="mode">${x.mode||""}</td>`+
+      COLS.map(c=>{const v=x[c.key];
+        const t=c.fmt==="int"?num(v,0):(c.fmt==="num"?num(v,c.d===undefined?1:c.d):pct(v,c.d===undefined?1:c.d));
+        const extra=(c.gap&&x[c.gap]!==undefined&&x[c.gap]!==null)?
+          ` <span class="gap">+${(+x[c.gap]).toFixed(1)}</span>`:"";
+        let cls=c.cls||"";
+        if(c.band&&v!==null&&v!==undefined&&v!==""){const n=+v, q=c.invert?100-n:n;
+          cls+=q>=90?" hi":(q<50?" lo":" mid");}
+        return `<td class="n ${cls}">${t}${extra}</td>`;}).join("")+"</tr>").join("");}
+  function draw(){root.innerHTML=`<table><thead>${head()}</thead><tbody>${body()}</tbody></table>`;
+    root.querySelectorAll("th.srt").forEach(th=>th.onclick=()=>{
+      const k=th.dataset.k; if(k===sk){sd=-sd;}else{sk=k;sd=ASC[k]?1:-1;} draw();});}
+  draw();}
+mount("t",[{"key": "os", "label": "strict", "group": "Overall", "band": true}, {"key": "op", "label": "per-output", "group": "Overall", "gap": "od"}, {"key": "fs", "label": "strict", "group": "Frontier", "band": true}, {"key": "fp", "label": "per-output", "group": "Frontier", "gap": "fd"}, {"key": "ms", "label": "strict", "group": "Medium", "band": true}, {"key": "mp", "label": "per-output", "group": "Medium", "gap": "md"}],[{"model": "Qwen3.8-Flash-Next", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 97.1, "op": 99.7, "fs": 94.2, "fp": 99.4, "ms": 99.4, "mp": 99.8, "od": 2.6000000000000085, "fd": 5.200000000000003, "md": 0.3999999999999915}, {"model": "Qwen3.8-27B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 85.4, "op": 97.8, "fs": 71.7, "fp": 96.1, "ms": 95.6, "mp": 99.0, "od": 12.399999999999991, "fd": 24.39999999999999, "md": 3.4000000000000057}, {"model": "DeepSeek-V4-Flash-0731", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 92.5, "op": 98.3, "fs": 87.5, "fp": 97.2, "ms": 96.2, "mp": 99.1, "od": 5.799999999999997, "fd": 9.700000000000003, "md": 2.8999999999999915}, {"model": "GLM-5.2", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 91.1, "op": 98.5, "fs": 80.8, "fp": 96.8, "ms": 98.8, "mp": 99.8, "od": 7.400000000000006, "fd": 16.0, "md": 1.0}, {"model": "Qwen3.6-27B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 85.4, "op": 96.0, "fs": 70.0, "fp": 91.1, "ms": 96.9, "mp": 99.6, "od": 10.599999999999994, "fd": 21.099999999999994, "md": 2.6999999999999886}, {"model": "GLM-5.2", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 84.3, "op": 97.6, "fs": 65.8, "fp": 95.1, "ms": 98.1, "mp": 99.4, "od": 13.299999999999997, "fd": 29.299999999999997, "md": 1.3000000000000114}, {"model": "Kimi-K3", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 90.4, "op": 98.6, "fs": 80.8, "fp": 97.0, "ms": 97.5, "mp": 99.7, "od": 8.199999999999989, "fd": 16.200000000000003, "md": 2.200000000000003}, {"model": "GLM-5.3", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking:max", "os": 79.6, "op": 95.7, "fs": 58.3, "fp": 91.1, "ms": 95.6, "mp": 99.2, "od": 16.10000000000001, "fd": 32.8, "md": 3.6000000000000085}, {"model": "Qwen3.6-27B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 78.6, "op": 88.9, "fs": 64.2, "fp": 82.9, "ms": 89.4, "mp": 93.5, "od": 10.300000000000011, "fd": 18.700000000000003, "md": 4.099999999999994}, {"model": "DeepSeek-V4-Flash-0731", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 91.8, "op": 97.2, "fs": 89.2, "fp": 96.9, "ms": 93.8, "mp": 97.4, "od": 5.400000000000006, "fd": 7.700000000000003, "md": 3.6000000000000085}, {"model": "MiniMax-M3-MXFP8", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 77.9, "op": 96.7, "fs": 53.3, "fp": 93.0, "ms": 96.2, "mp": 99.4, "od": 18.799999999999997, "fd": 39.7, "md": 3.200000000000003}, {"model": "Qwen3.8-27B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 58.2, "op": 90.3, "fs": 33.3, "fp": 85.3, "ms": 76.9, "mp": 94.0, "od": 32.099999999999994, "fd": 52.0, "md": 17.099999999999994}, {"model": "MiniMax-M3", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 72.9, "op": 94.4, "fs": 48.3, "fp": 92.4, "ms": 91.2, "mp": 95.9, "od": 21.5, "fd": 44.10000000000001, "md": 4.700000000000003}, {"model": "Qwen3.6-35B-A3B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 55.0, "op": 87.5, "fs": 30.8, "fp": 77.8, "ms": 73.1, "mp": 94.8, "od": 32.5, "fd": 47.0, "md": 21.700000000000003}, {"model": "GLM-5.3", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking:low", "os": 70.0, "op": 91.9, "fs": 50.0, "fp": 87.3, "ms": 85.0, "mp": 95.4, "od": 21.900000000000006, "fd": 37.3, "md": 10.400000000000006}, {"model": "MiniMax-M3", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 73.6, "op": 95.2, "fs": 51.7, "fp": 91.7, "ms": 90.0, "mp": 97.9, "od": 21.60000000000001, "fd": 40.0, "md": 7.900000000000006}, {"model": "MiniMax-M3-MXFP8", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 71.8, "op": 94.1, "fs": 47.5, "fp": 90.3, "ms": 90.0, "mp": 97.0, "od": 22.299999999999997, "fd": 42.8, "md": 7.0}, {"model": "Qwen3.8-Flash-Next", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 63.6, "op": 89.2, "fs": 36.7, "fp": 80.4, "ms": 83.8, "mp": 95.7, "od": 25.6, "fd": 43.7, "md": 11.900000000000006}, {"model": "Qwen3.6-35B-A3B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 53.6, "op": 81.5, "fs": 29.2, "fp": 66.8, "ms": 71.9, "mp": 92.6, "od": 27.9, "fd": 37.599999999999994, "md": 20.69999999999999}, {"model": "Qwen3.5-122B-A10B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 43.9, "op": 78.4, "fs": 26.7, "fp": 71.6, "ms": 56.9, "mp": 83.6, "od": 34.50000000000001, "fd": 44.89999999999999, "md": 26.699999999999996}, {"model": "Qwen3.5-122B-A10B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 46.4, "op": 80.3, "fs": 30.0, "fp": 74.2, "ms": 58.8, "mp": 84.9, "od": 33.9, "fd": 44.2, "md": 26.10000000000001}, {"model": "Gemma-4-31B-it", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 54.3, "op": 78.3, "fs": 28.3, "fp": 68.0, "ms": 73.8, "mp": 86.0, "od": 24.0, "fd": 39.7, "md": 12.200000000000003}, {"model": "Qwen3.5-397B-A17B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 48.9, "op": 79.5, "fs": 12.5, "fp": 61.1, "ms": 76.2, "mp": 93.3, "od": 30.6, "fd": 48.6, "md": 17.099999999999994}, {"model": "Qwen3.5-35B-A3B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 31.4, "op": 63.8, "fs": 19.2, "fp": 52.0, "ms": 40.6, "mp": 72.6, "od": 32.4, "fd": 32.8, "md": 31.999999999999993}, {"model": "Qwen3.5-397B-A17B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 52.1, "op": 82.8, "fs": 20.8, "fp": 69.7, "ms": 75.6, "mp": 92.6, "od": 30.699999999999996, "fd": 48.900000000000006, "md": 17.0}, {"model": "Qwen3.5-35B-A3B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 32.5, "op": 67.7, "fs": 20.8, "fp": 56.6, "ms": 41.2, "mp": 76.0, "od": 35.2, "fd": 35.8, "md": 34.8}, {"model": "Mistral-Medium-3.5-128B", "flag": "\ud83c\uddeb\ud83c\uddf7", "mode": "thinking", "os": 58.2, "op": 82.9, "fs": 29.2, "fp": 69.7, "ms": 80.0, "mp": 92.7, "od": 24.700000000000003, "fd": 40.5, "md": 12.700000000000003}, {"model": "Mistral-Medium-3.5-128B", "flag": "\ud83c\uddeb\ud83c\uddf7", "mode": "instruct", "os": 59.6, "op": 85.7, "fs": 34.2, "fp": 74.9, "ms": 78.8, "mp": 93.9, "od": 26.1, "fd": 40.7, "md": 15.100000000000009}, {"model": "Laguna-S-2.1", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 74.3, "op": 87.2, "fs": 55.0, "fp": 77.2, "ms": 88.8, "mp": 94.7, "od": 12.900000000000006, "fd": 22.200000000000003, "md": 5.900000000000006}, {"model": "Gemma-4-31B-it", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "instruct", "os": 31.1, "op": 60.9, "fs": 5.8, "fp": 50.5, "ms": 50.0, "mp": 68.7, "od": 29.799999999999997, "fd": 44.7, "md": 18.700000000000003}, {"model": "Gemma-4-26B-A4B-it", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 23.6, "op": 52.5, "fs": 13.3, "fp": 46.4, "ms": 31.2, "mp": 57.2, "od": 28.9, "fd": 33.099999999999994, "md": 26.000000000000004}, {"model": "Laguna-M.1", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 52.9, "op": 75.7, "fs": 30.8, "fp": 61.3, "ms": 69.4, "mp": 86.6, "od": 22.800000000000004, "fd": 30.499999999999996, "md": 17.19999999999999}, {"model": "Qwen3.5-9B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 7.9, "op": 43.1, "fs": 5.0, "fp": 38.5, "ms": 10.0, "mp": 46.5, "od": 35.2, "fd": 33.5, "md": 36.5}, {"model": "Qwen3.5-9B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 6.4, "op": 39.5, "fs": 2.5, "fp": 33.0, "ms": 9.4, "mp": 44.3, "od": 33.1, "fd": 30.5, "md": 34.9}, {"model": "Laguna-XS-2.1", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 19.6, "op": 49.2, "fs": 6.7, "fp": 40.1, "ms": 29.4, "mp": 56.1, "od": 29.6, "fd": 33.4, "md": 26.700000000000003}, {"model": "Gemma-4-26B-A4B-it", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "instruct", "os": 16.8, "op": 42.4, "fs": 7.5, "fp": 34.9, "ms": 23.8, "mp": 48.0, "od": 25.599999999999998, "fd": 27.4, "md": 24.2}, {"model": "Qwen3-235B-A22B-Instruct-2507", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "instruct", "os": 5.7, "op": 31.2, "fs": 0.0, "fp": 23.9, "ms": 10.0, "mp": 36.8, "od": 25.5, "fd": 23.9, "md": 26.799999999999997}, {"model": "GPT-6-Astra", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking:max", "os": 99.6, "op": 99.9, "fs": 99.2, "fp": 99.8, "ms": 100.0, "mp": 100.0, "od": 0.30000000000001137, "fd": 0.5999999999999943, "md": 0.0}, {"model": "Gemini-3.8-Flash", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking:high", "os": 99.6, "op": 99.9, "fs": 100.0, "fp": 100.0, "ms": 99.4, "mp": 99.9, "od": 0.30000000000001137, "fd": 0.0, "md": 0.5}, {"model": "Gemini-3.8-Flash", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking:medium", "os": 98.9, "op": 99.6, "fs": 99.2, "fp": 99.8, "ms": 98.8, "mp": 99.4, "od": 0.6999999999999886, "fd": 0.5999999999999943, "md": 0.6000000000000085}, {"model": "Grok-4.6", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 99.3, "op": 99.8, "fs": 99.2, "fp": 99.8, "ms": 99.4, "mp": 99.8, "od": 0.5, "fd": 0.5999999999999943, "md": 0.3999999999999915}, {"model": "GPT-6-Astra", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking:medium", "os": 100.0, "op": 100.0, "fs": 100.0, "fp": 100.0, "ms": 100.0, "mp": 100.0, "od": 0.0, "fd": 0.0, "md": 0.0}, {"model": "Claude-Fable-5.1", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 98.6, "op": 99.8, "fs": 96.7, "fp": 99.4, "ms": 100.0, "mp": 100.0, "od": 1.2000000000000028, "fd": 2.700000000000003, "md": 0.0}, {"model": "Muse-Spark-1.3", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 97.5, "op": 99.8, "fs": 95.0, "fp": 99.5, "ms": 99.4, "mp": 100.0, "od": 2.299999999999997, "fd": 4.5, "md": 0.5999999999999943}, {"model": "Qwen3.8-2.4T-A95B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking:medium", "os": 96.4, "op": 99.2, "fs": 94.2, "fp": 98.8, "ms": 98.1, "mp": 99.5, "od": 2.799999999999997, "fd": 4.599999999999994, "md": 1.4000000000000057}, {"model": "Qwen3.8-2.4T-A95B", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking:xhigh", "os": 96.4, "op": 99.3, "fs": 92.5, "fp": 98.6, "ms": 99.4, "mp": 99.9, "od": 2.8999999999999915, "fd": 6.099999999999994, "md": 0.5}, {"model": "Claude-Opus-5", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 95.0, "op": 98.9, "fs": 98.3, "fp": 99.9, "ms": 92.5, "mp": 98.2, "od": 3.9000000000000057, "fd": 1.6000000000000085, "md": 5.700000000000003}, {"model": "DeepSeek-V4.1-Flash", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking:max", "os": 93.2, "op": 94.7, "fs": 90.8, "fp": 91.5, "ms": 95.0, "mp": 97.0, "od": 1.5, "fd": 0.7000000000000028, "md": 2.0}, {"model": "GPT-5.6-sol", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 97.9, "op": 99.5, "fs": 95.8, "fp": 99.0, "ms": 99.4, "mp": 99.8, "od": 1.5999999999999943, "fd": 3.200000000000003, "md": 0.3999999999999915}, {"model": "GPT-5.6-sol", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking:max", "os": 92.9, "op": 95.8, "fs": 91.7, "fp": 94.0, "ms": 93.8, "mp": 97.2, "od": 2.8999999999999915, "fd": 2.299999999999997, "md": 3.4000000000000057}, {"model": "Claude-Sonnet-5", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 95.4, "op": 99.2, "fs": 91.7, "fp": 98.7, "ms": 98.1, "mp": 99.6, "od": 3.799999999999997, "fd": 7.0, "md": 1.5}, {"model": "DeepSeek-V4.1-Flash", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking:high", "os": 84.3, "op": 97.1, "fs": 76.7, "fp": 96.5, "ms": 90.0, "mp": 97.6, "od": 12.799999999999997, "fd": 19.799999999999997, "md": 7.599999999999994}, {"model": "GPT-5.6-terra", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 83.6, "op": 97.0, "fs": 77.5, "fp": 95.9, "ms": 88.1, "mp": 97.9, "od": 13.400000000000006, "fd": 18.400000000000006, "md": 9.800000000000011}, {"model": "Muse-Glimmer-30B", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 75.0, "op": 82.5, "fs": 57.5, "fp": 64.5, "ms": 88.1, "mp": 96.1, "od": 7.5, "fd": 7.0, "md": 8.0}, {"model": "GLM-5.3-Flash", "flag": "\ud83c\udde8\ud83c\uddf3", "mode": "thinking", "os": 71.1, "op": 95.4, "fs": 56.7, "fp": 93.0, "ms": 81.9, "mp": 97.2, "od": 24.30000000000001, "fd": 36.3, "md": 15.299999999999997}, {"model": "GPT-5.6-luna", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 72.5, "op": 93.0, "fs": 49.2, "fp": 88.3, "ms": 90.0, "mp": 96.5, "od": 20.5, "fd": 39.099999999999994, "md": 6.5}, {"model": "Nemotron-3-Ultra-550B-A55B-BF16", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 59.3, "op": 85.3, "fs": 39.2, "fp": 76.3, "ms": 74.4, "mp": 91.9, "od": 26.0, "fd": 37.099999999999994, "md": 17.5}, {"model": "Inkling-NVFP4", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 54.3, "op": 83.4, "fs": 35.0, "fp": 75.7, "ms": 68.8, "mp": 89.2, "od": 29.10000000000001, "fd": 40.7, "md": 20.400000000000006}, {"model": "Inkling", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 51.8, "op": 83.6, "fs": 35.0, "fp": 77.4, "ms": 64.4, "mp": 88.3, "od": 31.799999999999997, "fd": 42.400000000000006, "md": 23.89999999999999}, {"model": "Inkling-Small", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 45.7, "op": 74.0, "fs": 30.0, "fp": 66.3, "ms": 57.5, "mp": 79.8, "od": 28.299999999999997, "fd": 36.3, "md": 22.299999999999997}, {"model": "Claude-Haiku-4.5", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 28.9, "op": 64.8, "fs": 9.2, "fp": 50.6, "ms": 43.8, "mp": 75.4, "od": 35.9, "fd": 41.400000000000006, "md": 31.60000000000001}, {"model": "Nemotron-3-Super-120B-A12B-BF16", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "thinking", "os": 12.5, "op": 32.6, "fs": 7.5, "fp": 28.6, "ms": 16.2, "mp": 35.6, "od": 20.1, "fd": 21.1, "md": 19.400000000000002}, {"model": "Llama-4-Maverick-17B-128E-Instruct", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "instruct", "os": 0.0, "op": 10.3, "fs": 0.0, "fp": 5.9, "ms": 0.0, "mp": 13.6, "od": 10.3, "fd": 5.9, "md": 13.6}, {"model": "Llama-3.3-70B-Instruct", "flag": "\ud83c\uddfa\ud83c\uddf8", "mode": "instruct", "os": 0.0, "op": 7.4, "fs": 0.0, "fp": 4.3, "ms": 0.0, "mp": 9.7, "od": 7.4, "fd": 4.3, "md": 9.7}],{sort:"os"});</script>
+<footer>Kamiwaza Agentic Performance Index · generated from banked benchmark runs · <a href="https://docs.kamiwaza.ai/research/agentic-merit-index">docs.kamiwaza.ai/research</a></footer>
+</div>

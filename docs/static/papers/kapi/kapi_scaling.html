@@ -1,0 +1,189 @@
+<!doctype html><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Scaling · KAPI</title>
+<style>
+/* Kamiwaza brand palette — matches docs.kamiwaza.ai (--kamiwaza-* tokens). */
+:root{--bg:#0f172a;--card:#1e293b;--ink:#f8fafc;--ink2:#cbd5e1;--ink3:#94a3b8;
+      --rule:#334155;--accent:#10b981;--good:#06d6a0;--bad:#f87171;--warn:#fbbf24;
+      --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+      --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px 90px;}
+/* A board whose table is wider than the text column breaks out of it, centred, rather
+   than scrolling inside a 1180px box with empty gutters on both sides. */
+body:has(.tw){display:flex;justify-content:center;}
+.wrap:has(.tw){max-width:none;width:fit-content;min-width:min(1180px,100%);}
+/* Data boards are wide by nature. Let the table claim the viewport rather than sit
+   cropped inside a scroller with empty gutters either side. */
+.wide{max-width:none;width:max-content;min-width:100%;margin-inline:auto;}
+header.top{border-bottom:1px solid var(--rule);padding:30px 0 20px;margin-bottom:30px;}
+.brand{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+       text-transform:uppercase;color:var(--ink3);margin:0 0 12px;text-decoration:none;}
+a.brand:hover{color:var(--accent);text-decoration:none;}
+h1{font-size:2rem;font-weight:700;margin:0 0 10px;letter-spacing:-.015em;}
+.sub{color:var(--ink2);max-width:74ch;margin:0;}
+div.sub p{margin:0}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+h2{font-size:1.15rem;margin:38px 0 4px;}
+.note{color:var(--ink3);font-size:13px;max-width:78ch;}
+ul.papers{margin:6px 0 0;padding-left:1.15rem;}
+ul.papers li{margin:2px 0;}
+.tw{border:1px solid var(--rule);border-radius:4px;background:var(--card);margin:18px 0;
+    width:max-content;min-width:100%;max-width:100%;}
+@media(max-width:900px){.tw{overflow-x:auto;width:auto;}}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums;}
+th,td{padding:8px 13px;text-align:left;border-bottom:1px solid var(--rule);white-space:nowrap;}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+         color:var(--ink3);font-weight:400;position:sticky;top:0;background:var(--card);}
+td.n,th.n{text-align:right;font-family:var(--mono);}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#243449}
+td.name{font-weight:600}
+.hi{color:var(--good)}.lo{color:var(--bad)}.mid{color:var(--warn)}
+.bar{display:inline-block;height:6px;border-radius:1px;background:var(--accent);opacity:.5;
+     vertical-align:middle;margin-left:7px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:22px 0;}
+.card{display:block;background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:16px 18px;}
+.card:hover{border-color:var(--accent);text-decoration:none}
+.ct{font-weight:700;color:var(--ink);margin-bottom:5px}
+.cd{color:var(--ink2);font-size:13px}
+.grp{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+     color:var(--ink3);margin:34px 0 -6px;}
+footer{border-top:1px solid var(--rule);margin-top:60px;padding-top:18px;color:var(--ink3);font-size:12px;}
+@media(max-width:640px){th,td{padding:7px 10px}}
+
+th.srt{cursor:pointer;user-select:none}
+th.srt:hover{color:var(--ink)}
+th.srt.on{color:var(--accent)}
+tr.gh th{border-bottom:none;padding-bottom:0}
+th.gl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+      color:var(--ink3);text-align:center;border-bottom:1px solid var(--rule)}
+td.rank{color:var(--ink3);width:2.6em}
+.est{font-family:var(--mono);font-size:.62em;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--warn);border:1px solid var(--warn);border-radius:3px;padding:0 3px;
+     vertical-align:middle;margin-left:5px}
+td.mode{color:var(--ink3);font-size:.86em}
+.gap{color:var(--warn);font-size:.8em}
+</style>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="https://docs.kamiwaza.ai/research/agentic-merit-index">&larr; Kamiwaza Agentic Performance Index</a>
+  <h1>Scaling and Peak Throughput</h1>
+  
+</header>
+
+  <div class="ctrls">
+    <div class="cg"><label>Model</label><select id="model"></select></div>
+    <div class="budget" id="hdr"></div>
+  </div>
+  <div class="peak" id="peak"></div>
+  <h2>Aggregate throughput</h2>
+  <div class="chart" id="c1"></div>
+  <h2>Throughput per agent</h2>
+  <div class="chart" id="c2"></div>
+  <div class="tw" id="tbl"></div>
+  <p class="note">Rₘ = peak aggregate throughput. max-N = most agents inside the gate. Gate: blank = passed, <b>FLOOR</b> = per-agent decode fell through, <b>GATE3</b> = admission latency.</p>
+<script>
+const DATA={"laguna_xs_2_1": [{"N": 288, "agg": 33887, "tps": 117.66, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 31.0, "over60": 0.0, "role": "up slope"}, {"N": 360, "agg": 41796, "tps": 116.1, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 40.0, "over60": 0.0, "role": "up slope"}, {"N": 400, "agg": 46255, "tps": 115.64, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 44.0, "over60": 0.0, "role": "up slope"}, {"N": 448, "agg": 49537, "tps": 110.57, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 48.0, "over60": 0.0, "role": "up slope"}, {"N": 512, "agg": 57583, "tps": 112.47, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 53.0, "over60": 0.0, "role": "peak"}], "qwen3_5_4b": [{"N": 256, "agg": 55383, "tps": 216.34, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 25.0, "over60": 0.0, "role": "peak"}], "qwen3_5_9b": [{"N": 288, "agg": 32884, "tps": 114.18, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 27.0, "over60": 0.0, "role": "up slope"}, {"N": 320, "agg": 44970, "tps": 140.53, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 30.0, "over60": 0.0, "role": "peak"}, {"N": 384, "agg": 63504, "tps": 165.37, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 163.0, "over60": 16.4, "role": "down slope"}], "qwen3_6_35b_a3b": [{"N": 224, "agg": 10292, "tps": 45.95, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 21.0, "over60": 0.0, "role": "up slope"}, {"N": 272, "agg": 12538, "tps": 46.1, "gate": "", "sla": true, "rm": true, "maxN": false, "ttft": 26.0, "over60": 0.0, "role": "peak"}, {"N": 320, "agg": 12515, "tps": 39.11, "gate": "", "sla": true, "rm": false, "maxN": true, "ttft": 26.0, "over60": 0.0, "role": "down slope"}, {"N": 336, "agg": 15253, "tps": 45.4, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 140.0, "over60": 24.7, "role": "down slope"}], "qwen3_5_35b_a3b": [{"N": 224, "agg": 10899, "tps": 48.66, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 23.0, "over60": 0.0, "role": "up slope"}, {"N": 272, "agg": 12074, "tps": 44.39, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 25.0, "over60": 0.0, "role": "peak"}, {"N": 336, "agg": 11185, "tps": 33.29, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 175.0, "over60": 32.1, "role": "down slope"}], "laguna_s_2_1": [{"N": 208, "agg": 5994, "tps": 28.82, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 16.0, "over60": 0.0, "role": "up slope"}, {"N": 288, "agg": 7396, "tps": 25.68, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 26.0, "over60": 0.0, "role": "up slope"}, {"N": 360, "agg": 9060, "tps": 25.17, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 36.0, "over60": 0.0, "role": "up slope"}, {"N": 400, "agg": 10323, "tps": 25.81, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 39.0, "over60": 0.0, "role": "peak"}, {"N": 448, "agg": 11306, "tps": 25.24, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 219.0, "over60": 9.3, "role": "down slope"}], "qwen3_6_27b": [{"N": 128, "agg": 4502, "tps": 35.18, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 8.0, "over60": 0.0, "role": "up slope"}, {"N": 144, "agg": 5040, "tps": 35.0, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 11.0, "over60": 0.0, "role": "up slope"}, {"N": 160, "agg": 4977, "tps": 31.11, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 11.0, "over60": 0.0, "role": "up slope"}, {"N": 168, "agg": 5573, "tps": 33.17, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 13.0, "over60": 0.0, "role": "peak"}, {"N": 176, "agg": 5367, "tps": 30.49, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 207.0, "over60": 23.9, "role": "down slope"}], "qwen3_8_27b": [{"N": 112, "agg": 4535, "tps": 40.49, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 8.0, "over60": 0.0, "role": "up slope"}, {"N": 144, "agg": 4735, "tps": 32.88, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 8.0, "over60": 0.0, "role": "up slope"}, {"N": 152, "agg": 5539, "tps": 36.44, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 11.0, "over60": 0.0, "role": "peak"}, {"N": 160, "agg": 5474, "tps": 34.21, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 195.0, "over60": 19.4, "role": "down slope"}, {"N": 176, "agg": 4627, "tps": 26.29, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 209.0, "over60": 19.3, "role": "down slope"}], "qwen3_5_122b_a10b": [{"N": 160, "agg": 3713, "tps": 23.21, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 10.0, "over60": 0.0, "role": "up slope"}, {"N": 192, "agg": 4938, "tps": 25.72, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 15.0, "over60": 0.0, "role": "peak"}, {"N": 216, "agg": 4867, "tps": 22.53, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 160.0, "over60": 22.2, "role": "down slope"}, {"N": 232, "agg": 3645, "tps": 15.71, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 188.0, "over60": 34.1, "role": "down slope"}], "mistral_medium_3_5_128b": [{"N": 4, "agg": 403, "tps": 100.87, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 8, "agg": 646, "tps": 80.75, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 16, "agg": 1085, "tps": 67.82, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 5.0, "over60": 0.0, "role": "up slope"}, {"N": 24, "agg": 1586, "tps": 66.09, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 8.0, "over60": 0.0, "role": "up slope"}, {"N": 32, "agg": 2386, "tps": 74.57, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 15.0, "over60": 0.0, "role": "up slope"}, {"N": 40, "agg": 3011, "tps": 75.28, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 21.0, "over60": 0.0, "role": "up slope"}, {"N": 44, "agg": 3114, "tps": 70.77, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 24.0, "over60": 0.0, "role": "peak"}, {"N": 48, "agg": 3729, "tps": 77.69, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 88.0, "over60": 31.2, "role": "down slope"}], "deepseek_v4_flash_0731": [{"N": 64, "agg": 2348, "tps": 36.68, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 80, "agg": 2604, "tps": 32.56, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 96, "agg": 2765, "tps": 28.81, "gate": "", "sla": true, "rm": true, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "peak"}, {"N": 128, "agg": 2496, "tps": 19.5, "gate": "", "sla": true, "rm": false, "maxN": true, "ttft": 3.0, "over60": 0.0, "role": "down slope"}, {"N": 132, "agg": 1082, "tps": 8.2, "gate": "FLOOR", "sla": false, "rm": false, "maxN": false, "ttft": 12.0, "over60": 2.3, "role": "down slope"}], "gemma_4_26b_a4b_it": [{"N": 96, "agg": 2052, "tps": 21.37, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 120, "agg": 2145, "tps": 17.87, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 136, "agg": 2149, "tps": 15.8, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 152, "agg": 1970, "tps": 12.96, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 176, "agg": 2239, "tps": 12.72, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 192, "agg": 2274, "tps": 11.85, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 224, "agg": 2508, "tps": 11.2, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 240, "agg": 2661, "tps": 11.09, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 2.0, "over60": 0.0, "role": "peak"}, {"N": 248, "agg": 2284, "tps": 9.21, "gate": "FLOOR", "sla": false, "rm": false, "maxN": false, "ttft": 3.0, "over60": 0.0, "role": "down slope"}, {"N": 256, "agg": 2428, "tps": 9.48, "gate": "FLOOR", "sla": false, "rm": false, "maxN": false, "ttft": 6.0, "over60": 0.0, "role": "down slope"}], "qwen3_8_flash_next": [{"N": 4, "agg": 891, "tps": 222.64, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 8, "agg": 1239, "tps": 154.91, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 16, "agg": 1545, "tps": 96.54, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 32, "agg": 1919, "tps": 59.96, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 40, "agg": 2139, "tps": 53.47, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 48, "agg": 2238, "tps": 46.63, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 56, "agg": 2286, "tps": 40.82, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 64, "agg": 2285, "tps": 35.7, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 72, "agg": 2380, "tps": 33.05, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 80, "agg": 2469, "tps": 30.87, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 88, "agg": 2507, "tps": 28.49, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 96, "agg": 2563, "tps": 26.7, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 3.0, "over60": 0.0, "role": "up slope"}, {"N": 104, "agg": 2606, "tps": 25.05, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 112, "agg": 2634, "tps": 23.52, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 120, "agg": 2647, "tps": 22.05, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 4.0, "over60": 0.0, "role": "up slope"}, {"N": 128, "agg": 2660, "tps": 20.78, "gate": "", "sla": true, "rm": true, "maxN": false, "ttft": 33.0, "over60": 0.0, "role": "peak"}, {"N": 136, "agg": 2064, "tps": 15.18, "gate": "", "sla": true, "rm": false, "maxN": true, "ttft": 20.0, "over60": 0.0, "role": "down slope"}, {"N": 144, "agg": 2058, "tps": 14.29, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 167.0, "over60": 11.1, "role": "down slope"}], "qwen3_5_397b_a17b": [{"N": 64, "agg": 1484, "tps": 23.18, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 88, "agg": 1580, "tps": 17.96, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 104, "agg": 1621, "tps": 15.59, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 112, "agg": 1677, "tps": 14.98, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 1.0, "over60": 0.0, "role": "peak"}, {"N": 128, "agg": 1419, "tps": 11.09, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 153.0, "over60": 28.9, "role": "down slope"}], "gemma_4_31b_it": [{"N": 48, "agg": 1182, "tps": 24.63, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 3.0, "over60": 0.0, "role": "up slope"}, {"N": 56, "agg": 1240, "tps": 22.14, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 5.0, "over60": 0.0, "role": "up slope"}, {"N": 64, "agg": 1222, "tps": 19.09, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 12.0, "over60": 0.0, "role": "up slope"}, {"N": 72, "agg": 1341, "tps": 18.62, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 5.0, "over60": 0.0, "role": "up slope"}, {"N": 80, "agg": 1391, "tps": 17.38, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 10.0, "over60": 0.0, "role": "peak"}, {"N": 84, "agg": 1002, "tps": 11.93, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 259.0, "over60": 100.0, "role": "down slope"}], "minimax_m3_mxfp8": [{"N": 40, "agg": 1078, "tps": 26.95, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 48, "agg": 1177, "tps": 24.51, "gate": "", "sla": true, "rm": true, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "peak"}, {"N": 56, "agg": 799, "tps": 14.26, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 38.0, "over60": 0.0, "role": "down slope"}, {"N": 60, "agg": 579, "tps": 9.65, "gate": "", "sla": true, "rm": false, "maxN": true, "ttft": 34.0, "over60": 3.3, "role": "down slope"}, {"N": 64, "agg": 524, "tps": 8.19, "gate": "FLOOR", "sla": false, "rm": false, "maxN": false, "ttft": 47.0, "over60": 3.1, "role": "down slope"}, {"N": 80, "agg": 484, "tps": 6.05, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 93.0, "over60": 25.0, "role": "down slope"}], "glm_5_2_fp8": [{"N": 16, "agg": 1045, "tps": 65.29, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 20, "agg": 1152, "tps": 57.6, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 1.0, "over60": 0.0, "role": "peak"}, {"N": 24, "agg": 728, "tps": 30.34, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 33.0, "over60": 8.3, "role": "down slope"}], "glm_5_3": [{"N": 4, "agg": 279, "tps": 69.66, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 8, "agg": 442, "tps": 55.2, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 12, "agg": 528, "tps": 44.02, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 16, "agg": 666, "tps": 41.64, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 20, "agg": 691, "tps": 34.53, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 24, "agg": 755, "tps": 31.45, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 28, "agg": 811, "tps": 28.96, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 32, "agg": 872, "tps": 27.25, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 36, "agg": 916, "tps": 25.45, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 40, "agg": 978, "tps": 24.45, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 44, "agg": 982, "tps": 22.32, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 48, "agg": 1091, "tps": 22.73, "gate": "", "sla": true, "rm": true, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "peak"}, {"N": 52, "agg": 1020, "tps": 19.61, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 6.0, "over60": 0.0, "role": "down slope"}, {"N": 56, "agg": 597, "tps": 10.66, "gate": "", "sla": true, "rm": false, "maxN": true, "ttft": 5.0, "over60": 0.0, "role": "down slope"}, {"N": 60, "agg": 390, "tps": 6.5, "gate": "FLOOR", "sla": false, "rm": false, "maxN": false, "ttft": 19.0, "over60": 0.0, "role": "down slope"}], "minimax_m3": [{"N": 8, "agg": 639, "tps": 79.83, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 24, "agg": 947, "tps": 39.46, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 32, "agg": 1078, "tps": 33.7, "gate": "", "sla": true, "rm": true, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "peak"}, {"N": 40, "agg": 575, "tps": 14.37, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 13.0, "over60": 0.0, "role": "down slope"}, {"N": 44, "agg": 515, "tps": 11.71, "gate": "", "sla": true, "rm": false, "maxN": true, "ttft": 15.0, "over60": 0.0, "role": "down slope"}, {"N": 48, "agg": 443, "tps": 9.24, "gate": "FLOOR", "sla": false, "rm": false, "maxN": false, "ttft": 26.0, "over60": 0.0, "role": "down slope"}], "qwen3_235b_a22b_instruct_2507": [{"N": 40, "agg": 925, "tps": 23.13, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 48, "agg": 975, "tps": 20.31, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 64, "agg": 1000, "tps": 15.63, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 13.0, "over60": 0.0, "role": "peak"}, {"N": 76, "agg": 741, "tps": 9.75, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 70.0, "over60": 14.5, "role": "down slope"}], "laguna_m_1": [{"N": 48, "agg": 797, "tps": 16.6, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 64, "agg": 850, "tps": 13.29, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 1.0, "over60": 0.0, "role": "peak"}, {"N": 72, "agg": 934, "tps": 12.97, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 17.0, "over60": 5.6, "role": "down slope"}, {"N": 80, "agg": 598, "tps": 7.47, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 145.0, "over60": 16.2, "role": "down slope"}], "glm_5_2": [{"N": 4, "agg": 557, "tps": 139.13, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "up slope"}, {"N": 8, "agg": 739, "tps": 92.35, "gate": "", "sla": true, "rm": true, "maxN": false, "ttft": 0.0, "over60": 0.0, "role": "peak"}, {"N": 10, "agg": 495, "tps": 49.48, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 21.0, "over60": 0.0, "role": "down slope"}, {"N": 12, "agg": 218, "tps": 18.19, "gate": "", "sla": true, "rm": false, "maxN": true, "ttft": 18.0, "over60": 0.0, "role": "down slope"}, {"N": 16, "agg": 169, "tps": 10.58, "gate": "GATE3", "sla": false, "rm": false, "maxN": false, "ttft": 52.0, "over60": 6.2, "role": "down slope"}], "kimi_k3": [{"N": 10, "agg": 161, "tps": 16.06, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 14, "agg": 197, "tps": 14.06, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 2.0, "over60": 0.0, "role": "up slope"}, {"N": 20, "agg": 229, "tps": 11.47, "gate": "", "sla": true, "rm": false, "maxN": false, "ttft": 1.0, "over60": 0.0, "role": "up slope"}, {"N": 24, "agg": 253, "tps": 10.53, "gate": "", "sla": true, "rm": true, "maxN": true, "ttft": 1.0, "over60": 0.0, "role": "peak"}, {"N": 28, "agg": 227, "tps": 8.12, "gate": "FLOOR", "sla": false, "rm": false, "maxN": false, "ttft": 11.0, "over60": 0.0, "role": "down slope"}]}, NAMES={"laguna_xs_2_1": "Laguna-XS-2.1", "qwen3_5_4b": "Qwen3.5-4B", "qwen3_5_9b": "Qwen3.5-9B", "qwen3_6_35b_a3b": "Qwen3.6-35B-A3B", "qwen3_5_35b_a3b": "Qwen3.5-35B-A3B", "laguna_s_2_1": "Laguna-S-2.1", "qwen3_6_27b": "Qwen3.6-27B", "qwen3_8_27b": "Qwen3.8-27B", "qwen3_5_122b_a10b": "Qwen3.5-122B-A10B", "mistral_medium_3_5_128b": "Mistral-Medium-3.5-128B", "deepseek_v4_flash_0731": "DeepSeek-V4-Flash-0731", "gemma_4_26b_a4b_it": "Gemma-4-26B-A4B-it", "qwen3_8_flash_next": "Qwen3.8-Flash-Next", "qwen3_5_397b_a17b": "Qwen3.5-397B-A17B", "gemma_4_31b_it": "Gemma-4-31B-it", "minimax_m3_mxfp8": "MiniMax-M3-MXFP8", "glm_5_2_fp8": "GLM-5.2-FP8", "glm_5_3": "GLM-5.3", "minimax_m3": "MiniMax-M3", "qwen3_235b_a22b_instruct_2507": "Qwen3-235B-A22B-Instruct-2507", "laguna_m_1": "Laguna-M.1", "glm_5_2": "GLM-5.2", "kimi_k3": "Kimi-K3"}, FLAGS={"laguna_xs_2_1": "\ud83c\uddfa\ud83c\uddf8", "qwen3_5_4b": "\ud83c\udde8\ud83c\uddf3", "qwen3_5_9b": "\ud83c\udde8\ud83c\uddf3", "qwen3_6_35b_a3b": "\ud83c\udde8\ud83c\uddf3", "qwen3_5_35b_a3b": "\ud83c\udde8\ud83c\uddf3", "laguna_s_2_1": "\ud83c\uddfa\ud83c\uddf8", "qwen3_6_27b": "\ud83c\udde8\ud83c\uddf3", "qwen3_8_27b": "\ud83c\udde8\ud83c\uddf3", "qwen3_5_122b_a10b": "\ud83c\udde8\ud83c\uddf3", "mistral_medium_3_5_128b": "\ud83c\uddeb\ud83c\uddf7", "deepseek_v4_flash_0731": "\ud83c\udde8\ud83c\uddf3", "gemma_4_26b_a4b_it": "\ud83c\uddfa\ud83c\uddf8", "qwen3_8_flash_next": "\ud83c\udde8\ud83c\uddf3", "qwen3_5_397b_a17b": "\ud83c\udde8\ud83c\uddf3", "gemma_4_31b_it": "\ud83c\uddfa\ud83c\uddf8", "minimax_m3_mxfp8": "\ud83c\udde8\ud83c\uddf3", "glm_5_2_fp8": "\ud83c\udde8\ud83c\uddf3", "glm_5_3": "\ud83c\udde8\ud83c\uddf3", "minimax_m3": "\ud83c\udde8\ud83c\uddf3", "qwen3_235b_a22b_instruct_2507": "\ud83c\udde8\ud83c\uddf3", "laguna_m_1": "\ud83c\uddfa\ud83c\uddf8", "glm_5_2": "\ud83c\udde8\ud83c\uddf3", "kimi_k3": "\ud83c\udde8\ud83c\uddf3"}, SCORES={"qwen3_8_flash_next": {"kai": 96.3, "mode": "thinking", "kami": 97.1, "riker": 96.1}, "qwen3_8_27b": {"kai": 88.9, "mode": "thinking", "kami": 85.4, "riker": 96.8}, "deepseek_v4_flash_0731": {"kai": 92.7, "mode": "thinking", "kami": 92.5, "riker": 94.2}, "glm_5_2": {"kai": 92.4, "mode": "thinking", "kami": 91.1, "riker": 96.7}, "qwen3_6_27b": {"kai": 86.6, "mode": "instruct", "kami": 85.4, "riker": 91.9}, "kimi_k3": {"kai": 91.1, "mode": "thinking", "kami": 90.4, "riker": 94.5}, "glm_5_3": {"kai": 84.3, "mode": "thinking:max", "kami": 79.6, "riker": 95.5}, "minimax_m3_mxfp8": {"kai": 83.5, "mode": "thinking", "kami": 77.9, "riker": 96.6}, "minimax_m3": {"kai": 80.8, "mode": "thinking", "kami": 72.9, "riker": 96.6}, "qwen3_6_35b_a3b": {"kai": 68.8, "mode": "instruct", "kami": 55.0, "riker": 91.7}, "qwen3_5_122b_a10b": {"kai": 66.0, "mode": "instruct", "kami": 46.4, "riker": 94.0}, "gemma_4_31b_it": {"kai": 69.8, "mode": "thinking", "kami": 54.3, "riker": 95.2}, "qwen3_5_397b_a17b": {"kai": 67.4, "mode": "instruct", "kami": 52.1, "riker": 94.0}, "qwen3_5_35b_a3b": {"kai": 58.7, "mode": "thinking", "kami": 31.4, "riker": 95.1}, "mistral_medium_3_5_128b": {"kai": 69.1, "mode": "thinking", "kami": 58.2, "riker": 89.6}, "laguna_s_2_1": {"kai": 68.1, "mode": "thinking", "kami": 74.3, "riker": 65.4}, "gemma_4_26b_a4b_it": {"kai": 50.8, "mode": "thinking", "kami": 23.6, "riker": 86.8}, "laguna_m_1": {"kai": 60.6, "mode": "thinking", "kami": 52.9, "riker": 75.7}, "qwen3_5_9b": {"kai": 43.9, "mode": "thinking", "kami": 6.4, "riker": 90.8}, "laguna_xs_2_1": {"kai": 36.8, "mode": "thinking", "kami": 19.6, "riker": 61.1}, "qwen3_235b_a22b_instruct_2507": {"kai": 38.4, "mode": "instruct", "kami": 5.7, "riker": 79.8}, "gpt_6_astra": {"kai": 99.1, "mode": "thinking:max", "kami": 99.6, "riker": 98.6}, "gemini_3_8_flash": {"kai": 98.9, "mode": "thinking:high", "kami": 99.6, "riker": 97.9}, "grok_4_6": {"kai": 98.4, "mode": "thinking", "kami": 99.3, "riker": 97.3}, "claude_fable_5_1": {"kai": 97.8, "mode": "thinking", "kami": 98.6, "riker": 97.3}, "muse_spark_1_3": {"kai": 97.3, "mode": "thinking", "kami": 97.5, "riker": 97.6}, "qwen3_8_2_4t_a95b": {"kai": 96.2, "mode": "thinking:medium", "kami": 96.4, "riker": 96.6}, "claude_opus_5": {"kai": 95.6, "mode": "thinking", "kami": 95.0, "riker": 95.5}, "deepseek_v4_1_flash": {"kai": 94.5, "mode": "thinking:max", "kami": 93.2, "riker": 96.8}, "gpt_5_6_sol": {"kai": 95.8, "mode": "thinking", "kami": 97.9, "riker": 93.8}, "claude_sonnet_5": {"kai": 94.7, "mode": "thinking", "kami": 95.4, "riker": 94.9}, "gpt_5_6_terra": {"kai": 87.2, "mode": "thinking", "kami": 83.6, "riker": 93.0}, "muse_glimmer_30b": {"kai": 82.3, "mode": "thinking", "kami": 75.0, "riker": 95.7}, "glm_5_3_flash": {"kai": 80.1, "mode": "thinking", "kami": 71.1, "riker": 94.8}, "gpt_5_6_luna": {"kai": 78.2, "mode": "thinking", "kami": 72.5, "riker": 91.1}, "nvidia_nemotron_3_ultra_550b_a55b_bf16": {"kai": 72.4, "mode": "thinking", "kami": 59.3, "riker": 93.6}, "inkling_nvfp4": {"kai": 70.2, "mode": "thinking", "kami": 54.3, "riker": 94.5}, "inkling": {"kai": 68.8, "mode": "thinking", "kami": 51.8, "riker": 93.8}, "inkling_small": {"kai": 63.6, "mode": "thinking", "kami": 45.7, "riker": 89.3}, "claude_haiku_4_5": {"kai": 53.8, "mode": "thinking", "kami": 28.9, "riker": 89.1}, "nvidia_nemotron_3_super_120b_a12b_bf16": {"kai": 45.3, "mode": "thinking", "kami": 12.5, "riker": 86.6}, "llama_4_maverick_17b_128e_instruct": {"kai": 28.7, "mode": "instruct", "kami": 0.0, "riker": 63.8}, "llama_3_3_70b_instruct": {"kai": 17.5, "mode": "instruct", "kami": 0.0, "riker": 38.9}}, FLOOR=10.0;
+let model=null;
+function svg(rows,key,floor){
+  const W=900,H=250,P={t:18,r:20,b:34,l:62};
+  const xs=rows.map(r=>r.N), ys=rows.map(r=>r[key]);
+  const xmax=Math.max(...xs), ymax=Math.max(...ys,floor?floor*1.25:0)*1.12||1;
+  const X=v=>P.l+(v/xmax)*(W-P.l-P.r), Y=v=>H-P.b-(v/ymax)*(H-P.t-P.b);
+  let g="";
+  for(let i=0;i<=4;i++){const v=ymax*i/4,y=Y(v);
+    g+=`<line x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}" class="grid"/>`+
+       `<text x="${P.l-8}" y="${y+4}" class="ylab">${v>=1000?(v/1000).toFixed(1)+"k":Math.round(v)}</text>`;}
+  rows.forEach(r=>{g+=`<text x="${X(r.N)}" y="${H-P.b+18}" class="xlab">${r.N}</text>`;});
+  if(floor){const y=Y(floor);
+    g+=`<line x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}" class="floor"/>`+
+       `<text x="${W-P.r}" y="${y-6}" class="floorlab" text-anchor="end">SLA floor · ${floor} tok/s</text>`;}
+  g+=`<polyline class="line" points="${rows.map(r=>X(r.N)+","+Y(r[key])).join(" ")}"/>`;
+  rows.forEach(r=>{
+    const oom=/oom/i.test(r.gate), cls=oom?"oom":(r.sla?"ok":"bad"), cr=(r.rm||r.maxN)?6:4;
+    const tip=oom?"OOM / crash — the box could not run this concurrency (no work done)":
+      ((key==="agg"?r.agg.toLocaleString()+" tok/s aggregate":r.tps+" tok/s per agent")+
+       (r.gate?" · "+r.gate:"")+(r.ttft?" · TTFT p95 "+r.ttft+"s":""));
+    g+=`<circle cx="${X(r.N)}" cy="${Y(r[key])}" r="${cr}" class="pt ${cls}"><title>N=${r.N} · ${tip}</title></circle>`;
+    if(oom)g+=`<text x="${X(r.N)}" y="${Y(r[key])-11}" class="oomlab" text-anchor="middle">OOM</text>`;
+    if((key==="agg"&&r.rm)||(key==="tps"&&r.maxN))
+      g+=`<text x="${X(r.N)}" y="${Y(r[key])-13}" class="crown" text-anchor="middle">${key==="agg"?"Rₘ":"max-N"}</text>`;});
+  g+=`<line x1="${P.l}" y1="${H-P.b}" x2="${W-P.r}" y2="${H-P.b}" class="axis"/>`;
+  g+=`<text x="${W/2}" y="${H-2}" class="xtitle" text-anchor="middle">concurrent agents (N)</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}</svg>`;}
+function fillModels(){
+  const sel=document.getElementById("model"); sel.innerHTML="";
+  Object.keys(DATA).sort((a,b)=>(NAMES[a]||a).localeCompare(NAMES[b]||b))
+    .forEach(m=>sel.add(new Option(((FLAGS[m]?FLAGS[m]+" ":"")+(NAMES[m]||m)),m)));
+  if(!DATA[model]) model=sel.options[0].value; sel.value=model;}
+function render(){
+  const rows=DATA[model]||[];
+  document.getElementById("hdr").innerHTML=
+    `<b>${NAMES[model]||model}</b> · 8xB300 · FullBox mk5 · ${rows.length} rungs measured`;
+  const rmR=rows.find(r=>r.rm), mxR=rows.find(r=>r.maxN);
+  document.getElementById("peak").innerHTML=
+    `<div class="pk"><span class="pkl">Max concurrent agents</span>`+
+    `<span class="pkv">${mxR?mxR.N.toLocaleString():"—"}</span>`+
+    `<span class="pks">${mxR?mxR.tps.toLocaleString()+" tok/s each":"within the latency gate"}</span></div>`+
+    `<div class="pk"><span class="pkl">Peak throughput</span>`+
+    `<span class="pkv">${rmR?rmR.agg.toLocaleString():"—"}<i> tok/s</i></span>`+
+    `<span class="pks">${rmR?"aggregate output, at "+rmR.N+" agents":""}</span></div>`+
+    (function(){const s=SCORES[model];
+      if(!s) return `<div class="pk"><span class="pkl">KAI</span><span class="pkv">—</span>`+
+                    `<span class="pks">not scored</span></div>`;
+      return `<div class="pk"><span class="pkl">KAI <i>(${s.mode})</i></span>`+
+        `<span class="pkv">${s.kai}</span>`+
+        `<span class="pks">KAMI ${s.kami!=null?s.kami.toFixed(1):"—"} · `+
+        `RIKER ${s.riker!=null?s.riker.toFixed(1):"—"}</span></div>`;})();
+  document.getElementById("c1").innerHTML=svg(rows,"agg",null);
+  document.getElementById("c2").innerHTML=svg(rows,"tps",FLOOR);
+  document.getElementById("tbl").innerHTML="<table><thead><tr><th class='n'>agents</th>"+
+    "<th class='n'>aggregate tok/s</th><th class='n'>per agent</th><th class='n'>TTFT p95</th>"+
+    "<th>status</th></tr></thead><tbody>"+rows.map(r=>{
+      const oom=/oom/i.test(r.gate);
+      const st=oom?'<span class="lo">OOM</span>':(r.sla?'<span class="hi">within SLA</span>':
+               '<span class="mid">'+(r.gate||"outside SLA")+'</span>');
+      const crown=(r.rm?' <span class="crownb">Rₘ</span>':'')+(r.maxN?' <span class="crownb">max-N</span>':'');
+      return `<tr><td class="n">${r.N}</td><td class="n">${r.agg.toLocaleString()}${crown}</td>`+
+             `<td class="n">${r.tps}</td><td class="n">${r.ttft!==null?r.ttft:"\u2014"}</td><td>${st}</td></tr>`;
+    }).join("")+"</tbody></table>";}
+document.getElementById("model").onchange=e=>{model=e.target.value;render();};
+fillModels(); render();
+</script>
+<style>
+.ctrls{background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:14px 16px;
+  margin:18px 0;display:flex;flex-wrap:wrap;gap:16px 26px;align-items:center}
+.cg{display:flex;align-items:center;gap:8px;font-size:.9rem}
+.cg label{color:var(--ink3)}
+select{background:var(--bg);color:var(--ink);border:1px solid var(--rule);border-radius:4px;padding:5px 8px;max-width:340px}
+.budget{flex-basis:100%;color:var(--ink2);border-top:1px solid var(--rule);padding-top:12px}
+.peak{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:18px 0 26px}
+.pk{background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--accent);
+    border-radius:4px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.pkl{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)}
+.pkl i{text-transform:none;letter-spacing:0;font-style:normal;color:var(--ink3);opacity:.8}
+.pkv{font-size:2rem;font-weight:700;color:var(--ink);line-height:1.1}
+.pkv i{font-size:.9rem;font-weight:400;color:var(--ink3);font-style:normal}
+.pks{color:var(--ink3);font-size:.8rem}
+.chart{background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:8px 10px;margin:10px 0 20px}
+.chart svg{width:100%;height:auto;display:block}
+.grid{stroke:var(--rule);stroke-width:1}
+.axis{stroke:var(--ink3);stroke-width:1}
+.line{fill:none;stroke:var(--accent);stroke-width:2}
+.pt{stroke:var(--bg);stroke-width:1.5}
+.pt.ok{fill:var(--good)} .pt.bad{fill:var(--warn)} .pt.oom{fill:var(--bad)}
+.floor{stroke:var(--bad);stroke-dasharray:4 4;stroke-width:1}
+.ylab,.xlab{fill:var(--ink3);font-size:11px;font-family:var(--mono);text-anchor:end}
+.xlab{text-anchor:middle}
+.xtitle{fill:var(--ink3);font-size:11px}
+.floorlab{fill:var(--bad);font-size:10px;font-family:var(--mono)}
+.oomlab{fill:var(--bad);font-size:10px;font-family:var(--mono)}
+.crown{fill:var(--accent);font-size:10px;font-family:var(--mono)}
+.crownb{color:var(--accent);font-family:var(--mono);font-size:.72em;border:1px solid var(--accent);
+  border-radius:3px;padding:0 4px;margin-left:5px}
+</style>
+<footer>Kamiwaza Agentic Performance Index · generated from banked benchmark runs · <a href="https://docs.kamiwaza.ai/research/agentic-merit-index">docs.kamiwaza.ai/research</a></footer>
+</div>

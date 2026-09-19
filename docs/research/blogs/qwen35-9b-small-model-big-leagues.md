@@ -29,7 +29,7 @@ On the [KAMI leaderboard](/research/agentic-merit-index) — our benchmark for a
 | Qwen3-235B (FP8) | 235B MoE (22B active) | 88.8% |
 | DeepSeek V3.1 | 671B MoE | 88.9% |
 | Claude Sonnet 4.5 | Unknown (API) | 89.6% |
-For the full leaderboard, see: [KAMI Leaderboard](https://docs.kamiwaza.ai/papers/kami_leaderboard.html)
+For the full leaderboard, see: [Agentic Performance Index](/research/agentic-merit-index)
 
 
 Every model in this range is either a massive MoE with hundreds of billions of parameters, or a proprietary API from a frontier lab.
