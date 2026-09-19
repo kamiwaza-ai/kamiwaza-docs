@@ -97,7 +97,7 @@ let kv="fp16";
 const card=document.getElementById("card"), gpus=document.getElementById("gpus");
 Object.entries(CARDS).forEach(([n,g])=>card.add(new Option(`${n} — ${g} GB`,g)));
 card.add(new Option("Custom…","custom")); card.value=141;
-[1,2,4,8].forEach(n=>gpus.add(new Option(n+(n>1?" GPUs":" GPU"),n)));
+[1,2,4,8,16,24,32,48,64].forEach(n=>gpus.add(new Option(n+(n>1?" GPUs":" GPU"),n)));
 function cardGB(){return card.value==="custom" ? (+document.getElementById("cgb").value) : (+card.value);}
 function syncCustom(){
   const on=card.value==="custom", w=document.getElementById("cwrap");
